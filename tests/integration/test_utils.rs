@@ -2,12 +2,24 @@ use anyhow::Result;
 use axum_server::Handle;
 
 use std::{net::SocketAddr, path::PathBuf, sync::Arc, thread};
-use tokio::sync::{oneshot, RwLock};
+use tokio::{
+    fs,
+    sync::{oneshot, RwLock},
+};
 
 const ADDR: &str = "127.0.0.1:7337";
 pub(crate) const SERVER: &str = "ws://localhost:7337";
 
-use mpc_relay_server::{RelayServer, ServerConfig};
+use mpc_relay_server::{
+    keypair::decode_keypair, RelayServer, ServerConfig,
+};
+
+/// Get the public key for the test server.
+pub async fn server_public_key() -> Result<Vec<u8>> {
+    let contents = fs::read_to_string("tests/test.pem").await?;
+    let keypair = decode_keypair(&contents)?;
+    Ok(keypair.public)
+}
 
 struct MockServer {
     handle: Handle,

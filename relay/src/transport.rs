@@ -43,26 +43,6 @@ where
     Ok(result)
 }
 
-/*
-pub struct InitiatorHandshake {}
-
-impl InitiatorHandshake {
-    /// Create a new initiator handshake.
-    pub fn new(builder: Builder) -> Result<()> {
-        Ok(())
-    }
-}
-
-pub struct ResponderHandshake {}
-
-impl ResponderHandshake {
-    /// Create a new responder handshake.
-    pub fn new(builder: Builder) -> Result<()> {
-        Ok(())
-    }
-}
-*/
-
 #[cfg(test)]
 mod tests {
     use super::{decode, encode};

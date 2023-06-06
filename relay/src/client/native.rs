@@ -3,6 +3,7 @@ use futures::{
     stream::{SplitSink, SplitStream},
     StreamExt,
 };
+use snow::Keypair;
 use tokio::net::TcpStream;
 use tokio_tungstenite::{
     connect_async,
@@ -13,28 +14,76 @@ use tokio_tungstenite::{
     MaybeTlsStream, WebSocketStream,
 };
 
-use crate::{Error, Result};
+use snow::{Builder, HandshakeState, TransportState};
+
+use crate::{Error, Result, constants::PATTERN};
+
+pub enum ProtocolState {
+    Handshake(HandshakeState),
+    Transport(TransportState),
+}
 
 /// Native websocket client using the tokio tungstenite library.
 pub struct NativeClient {
+    keypair: Keypair,
     write: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
     read: SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>,
     response: Response,
+    state: ProtocolState,
 }
 
 impl NativeClient {
     /// Create a new native client.
-    pub async fn new<R>(request: R) -> Result<Self>
+    pub async fn new<R>(
+        request: R,
+        keypair: Keypair,
+        public_key: Vec<u8>,
+    ) -> Result<Self>
     where
         R: IntoClientRequest + Unpin,
     {
         let (stream, response) = connect_async(request).await?;
         let (write, read) = stream.split();
+
+        let mut builder = Builder::new(PATTERN.parse()?);
+        let handshake = builder
+            .local_private_key(&keypair.private)
+            .remote_public_key(&public_key)
+            .build_initiator()?;
+
         Ok(Self {
+            keypair,
             write,
             read,
             response,
+            state: ProtocolState::Handshake(handshake),
         })
+    }
+
+    /// Perform initial handshake with the server.
+    pub async fn handshake(mut self) -> Result<Self> {
+        let (len, request) = match &mut self.state {
+            ProtocolState::Handshake(initiator) => {
+                let mut request = vec![0u8; 1024];
+                let len = initiator.write_message(&[], &mut request)?;
+                (len, request)
+            }
+            _ => return Err(Error::NotHandshakeState),
+        };
+
+        let reply = self.send_recv_binary(request).await?;
+        match self.state {
+            ProtocolState::Handshake(mut initiator) => {
+                let mut read_buf = vec![0u8; 1024];
+                initiator.read_message(&reply[..len], &mut read_buf)?;
+
+                let transport = initiator.into_transport_mode()?;
+                self.state = ProtocolState::Transport(transport);
+
+                Ok(self)
+            }
+            _ => return Err(Error::NotHandshakeState),
+        }
     }
 
     /// Send a binary message to the server.
