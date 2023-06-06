@@ -29,7 +29,7 @@ pub enum Error {
     #[error("binary reply expected")]
     BinaryReplyExpected,
 
-    /// Error generated when a participant expects to be in the handshake 
+    /// Error generated when a participant expects to be in the handshake
     /// protocol state.
     #[error("not handshake protocol state")]
     NotHandshakeState,

@@ -39,6 +39,5 @@ async fn listen(
         let reply = vec![2; 16];
         writer.send(reply)?;
     }
-
     Ok(())
 }

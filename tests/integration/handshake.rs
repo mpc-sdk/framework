@@ -12,8 +12,7 @@ async fn integration_handshake() -> Result<()> {
 
     let public_key = server_public_key().await?;
     let keypair = generate_keypair()?;
-    let mut client =
-        NativeClient::new(SERVER, keypair, public_key).await?;
+    let client = NativeClient::new(SERVER, keypair, public_key).await?;
     let mut client = client.handshake().await?;
 
     /*

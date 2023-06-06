@@ -10,6 +10,7 @@ use futures::{
     stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
 };
+use snow::Builder;
 
 use std::sync::Arc;
 use tokio::sync::{
@@ -17,11 +18,11 @@ use tokio::sync::{
     mpsc, RwLock,
 };
 
-use super::{Service, State};
-use crate::Result;
 use uuid::Uuid;
+//use axum_macros::debug_handler;
 
-use axum_macros::debug_handler;
+use super::{Service, State};
+use crate::{constants::PATTERN, Result, ProtocolState};
 
 pub type Connection = Arc<RwLock<WebSocketConnection>>;
 
@@ -30,15 +31,16 @@ pub type Connection = Arc<RwLock<WebSocketConnection>>;
 pub struct WebSocketConnection {
     /// Unique identifier for the socket connection.
     pub(crate) id: Uuid,
-
     /// Outoing channel for messages sent to clients.
     pub(crate) outgoing: Sender<Vec<u8>>,
     // Incoming channel for messages received from clients.
     pub(crate) incoming: mpsc::Sender<Vec<u8>>,
+    /// Protocol state for this connection.
+    pub(crate) state: ProtocolState,
 }
 
 /// Upgrade to a websocket connection.
-#[debug_handler]
+//#[debug_handler]
 pub async fn upgrade(
     Extension(state): Extension<State>,
     Extension(service): Extension<Service>,
@@ -49,10 +51,24 @@ pub async fn upgrade(
     let id = Uuid::new_v4();
     let (outgoing, _) = broadcast::channel::<Vec<u8>>(32);
     let (incoming, service_reader) = mpsc::channel::<Vec<u8>>(32);
+
+    let mut builder = Builder::new(
+        PATTERN
+            .parse()
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+    );
+
+    let responder = builder
+        .local_private_key(&writer.keypair.private)
+        //.remote_public_key(&keypair1.public)
+        .build_responder().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let protocol_state = ProtocolState::Handshake(responder);
+
     let conn = Arc::new(RwLock::new(WebSocketConnection {
         id: id.clone(),
         outgoing,
         incoming,
+        state: protocol_state,
     }));
     let socket_conn = Arc::clone(&conn);
     writer.sockets.insert(id, conn);

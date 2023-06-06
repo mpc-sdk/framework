@@ -16,12 +16,7 @@ use tokio_tungstenite::{
 
 use snow::{Builder, HandshakeState, TransportState};
 
-use crate::{Error, Result, constants::PATTERN};
-
-pub enum ProtocolState {
-    Handshake(HandshakeState),
-    Transport(TransportState),
-}
+use crate::{constants::PATTERN, Error, ProtocolState, Result};
 
 /// Native websocket client using the tokio tungstenite library.
 pub struct NativeClient {
