@@ -22,7 +22,7 @@ use uuid::Uuid;
 //use axum_macros::debug_handler;
 
 use super::{Service, State};
-use crate::{constants::PATTERN, Result, ProtocolState};
+use crate::{constants::PATTERN, ProtocolState, Result};
 
 pub type Connection = Arc<RwLock<WebSocketConnection>>;
 
@@ -61,7 +61,8 @@ pub async fn upgrade(
     let responder = builder
         .local_private_key(&writer.keypair.private)
         //.remote_public_key(&keypair1.public)
-        .build_responder().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .build_responder()
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     let protocol_state = ProtocolState::Handshake(responder);
 
     let conn = Arc::new(RwLock::new(WebSocketConnection {
