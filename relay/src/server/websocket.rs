@@ -36,7 +36,12 @@ pub struct WebSocketConnection {
     // Incoming channel for messages received from clients.
     pub(crate) incoming: mpsc::Sender<Vec<u8>>,
     /// Protocol state for this connection.
-    pub(crate) state: ProtocolState,
+    ///
+    /// Use an option here as we need to call 
+    /// into_transport_mode() which requires self 
+    /// so we move out of the option and convert to 
+    /// transport mode and then put it back.
+    pub(crate) state: Option<ProtocolState>,
 }
 
 /// Upgrade to a websocket connection.
@@ -69,7 +74,7 @@ pub async fn upgrade(
         id: id.clone(),
         outgoing,
         incoming,
-        state: protocol_state,
+        state: Some(protocol_state),
     }));
     let socket_conn = Arc::clone(&conn);
     writer.sockets.insert(id, conn);
@@ -121,7 +126,6 @@ async fn read(
             Ok(msg) => match msg {
                 Message::Text(_) => {}
                 Message::Binary(buffer) => {
-                    println!("read binary message...");
                     tx.send(buffer).await?;
                 }
                 Message::Ping(_) => {}
@@ -150,7 +154,6 @@ async fn write(
         reader.outgoing.subscribe()
     };
     while let Ok(buffer) = outgoing.recv().await {
-        println!("socket writer sending message..");
         if sender.send(Message::Binary(buffer)).await.is_err() {
             disconnect(state, Arc::clone(&conn)).await;
             return Ok(());

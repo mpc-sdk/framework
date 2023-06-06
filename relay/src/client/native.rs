@@ -69,17 +69,16 @@ impl NativeClient {
             _ => return Err(Error::NotHandshakeState),
         };
 
-        let request = RequestMessage::HandshakeInitiator(payload);
+        let request = RequestMessage::HandshakeInitiator(len, payload);
         let buffer = encode(&request).await?;
         let reply = self.send_recv_binary(buffer).await?;
         let response: ResponseMessage = decode(&reply).await?;
 
         match self.state {
             ProtocolState::Handshake(mut initiator) => match response {
-                ResponseMessage::HandshakeResponder(reply) => {
+                ResponseMessage::HandshakeResponder(len, buf) => {
                     let mut read_buf = vec![0u8; 1024];
-                    initiator
-                        .read_message(&reply[..len], &mut read_buf)?;
+                    initiator.read_message(&buf[..len], &mut read_buf)?;
 
                     let transport = initiator.into_transport_mode()?;
                     self.state = ProtocolState::Transport(transport);

@@ -54,14 +54,14 @@ pub enum RequestMessage {
     #[default]
     Noop,
     /// Initiate a handshake.
-    HandshakeInitiator(Vec<u8>),
+    HandshakeInitiator(usize, Vec<u8>),
 }
 
 impl From<&RequestMessage> for u8 {
     fn from(value: &RequestMessage) -> Self {
         match value {
             RequestMessage::Noop => types::NOOP,
-            RequestMessage::HandshakeInitiator(_) => {
+            RequestMessage::HandshakeInitiator(_, _) => {
                 types::HANDSHAKE_INITIATOR
             }
         }
@@ -78,7 +78,8 @@ impl Encodable for RequestMessage {
         let id: u8 = self.into();
         writer.write_u8(id).await?;
         match self {
-            Self::HandshakeInitiator(buf) => {
+            Self::HandshakeInitiator(len, buf) => {
+                writer.write_usize(len).await?;
                 writer.write_u32(buf.len() as u32).await?;
                 writer.write_bytes(buf).await?;
             }
@@ -98,9 +99,10 @@ impl Decodable for RequestMessage {
         let id = reader.read_u8().await?;
         match id {
             types::HANDSHAKE_INITIATOR => {
-                let len = reader.read_u32().await?;
-                let buf = reader.read_bytes(len as usize).await?;
-                *self = RequestMessage::HandshakeInitiator(buf);
+                let len = reader.read_usize().await?;
+                let size = reader.read_u32().await?;
+                let buf = reader.read_bytes(size as usize).await?;
+                *self = RequestMessage::HandshakeInitiator(len, buf);
             }
             _ => {
                 return Err(encoding_error(crate::Error::MessageKind(id)))
@@ -116,14 +118,14 @@ pub enum ResponseMessage {
     #[default]
     Noop,
     /// Respond to a handshake initiation.
-    HandshakeResponder(Vec<u8>),
+    HandshakeResponder(usize, Vec<u8>),
 }
 
 impl From<&ResponseMessage> for u8 {
     fn from(value: &ResponseMessage) -> Self {
         match value {
             ResponseMessage::Noop => types::NOOP,
-            ResponseMessage::HandshakeResponder(_) => {
+            ResponseMessage::HandshakeResponder(_, _) => {
                 types::HANDSHAKE_RESPONDER
             }
         }
@@ -140,7 +142,8 @@ impl Encodable for ResponseMessage {
         let id: u8 = self.into();
         writer.write_u8(id).await?;
         match self {
-            Self::HandshakeResponder(buf) => {
+            Self::HandshakeResponder(len, buf) => {
+                writer.write_usize(len).await?;
                 writer.write_u32(buf.len() as u32).await?;
                 writer.write_bytes(buf).await?;
             }
@@ -160,9 +163,10 @@ impl Decodable for ResponseMessage {
         let id = reader.read_u8().await?;
         match id {
             types::HANDSHAKE_RESPONDER => {
-                let len = reader.read_u32().await?;
-                let buf = reader.read_bytes(len as usize).await?;
-                *self = ResponseMessage::HandshakeResponder(buf);
+                let len = reader.read_usize().await?;
+                let size = reader.read_u32().await?;
+                let buf = reader.read_bytes(size as usize).await?;
+                *self = ResponseMessage::HandshakeResponder(len, buf);
             }
             _ => {
                 return Err(encoding_error(crate::Error::MessageKind(id)))
