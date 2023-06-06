@@ -71,9 +71,28 @@ async fn listen(
                 } else {
                     unreachable!();
                 }
+
+                drop(writer);
+
+                // Now move from pending to transport active
+                promote_connection(Arc::clone(&state), Arc::clone(&conn))
+                    .await;
             }
             RequestMessage::Noop => {}
         }
     }
     Ok(())
+}
+
+/// Promote a connection from pending to active state.
+///
+/// Called once the server handshake has been initiated.
+async fn promote_connection(state: State, conn: Connection) {
+    let (id, public_key) = {
+        let reader = conn.read().await;
+        (reader.id.clone(), reader.public_key.clone())
+    };
+    let mut writer = state.write().await;
+    writer.pending.remove(&id);
+    writer.active.insert(public_key, conn);
 }

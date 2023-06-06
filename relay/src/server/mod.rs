@@ -54,9 +54,6 @@ async fn session_reaper(state: State, interval_secs: u64) {
 #[derive(Default)]
 struct SessionManager {}
 
-#[derive(Default)]
-struct Connections {}
-
 pub struct ServerState {
     /// Server keypair.
     keypair: Keypair,
@@ -64,8 +61,13 @@ pub struct ServerState {
     /// Server config.
     config: ServerConfig,
 
-    /// Active socket connections.
-    sockets: HashMap<Uuid, Connection>,
+    /// Pending socket connections in the handshake state.
+    pending: HashMap<Uuid, Connection>,
+
+    /// Active socket connections in the transport state.
+    ///
+    /// Now the hashmap key is the client's public key.
+    active: HashMap<Vec<u8>, Connection>,
 
     /// Session manager.
     sessions: SessionManager,
@@ -82,7 +84,8 @@ impl RelayServer {
             state: Arc::new(RwLock::new(ServerState {
                 keypair,
                 config,
-                sockets: Default::default(),
+                pending: Default::default(),
+                active: Default::default(),
                 sessions: Default::default(),
             })),
         }

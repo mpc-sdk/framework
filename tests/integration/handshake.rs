@@ -1,8 +1,8 @@
-use std::sync::Arc;
 use anyhow::Result;
-use serial_test::serial;
-use tokio::sync::Mutex;
 use futures::join;
+use serial_test::serial;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 use crate::test_utils::{new_client, spawn};
 
@@ -15,7 +15,8 @@ async fn integration_handshake() -> Result<()> {
     let (client1, _) = new_client().await?;
     let (client2, _) = new_client().await?;
 
-    let (_client1, _client2) = join!(client1.handshake(), client2.handshake());
+    let (_client1, _client2) =
+        join!(client1.handshake(), client2.handshake());
 
     //let mut client = client.handshake().await?;
 

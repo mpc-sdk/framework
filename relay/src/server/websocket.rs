@@ -10,8 +10,8 @@ use futures::{
     stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
 };
-use snow::Builder;
 use serde::Deserialize;
+use snow::Builder;
 
 use std::sync::Arc;
 use tokio::sync::{
@@ -38,6 +38,8 @@ pub struct WebSocketQuery {
 pub struct WebSocketConnection {
     /// Unique identifier for the socket connection.
     pub(crate) id: Uuid,
+    /// User supplied public key.
+    pub(crate) public_key: Vec<u8>,
     /// Outoing channel for messages sent to clients.
     pub(crate) outgoing: Sender<Vec<u8>>,
     // Incoming channel for messages received from clients.
@@ -80,12 +82,13 @@ pub async fn upgrade(
 
     let conn = Arc::new(RwLock::new(WebSocketConnection {
         id: id.clone(),
+        public_key: query.public_key,
         outgoing,
         incoming,
         state: Some(protocol_state),
     }));
     let socket_conn = Arc::clone(&conn);
-    writer.sockets.insert(id, conn);
+    writer.pending.insert(id, conn);
     drop(writer);
 
     let service_writer = {
@@ -105,12 +108,13 @@ pub async fn upgrade(
 }
 
 async fn disconnect(state: State, conn: Connection) {
-    let id = {
+    let (id, public_key) = {
         let reader = conn.read().await;
-        reader.id.clone()
+        (reader.id.clone(), reader.public_key.clone())
     };
     let mut writer = state.write().await;
-    writer.sockets.remove(&id);
+    writer.pending.remove(&id);
+    writer.active.remove(&public_key);
 }
 
 async fn handle_socket(socket: WebSocket, state: State, conn: Connection) {

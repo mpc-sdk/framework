@@ -26,7 +26,8 @@ pub async fn server_public_key() -> Result<Vec<u8>> {
 pub async fn new_client() -> Result<(NativeClient, Keypair)> {
     let public_key = server_public_key().await?;
     let keypair = generate_keypair()?;
-    let url = format!("{}/?public_key={}", SERVER, hex::encode(&keypair.public));
+    let url =
+        format!("{}/?public_key={}", SERVER, hex::encode(&keypair.public));
     let copy = Keypair {
         public: keypair.public.clone(),
         private: keypair.public.clone(),
