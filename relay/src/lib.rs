@@ -1,9 +1,11 @@
+mod client;
 pub mod constants;
 mod error;
 pub mod keypair;
 mod server;
 mod transport;
 
+pub use client::NativeClient;
 pub use error::Error;
 pub use server::{config::ServerConfig, RelayServer};
 

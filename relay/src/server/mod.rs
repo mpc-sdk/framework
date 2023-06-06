@@ -1,8 +1,10 @@
 use futures::StreamExt;
-use std::{net::SocketAddr, sync::Arc, time::Duration};
+use snow::Keypair;
+use std::{
+    collections::HashMap, net::SocketAddr, sync::Arc, time::Duration,
+};
 use tokio::sync::RwLock;
 use tokio_stream::wrappers::IntervalStream;
-use snow::Keypair;
 
 use axum::{
     extract::Extension,
@@ -15,6 +17,7 @@ use axum::{
 };
 use axum_server::{tls_rustls::RustlsConfig, Handle};
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
+use uuid::Uuid;
 
 use crate::{
     server::config::{ServerConfig, TlsConfig},
@@ -23,6 +26,8 @@ use crate::{
 
 pub(crate) mod config;
 mod websocket;
+
+use websocket::WebSocketConnection;
 
 async fn session_reaper(state: State, interval_secs: u64) {
     let interval =
@@ -58,7 +63,7 @@ pub struct ServerState {
     config: ServerConfig,
 
     /// Active socket connections.
-    connections: Connections,
+    sockets: HashMap<Uuid, Arc<WebSocketConnection>>,
 
     /// Session manager.
     sessions: SessionManager,
@@ -75,7 +80,7 @@ impl RelayServer {
             state: Arc::new(RwLock::new(ServerState {
                 keypair,
                 config,
-                connections: Default::default(),
+                sockets: Default::default(),
                 sessions: Default::default(),
             })),
         }

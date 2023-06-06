@@ -16,3 +16,6 @@ tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "fs", "i
 axum-server = { version = "0.5", features = ["tls-rustls"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+serial_test = "2"

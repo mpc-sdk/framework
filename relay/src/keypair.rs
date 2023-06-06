@@ -1,6 +1,6 @@
 use crate::{
     constants::{PATTERN, PEM_PRIVATE, PEM_PUBLIC},
-    Result, Error,
+    Error, Result,
 };
 use pem::Pem;
 use snow::{Builder, Keypair};
@@ -32,7 +32,6 @@ pub fn decode_keypair(keypair: impl AsRef<[u8]>) -> Result<Keypair> {
         } else {
             Err(Error::BadKeypairPem)
         }
-
     } else {
         Err(Error::BadKeypairPem)
     }

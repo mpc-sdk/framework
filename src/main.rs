@@ -46,15 +46,8 @@ pub enum Command {
 async fn run() -> Result<()> {
     let args = RelayServer::parse();
     match args.cmd {
-        Command::GenerateKeypair {
-            file,
-            force,
-        } => {
-            commands::generate_keypair::run(
-                file,
-                force,
-            )
-            .await?
+        Command::GenerateKeypair { file, force } => {
+            commands::generate_keypair::run(file, force).await?
         }
         Command::Start {
             reap_interval,

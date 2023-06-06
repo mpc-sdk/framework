@@ -1,17 +1,15 @@
-use anyhow::{Result, bail};
+use anyhow::{bail, Result};
+use mpc_relay_server::keypair;
 use std::path::PathBuf;
 use tokio::{fs, io::AsyncWriteExt};
-use mpc_relay_server::keypair;
 
 /// Generate keypair and write to file.
-pub async fn run(
-    path: PathBuf,
-    force: bool,
-) -> Result<()> {
+pub async fn run(path: PathBuf, force: bool) -> Result<()> {
     if fs::try_exists(&path).await? && !force {
         bail!(
             "file {} already exists, use --force to overwrite",
-            path.display());
+            path.display()
+        );
     }
 
     let keypair = keypair::generate_keypair()?;

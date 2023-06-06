@@ -19,103 +19,96 @@ use tokio::sync::{
 
 use super::State;
 use crate::Result;
+use uuid::Uuid;
+
+use axum_macros::debug_handler;
 
 /// State for the websocket  connection for a single
 /// authenticated client.
 pub struct WebSocketConnection {
-    /// Broadcast sender for websocket message.
-    ///
-    /// Handlers can send messages via this sender to broadcast
-    /// to all the connected sockets for the client.
-    pub(crate) tx: Sender<Vec<u8>>,
+    /// Unique identifier for the socket connection.
+    pub(crate) id: Uuid,
+
+    /// Outoing channel for messages sent to clients.
+    pub(crate) outgoing: Sender<Vec<u8>>,
+    // Incoming channel for messages received from clients.
+    //pub(crate) incoming: Receiver<Vec<u8>>,
 }
 
 /// Upgrade to a websocket connection.
+#[debug_handler]
 pub async fn upgrade(
     Extension(state): Extension<State>,
-    //Query(query): Query<QueryMessage>,
     ws: WebSocketUpgrade,
 ) -> std::result::Result<Response, StatusCode> {
     tracing::debug!("websocket upgrade request");
 
     let mut writer = state.write().await;
+    let id = Uuid::new_v4();
+    let (outgoing, _) = broadcast::channel::<Vec<u8>>(32);
+    //let (_, incoming) = broadcast::channel::<Vec<u8>>(32);
+    let conn = Arc::new(WebSocketConnection {
+        id: id.clone(),
+        outgoing,
+        //incoming,
+    });
 
-    /*
-    let conn = if let Some(conn) = writer.sockets.get_mut(&token.address) {
-        conn
-    } else {
-        let (tx, _) = broadcast::channel::<Vec<u8>>(32);
-        writer
-            .sockets
-            .entry(token.address)
-            .or_insert(WebSocketConnection { tx, clients: 0 })
-    };
+    let socket_conn = Arc::clone(&conn);
+    writer.sockets.insert(id, conn);
+    drop(writer);
 
-    let rx = conn.tx.subscribe();
+    let rx = socket_conn.outgoing.subscribe();
+    let socket_state = Arc::clone(&state);
     Ok(ws.on_upgrade(move |socket| {
-        handle_socket(socket, state, rx)
+        handle_socket(socket, socket_state, socket_conn, rx)
     }))
-    */
-
-    todo!();
 }
 
 async fn disconnect(
     state: State,
-    //address: Address,
-    //session_id: Uuid,
+    conn: Arc<WebSocketConnection>,
 ) {
-
-    /*
     let mut writer = state.write().await;
-
-    // Sessions for websocket connections have the keep alive
-    // flag so we must remove them on disconnect
-    writer.sessions.remove_session(&session_id);
-
-    let clients = if let Some(conn) = writer.sockets.get_mut(&address) {
-        conn.clients -= 1;
-        Some(conn.clients)
-    } else {
-        None
-    };
-
-    if let Some(clients) = clients {
-        if clients == 0 {
-            writer.sockets.remove(&address);
-        }
-    }
-    */
+    writer.sockets.remove(&conn.id);
 }
 
 async fn handle_socket(
     socket: WebSocket,
     state: State,
+    conn: Arc<WebSocketConnection>,
     outgoing: Receiver<Vec<u8>>,
 ) {
     let (writer, reader) = socket.split();
-    tokio::spawn(write(writer, Arc::clone(&state), outgoing));
-    tokio::spawn(read(reader, Arc::clone(&state)));
+    tokio::spawn(write(
+        writer,
+        Arc::clone(&state),
+        Arc::clone(&conn),
+        outgoing,
+    ));
+    tokio::spawn(read(reader, Arc::clone(&state), Arc::clone(&conn)));
 }
 
 async fn read(
     mut receiver: SplitStream<WebSocket>,
     state: State,
+    conn: Arc<WebSocketConnection>,
 ) -> Result<()> {
     while let Some(msg) = receiver.next().await {
         match msg {
             Ok(msg) => match msg {
                 Message::Text(_) => {}
-                Message::Binary(_) => {}
+                Message::Binary(_) => {
+                    println!("read binary message...");
+                }
                 Message::Ping(_) => {}
                 Message::Pong(_) => {}
                 Message::Close(_) => {
-                    disconnect(state /*, address, session_id */).await;
+                    disconnect(state, Arc::clone(&conn)).await;
                     return Ok(());
                 }
             },
             Err(e) => {
-                disconnect(state /*, address, session_id */).await;
+                disconnect(state, Arc::clone(&conn)).await;
                 return Err(e.into());
             }
         }
@@ -126,41 +119,14 @@ async fn read(
 async fn write(
     mut sender: SplitSink<WebSocket, Message>,
     state: State,
+    conn: Arc<WebSocketConnection>,
     mut outgoing: Receiver<Vec<u8>>,
 ) -> Result<()> {
-    while let Ok(msg) = outgoing.recv().await {
-        /*
-        let mut writer = state.write().await;
-        let session = writer
-            .sessions
-            .get_mut(&session_id)
-            .expect("failed to locate websocket session");
-
-        let aead = match session.encrypt(&msg).await {
-            Ok(aead) => aead,
-            Err(e) => {
-                drop(writer);
-                disconnect(state, address, session_id).await;
-                return Err(e.into());
-            }
-        };
-
-        drop(writer);
-
-        match encode(&aead).await {
-            Ok(buffer) => {
-                if sender.send(Message::Binary(buffer)).await.is_err() {
-                    disconnect(state, address, session_id).await;
-                    return Ok(());
-                }
-            }
-            Err(e) => {
-                tracing::error!("{}", e);
-                disconnect(state, address, session_id).await;
-                return Err(e.into());
-            }
+    while let Ok(buffer) = outgoing.recv().await {
+        if sender.send(Message::Binary(buffer)).await.is_err() {
+            disconnect(state, Arc::clone(&conn)).await;
+            return Ok(());
         }
-        */
     }
     Ok(())
 }

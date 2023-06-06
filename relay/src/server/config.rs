@@ -1,11 +1,11 @@
 //! Server configuration.
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
 use snow::Keypair;
+use std::path::{Path, PathBuf};
 use tokio::fs;
 use url::{Host, Url};
 
-use crate::{Error, Result, keypair};
+use crate::{keypair, Error, Result};
 
 /// Configuration for the web server.
 #[derive(Default, Serialize, Deserialize)]
@@ -22,11 +22,6 @@ pub struct ServerConfig {
 
     /// Configuration for CORS.
     pub cors: CorsConfig,
-    
-    /// Path the file was loaded from used to determine
-    /// relative paths.
-    #[serde(skip)]
-    file: Option<PathBuf>,
 }
 
 /// Certificate and key for TLS.
@@ -80,6 +75,12 @@ impl ServerConfig {
             return Err(Error::KeyFileRequired);
         }
 
+        let dir = Self::directory(path.as_ref())?;
+
+        if config.key.is_relative() {
+            config.key = dir.join(&config.key).canonicalize()?;
+        }
+
         if !fs::try_exists(&config.key).await? {
             return Err(Error::KeyNotFound(config.key.clone()));
         }
@@ -87,31 +88,23 @@ impl ServerConfig {
         let mut contents = fs::read_to_string(&config.key).await?;
         let keypair = keypair::decode_keypair(&contents)?;
 
-        config.file = Some(path.as_ref().canonicalize()?);
-        let dir = config.directory();
-
         if let Some(tls) = config.tls.as_mut() {
             if tls.cert.is_relative() {
-                tls.cert = dir.join(&tls.cert);
+                tls.cert = dir.join(&tls.cert).canonicalize()?;
             }
             if tls.key.is_relative() {
-                tls.key = dir.join(&tls.key);
+                tls.key = dir.join(&tls.key).canonicalize()?;
             }
-
-            tls.cert = tls.cert.canonicalize()?;
-            tls.key = tls.key.canonicalize()?;
         }
 
         Ok((config, keypair))
     }
 
     /// Parent directory of the configuration file.
-    fn directory(&self) -> PathBuf {
-        self.file
-            .as_ref()
-            .unwrap()
+    fn directory(file: impl AsRef<Path>) -> Result<PathBuf> {
+        file.as_ref()
             .parent()
             .map(|p| p.to_path_buf())
-            .unwrap()
+            .ok_or_else(|| Error::NoParentDir)
     }
 }
