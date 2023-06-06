@@ -12,7 +12,8 @@ async fn integration_handshake() -> Result<()> {
 
     let mut client = NativeClient::new(SERVER).await?;
     let message = vec![1; 16];
-    client.send_binary(message).await?;
+    let reply = client.send_recv_binary(message).await?;
+    println!("{:#?}", reply);
 
     Ok(())
 }

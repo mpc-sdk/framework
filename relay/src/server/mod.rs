@@ -25,9 +25,14 @@ use crate::{
 };
 
 pub(crate) mod config;
+mod service;
 mod websocket;
 
-use websocket::WebSocketConnection;
+use service::RelayService;
+use websocket::Connection;
+
+type State = Arc<RwLock<ServerState>>;
+type Service = Arc<RelayService>;
 
 async fn session_reaper(state: State, interval_secs: u64) {
     let interval =
@@ -35,7 +40,6 @@ async fn session_reaper(state: State, interval_secs: u64) {
     let mut stream = IntervalStream::new(interval);
     while (stream.next().await).is_some() {
         let mut writer = state.write().await;
-
         /*
         let expired_sessions = writer.sessions.expired_keys();
         tracing::debug!(
@@ -46,8 +50,6 @@ async fn session_reaper(state: State, interval_secs: u64) {
         */
     }
 }
-
-type State = Arc<RwLock<ServerState>>;
 
 #[derive(Default)]
 struct SessionManager {}
@@ -63,7 +65,7 @@ pub struct ServerState {
     config: ServerConfig,
 
     /// Active socket connections.
-    sockets: HashMap<Uuid, Arc<WebSocketConnection>>,
+    sockets: HashMap<Uuid, Connection>,
 
     /// Session manager.
     sessions: SessionManager,
@@ -156,10 +158,14 @@ impl RelayServer {
             .allow_headers(vec![])
             .expose_headers(vec![])
             .allow_origin(origins);
+
+        let service = Arc::new(RelayService::new(Arc::clone(&state)));
+
         let mut app = Router::new().route("/", get(websocket::upgrade));
         app = app
             .layer(cors)
             .layer(TraceLayer::new_for_http())
+            .layer(Extension(service))
             .layer(Extension(state));
         Ok(app)
     }

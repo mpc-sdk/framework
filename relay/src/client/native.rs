@@ -1,14 +1,19 @@
-use crate::Result;
+use futures::{
+    sink::SinkExt,
+    stream::{SplitSink, SplitStream},
+    StreamExt,
+};
 use tokio::net::TcpStream;
-use futures::{StreamExt, stream::{SplitSink, SplitStream}, sink::SinkExt};
 use tokio_tungstenite::{
     connect_async,
     tungstenite::{
-        protocol::Message,
         client::IntoClientRequest, handshake::client::Response,
+        protocol::Message,
     },
     MaybeTlsStream, WebSocketStream,
 };
+
+use crate::{Error, Result};
 
 /// Native websocket client using the tokio tungstenite library.
 pub struct NativeClient {
@@ -25,18 +30,34 @@ impl NativeClient {
     {
         let (stream, response) = connect_async(request).await?;
         let (write, read) = stream.split();
-        Ok(Self{
+        Ok(Self {
             write,
             read,
             response,
         })
     }
-    
+
     /// Send a binary message to the server.
     pub async fn send_binary(&mut self, buffer: Vec<u8>) -> Result<()> {
         self.send(Message::Binary(buffer)).await
     }
-    
+
+    /// Send a binary message to the server and wait for a reply.
+    pub async fn send_recv_binary(
+        &mut self,
+        buffer: Vec<u8>,
+    ) -> Result<Vec<u8>> {
+        self.send_binary(buffer).await?;
+        while let Some(reply) = self.read.next().await {
+            let message = reply?;
+            return match message {
+                Message::Binary(buffer) => Ok(buffer),
+                _ => break,
+            };
+        }
+        Err(Error::BinaryReplyExpected)
+    }
+
     /// Send a message to the server and flush the stream.
     pub async fn send(&mut self, message: Message) -> Result<()> {
         self.write.send(message).await?;
