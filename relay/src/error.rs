@@ -20,6 +20,15 @@ pub enum Error {
     #[error(r#"key file "{0}" not found"#)]
     KeyNotFound(PathBuf),
 
+    /// Error generated attempting to handshake with a peer that
+    /// already exists.
+    #[error("peer already exists")]
+    PeerAlreadyExists,
+
+    /// Error generated when a peer could not be found.
+    #[error(r#"peer "{0}" not found "#)]
+    PeerNotFound(String),
+
     /// Error generated when the PEM encoding does not match
     /// the expected format.
     #[error("encoding in PEM is invalid")]

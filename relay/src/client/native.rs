@@ -3,7 +3,8 @@ use futures::{
     stream::{SplitSink, SplitStream},
     StreamExt,
 };
-use snow::Keypair;
+use snow::{Builder, Keypair};
+use std::collections::HashMap;
 use tokio::net::TcpStream;
 use tokio_tungstenite::{
     connect_async,
@@ -13,8 +14,6 @@ use tokio_tungstenite::{
     },
     MaybeTlsStream, WebSocketStream,
 };
-
-use snow::Builder;
 
 use crate::{
     constants::PATTERN, decode, encode, Error, ProtocolState,
@@ -28,7 +27,7 @@ pub struct NativeClient {
     read: SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>,
     response: Response,
     state: ProtocolState,
-    peers: Vec<ProtocolState>,
+    peers: HashMap<Vec<u8>, ProtocolState>,
 }
 
 impl NativeClient {
@@ -56,7 +55,7 @@ impl NativeClient {
             read,
             response,
             state: ProtocolState::Handshake(handshake),
-            peers: vec![],
+            peers: Default::default(),
         })
     }
 
@@ -93,9 +92,45 @@ impl NativeClient {
 
     /// Initiate handshake with a peer.
     pub async fn peer_handshake(
-        mut self, public_key: impl AsRef<[u8]>) -> Result<Self> {
+        &mut self,
+        public_key: impl AsRef<[u8]>,
+    ) -> Result<()> {
+        if self.peers.get(public_key.as_ref()).is_some() {
+            return Err(Error::PeerAlreadyExists);
+        }
 
-        todo!();
+        let builder = Builder::new(PATTERN.parse()?);
+        let handshake = builder
+            .local_private_key(&self.keypair.private)
+            .remote_public_key(public_key.as_ref())
+            .build_initiator()?;
+        let peer_state = ProtocolState::Handshake(handshake);
+
+        let state = self
+            .peers
+            .entry(public_key.as_ref().to_vec())
+            .or_insert(peer_state);
+
+        let (len, payload) = match state {
+            ProtocolState::Handshake(initiator) => {
+                let mut request = vec![0u8; 1024];
+                let len = initiator.write_message(&[], &mut request)?;
+                (len, request)
+            }
+            _ => return Err(Error::NotHandshakeState),
+        };
+
+        let inner_request = RequestMessage::HandshakeInitiator(len, payload);
+        let inner_message = encode(&inner_request).await?;
+
+        let request = RequestMessage::RelayPeer {
+            public_key: public_key.as_ref().to_vec(),
+            message: inner_message,
+        };
+
+        self.send(request).await
+
+        //let inner_request =
 
         /*
         let (len, payload) = match &mut self.state {
@@ -126,6 +161,15 @@ impl NativeClient {
             _ => return Err(Error::NotHandshakeState),
         }
         */
+    }
+
+    /// Send a request message.
+    async fn send(
+        &mut self,
+        message: RequestMessage,
+    ) -> Result<()> {
+        let buffer = encode(&message).await?;
+        self.send_binary(buffer).await
     }
 
     /// Send a request message and expect a response.
@@ -162,11 +206,11 @@ impl NativeClient {
 
     /// Send a binary message to the server.
     async fn send_binary(&mut self, buffer: Vec<u8>) -> Result<()> {
-        self.send(Message::Binary(buffer)).await
+        self.send_socket(Message::Binary(buffer)).await
     }
 
-    /// Send a message to the server and flush the stream.
-    async fn send(&mut self, message: Message) -> Result<()> {
+    /// Send a message to the socket and flush the stream.
+    async fn send_socket(&mut self, message: Message) -> Result<()> {
         self.write.send(message).await?;
         Ok(self.write.flush().await?)
     }

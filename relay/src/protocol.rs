@@ -19,6 +19,7 @@ mod types {
     pub const ERROR: u8 = 1;
     pub const HANDSHAKE_INITIATOR: u8 = 2;
     pub const HANDSHAKE_RESPONDER: u8 = 3;
+    pub const RELAY_PEER: u8 = 4;
 }
 
 /// Default binary encoding options.
@@ -57,6 +58,16 @@ pub enum RequestMessage {
     Noop,
     /// Initiate a handshake.
     HandshakeInitiator(usize, Vec<u8>),
+    /// Relay a message to a peer.
+    ///
+    /// The peer must have already performed a
+    /// handshake with the server.
+    RelayPeer {
+        /// Public key of the target peer.
+        public_key: Vec<u8>,
+        /// Message payload.
+        message: Vec<u8>,
+    },
 }
 
 impl From<&RequestMessage> for u8 {
@@ -66,6 +77,7 @@ impl From<&RequestMessage> for u8 {
             RequestMessage::HandshakeInitiator(_, _) => {
                 types::HANDSHAKE_INITIATOR
             }
+            RequestMessage::RelayPeer { .. } => types::RELAY_PEER,
         }
     }
 }
@@ -84,6 +96,12 @@ impl Encodable for RequestMessage {
                 writer.write_usize(len).await?;
                 writer.write_u32(buf.len() as u32).await?;
                 writer.write_bytes(buf).await?;
+            }
+            Self::RelayPeer { public_key, message } => {
+                writer.write_u32(public_key.len() as u32).await?;
+                writer.write_bytes(public_key).await?;
+                writer.write_u32(message.len() as u32).await?;
+                writer.write_bytes(message).await?;
             }
             Self::Noop => unreachable!(),
         }
@@ -105,6 +123,16 @@ impl Decodable for RequestMessage {
                 let size = reader.read_u32().await?;
                 let buf = reader.read_bytes(size as usize).await?;
                 *self = RequestMessage::HandshakeInitiator(len, buf);
+            }
+            types::RELAY_PEER => {
+                let size = reader.read_u32().await?;
+                let public_key = reader.read_bytes(size as usize).await?;
+                let size = reader.read_u32().await?;
+                let message = reader.read_bytes(size as usize).await?;
+                *self = RequestMessage::RelayPeer {
+                    public_key,
+                    message,
+                };
             }
             _ => {
                 return Err(encoding_error(crate::Error::MessageKind(id)))

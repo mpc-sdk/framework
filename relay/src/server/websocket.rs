@@ -53,6 +53,14 @@ pub struct WebSocketConnection {
     pub(crate) state: Option<ProtocolState>,
 }
 
+impl WebSocketConnection {
+    /// Send a buffer to the client at this socket.
+    pub fn send(&mut self, buffer: Vec<u8>) -> Result<()> {
+        self.outgoing.send(buffer)?;
+        Ok(())
+    }
+}
+
 /// Upgrade to a websocket connection.
 //#[debug_handler]
 pub async fn upgrade(

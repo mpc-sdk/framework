@@ -27,7 +27,6 @@ impl RelayService {
             Arc::clone(&self.state),
             Arc::clone(&conn),
             reader,
-            writer,
         ));
     }
 }
@@ -36,26 +35,25 @@ async fn listen(
     state: State,
     conn: Connection,
     mut read_channel: mpsc::Receiver<Vec<u8>>,
-    mut write_channel: broadcast::Sender<Vec<u8>>,
 ) -> Result<()> {
     while let Some(buffer) = read_channel.recv().await {
         let message: RequestMessage = decode(&buffer).await?;
         match handle_request(
             Arc::clone(&state),
             Arc::clone(&conn),
-            &mut write_channel,
             message,
         )
         .await
         {
             Ok(_) => {}
             Err(e) => {
+                let mut writer = conn.write().await;
                 let response = ResponseMessage::Error(
                     StatusCode::INTERNAL_SERVER_ERROR,
                     e.to_string(),
                 );
                 let buffer = encode(&response).await?;
-                write_channel.send(buffer)?;
+                writer.send(buffer)?;
             }
         }
     }
@@ -65,9 +63,9 @@ async fn listen(
 async fn handle_request(
     state: State,
     conn: Connection,
-    write_channel: &mut broadcast::Sender<Vec<u8>>,
     message: RequestMessage,
 ) -> Result<()> {
+    println!("handling request...");
     match message {
         RequestMessage::HandshakeInitiator(len, buf) => {
             let mut writer = conn.write().await;
@@ -86,7 +84,7 @@ async fn handle_request(
             let response =
                 ResponseMessage::HandshakeResponder(len, payload);
             let buffer = encode(&response).await?;
-            write_channel.send(buffer)?;
+            writer.send(buffer)?;
 
             if let Some(ProtocolState::Handshake(state)) =
                 writer.state.take()
@@ -102,6 +100,23 @@ async fn handle_request(
             // Now move from pending to transport active
             promote_connection(Arc::clone(&state), Arc::clone(&conn))
                 .await;
+        }
+        RequestMessage::RelayPeer {
+            public_key,
+            message,
+        } => {
+            let peer = {
+                let reader = state.read().await;
+                reader.active.get(&public_key).map(Arc::clone)
+            };
+
+            if let Some(peer) = peer {
+                let mut writer = conn.write().await;
+                println!("relaying the peer message");
+                writer.send(message)?;
+            } else {
+                return Err(Error::PeerNotFound(hex::encode(public_key)))
+            }
         }
         RequestMessage::Noop => {}
     }

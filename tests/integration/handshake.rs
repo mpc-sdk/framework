@@ -12,7 +12,7 @@ async fn integration_handshake() -> Result<()> {
 
     let (initiator, initiator_key) = new_client().await?;
     let (participant, participant_key) = new_client().await?;
-    
+
     // Both peers must have completed their server handshake
     let (initiator, participant) =
         join!(initiator.handshake(), participant.handshake());
@@ -22,12 +22,6 @@ async fn integration_handshake() -> Result<()> {
 
     // Now we can perform a peer handshake
     initiator.peer_handshake(&participant_key.public).await?;
-
-    /*
-    let message = vec![1; 16];
-    let reply = client.send_recv_binary(message).await?;
-    println!("{:#?}", reply);
-    */
 
     Ok(())
 }
