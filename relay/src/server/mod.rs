@@ -8,11 +8,8 @@ use tokio_stream::wrappers::IntervalStream;
 
 use axum::{
     extract::Extension,
-    http::{
-        header::{AUTHORIZATION, CONTENT_TYPE},
-        HeaderValue, Method,
-    },
-    routing::{get, post},
+    http::{HeaderValue, Method},
+    routing::get,
     Router,
 };
 use axum_server::{tls_rustls::RustlsConfig, Handle};
@@ -39,7 +36,7 @@ async fn session_reaper(state: State, interval_secs: u64) {
         tokio::time::interval(Duration::from_secs(interval_secs));
     let mut stream = IntervalStream::new(interval);
     while (stream.next().await).is_some() {
-        let mut writer = state.write().await;
+        let _writer = state.write().await;
         /*
         let expired_sessions = writer.sessions.expired_keys();
         tracing::debug!(

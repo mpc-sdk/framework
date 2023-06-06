@@ -14,7 +14,7 @@ use tokio_tungstenite::{
     MaybeTlsStream, WebSocketStream,
 };
 
-use snow::{Builder, HandshakeState, TransportState};
+use snow::Builder;
 
 use crate::{
     constants::PATTERN, decode, encode, Error, ProtocolState,
@@ -43,7 +43,7 @@ impl NativeClient {
         let (stream, response) = connect_async(request).await?;
         let (write, read) = stream.split();
 
-        let mut builder = Builder::new(PATTERN.parse()?);
+        let builder = Builder::new(PATTERN.parse()?);
         let handshake = builder
             .local_private_key(&keypair.private)
             .remote_public_key(&public_key)
@@ -70,9 +70,7 @@ impl NativeClient {
         };
 
         let request = RequestMessage::HandshakeInitiator(len, payload);
-        let buffer = encode(&request).await?;
-        let reply = self.send_recv_binary(buffer).await?;
-        let response: ResponseMessage = decode(&reply).await?;
+        let response = self.request(request).await?;
 
         match self.state {
             ProtocolState::Handshake(mut initiator) => match response {
@@ -91,13 +89,24 @@ impl NativeClient {
         }
     }
 
-    /// Send a binary message to the server.
-    pub async fn send_binary(&mut self, buffer: Vec<u8>) -> Result<()> {
-        self.send(Message::Binary(buffer)).await
+    /// Send a request message and expect a response.
+    async fn request(
+        &mut self,
+        message: RequestMessage,
+    ) -> Result<ResponseMessage> {
+        let buffer = encode(&message).await?;
+        let reply = self.send_recv_binary(buffer).await?;
+        let response: ResponseMessage = decode(&reply).await?;
+        match response {
+            ResponseMessage::Error(code, message) => {
+                Err(Error::ServerError(code, message))
+            }
+            _ => Ok(response),
+        }
     }
 
     /// Send a binary message to the server and wait for a reply.
-    pub async fn send_recv_binary(
+    async fn send_recv_binary(
         &mut self,
         buffer: Vec<u8>,
     ) -> Result<Vec<u8>> {
@@ -112,8 +121,13 @@ impl NativeClient {
         Err(Error::BinaryReplyExpected)
     }
 
+    /// Send a binary message to the server.
+    async fn send_binary(&mut self, buffer: Vec<u8>) -> Result<()> {
+        self.send(Message::Binary(buffer)).await
+    }
+
     /// Send a message to the server and flush the stream.
-    pub async fn send(&mut self, message: Message) -> Result<()> {
+    async fn send(&mut self, message: Message) -> Result<()> {
         self.write.send(message).await?;
         Ok(self.write.flush().await?)
     }

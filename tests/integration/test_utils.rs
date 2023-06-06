@@ -1,11 +1,8 @@
 use anyhow::Result;
 use axum_server::Handle;
 
-use std::{net::SocketAddr, path::PathBuf, sync::Arc, thread};
-use tokio::{
-    fs,
-    sync::{oneshot, RwLock},
-};
+use std::{net::SocketAddr, thread};
+use tokio::{fs, sync::oneshot};
 
 use mpc_relay_server::{
     keypair::{decode_keypair, generate_keypair, Keypair},

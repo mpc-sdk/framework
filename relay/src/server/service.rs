@@ -1,10 +1,11 @@
-use std::sync::Arc;
-use tokio::sync::{broadcast, mpsc};
-
 use super::{Connection, State};
 use crate::{
-    decode, encode, ProtocolState, RequestMessage, ResponseMessage, Result,
+    decode, encode, Error, ProtocolState, RequestMessage, ResponseMessage,
+    Result,
 };
+use axum::http::StatusCode;
+use std::sync::Arc;
+use tokio::sync::{broadcast, mpsc};
 
 pub struct RelayService {
     state: State,
@@ -35,52 +36,77 @@ async fn listen(
     state: State,
     conn: Connection,
     mut read_channel: mpsc::Receiver<Vec<u8>>,
-    write_channel: broadcast::Sender<Vec<u8>>,
+    mut write_channel: broadcast::Sender<Vec<u8>>,
 ) -> Result<()> {
     // FIXME: robust error handling with error reply to client
     while let Some(buffer) = read_channel.recv().await {
         let message: RequestMessage = decode(&buffer).await?;
-        match message {
-            RequestMessage::HandshakeInitiator(len, buf) => {
-                let mut writer = conn.write().await;
-                let (len, payload) = match &mut writer.state {
-                    Some(ProtocolState::Handshake(responder)) => {
-                        let mut reply = vec![0u8; 1024];
-                        let mut read_buf = vec![0u8; 1024];
-                        responder
-                            .read_message(&buf[..len], &mut read_buf)?;
-                        let len =
-                            responder.write_message(&[], &mut reply)?;
-
-                        (len, reply)
-                    }
-                    _ => todo!(),
-                };
-
-                let response =
-                    ResponseMessage::HandshakeResponder(len, payload);
+        match handle_request(
+            Arc::clone(&state),
+            Arc::clone(&conn),
+            &mut write_channel,
+            message,
+        )
+        .await
+        {
+            Ok(_) => {}
+            Err(e) => {
+                let response = ResponseMessage::Error(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    e.to_string(),
+                );
                 let buffer = encode(&response).await?;
                 write_channel.send(buffer)?;
-
-                if let Some(ProtocolState::Handshake(state)) =
-                    writer.state.take()
-                {
-                    let transport = state.into_transport_mode()?;
-                    writer.state =
-                        Some(ProtocolState::Transport(transport));
-                } else {
-                    unreachable!();
-                }
-
-                drop(writer);
-
-                // Now move from pending to transport active
-                promote_connection(Arc::clone(&state), Arc::clone(&conn))
-                    .await;
             }
-            RequestMessage::Noop => {}
         }
     }
+    Ok(())
+}
+
+async fn handle_request(
+    state: State,
+    conn: Connection,
+    write_channel: &mut broadcast::Sender<Vec<u8>>,
+    message: RequestMessage,
+) -> Result<()> {
+    match message {
+        RequestMessage::HandshakeInitiator(len, buf) => {
+            let mut writer = conn.write().await;
+            let (len, payload) = match &mut writer.state {
+                Some(ProtocolState::Handshake(responder)) => {
+                    let mut reply = vec![0u8; 1024];
+                    let mut read_buf = vec![0u8; 1024];
+                    responder.read_message(&buf[..len], &mut read_buf)?;
+                    let len = responder.write_message(&[], &mut reply)?;
+
+                    (len, reply)
+                }
+                _ => return Err(Error::NotHandshakeState),
+            };
+
+            let response =
+                ResponseMessage::HandshakeResponder(len, payload);
+            let buffer = encode(&response).await?;
+            write_channel.send(buffer)?;
+
+            if let Some(ProtocolState::Handshake(state)) =
+                writer.state.take()
+            {
+                let transport = state.into_transport_mode()?;
+                writer.state = Some(ProtocolState::Transport(transport));
+            } else {
+                unreachable!();
+            }
+
+            drop(writer);
+
+            // Now move from pending to transport active
+            promote_connection(Arc::clone(&state), Arc::clone(&conn))
+                .await;
+        }
+        RequestMessage::Noop => {}
+    }
+
     Ok(())
 }
 

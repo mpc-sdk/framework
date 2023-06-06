@@ -1,8 +1,6 @@
 use anyhow::Result;
 use futures::join;
 use serial_test::serial;
-use std::sync::Arc;
-use tokio::sync::Mutex;
 
 use crate::test_utils::{new_client, spawn};
 

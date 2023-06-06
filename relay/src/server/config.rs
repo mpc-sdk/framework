@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use snow::Keypair;
 use std::path::{Path, PathBuf};
 use tokio::fs;
-use url::{Host, Url};
+use url::Url;
 
 use crate::{keypair, Error, Result};
 
@@ -85,7 +85,7 @@ impl ServerConfig {
             return Err(Error::KeyNotFound(config.key.clone()));
         }
 
-        let mut contents = fs::read_to_string(&config.key).await?;
+        let contents = fs::read_to_string(&config.key).await?;
         let keypair = keypair::decode_keypair(&contents)?;
 
         if let Some(tls) = config.tls.as_mut() {

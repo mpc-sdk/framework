@@ -1,8 +1,7 @@
 use anyhow::Result;
 use axum_server::Handle;
 use mpc_relay_server::{RelayServer, ServerConfig};
-use std::{net::SocketAddr, path::PathBuf, str::FromStr, sync::Arc};
-use tokio::sync::RwLock;
+use std::{net::SocketAddr, path::PathBuf, str::FromStr};
 
 /// Run a web server.
 pub async fn run(

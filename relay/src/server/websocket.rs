@@ -15,7 +15,7 @@ use snow::Builder;
 
 use std::sync::Arc;
 use tokio::sync::{
-    broadcast::{self, Receiver, Sender},
+    broadcast::{self, Sender},
     mpsc, RwLock,
 };
 
@@ -67,7 +67,7 @@ pub async fn upgrade(
     let (outgoing, _) = broadcast::channel::<Vec<u8>>(32);
     let (incoming, service_reader) = mpsc::channel::<Vec<u8>>(32);
 
-    let mut builder = Builder::new(
+    let builder = Builder::new(
         PATTERN
             .parse()
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
@@ -128,8 +128,8 @@ async fn read(
     state: State,
     conn: Connection,
 ) -> Result<()> {
-    let mut tx = {
-        let mut reader = conn.read().await;
+    let tx = {
+        let reader = conn.read().await;
         reader.incoming.clone()
     };
 

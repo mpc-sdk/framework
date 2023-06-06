@@ -3,13 +3,13 @@ use crate::{
     Error, Result,
 };
 use pem::Pem;
-use snow::Builder;
+
 pub use snow::Keypair;
 
 /// Generate a keypair for the noise protocol using the
 /// standard pattern.
 pub fn generate_keypair() -> Result<Keypair> {
-    let mut builder = snow::Builder::new(PATTERN.parse()?);
+    let builder = snow::Builder::new(PATTERN.parse()?);
     Ok(builder.generate_keypair()?)
 }
 

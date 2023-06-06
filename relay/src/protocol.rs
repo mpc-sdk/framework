@@ -1,11 +1,12 @@
 use async_trait::async_trait;
+use axum::http::StatusCode;
 use binary_stream::{
     futures::{BinaryReader, BinaryWriter, Decodable, Encodable},
     Endian, Options,
 };
 use futures::io::{AsyncRead, AsyncSeek, AsyncWrite};
 use snow::{HandshakeState, TransportState};
-use std::io::{Error, Result};
+use std::io::Result;
 
 pub(crate) fn encoding_error(
     e: impl std::error::Error + Send + Sync + 'static,
@@ -15,8 +16,9 @@ pub(crate) fn encoding_error(
 
 mod types {
     pub const NOOP: u8 = 0;
-    pub const HANDSHAKE_INITIATOR: u8 = 1;
-    pub const HANDSHAKE_RESPONDER: u8 = 2;
+    pub const ERROR: u8 = 1;
+    pub const HANDSHAKE_INITIATOR: u8 = 2;
+    pub const HANDSHAKE_RESPONDER: u8 = 3;
 }
 
 /// Default binary encoding options.
@@ -117,6 +119,8 @@ impl Decodable for RequestMessage {
 pub enum ResponseMessage {
     #[default]
     Noop,
+    /// Return an error message to the client.
+    Error(StatusCode, String),
     /// Respond to a handshake initiation.
     HandshakeResponder(usize, Vec<u8>),
 }
@@ -125,6 +129,7 @@ impl From<&ResponseMessage> for u8 {
     fn from(value: &ResponseMessage) -> Self {
         match value {
             ResponseMessage::Noop => types::NOOP,
+            ResponseMessage::Error(_, _) => types::ERROR,
             ResponseMessage::HandshakeResponder(_, _) => {
                 types::HANDSHAKE_RESPONDER
             }
@@ -142,6 +147,11 @@ impl Encodable for ResponseMessage {
         let id: u8 = self.into();
         writer.write_u8(id).await?;
         match self {
+            Self::Error(code, message) => {
+                let code: u16 = (*code).into();
+                writer.write_u16(code).await?;
+                writer.write_string(message).await?;
+            }
             Self::HandshakeResponder(len, buf) => {
                 writer.write_usize(len).await?;
                 writer.write_u32(buf.len() as u32).await?;
@@ -162,6 +172,15 @@ impl Decodable for ResponseMessage {
     ) -> Result<()> {
         let id = reader.read_u8().await?;
         match id {
+            types::ERROR => {
+                let code = reader
+                    .read_u16()
+                    .await?
+                    .try_into()
+                    .map_err(encoding_error)?;
+                let message = reader.read_string().await?;
+                *self = ResponseMessage::Error(code, message);
+            }
             types::HANDSHAKE_RESPONDER => {
                 let len = reader.read_usize().await?;
                 let size = reader.read_u32().await?;

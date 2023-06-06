@@ -2,7 +2,7 @@ use crate::Result;
 
 use binary_stream::{BinaryReader, BinaryWriter, Endian, Options};
 use serde::{de::DeserializeOwned, Serialize};
-use snow::{Builder, Keypair};
+
 use std::io::Cursor;
 
 const BUF_SIZE: usize = 1024;
@@ -51,8 +51,8 @@ mod tests {
 
     #[test]
     fn snow_handshake_encode_decode() -> Result<()> {
-        let mut builder_1 = snow::Builder::new(PATTERN.parse()?);
-        let mut builder_2 = snow::Builder::new(PATTERN.parse()?);
+        let builder_1 = snow::Builder::new(PATTERN.parse()?);
+        let builder_2 = snow::Builder::new(PATTERN.parse()?);
 
         let keypair1 = builder_1.generate_keypair()?;
         let keypair2 = builder_2.generate_keypair()?;
