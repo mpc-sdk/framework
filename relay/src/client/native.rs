@@ -16,7 +16,10 @@ use tokio_tungstenite::{
 
 use snow::{Builder, HandshakeState, TransportState};
 
-use crate::{constants::PATTERN, Error, ProtocolState, Result};
+use crate::{
+    constants::PATTERN, decode, encode, Error, ProtocolState,
+    RequestMessage, ResponseMessage, Result,
+};
 
 /// Native websocket client using the tokio tungstenite library.
 pub struct NativeClient {
@@ -57,7 +60,7 @@ impl NativeClient {
 
     /// Perform initial handshake with the server.
     pub async fn handshake(mut self) -> Result<Self> {
-        let (len, request) = match &mut self.state {
+        let (len, payload) = match &mut self.state {
             ProtocolState::Handshake(initiator) => {
                 let mut request = vec![0u8; 1024];
                 let len = initiator.write_message(&[], &mut request)?;
@@ -66,17 +69,25 @@ impl NativeClient {
             _ => return Err(Error::NotHandshakeState),
         };
 
-        let reply = self.send_recv_binary(request).await?;
+        let request = RequestMessage::HandshakeInitiator(payload);
+        let buffer = encode(&request).await?;
+        let reply = self.send_recv_binary(buffer).await?;
+        let response: ResponseMessage = decode(&reply).await?;
+
         match self.state {
-            ProtocolState::Handshake(mut initiator) => {
-                let mut read_buf = vec![0u8; 1024];
-                initiator.read_message(&reply[..len], &mut read_buf)?;
+            ProtocolState::Handshake(mut initiator) => match response {
+                ResponseMessage::HandshakeResponder(reply) => {
+                    let mut read_buf = vec![0u8; 1024];
+                    initiator
+                        .read_message(&reply[..len], &mut read_buf)?;
 
-                let transport = initiator.into_transport_mode()?;
-                self.state = ProtocolState::Transport(transport);
+                    let transport = initiator.into_transport_mode()?;
+                    self.state = ProtocolState::Transport(transport);
 
-                Ok(self)
-            }
+                    Ok(self)
+                }
+                _ => return Err(Error::NotHandshakeReply),
+            },
             _ => return Err(Error::NotHandshakeState),
         }
     }

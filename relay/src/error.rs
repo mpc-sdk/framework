@@ -34,6 +34,11 @@ pub enum Error {
     #[error("not handshake protocol state")]
     NotHandshakeState,
 
+    /// Error generated when the server replies with a message other than
+    /// the expected handshake response.
+    #[error("not handshake reply")]
+    NotHandshakeReply,
+
     /// Error generated decoding a message when the kind is invalid.
     #[error("invalid message kind {0}")]
     MessageKind(u8),

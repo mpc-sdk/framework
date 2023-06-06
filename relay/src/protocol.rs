@@ -1,7 +1,10 @@
-use snow::{HandshakeState, TransportState};
-use futures::io::{AsyncWrite, AsyncRead, AsyncSeek};
 use async_trait::async_trait;
-use binary_stream::futures::{Encodable, Decodable, BinaryWriter, BinaryReader};
+use binary_stream::{
+    futures::{BinaryReader, BinaryWriter, Decodable, Encodable},
+    Endian, Options,
+};
+use futures::io::{AsyncRead, AsyncSeek, AsyncWrite};
+use snow::{HandshakeState, TransportState};
 use std::io::{Error, Result};
 
 pub(crate) fn encoding_error(
@@ -11,8 +14,30 @@ pub(crate) fn encoding_error(
 }
 
 mod types {
+    pub const NOOP: u8 = 0;
     pub const HANDSHAKE_INITIATOR: u8 = 1;
     pub const HANDSHAKE_RESPONDER: u8 = 2;
+}
+
+/// Default binary encoding options.
+fn encoding_options() -> Options {
+    Options {
+        endian: Endian::Little,
+        max_buffer_size: Some(1024 * 32),
+    }
+}
+
+/// Encode to a binary buffer.
+pub async fn encode(encodable: &impl Encodable) -> Result<Vec<u8>> {
+    Ok(
+        binary_stream::futures::encode(encodable, encoding_options())
+            .await?,
+    )
+}
+
+/// Decode from a binary buffer.
+pub async fn decode<T: Decodable + Default>(buffer: &[u8]) -> Result<T> {
+    Ok(binary_stream::futures::decode(buffer, encoding_options()).await?)
 }
 
 /// Enumeration of protocol states.
@@ -24,7 +49,10 @@ pub enum ProtocolState {
 }
 
 /// Request messages from the client.
+#[derive(Default)]
 pub enum RequestMessage {
+    #[default]
+    Noop,
     /// Initiate a handshake.
     HandshakeInitiator(Vec<u8>),
 }
@@ -32,6 +60,7 @@ pub enum RequestMessage {
 impl From<&RequestMessage> for u8 {
     fn from(value: &RequestMessage) -> Self {
         match value {
+            RequestMessage::Noop => types::NOOP,
             RequestMessage::HandshakeInitiator(_) => {
                 types::HANDSHAKE_INITIATOR
             }
@@ -53,6 +82,7 @@ impl Encodable for RequestMessage {
                 writer.write_u32(buf.len() as u32).await?;
                 writer.write_bytes(buf).await?;
             }
+            Self::Noop => unreachable!(),
         }
         Ok(())
     }
@@ -72,14 +102,19 @@ impl Decodable for RequestMessage {
                 let buf = reader.read_bytes(len as usize).await?;
                 *self = RequestMessage::HandshakeInitiator(buf);
             }
-            _ => return Err(encoding_error(crate::Error::MessageKind(id)))
+            _ => {
+                return Err(encoding_error(crate::Error::MessageKind(id)))
+            }
         }
         Ok(())
     }
 }
 
 /// Response messages from the server.
+#[derive(Default)]
 pub enum ResponseMessage {
+    #[default]
+    Noop,
     /// Respond to a handshake initiation.
     HandshakeResponder(Vec<u8>),
 }
@@ -87,6 +122,7 @@ pub enum ResponseMessage {
 impl From<&ResponseMessage> for u8 {
     fn from(value: &ResponseMessage) -> Self {
         match value {
+            ResponseMessage::Noop => types::NOOP,
             ResponseMessage::HandshakeResponder(_) => {
                 types::HANDSHAKE_RESPONDER
             }
@@ -108,6 +144,7 @@ impl Encodable for ResponseMessage {
                 writer.write_u32(buf.len() as u32).await?;
                 writer.write_bytes(buf).await?;
             }
+            Self::Noop => unreachable!(),
         }
         Ok(())
     }
@@ -127,7 +164,9 @@ impl Decodable for ResponseMessage {
                 let buf = reader.read_bytes(len as usize).await?;
                 *self = ResponseMessage::HandshakeResponder(buf);
             }
-            _ => return Err(encoding_error(crate::Error::MessageKind(id)))
+            _ => {
+                return Err(encoding_error(crate::Error::MessageKind(id)))
+            }
         }
         Ok(())
     }
