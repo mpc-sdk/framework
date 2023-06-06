@@ -10,13 +10,18 @@ async fn integration_handshake() -> Result<()> {
     let (rx, _handle) = spawn()?;
     let _ = rx.await?;
 
-    let (client1, _) = new_client().await?;
-    let (client2, _) = new_client().await?;
+    let (initiator, initiator_key) = new_client().await?;
+    let (participant, participant_key) = new_client().await?;
+    
+    // Both peers must have completed their server handshake
+    let (initiator, participant) =
+        join!(initiator.handshake(), participant.handshake());
 
-    let (_client1, _client2) =
-        join!(client1.handshake(), client2.handshake());
+    let mut initiator = initiator?;
+    let mut participant = participant?;
 
-    //let mut client = client.handshake().await?;
+    // Now we can perform a peer handshake
+    initiator.peer_handshake(&participant_key.public).await?;
 
     /*
     let message = vec![1; 16];

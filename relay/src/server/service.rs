@@ -38,7 +38,6 @@ async fn listen(
     mut read_channel: mpsc::Receiver<Vec<u8>>,
     mut write_channel: broadcast::Sender<Vec<u8>>,
 ) -> Result<()> {
-    // FIXME: robust error handling with error reply to client
     while let Some(buffer) = read_channel.recv().await {
         let message: RequestMessage = decode(&buffer).await?;
         match handle_request(

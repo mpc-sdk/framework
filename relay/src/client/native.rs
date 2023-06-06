@@ -28,6 +28,7 @@ pub struct NativeClient {
     read: SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>,
     response: Response,
     state: ProtocolState,
+    peers: Vec<ProtocolState>,
 }
 
 impl NativeClient {
@@ -55,6 +56,7 @@ impl NativeClient {
             read,
             response,
             state: ProtocolState::Handshake(handshake),
+            peers: vec![],
         })
     }
 
@@ -87,6 +89,43 @@ impl NativeClient {
             },
             _ => return Err(Error::NotHandshakeState),
         }
+    }
+
+    /// Initiate handshake with a peer.
+    pub async fn peer_handshake(
+        mut self, public_key: impl AsRef<[u8]>) -> Result<Self> {
+
+        todo!();
+
+        /*
+        let (len, payload) = match &mut self.state {
+            ProtocolState::Handshake(initiator) => {
+                let mut request = vec![0u8; 1024];
+                let len = initiator.write_message(&[], &mut request)?;
+                (len, request)
+            }
+            _ => return Err(Error::NotHandshakeState),
+        };
+
+        let request = RequestMessage::HandshakeInitiator(len, payload);
+        let response = self.request(request).await?;
+
+        match self.state {
+            ProtocolState::Handshake(mut initiator) => match response {
+                ResponseMessage::HandshakeResponder(len, buf) => {
+                    let mut read_buf = vec![0u8; 1024];
+                    initiator.read_message(&buf[..len], &mut read_buf)?;
+
+                    let transport = initiator.into_transport_mode()?;
+                    self.state = ProtocolState::Transport(transport);
+
+                    Ok(self)
+                }
+                _ => return Err(Error::NotHandshakeReply),
+            },
+            _ => return Err(Error::NotHandshakeState),
+        }
+        */
     }
 
     /// Send a request message and expect a response.
