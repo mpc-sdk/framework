@@ -7,18 +7,30 @@ use tokio::{
     sync::{oneshot, RwLock},
 };
 
-const ADDR: &str = "127.0.0.1:7337";
-pub(crate) const SERVER: &str = "ws://localhost:7337";
-
 use mpc_relay_server::{
-    keypair::decode_keypair, RelayServer, ServerConfig,
+    keypair::{decode_keypair, generate_keypair, Keypair},
+    NativeClient, RelayServer, ServerConfig,
 };
+
+const ADDR: &str = "127.0.0.1:7337";
+const SERVER: &str = "ws://localhost:7337";
 
 /// Get the public key for the test server.
 pub async fn server_public_key() -> Result<Vec<u8>> {
     let contents = fs::read_to_string("tests/test.pem").await?;
     let keypair = decode_keypair(&contents)?;
     Ok(keypair.public)
+}
+
+/// Create new client connected to the mock server.
+pub async fn new_client() -> Result<(NativeClient, Keypair)> {
+    let public_key = server_public_key().await?;
+    let keypair = generate_keypair()?;
+    let copy = Keypair {
+        public: keypair.public.clone(),
+        private: keypair.public.clone(),
+    };
+    Ok((NativeClient::new(SERVER, keypair, public_key).await?, copy))
 }
 
 struct MockServer {

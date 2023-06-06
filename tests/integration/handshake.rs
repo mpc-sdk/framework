@@ -1,8 +1,10 @@
-use crate::test_utils::{server_public_key, spawn, SERVER};
+use std::sync::Arc;
 use anyhow::Result;
 use serial_test::serial;
+use tokio::sync::Mutex;
+use futures::join;
 
-use mpc_relay_server::{keypair::generate_keypair, NativeClient};
+use crate::test_utils::{new_client, spawn};
 
 #[tokio::test]
 #[serial]
@@ -10,10 +12,12 @@ async fn integration_handshake() -> Result<()> {
     let (rx, _handle) = spawn()?;
     let _ = rx.await?;
 
-    let public_key = server_public_key().await?;
-    let keypair = generate_keypair()?;
-    let client = NativeClient::new(SERVER, keypair, public_key).await?;
-    let mut client = client.handshake().await?;
+    let (client1, _) = new_client().await?;
+    let (client2, _) = new_client().await?;
+
+    let (_client1, _client2) = join!(client1.handshake(), client2.handshake());
+
+    //let mut client = client.handshake().await?;
 
     /*
     let message = vec![1; 16];

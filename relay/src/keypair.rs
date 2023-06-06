@@ -3,7 +3,8 @@ use crate::{
     Error, Result,
 };
 use pem::Pem;
-use snow::{Builder, Keypair};
+use snow::Builder;
+pub use snow::Keypair;
 
 /// Generate a keypair for the noise protocol using the
 /// standard pattern.

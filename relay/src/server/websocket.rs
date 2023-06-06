@@ -37,9 +37,9 @@ pub struct WebSocketConnection {
     pub(crate) incoming: mpsc::Sender<Vec<u8>>,
     /// Protocol state for this connection.
     ///
-    /// Use an option here as we need to call 
-    /// into_transport_mode() which requires self 
-    /// so we move out of the option and convert to 
+    /// Use an option here as we need to call
+    /// into_transport_mode() which requires self
+    /// so we move out of the option and convert to
     /// transport mode and then put it back.
     pub(crate) state: Option<ProtocolState>,
 }
