@@ -11,6 +11,7 @@ use futures::{
     SinkExt, StreamExt,
 };
 use snow::Builder;
+use serde::Deserialize;
 
 use std::sync::Arc;
 use tokio::sync::{
@@ -25,6 +26,12 @@ use super::{Service, State};
 use crate::{constants::PATTERN, ProtocolState, Result};
 
 pub type Connection = Arc<RwLock<WebSocketConnection>>;
+
+#[derive(Debug, Deserialize)]
+pub struct WebSocketQuery {
+    #[serde(with = "hex::serde")]
+    pub public_key: Vec<u8>,
+}
 
 /// State for the websocket  connection for a single
 /// authenticated client.
@@ -49,6 +56,7 @@ pub struct WebSocketConnection {
 pub async fn upgrade(
     Extension(state): Extension<State>,
     Extension(service): Extension<Service>,
+    Query(query): Query<WebSocketQuery>,
     ws: WebSocketUpgrade,
 ) -> std::result::Result<Response, StatusCode> {
     tracing::debug!("websocket upgrade request");
@@ -65,7 +73,7 @@ pub async fn upgrade(
 
     let responder = builder
         .local_private_key(&writer.keypair.private)
-        //.remote_public_key(&keypair1.public)
+        .remote_public_key(&query.public_key)
         .build_responder()
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     let protocol_state = ProtocolState::Handshake(responder);

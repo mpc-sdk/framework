@@ -16,6 +16,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 pem = "2"
 uuid = { version = "1", features = ["v4"] }
 async-trait = "0.1"
+hex = { version = "0.4", features = ["serde"] }
 
 axum = { version = "0.6", features = ["headers", "ws"] }
 axum-macros = "0.3"
