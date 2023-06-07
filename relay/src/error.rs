@@ -1,4 +1,4 @@
-use crate::{RequestMessage, ResponseMessage, Result};
+use crate::{RequestMessage, ResponseMessage};
 use axum::http::StatusCode;
 use std::path::PathBuf;
 use thiserror::Error;

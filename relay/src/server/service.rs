@@ -1,7 +1,7 @@
 use super::{Connection, State};
 use crate::{
-    decode, encode, Error, HandshakeType, ProtocolState, RequestMessage,
-    ResponseMessage, Result,
+    decode, encode, Error, ProtocolState, RequestMessage, ResponseMessage,
+    Result,
 };
 use axum::http::StatusCode;
 use std::sync::Arc;
@@ -21,7 +21,7 @@ impl RelayService {
         &self,
         conn: Connection,
         reader: mpsc::Receiver<Vec<u8>>,
-        writer: mpsc::Sender<Vec<u8>>,
+        _writer: mpsc::Sender<Vec<u8>>,
     ) {
         tokio::spawn(listen(
             Arc::clone(&self.state),
@@ -104,8 +104,6 @@ async fn handle_request(
             public_key,
             message,
         } => {
-            println!("relay target: {}", hex::encode(&public_key));
-
             let from_public_key = {
                 let reader = conn.read().await;
                 reader.public_key.clone()
@@ -119,10 +117,10 @@ async fn handle_request(
             if let Some(peer) = peer {
                 let mut writer = peer.write().await;
 
-                println!(
-                    "relaying: to = {}, from = {}",
-                    hex::encode(&public_key),
-                    hex::encode(&from_public_key)
+                tracing::debug!(
+                    to = ?hex::encode(&public_key),
+                    from = ?hex::encode(&from_public_key),
+                    "relay",
                 );
                 let relayed = ResponseMessage::RelayPeer {
                     public_key: from_public_key,

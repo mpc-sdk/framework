@@ -19,6 +19,18 @@ pub async fn server_public_key() -> Result<Vec<u8>> {
     Ok(keypair.public)
 }
 
+pub fn init_tracing() {
+    use tracing_subscriber::{
+        layer::SubscriberExt, util::SubscriberInitExt,
+    };
+    let _ = tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::new(
+            std::env::var("RUST_LOG").unwrap_or_else(|_| "debug".into()),
+        ))
+        .with(tracing_subscriber::fmt::layer().without_time())
+        .try_init();
+}
+
 /// Create new client connected to the mock server.
 pub async fn new_client() -> Result<(NativeClient, EventLoop, Keypair)> {
     let server_public_key = server_public_key().await?;

@@ -1,19 +1,20 @@
 use anyhow::Result;
 use serial_test::serial;
-use std::time::Duration;
 
-use crate::test_utils::{new_client, spawn};
+use crate::test_utils::{init_tracing, new_client, spawn};
 
 #[tokio::test]
 #[serial]
 async fn integration_handshake() -> Result<()> {
+    init_tracing();
+
     // Wait for the server to start
     let (rx, _handle) = spawn()?;
     let _ = rx.await?;
 
     // Create new clients and automatically perform the
     // server handshake
-    let (mut initiator, event_loop_i, initiator_key) =
+    let (mut initiator, event_loop_i, _initiator_key) =
         new_client().await?;
     let (mut participant, event_loop_p, participant_key) =
         new_client().await?;

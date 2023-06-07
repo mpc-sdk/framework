@@ -11,9 +11,6 @@ use futures::{
     SinkExt, StreamExt,
 };
 
-use std::time::Duration;
-use tokio_stream::wrappers::IntervalStream;
-
 use serde::Deserialize;
 use snow::Builder;
 
@@ -201,7 +198,6 @@ async fn write(
     mut outgoing: mpsc::Receiver<Vec<u8>>,
 ) -> Result<()> {
     while let Some(buffer) = outgoing.recv().await {
-        //println!("writing buffer to websocket.. {}", buffer.len());
         if sender.send(Message::Binary(buffer)).await.is_err() {
             disconnect(state, Arc::clone(&conn)).await;
             return Ok(());
