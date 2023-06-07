@@ -5,7 +5,10 @@ use futures::{
 };
 use snow::{Builder, Keypair};
 use std::{collections::HashMap, sync::Arc};
-use tokio::{net::TcpStream, sync::{mpsc, RwLock}};
+use tokio::{
+    net::TcpStream,
+    sync::{mpsc, RwLock},
+};
 use tokio_tungstenite::{
     connect_async,
     tungstenite::{
@@ -16,8 +19,8 @@ use tokio_tungstenite::{
 };
 
 use crate::{
-    constants::PATTERN, decode, encode, Error, ProtocolState,
-    RequestMessage, ResponseMessage, Result, ClientOptions, HandshakeType,
+    constants::PATTERN, decode, encode, ClientOptions, Error,
+    HandshakeType, ProtocolState, RequestMessage, ResponseMessage, Result,
 };
 
 type Peers = Arc<RwLock<HashMap<Vec<u8>, ProtocolState>>>;
@@ -34,10 +37,7 @@ pub struct NativeClient {
 
 impl NativeClient {
     /// Create a new native client.
-    pub async fn new<R>(
-        request: R,
-        options: ClientOptions,
-    ) -> Result<Self>
+    pub async fn new<R>(request: R, options: ClientOptions) -> Result<Self>
     where
         R: IntoClientRequest + Unpin,
     {
@@ -53,10 +53,15 @@ impl NativeClient {
         let (sender, reader) = mpsc::channel::<ResponseMessage>(32);
 
         let auto_handshake = options.auto_handshake;
-        
+
         let peers = Arc::new(RwLock::new(Default::default()));
         let public_key_id = hex::encode(&options.keypair.public);
-        tokio::spawn(read_incoming_message(read, sender, public_key_id, Arc::clone(&peers)));
+        tokio::spawn(read_incoming_message(
+            read,
+            sender,
+            public_key_id,
+            Arc::clone(&peers),
+        ));
 
         let mut client = Self {
             options,
@@ -70,7 +75,7 @@ impl NativeClient {
         if auto_handshake {
             client = client.handshake().await?;
         }
-        
+
         Ok(client)
     }
 
@@ -85,12 +90,20 @@ impl NativeClient {
             _ => return Err(Error::NotHandshakeState),
         };
 
-        let request = RequestMessage::HandshakeInitiator(HandshakeType::Server, len, payload);
+        let request = RequestMessage::HandshakeInitiator(
+            HandshakeType::Server,
+            len,
+            payload,
+        );
         let response = self.request(request).await?;
 
         match self.state {
             ProtocolState::Handshake(mut initiator) => match response {
-                ResponseMessage::HandshakeResponder(HandshakeType::Server, len, buf) => {
+                ResponseMessage::HandshakeResponder(
+                    HandshakeType::Server,
+                    len,
+                    buf,
+                ) => {
                     let mut read_buf = vec![0u8; 1024];
                     initiator.read_message(&buf[..len], &mut read_buf)?;
 
@@ -110,6 +123,8 @@ impl NativeClient {
         &mut self,
         public_key: impl AsRef<[u8]>,
     ) -> Result<()> {
+        println!("PEER HANDSHAKE");
+
         let mut peers = self.peers.write().await;
 
         if peers.get(public_key.as_ref()).is_some() {
@@ -122,7 +137,7 @@ impl NativeClient {
             .remote_public_key(public_key.as_ref())
             .build_initiator()?;
         let peer_state = ProtocolState::Handshake(handshake);
-        
+
         let state = peers
             .entry(public_key.as_ref().to_vec())
             .or_insert(peer_state);
@@ -137,16 +152,19 @@ impl NativeClient {
         };
         drop(peers);
 
-        let inner_request =
-            RequestMessage::HandshakeInitiator(HandshakeType::Peer, len, payload);
+        let inner_request = RequestMessage::HandshakeInitiator(
+            HandshakeType::Peer,
+            len,
+            payload,
+        );
         let inner_message = encode(&inner_request).await?;
-
-        println!("encoding outer relay peer message {}", hex::encode(public_key.as_ref()));
 
         let request = RequestMessage::RelayPeer {
             public_key: public_key.as_ref().to_vec(),
             message: inner_message,
         };
+
+        println!("SEND PEER RELAY");
 
         self.send(request).await
 
@@ -216,7 +234,6 @@ impl NativeClient {
         self.writer.send(message).await?;
         Ok(self.writer.flush().await?)
     }
-
 }
 
 async fn read_incoming_message(
@@ -226,7 +243,8 @@ async fn read_incoming_message(
     peers: Peers,
 ) -> Result<()> {
     println!("starting client read loop {}", public_key_id);
-    incoming.for_each(|reply| async {
+
+    while let Some(reply) = incoming.next().await {
         println!("client received message!!");
         //println!("{} received message in client", public_key_id);
         match reply {
@@ -239,23 +257,22 @@ async fn read_incoming_message(
                                     public_key,
                                     message,
                                 } => {
-                                    println!("client got relay peer input...");
+                                    println!(
+                                        "client got relay peer input..."
+                                    );
                                 }
                                 /*
                                 ResponseMessage::HandshakeResponder(HandshakeType::Peer, len, buf) => {
-                                    println!("got peer handshake responder message to process");                                    
+                                    println!("got peer handshake responder message to process");
                                 }
                                 */
                                 _ => {
-                                    handler.send(response).await.unwrap();
+                                    handler.send(response).await?;
                                 }
                             }
                         }
                         Err(e) => {
-                            eprintln!(
-                                "client decode message error {}",
-                                e
-                            );
+                            eprintln!("client decode message error {}", e);
                         }
                     }
                 }
@@ -265,10 +282,7 @@ async fn read_incoming_message(
             },
             Err(e) => eprintln!("{}", e),
         }
-    }).await;
-
-    //while let Some(reply) = incoming.next().await {
-    //}
+    }
 
     Ok(())
 }

@@ -1,11 +1,11 @@
 use super::{Connection, State};
 use crate::{
-    decode, encode, Error, ProtocolState, RequestMessage, ResponseMessage,
-    Result, HandshakeType,
+    decode, encode, Error, HandshakeType, ProtocolState, RequestMessage,
+    ResponseMessage, Result,
 };
 use axum::http::StatusCode;
 use std::sync::Arc;
-use tokio::sync::{broadcast, mpsc};
+use tokio::sync::mpsc;
 
 pub struct RelayService {
     state: State,
@@ -21,7 +21,7 @@ impl RelayService {
         &self,
         conn: Connection,
         reader: mpsc::Receiver<Vec<u8>>,
-        writer: broadcast::Sender<Vec<u8>>,
+        writer: mpsc::Sender<Vec<u8>>,
     ) {
         tokio::spawn(listen(
             Arc::clone(&self.state),
@@ -53,7 +53,7 @@ async fn listen(
                     e.to_string(),
                 );
                 let buffer = encode(&response).await?;
-                writer.send(buffer)?;
+                writer.send(buffer).await?;
             }
         }
     }
@@ -83,7 +83,7 @@ async fn handle_request(
             let response =
                 ResponseMessage::HandshakeResponder(kind, len, payload);
             let buffer = encode(&response).await?;
-            writer.send(buffer)?;
+            writer.send(buffer).await?;
 
             if let Some(ProtocolState::Handshake(state)) =
                 writer.state.take()
@@ -104,7 +104,6 @@ async fn handle_request(
             public_key,
             message,
         } => {
-            
             println!("relay target: {}", hex::encode(&public_key));
 
             let from_public_key = {
@@ -120,18 +119,23 @@ async fn handle_request(
             if let Some(peer) = peer {
                 let mut writer = peer.write().await;
 
-                println!("peer writer {:#?}", hex::encode(&writer.public_key));
+                println!(
+                    "peer writer {:#?}",
+                    hex::encode(&writer.public_key)
+                );
 
-                println!("relaying: to = {}, from = {}",
+                println!(
+                    "relaying: to = {}, from = {}",
                     hex::encode(&public_key),
-                    hex::encode(&from_public_key));
+                    hex::encode(&from_public_key)
+                );
                 let relayed = ResponseMessage::RelayPeer {
                     public_key: from_public_key,
                     message,
                 };
                 let buffer = encode(&relayed).await?;
                 //println!("relaying the peer message {:#?}", writer.public_key);
-                writer.send(buffer)?;
+                writer.send(buffer).await?;
             } else {
                 return Err(Error::PeerNotFound(hex::encode(public_key)));
             }

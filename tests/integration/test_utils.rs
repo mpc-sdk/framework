@@ -6,7 +6,7 @@ use tokio::{fs, sync::oneshot};
 
 use mpc_relay_server::{
     keypair::{decode_keypair, generate_keypair, Keypair},
-    NativeClient, RelayServer, ServerConfig, ClientOptions,
+    ClientOptions, NativeClient, RelayServer, ServerConfig,
 };
 
 const ADDR: &str = "127.0.0.1:7337";

@@ -14,10 +14,7 @@ use serde::Deserialize;
 use snow::Builder;
 
 use std::sync::Arc;
-use tokio::sync::{
-    broadcast::{self, Sender},
-    mpsc, RwLock,
-};
+use tokio::sync::{mpsc, RwLock};
 
 use uuid::Uuid;
 //use axum_macros::debug_handler;
@@ -41,7 +38,7 @@ pub struct WebSocketConnection {
     /// User supplied public key.
     pub(crate) public_key: Vec<u8>,
     /// Outoing channel for messages sent to clients.
-    pub(crate) outgoing: Sender<Vec<u8>>,
+    pub(crate) outgoing: mpsc::Sender<Vec<u8>>,
     // Incoming channel for messages received from clients.
     pub(crate) incoming: mpsc::Sender<Vec<u8>>,
     /// Protocol state for this connection.
@@ -55,9 +52,9 @@ pub struct WebSocketConnection {
 
 impl WebSocketConnection {
     /// Send a buffer to the client at this socket.
-    pub fn send(&mut self, buffer: Vec<u8>) -> Result<()> {
+    pub async fn send(&mut self, buffer: Vec<u8>) -> Result<()> {
         println!("sending buffer to websocket.. {}", buffer.len());
-        self.outgoing.send(buffer)?;
+        self.outgoing.send(buffer).await?;
         Ok(())
     }
 }
@@ -73,7 +70,7 @@ pub async fn upgrade(
     tracing::debug!("websocket upgrade request");
     let mut writer = state.write().await;
     let id = Uuid::new_v4();
-    let (outgoing, _) = broadcast::channel::<Vec<u8>>(32);
+    let (outgoing_tx, outgoing_rx) = mpsc::channel::<Vec<u8>>(32);
     let (incoming, service_reader) = mpsc::channel::<Vec<u8>>(32);
 
     let builder = Builder::new(
@@ -92,7 +89,8 @@ pub async fn upgrade(
     let conn = Arc::new(RwLock::new(WebSocketConnection {
         id: id.clone(),
         public_key: query.public_key,
-        outgoing,
+        outgoing: outgoing_tx,
+        //outgoing_rx,
         incoming,
         state: Some(protocol_state),
     }));
@@ -112,7 +110,7 @@ pub async fn upgrade(
             service_reader,
             service_writer,
         );
-        handle_socket(socket, socket_state, socket_conn)
+        handle_socket(socket, socket_state, socket_conn, outgoing_rx)
     }))
 }
 
@@ -127,9 +125,19 @@ async fn disconnect(state: State, conn: Connection) {
     writer.active.remove(&public_key);
 }
 
-async fn handle_socket(socket: WebSocket, state: State, conn: Connection) {
+async fn handle_socket(
+    socket: WebSocket,
+    state: State,
+    conn: Connection,
+    outgoing: mpsc::Receiver<Vec<u8>>,
+) {
     let (writer, reader) = socket.split();
-    tokio::spawn(write(writer, Arc::clone(&state), Arc::clone(&conn)));
+    tokio::spawn(write(
+        writer,
+        Arc::clone(&state),
+        Arc::clone(&conn),
+        outgoing,
+    ));
     tokio::spawn(read(reader, Arc::clone(&state), Arc::clone(&conn)));
 }
 
@@ -170,12 +178,13 @@ async fn write(
     mut sender: SplitSink<WebSocket, Message>,
     state: State,
     conn: Connection,
+    mut outgoing: mpsc::Receiver<Vec<u8>>,
 ) -> Result<()> {
-    let mut outgoing = {
-        let reader = conn.read().await;
-        reader.outgoing.subscribe()
-    };
-    while let Ok(buffer) = outgoing.recv().await {
+    //let mut outgoing = {
+    //let reader = conn.read().await;
+    //reader.outgoing.1
+    //};
+    while let Some(buffer) = outgoing.recv().await {
         println!("writing buffer to websocket.. {}", buffer.len());
         if sender.send(Message::Binary(buffer)).await.is_err() {
             disconnect(state, Arc::clone(&conn)).await;

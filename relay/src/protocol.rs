@@ -305,7 +305,8 @@ impl Decodable for ResponseMessage {
                 let len = reader.read_usize().await?;
                 let size = reader.read_u32().await?;
                 let buf = reader.read_bytes(size as usize).await?;
-                *self = ResponseMessage::HandshakeResponder(kind, len, buf);
+                *self =
+                    ResponseMessage::HandshakeResponder(kind, len, buf);
             }
             types::RELAY_PEER => {
                 let size = reader.read_u32().await?;

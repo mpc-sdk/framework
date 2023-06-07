@@ -6,10 +6,11 @@ mod protocol;
 mod server;
 mod transport;
 
-pub use client::{NativeClient, ClientOptions};
+pub use client::{ClientOptions, NativeClient};
 pub use error::Error;
 pub(crate) use protocol::{
-    decode, encode, ProtocolState, RequestMessage, ResponseMessage, HandshakeType,
+    decode, encode, HandshakeType, ProtocolState, RequestMessage,
+    ResponseMessage,
 };
 pub use server::{config::ServerConfig, RelayServer};
 
