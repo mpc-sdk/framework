@@ -24,7 +24,7 @@ async fn integration_handshake() -> Result<()> {
         "participant public key {}",
         hex::encode(&participant_key.public)
     );
-    
+
     // Now we can perform a peer handshake
     initiator.peer_handshake(&participant_key.public).await?;
 

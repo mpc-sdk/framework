@@ -1,7 +1,8 @@
 use futures::{
+    select,
     sink::SinkExt,
     stream::{SplitSink, SplitStream},
-    StreamExt,
+    FutureExt, StreamExt,
 };
 use snow::{Builder, Keypair};
 use std::{collections::HashMap, sync::Arc};
@@ -59,17 +60,21 @@ impl NativeClient {
 
         let peers = Arc::new(RwLock::new(Default::default()));
         let public_key_id = hex::encode(&options.keypair.public);
-        
+
         // Handle incoming buffers and convert them to response messages
-        tokio::spawn(read_incoming_message(
+        tokio::spawn(event_loop(
             ws_reader,
             event_sender,
             server_handshake_tx,
             public_key_id,
+            event_reader,
         ));
 
+        // Handle the decoded response messages
+        //tokio::spawn(read_response_message(event_reader, event_loop_peers));
+
         let event_loop_peers = Arc::clone(&peers);
-        
+
         let mut client = Self {
             options,
             writer: ws_writer,
@@ -82,9 +87,6 @@ impl NativeClient {
         if auto_handshake {
             client = client.handshake().await?;
         }
-
-        // Handle the decoded response messages
-        tokio::spawn(event_loop(event_reader, event_loop_peers));
 
         Ok(client)
     }
@@ -109,20 +111,27 @@ impl NativeClient {
 
         while let Some(response) = self.server_handshake.recv().await {
             match self.state {
-                ProtocolState::Handshake(mut initiator) => match response {
-                    ResponseMessage::HandshakeResponder(
-                        HandshakeType::Server,
-                        len,
-                        buf,
-                    ) => {
-                        let mut read_buf = vec![0u8; 1024];
-                        initiator.read_message(&buf[..len], &mut read_buf)?;
+                ProtocolState::Handshake(mut initiator) => {
+                    match response {
+                        ResponseMessage::HandshakeResponder(
+                            HandshakeType::Server,
+                            len,
+                            buf,
+                        ) => {
+                            let mut read_buf = vec![0u8; 1024];
+                            initiator.read_message(
+                                &buf[..len],
+                                &mut read_buf,
+                            )?;
 
-                        let transport = initiator.into_transport_mode()?;
-                        self.state = ProtocolState::Transport(transport);
+                            let transport =
+                                initiator.into_transport_mode()?;
+                            self.state =
+                                ProtocolState::Transport(transport);
+                        }
+                        _ => return Err(Error::NotHandshakeReply),
                     }
-                    _ => return Err(Error::NotHandshakeReply),
-                },
+                }
                 _ => return Err(Error::NotHandshakeState),
             }
             break;
@@ -234,8 +243,39 @@ impl NativeClient {
 }
 
 async fn event_loop(
+    mut socket: SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>,
+    mut event_loop: mpsc::Sender<ResponseMessage>,
+    mut server_handshake: mpsc::Sender<ResponseMessage>,
+    public_key_id: String,
     mut event_reader: mpsc::Receiver<ResponseMessage>,
-    peers: Peers,
+) {
+    select!(
+        //event_message = event_loop.next().fuse() => {
+            //println!("got event message {:#?}", event_message);
+        //},
+        socket_message = socket.next().fuse() => {
+            println!("got ws message {:#?}", socket_message);
+            if let Some(incoming) = socket_message {
+                match incoming {
+                    Ok(message) => {
+                        process_socket_message(
+                            message,
+                            &mut event_loop,
+                            &mut server_handshake,
+                        ).await;
+                    }
+                    Err(e) => {
+                        tracing::error!("{}", e);
+                    }
+                }
+            }
+        },
+    );
+}
+
+async fn read_response_message(
+    mut event_reader: mpsc::Receiver<ResponseMessage>,
+    //peers: Peers,
 ) -> Result<()> {
     println!("starting the event loop...");
     while let Some(message) = event_reader.recv().await {
@@ -244,71 +284,57 @@ async fn event_loop(
     Ok::<(), crate::Error>(())
 }
 
-async fn read_incoming_message(
-    mut incoming: SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>,
-    event_loop: mpsc::Sender<ResponseMessage>,
-    server_handshake: mpsc::Sender<ResponseMessage>,
-    public_key_id: String,
-) -> Result<()> {
-    println!("starting client read loop {}", public_key_id);
-
-    while let Some(reply) = incoming.next().await {
-        println!("client received message!!");
-        //println!("{} received message in client", public_key_id);
-        match reply {
-            Ok(message) => {
-                let buffer = message.into_data();
-                match decode::<ResponseMessage>(buffer).await {
-                    Ok(response) => {
-                        match response {
-                            ResponseMessage::HandshakeResponder(HandshakeType::Server, _, _) => {
-                                server_handshake
-                                    .send(response)
-                                    .await?;
-                            }
-                            ResponseMessage::RelayPeer {
-                                public_key,
-                                message,
-                            } => {
-                                println!(
-                                    "client got relay peer input..."
-                                );
-                                // Decode the inner message
-                                match decode::<ResponseMessage>(
-                                    message,
-                                )
-                                .await
-                                {
-                                    Ok(relayed) => {
-                                        event_loop
-                                            .send(relayed)
-                                            .await?;
-                                    }
-                                    Err(e) => {
-                                        tracing::error!("client decode inner message error {}", e);
-                                    }
-                                }
-                            }
-                            /*
-                            ResponseMessage::HandshakeResponder(HandshakeType::Peer, len, buf) => {
-                                println!("got peer handshake responder message to process");
-                            }
-                            */
-                            _ => {
-                                event_loop.send(response).await?;
-                            }
+async fn process_socket_message(
+    incoming: Message,
+    event_loop: &mut mpsc::Sender<ResponseMessage>,
+    server_handshake: &mut mpsc::Sender<ResponseMessage>,
+    //public_key_id: String,
+) {
+    let buffer = incoming.into_data();
+    match decode::<ResponseMessage>(buffer).await {
+        Ok(response) => {
+            match response {
+                ResponseMessage::HandshakeResponder(
+                    HandshakeType::Server,
+                    _,
+                    _,
+                ) => {
+                    let _ = server_handshake
+                        .send(response)
+                        .await;
+                }
+                ResponseMessage::RelayPeer {
+                    public_key,
+                    message,
+                } => {
+                    println!("client got relay peer input...");
+                    // Decode the inner message
+                    match decode::<ResponseMessage>(message).await {
+                        Ok(relayed) => {
+                            let _ = event_loop
+                                .send(relayed)
+                                .await;
+                        }
+                        Err(e) => {
+                            tracing::error!(
+                                "client decode inner message error {}",
+                                e
+                            );
                         }
                     }
-                    Err(e) => {
-                        tracing::error!(
-                            "client decode message error {}",
-                            e
-                        );
-                    }
                 }
-            },
-            Err(e) => tracing::error!("{}", e),
+                /*
+                ResponseMessage::HandshakeResponder(HandshakeType::Peer, len, buf) => {
+                    println!("got peer handshake responder message to process");
+                }
+                */
+                _ => {
+                    let _ = event_loop.send(response).await;
+                }
+            }
+        }
+        Err(e) => {
+            tracing::error!("client decode message error {}", e);
         }
     }
-    Ok(())
 }
