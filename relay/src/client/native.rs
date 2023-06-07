@@ -29,9 +29,11 @@ use crate::{
 type Peers = Arc<RwLock<HashMap<Vec<u8>, ProtocolState>>>;
 
 pub struct EventLoop {
-    socket: SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>,
+    ws_reader: SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>,
     event_loop_tx: mpsc::Sender<ResponseMessage>,
     event_loop_rx: mpsc::Receiver<ResponseMessage>,
+    outbound_tx: mpsc::Sender<RequestMessage>,
+    outbound_rx: mpsc::Receiver<RequestMessage>,
     server_handshake: mpsc::Sender<ResponseMessage>,
     public_key_id: String,
 }
@@ -41,7 +43,7 @@ impl EventLoop {
     pub async fn run(mut self) {
         loop {
             select!(
-                socket_message = self.socket.next().fuse() => match socket_message {
+                socket_message = self.ws_reader.next().fuse() => match socket_message {
                     Some(socket_message) => {
                         match socket_message {
                             Ok(message) => {
@@ -163,7 +165,10 @@ impl NativeClient {
             .remote_public_key(&options.server_public_key)
             .build_initiator()?;
 
-        let (event_sender, mut event_reader) =
+        let (outbound_tx, outbound_rx) =
+            mpsc::channel::<RequestMessage>(32);
+
+        let (event_loop_tx, event_loop_rx) =
             mpsc::channel::<ResponseMessage>(32);
         let (server_handshake_tx, server_handshake) =
             mpsc::channel::<ResponseMessage>(32);
@@ -176,11 +181,15 @@ impl NativeClient {
 
         //let event_loop_peers = Arc::clone(&peers);
 
+        let client_outbound_tx = outbound_tx.clone();
+
         // Start the client event loop.
         let event_loop = EventLoop {
-            socket: ws_reader,
-            event_loop_tx: event_sender,
-            event_loop_rx: event_reader,
+            ws_reader,
+            event_loop_tx,
+            event_loop_rx,
+            outbound_tx,
+            outbound_rx,
             server_handshake: server_handshake_tx,
             public_key_id,
         };
