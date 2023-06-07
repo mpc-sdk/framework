@@ -9,7 +9,7 @@ mod transport;
 pub use client::{NativeClient, ClientOptions};
 pub use error::Error;
 pub(crate) use protocol::{
-    decode, encode, ProtocolState, RequestMessage, ResponseMessage,
+    decode, encode, ProtocolState, RequestMessage, ResponseMessage, HandshakeType,
 };
 pub use server::{config::ServerConfig, RelayServer};
 

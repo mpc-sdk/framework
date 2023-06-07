@@ -1,7 +1,7 @@
 use super::{Connection, State};
 use crate::{
     decode, encode, Error, ProtocolState, RequestMessage, ResponseMessage,
-    Result,
+    Result, HandshakeType,
 };
 use axum::http::StatusCode;
 use std::sync::Arc;
@@ -65,9 +65,8 @@ async fn handle_request(
     conn: Connection,
     message: RequestMessage,
 ) -> Result<()> {
-    println!("handling request...");
     match message {
-        RequestMessage::HandshakeInitiator(len, buf) => {
+        RequestMessage::HandshakeInitiator(kind, len, buf) => {
             let mut writer = conn.write().await;
             let (len, payload) = match &mut writer.state {
                 Some(ProtocolState::Handshake(responder)) => {
@@ -82,7 +81,7 @@ async fn handle_request(
             };
 
             let response =
-                ResponseMessage::HandshakeResponder(len, payload);
+                ResponseMessage::HandshakeResponder(kind, len, payload);
             let buffer = encode(&response).await?;
             writer.send(buffer)?;
 
@@ -105,15 +104,34 @@ async fn handle_request(
             public_key,
             message,
         } => {
+            
+            println!("relay target: {}", hex::encode(&public_key));
+
+            let from_public_key = {
+                let reader = conn.read().await;
+                reader.public_key.clone()
+            };
+
             let peer = {
                 let reader = state.read().await;
                 reader.active.get(&public_key).map(Arc::clone)
             };
 
             if let Some(peer) = peer {
-                let mut writer = conn.write().await;
-                println!("relaying the peer message");
-                writer.send(message)?;
+                let mut writer = peer.write().await;
+
+                println!("peer writer {:#?}", hex::encode(&writer.public_key));
+
+                println!("relaying: to = {}, from = {}",
+                    hex::encode(&public_key),
+                    hex::encode(&from_public_key));
+                let relayed = ResponseMessage::RelayPeer {
+                    public_key: from_public_key,
+                    message,
+                };
+                let buffer = encode(&relayed).await?;
+                //println!("relaying the peer message {:#?}", writer.public_key);
+                writer.send(buffer)?;
             } else {
                 return Err(Error::PeerNotFound(hex::encode(public_key)));
             }

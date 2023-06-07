@@ -4,8 +4,8 @@ use futures::{
     StreamExt,
 };
 use snow::{Builder, Keypair};
-use std::collections::HashMap;
-use tokio::{net::TcpStream, sync::mpsc};
+use std::{collections::HashMap, sync::Arc};
+use tokio::{net::TcpStream, sync::{mpsc, RwLock}};
 use tokio_tungstenite::{
     connect_async,
     tungstenite::{
@@ -17,8 +17,10 @@ use tokio_tungstenite::{
 
 use crate::{
     constants::PATTERN, decode, encode, Error, ProtocolState,
-    RequestMessage, ResponseMessage, Result, ClientOptions,
+    RequestMessage, ResponseMessage, Result, ClientOptions, HandshakeType,
 };
+
+type Peers = Arc<RwLock<HashMap<Vec<u8>, ProtocolState>>>;
 
 /// Native websocket client using the tokio tungstenite library.
 pub struct NativeClient {
@@ -27,7 +29,7 @@ pub struct NativeClient {
     reader: mpsc::Receiver<ResponseMessage>,
     response: Response,
     state: ProtocolState,
-    peers: HashMap<Vec<u8>, ProtocolState>,
+    peers: Peers,
 }
 
 impl NativeClient {
@@ -35,8 +37,6 @@ impl NativeClient {
     pub async fn new<R>(
         request: R,
         options: ClientOptions,
-        //keypair: Keypair,
-        //public_key: Vec<u8>,
     ) -> Result<Self>
     where
         R: IntoClientRequest + Unpin,
@@ -52,9 +52,11 @@ impl NativeClient {
 
         let (sender, reader) = mpsc::channel::<ResponseMessage>(32);
 
-        tokio::spawn(read_incoming_message(read, sender));
-
         let auto_handshake = options.auto_handshake;
+        
+        let peers = Arc::new(RwLock::new(Default::default()));
+        let public_key_id = hex::encode(&options.keypair.public);
+        tokio::spawn(read_incoming_message(read, sender, public_key_id, Arc::clone(&peers)));
 
         let mut client = Self {
             options,
@@ -62,13 +64,13 @@ impl NativeClient {
             reader,
             response,
             state: ProtocolState::Handshake(handshake),
-            peers: Default::default(),
+            peers,
         };
 
         if auto_handshake {
             client = client.handshake().await?;
         }
-
+        
         Ok(client)
     }
 
@@ -83,12 +85,12 @@ impl NativeClient {
             _ => return Err(Error::NotHandshakeState),
         };
 
-        let request = RequestMessage::HandshakeInitiator(len, payload);
+        let request = RequestMessage::HandshakeInitiator(HandshakeType::Server, len, payload);
         let response = self.request(request).await?;
 
         match self.state {
             ProtocolState::Handshake(mut initiator) => match response {
-                ResponseMessage::HandshakeResponder(len, buf) => {
+                ResponseMessage::HandshakeResponder(HandshakeType::Server, len, buf) => {
                     let mut read_buf = vec![0u8; 1024];
                     initiator.read_message(&buf[..len], &mut read_buf)?;
 
@@ -108,7 +110,9 @@ impl NativeClient {
         &mut self,
         public_key: impl AsRef<[u8]>,
     ) -> Result<()> {
-        if self.peers.get(public_key.as_ref()).is_some() {
+        let mut peers = self.peers.write().await;
+
+        if peers.get(public_key.as_ref()).is_some() {
             return Err(Error::PeerAlreadyExists);
         }
 
@@ -118,9 +122,8 @@ impl NativeClient {
             .remote_public_key(public_key.as_ref())
             .build_initiator()?;
         let peer_state = ProtocolState::Handshake(handshake);
-
-        let state = self
-            .peers
+        
+        let state = peers
             .entry(public_key.as_ref().to_vec())
             .or_insert(peer_state);
 
@@ -132,10 +135,13 @@ impl NativeClient {
             }
             _ => return Err(Error::NotHandshakeState),
         };
+        drop(peers);
 
         let inner_request =
-            RequestMessage::HandshakeInitiator(len, payload);
+            RequestMessage::HandshakeInitiator(HandshakeType::Peer, len, payload);
         let inner_message = encode(&inner_request).await?;
+
+        println!("encoding outer relay peer message {}", hex::encode(public_key.as_ref()));
 
         let request = RequestMessage::RelayPeer {
             public_key: public_key.as_ref().to_vec(),
@@ -210,22 +216,43 @@ impl NativeClient {
         self.writer.send(message).await?;
         Ok(self.writer.flush().await?)
     }
+
 }
 
 async fn read_incoming_message(
     mut incoming: SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>,
     handler: mpsc::Sender<ResponseMessage>,
+    public_key_id: String,
+    peers: Peers,
 ) -> Result<()> {
-    while let Some(reply) = incoming.next().await {
+    println!("starting client read loop {}", public_key_id);
+    incoming.for_each(|reply| async {
+        println!("client received message!!");
+        //println!("{} received message in client", public_key_id);
         match reply {
             Ok(message) => match message {
                 Message::Binary(buffer) => {
                     match decode::<ResponseMessage>(buffer).await {
                         Ok(response) => {
-                            handler.send(response).await;
+                            match response {
+                                ResponseMessage::RelayPeer {
+                                    public_key,
+                                    message,
+                                } => {
+                                    println!("client got relay peer input...");
+                                }
+                                /*
+                                ResponseMessage::HandshakeResponder(HandshakeType::Peer, len, buf) => {
+                                    println!("got peer handshake responder message to process");                                    
+                                }
+                                */
+                                _ => {
+                                    handler.send(response).await.unwrap();
+                                }
+                            }
                         }
                         Err(e) => {
-                            tracing::error!(
+                            eprintln!(
                                 "client decode message error {}",
                                 e
                             );
@@ -233,11 +260,15 @@ async fn read_incoming_message(
                     }
                 }
                 _ => {
-                    tracing::error!("client non binary response message");
+                    eprintln!("client non binary response message");
                 }
             },
-            Err(e) => tracing::error!("{}", e),
+            Err(e) => eprintln!("{}", e),
         }
-    }
+    }).await;
+
+    //while let Some(reply) = incoming.next().await {
+    //}
+
     Ok(())
 }

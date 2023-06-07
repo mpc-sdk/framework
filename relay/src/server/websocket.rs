@@ -56,6 +56,7 @@ pub struct WebSocketConnection {
 impl WebSocketConnection {
     /// Send a buffer to the client at this socket.
     pub fn send(&mut self, buffer: Vec<u8>) -> Result<()> {
+        println!("sending buffer to websocket.. {}", buffer.len());
         self.outgoing.send(buffer)?;
         Ok(())
     }
@@ -120,6 +121,7 @@ async fn disconnect(state: State, conn: Connection) {
         let reader = conn.read().await;
         (reader.id.clone(), reader.public_key.clone())
     };
+    println!("disconnecting client...");
     let mut writer = state.write().await;
     writer.pending.remove(&id);
     writer.active.remove(&public_key);
@@ -174,10 +176,12 @@ async fn write(
         reader.outgoing.subscribe()
     };
     while let Ok(buffer) = outgoing.recv().await {
+        println!("writing buffer to websocket.. {}", buffer.len());
         if sender.send(Message::Binary(buffer)).await.is_err() {
             disconnect(state, Arc::clone(&conn)).await;
             return Ok(());
         }
+        //let _ = sender.flush().await;
     }
     Ok(())
 }
