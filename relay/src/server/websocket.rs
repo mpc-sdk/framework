@@ -10,6 +10,10 @@ use futures::{
     stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
 };
+
+use std::time::Duration;
+use tokio_stream::wrappers::IntervalStream;
+
 use serde::Deserialize;
 use snow::Builder;
 
@@ -53,7 +57,7 @@ pub struct WebSocketConnection {
 impl WebSocketConnection {
     /// Send a buffer to the client at this socket.
     pub async fn send(&mut self, buffer: Vec<u8>) -> Result<()> {
-        println!("sending buffer to websocket.. {}", buffer.len());
+        //println!("sending buffer to websocket.. {}", buffer.len());
         self.outgoing.send(buffer).await?;
         Ok(())
     }
@@ -132,6 +136,9 @@ async fn handle_socket(
     outgoing: mpsc::Receiver<Vec<u8>>,
 ) {
     let (writer, reader) = socket.split();
+
+    //tokio::spawn(heartbeat_push(Arc::clone(&conn), 1));
+
     tokio::spawn(write(
         writer,
         Arc::clone(&state),
@@ -140,6 +147,19 @@ async fn handle_socket(
     ));
     tokio::spawn(read(reader, Arc::clone(&state), Arc::clone(&conn)));
 }
+
+/*
+async fn heartbeat_push(conn: Connection, interval_secs: u64) {
+    let interval =
+        tokio::time::interval(Duration::from_secs(interval_secs));
+    let mut stream = IntervalStream::new(interval);
+    while (stream.next().await).is_some() {
+        let mut writer = conn.write().await;
+        let buffer = vec![0; 16];
+        let _ = writer.send(buffer).await;
+    }
+}
+*/
 
 async fn read(
     mut receiver: SplitStream<WebSocket>,
@@ -180,17 +200,12 @@ async fn write(
     conn: Connection,
     mut outgoing: mpsc::Receiver<Vec<u8>>,
 ) -> Result<()> {
-    //let mut outgoing = {
-    //let reader = conn.read().await;
-    //reader.outgoing.1
-    //};
     while let Some(buffer) = outgoing.recv().await {
-        println!("writing buffer to websocket.. {}", buffer.len());
+        //println!("writing buffer to websocket.. {}", buffer.len());
         if sender.send(Message::Binary(buffer)).await.is_err() {
             disconnect(state, Arc::clone(&conn)).await;
             return Ok(());
         }
-        //let _ = sender.flush().await;
     }
     Ok(())
 }

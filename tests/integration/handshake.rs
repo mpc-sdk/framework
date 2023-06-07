@@ -13,9 +13,18 @@ async fn integration_handshake() -> Result<()> {
 
     // Create new clients and automatically perform the
     // server handshake
-    let (mut initiator, initiator_key) = new_client().await?;
-    let (participant, participant_key) = new_client().await?;
+    let (mut initiator, event_loop_i, initiator_key) =
+        new_client().await?;
+    let (mut participant, event_loop_p, participant_key) =
+        new_client().await?;
 
+    let ev_i = tokio::task::spawn(event_loop_i.run());
+    let ev_p = tokio::task::spawn(event_loop_p.run());
+
+    initiator.handshake().await?;
+    participant.handshake().await?;
+
+    /*
     println!(
         "initiator public key {}",
         hex::encode(&initiator_key.public)
@@ -24,11 +33,15 @@ async fn integration_handshake() -> Result<()> {
         "participant public key {}",
         hex::encode(&participant_key.public)
     );
+    */
 
     // Now we can perform a peer handshake
     initiator.peer_handshake(&participant_key.public).await?;
 
-    std::thread::sleep(Duration::from_millis(2000));
+    //std::thread::sleep(Duration::from_millis(20000));
+
+    let (_, _) = futures::join!(ev_i, ev_p);
+
     //loop {}
 
     Ok(())
