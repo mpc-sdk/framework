@@ -6,7 +6,7 @@ use tokio::{fs, sync::oneshot};
 
 use mpc_relay_server::{
     keypair::{decode_keypair, generate_keypair, Keypair},
-    NativeClient, RelayServer, ServerConfig,
+    NativeClient, RelayServer, ServerConfig, ClientOptions,
 };
 
 const ADDR: &str = "127.0.0.1:7337";
@@ -21,7 +21,7 @@ pub async fn server_public_key() -> Result<Vec<u8>> {
 
 /// Create new client connected to the mock server.
 pub async fn new_client() -> Result<(NativeClient, Keypair)> {
-    let public_key = server_public_key().await?;
+    let server_public_key = server_public_key().await?;
     let keypair = generate_keypair()?;
     let url =
         format!("{}/?public_key={}", SERVER, hex::encode(&keypair.public));
@@ -29,7 +29,12 @@ pub async fn new_client() -> Result<(NativeClient, Keypair)> {
         public: keypair.public.clone(),
         private: keypair.public.clone(),
     };
-    Ok((NativeClient::new(url, keypair, public_key).await?, copy))
+    let options = ClientOptions {
+        keypair,
+        server_public_key,
+        auto_handshake: true,
+    };
+    Ok((NativeClient::new(url, options).await?, copy))
 }
 
 struct MockServer {

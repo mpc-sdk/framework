@@ -6,7 +6,7 @@ mod protocol;
 mod server;
 mod transport;
 
-pub use client::NativeClient;
+pub use client::{NativeClient, ClientOptions};
 pub use error::Error;
 pub(crate) use protocol::{
     decode, encode, ProtocolState, RequestMessage, ResponseMessage,

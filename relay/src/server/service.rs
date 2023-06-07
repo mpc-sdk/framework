@@ -115,7 +115,7 @@ async fn handle_request(
                 println!("relaying the peer message");
                 writer.send(message)?;
             } else {
-                return Err(Error::PeerNotFound(hex::encode(public_key)))
+                return Err(Error::PeerNotFound(hex::encode(public_key)));
             }
         }
         RequestMessage::Noop => {}

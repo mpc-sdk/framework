@@ -39,8 +39,16 @@ pub async fn encode(encodable: &impl Encodable) -> Result<Vec<u8>> {
 }
 
 /// Decode from a binary buffer.
-pub async fn decode<T: Decodable + Default>(buffer: &[u8]) -> Result<T> {
-    Ok(binary_stream::futures::decode(buffer, encoding_options()).await?)
+pub async fn decode<T: Decodable + Default>(
+    buffer: impl AsRef<[u8]>,
+) -> Result<T> {
+    Ok(
+        binary_stream::futures::decode(
+            buffer.as_ref(),
+            encoding_options(),
+        )
+        .await?,
+    )
 }
 
 /// Enumeration of protocol states.
@@ -52,7 +60,7 @@ pub enum ProtocolState {
 }
 
 /// Request messages from the client.
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub enum RequestMessage {
     #[default]
     Noop,
@@ -97,7 +105,10 @@ impl Encodable for RequestMessage {
                 writer.write_u32(buf.len() as u32).await?;
                 writer.write_bytes(buf).await?;
             }
-            Self::RelayPeer { public_key, message } => {
+            Self::RelayPeer {
+                public_key,
+                message,
+            } => {
                 writer.write_u32(public_key.len() as u32).await?;
                 writer.write_bytes(public_key).await?;
                 writer.write_u32(message.len() as u32).await?;
@@ -143,7 +154,7 @@ impl Decodable for RequestMessage {
 }
 
 /// Response messages from the server.
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub enum ResponseMessage {
     #[default]
     Noop,

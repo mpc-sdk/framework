@@ -1,3 +1,4 @@
+use crate::{ResponseMessage, Result};
 use axum::http::StatusCode;
 use std::path::PathBuf;
 use thiserror::Error;
@@ -15,6 +16,10 @@ pub enum Error {
     /// Error generated when the config server key file was not specified.
     #[error("server config requires path to a key file")]
     KeyFileRequired,
+
+    /// Error generated if the client expects a reply but none was received.
+    #[error("server did not reply")]
+    NoReply,
 
     /// Error generated when the config server key file was not found.
     #[error(r#"key file "{0}" not found"#)]
@@ -91,6 +96,11 @@ pub enum Error {
 
     #[error(transparent)]
     MpscSend(#[from] tokio::sync::mpsc::error::SendError<Vec<u8>>),
+
+    #[error(transparent)]
+    ResponseMpscSend(
+        #[from] tokio::sync::mpsc::error::SendError<ResponseMessage>,
+    ),
 
     #[error(transparent)]
     BroadcastSend(

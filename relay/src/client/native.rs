@@ -5,7 +5,7 @@ use futures::{
 };
 use snow::{Builder, Keypair};
 use std::collections::HashMap;
-use tokio::net::TcpStream;
+use tokio::{net::TcpStream, sync::mpsc};
 use tokio_tungstenite::{
     connect_async,
     tungstenite::{
@@ -17,14 +17,14 @@ use tokio_tungstenite::{
 
 use crate::{
     constants::PATTERN, decode, encode, Error, ProtocolState,
-    RequestMessage, ResponseMessage, Result,
+    RequestMessage, ResponseMessage, Result, ClientOptions,
 };
 
 /// Native websocket client using the tokio tungstenite library.
 pub struct NativeClient {
-    keypair: Keypair,
-    write: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
-    read: SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>,
+    options: ClientOptions,
+    writer: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
+    reader: mpsc::Receiver<ResponseMessage>,
     response: Response,
     state: ProtocolState,
     peers: HashMap<Vec<u8>, ProtocolState>,
@@ -34,29 +34,42 @@ impl NativeClient {
     /// Create a new native client.
     pub async fn new<R>(
         request: R,
-        keypair: Keypair,
-        public_key: Vec<u8>,
+        options: ClientOptions,
+        //keypair: Keypair,
+        //public_key: Vec<u8>,
     ) -> Result<Self>
     where
         R: IntoClientRequest + Unpin,
     {
         let (stream, response) = connect_async(request).await?;
-        let (write, read) = stream.split();
+        let (writer, read) = stream.split();
 
         let builder = Builder::new(PATTERN.parse()?);
         let handshake = builder
-            .local_private_key(&keypair.private)
-            .remote_public_key(&public_key)
+            .local_private_key(&options.keypair.private)
+            .remote_public_key(&options.server_public_key)
             .build_initiator()?;
 
-        Ok(Self {
-            keypair,
-            write,
-            read,
+        let (sender, reader) = mpsc::channel::<ResponseMessage>(32);
+
+        tokio::spawn(read_incoming_message(read, sender));
+
+        let auto_handshake = options.auto_handshake;
+
+        let mut client = Self {
+            options,
+            writer,
+            reader,
             response,
             state: ProtocolState::Handshake(handshake),
             peers: Default::default(),
-        })
+        };
+
+        if auto_handshake {
+            client = client.handshake().await?;
+        }
+
+        Ok(client)
     }
 
     /// Perform initial handshake with the server.
@@ -101,7 +114,7 @@ impl NativeClient {
 
         let builder = Builder::new(PATTERN.parse()?);
         let handshake = builder
-            .local_private_key(&self.keypair.private)
+            .local_private_key(&self.options.keypair.private)
             .remote_public_key(public_key.as_ref())
             .build_initiator()?;
         let peer_state = ProtocolState::Handshake(handshake);
@@ -120,7 +133,8 @@ impl NativeClient {
             _ => return Err(Error::NotHandshakeState),
         };
 
-        let inner_request = RequestMessage::HandshakeInitiator(len, payload);
+        let inner_request =
+            RequestMessage::HandshakeInitiator(len, payload);
         let inner_message = encode(&inner_request).await?;
 
         let request = RequestMessage::RelayPeer {
@@ -164,10 +178,7 @@ impl NativeClient {
     }
 
     /// Send a request message.
-    async fn send(
-        &mut self,
-        message: RequestMessage,
-    ) -> Result<()> {
+    async fn send(&mut self, message: RequestMessage) -> Result<()> {
         let buffer = encode(&message).await?;
         self.send_binary(buffer).await
     }
@@ -178,30 +189,15 @@ impl NativeClient {
         message: RequestMessage,
     ) -> Result<ResponseMessage> {
         let buffer = encode(&message).await?;
-        let reply = self.send_recv_binary(buffer).await?;
-        let response: ResponseMessage = decode(&reply).await?;
+        self.send_binary(buffer).await?;
+        let response =
+            self.reader.recv().await.ok_or_else(|| Error::NoReply)?;
         match response {
             ResponseMessage::Error(code, message) => {
                 Err(Error::ServerError(code, message))
             }
             _ => Ok(response),
         }
-    }
-
-    /// Send a binary message to the server and wait for a reply.
-    async fn send_recv_binary(
-        &mut self,
-        buffer: Vec<u8>,
-    ) -> Result<Vec<u8>> {
-        self.send_binary(buffer).await?;
-        while let Some(reply) = self.read.next().await {
-            let message = reply?;
-            return match message {
-                Message::Binary(buffer) => Ok(buffer),
-                _ => break,
-            };
-        }
-        Err(Error::BinaryReplyExpected)
     }
 
     /// Send a binary message to the server.
@@ -211,7 +207,37 @@ impl NativeClient {
 
     /// Send a message to the socket and flush the stream.
     async fn send_socket(&mut self, message: Message) -> Result<()> {
-        self.write.send(message).await?;
-        Ok(self.write.flush().await?)
+        self.writer.send(message).await?;
+        Ok(self.writer.flush().await?)
     }
+}
+
+async fn read_incoming_message(
+    mut incoming: SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>,
+    handler: mpsc::Sender<ResponseMessage>,
+) -> Result<()> {
+    while let Some(reply) = incoming.next().await {
+        match reply {
+            Ok(message) => match message {
+                Message::Binary(buffer) => {
+                    match decode::<ResponseMessage>(buffer).await {
+                        Ok(response) => {
+                            handler.send(response).await;
+                        }
+                        Err(e) => {
+                            tracing::error!(
+                                "client decode message error {}",
+                                e
+                            );
+                        }
+                    }
+                }
+                _ => {
+                    tracing::error!("client non binary response message");
+                }
+            },
+            Err(e) => tracing::error!("{}", e),
+        }
+    }
+    Ok(())
 }
