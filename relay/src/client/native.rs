@@ -30,6 +30,7 @@ type Peers = Arc<RwLock<HashMap<Vec<u8>, ProtocolState>>>;
 
 pub struct EventLoop {
     ws_reader: SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>,
+    ws_writer: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
     event_loop_tx: mpsc::Sender<ResponseMessage>,
     event_loop_rx: mpsc::Receiver<ResponseMessage>,
     outbound_tx: mpsc::Sender<RequestMessage>,
@@ -43,9 +44,9 @@ impl EventLoop {
     pub async fn run(mut self) {
         loop {
             select!(
-                socket_message = self.ws_reader.next().fuse() => match socket_message {
-                    Some(socket_message) => {
-                        match socket_message {
+                message_in = self.ws_reader.next().fuse() => match message_in {
+                    Some(message) => {
+                        match message {
                             Ok(message) => {
                                 Self::process_socket_message(
                                     message,
@@ -60,6 +61,14 @@ impl EventLoop {
                     }
                     _ => {}
                 },
+                message_out = self.outbound_rx.recv().fuse() => match message_out {
+                    Some(message) => {
+                        if let Err(e) = self.send_message(message).await {
+                            tracing::error!("{}", e);
+                        }
+                    }
+                    _ => {}
+                },
                 event_message = self.event_loop_rx.recv().fuse() => match event_message {
                     Some(event_message) => {
                         Self::process_incoming_message(event_message).await;
@@ -70,6 +79,13 @@ impl EventLoop {
         }
     }
 
+    /// Send a message to the socket and flush the stream.
+    async fn send_message(&mut self, message: RequestMessage) -> Result<()> {
+        let message = Message::Binary(encode(&message).await?);
+        self.ws_writer.send(message).await?;
+        Ok(self.ws_writer.flush().await?)
+    }
+        
     async fn process_incoming_message(incoming: ResponseMessage) {
         println!("process_incoming_message");
         match incoming {
@@ -140,8 +156,8 @@ impl EventLoop {
 /// Native websocket client using the tokio tungstenite library.
 pub struct NativeClient {
     options: ClientOptions,
-    writer: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
     server_handshake: mpsc::Receiver<ResponseMessage>,
+    outbound_tx: mpsc::Sender<RequestMessage>,
     response: Response,
     state: Option<ProtocolState>,
     peers: Peers,
@@ -186,6 +202,7 @@ impl NativeClient {
         // Start the client event loop.
         let event_loop = EventLoop {
             ws_reader,
+            ws_writer,
             event_loop_tx,
             event_loop_rx,
             outbound_tx,
@@ -196,8 +213,8 @@ impl NativeClient {
 
         let mut client = Self {
             options,
-            writer: ws_writer,
             server_handshake,
+            outbound_tx: client_outbound_tx,
             response,
             state: Some(ProtocolState::Handshake(handshake)),
             peers,
@@ -222,7 +239,8 @@ impl NativeClient {
             len,
             payload,
         );
-        self.send_request(request).await?;
+
+        self.outbound_tx.send(request).await?;
 
         while let Some(response) = self.server_handshake.recv().await {
             let transport = match self.state.take() {
@@ -300,26 +318,8 @@ impl NativeClient {
             message: inner_message,
         };
 
-        self.send_request(request).await
+        self.outbound_tx.send(request).await?;
+        Ok(())
     }
 
-    /// Send a request message.
-    async fn send_request(
-        &mut self,
-        message: RequestMessage,
-    ) -> Result<()> {
-        let buffer = encode(&message).await?;
-        self.send_binary(buffer).await
-    }
-
-    /// Send a binary message to the server.
-    async fn send_binary(&mut self, buffer: Vec<u8>) -> Result<()> {
-        self.send_socket(Message::Binary(buffer)).await
-    }
-
-    /// Send a message to the socket and flush the stream.
-    async fn send_socket(&mut self, message: Message) -> Result<()> {
-        self.writer.send(message).await?;
-        Ok(self.writer.flush().await?)
-    }
 }

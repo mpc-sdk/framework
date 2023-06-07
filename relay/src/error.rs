@@ -1,4 +1,4 @@
-use crate::{ResponseMessage, Result};
+use crate::{RequestMessage, ResponseMessage, Result};
 use axum::http::StatusCode;
 use std::path::PathBuf;
 use thiserror::Error;
@@ -100,6 +100,11 @@ pub enum Error {
 
     #[error(transparent)]
     MpscSend(#[from] tokio::sync::mpsc::error::SendError<Vec<u8>>),
+
+    #[error(transparent)]
+    RequestMpscSend(
+        #[from] tokio::sync::mpsc::error::SendError<RequestMessage>,
+    ),
 
     #[error(transparent)]
     ResponseMpscSend(
