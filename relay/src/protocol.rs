@@ -18,6 +18,9 @@ mod types {
     pub const HANDSHAKE_TYPE_SERVER: u8 = 1;
     pub const HANDSHAKE_TYPE_PEER: u8 = 2;
 
+    pub const PEER_REQUEST: u8 = 1;
+    pub const PEER_RESPONSE: u8 = 2;
+
     pub const NOOP: u8 = 0;
     pub const ERROR: u8 = 1;
     pub const HANDSHAKE_INITIATOR: u8 = 2;
@@ -102,7 +105,7 @@ impl Decodable for HandshakeType {
                 *self = HandshakeType::Peer;
             }
             _ => {
-                return Err(encoding_error(crate::Error::MessageKind(id)))
+                return Err(encoding_error(crate::Error::EncodingKind(id)))
             }
         }
         Ok(())
@@ -117,10 +120,94 @@ pub enum ProtocolState {
     Transport(TransportState),
 }
 
+/// Wrappper for messages sent between peers.
+#[derive(Default)]
+pub enum PeerMessage {
+    #[default]
+    #[doc(hidden)]
+    Noop,
+    /// Request message.
+    Request(RequestMessage),
+    /// Response message.
+    Response(ResponseMessage),
+}
+
+impl From<&PeerMessage> for u8 {
+    fn from(value: &PeerMessage) -> Self {
+        match value {
+            PeerMessage::Noop => types::NOOP,
+            PeerMessage::Request(_) => types::PEER_REQUEST,
+            PeerMessage::Response(_) => types::PEER_RESPONSE,
+        }
+    }
+}
+
+impl From<RequestMessage> for PeerMessage {
+    fn from(value: RequestMessage) -> Self {
+        Self::Request(value)
+    }
+}
+
+impl From<ResponseMessage> for PeerMessage {
+    fn from(value: ResponseMessage) -> Self {
+        Self::Response(value)
+    }
+}
+
+#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl Encodable for PeerMessage {
+    async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
+        &self,
+        writer: &mut BinaryWriter<W>,
+    ) -> Result<()> {
+        let id: u8 = self.into();
+        writer.write_u8(id).await?;
+        match self {
+            Self::Request(message) => {
+                message.encode(writer).await?;
+            }
+            Self::Response(message) => {
+                message.encode(writer).await?;
+            }
+            Self::Noop => unreachable!(),
+        }
+        Ok(())
+    }
+}
+
+#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl Decodable for PeerMessage {
+    async fn decode<R: AsyncRead + AsyncSeek + Unpin + Send>(
+        &mut self,
+        reader: &mut BinaryReader<R>,
+    ) -> Result<()> {
+        let id = reader.read_u8().await?;
+        match id {
+            types::PEER_REQUEST => {
+                let mut message: RequestMessage = Default::default();
+                message.decode(reader).await?;
+                *self = PeerMessage::Request(message)
+            }
+            types::PEER_RESPONSE => {
+                let mut message: ResponseMessage = Default::default();
+                message.decode(reader).await?;
+                *self = PeerMessage::Response(message)
+            }
+            _ => {
+                return Err(encoding_error(crate::Error::EncodingKind(id)))
+            }
+        }
+        Ok(())
+    }
+}
+
 /// Request messages from the client.
 #[derive(Default, Debug)]
 pub enum RequestMessage {
     #[default]
+    #[doc(hidden)]
     Noop,
     /// Initiate a handshake.
     HandshakeInitiator(HandshakeType, usize, Vec<u8>),
@@ -207,7 +294,7 @@ impl Decodable for RequestMessage {
                 };
             }
             _ => {
-                return Err(encoding_error(crate::Error::MessageKind(id)))
+                return Err(encoding_error(crate::Error::EncodingKind(id)))
             }
         }
         Ok(())
@@ -218,6 +305,7 @@ impl Decodable for RequestMessage {
 #[derive(Default, Debug)]
 pub enum ResponseMessage {
     #[default]
+    #[doc(hidden)]
     Noop,
     /// Return an error message to the client.
     Error(StatusCode, String),
@@ -319,7 +407,7 @@ impl Decodable for ResponseMessage {
                 };
             }
             _ => {
-                return Err(encoding_error(crate::Error::MessageKind(id)))
+                return Err(encoding_error(crate::Error::EncodingKind(id)))
             }
         }
         Ok(())

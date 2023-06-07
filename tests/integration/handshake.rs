@@ -36,7 +36,7 @@ async fn integration_handshake() -> Result<()> {
     */
 
     // Now we can perform a peer handshake
-    initiator.peer_handshake(&participant_key.public).await?;
+    initiator.connect_peer(&participant_key.public).await?;
 
     //std::thread::sleep(Duration::from_millis(20000));
 

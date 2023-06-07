@@ -9,8 +9,8 @@ mod transport;
 pub use client::{ClientOptions, EventLoop, NativeClient};
 pub use error::Error;
 pub(crate) use protocol::{
-    decode, encode, HandshakeType, ProtocolState, RequestMessage,
-    ResponseMessage,
+    decode, encode, HandshakeType, PeerMessage, ProtocolState,
+    RequestMessage, ResponseMessage,
 };
 pub use server::{config::ServerConfig, RelayServer};
 

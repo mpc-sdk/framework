@@ -22,7 +22,8 @@ use tokio_tungstenite::{
 
 use crate::{
     constants::PATTERN, decode, encode, ClientOptions, Error,
-    HandshakeType, ProtocolState, RequestMessage, ResponseMessage, Result,
+    HandshakeType, PeerMessage, ProtocolState, RequestMessage,
+    ResponseMessage, Result,
 };
 
 type Peers = Arc<RwLock<HashMap<Vec<u8>, ProtocolState>>>;
@@ -63,7 +64,6 @@ impl EventLoop {
                     }
                     _ => {}
                 },
-                //complete => break,
             );
         }
     }
@@ -80,10 +80,19 @@ impl EventLoop {
             } => {
                 println!("client got relay peer input...");
                 // Decode the inner message
-                match decode::<ResponseMessage>(message).await {
-                    Ok(relayed) => {
-                        println!("process relayed message");
-                    }
+                match decode::<PeerMessage>(message).await {
+                    Ok(relayed) => match relayed {
+                        PeerMessage::Request(
+                            RequestMessage::HandshakeInitiator(
+                                HandshakeType::Peer,
+                                len,
+                                buf,
+                            ),
+                        ) => {
+                            println!("got peer handshake initiator message to process");
+                        }
+                        _ => todo!(),
+                    },
                     Err(e) => {
                         tracing::error!(
                             "client decode inner message error {}",
@@ -105,27 +114,20 @@ impl EventLoop {
         let buffer = incoming.into_data();
         println!("process_socket_message {}", buffer.len());
         match decode::<ResponseMessage>(buffer).await {
-            Ok(response) => {
-                match response {
-                    ResponseMessage::HandshakeResponder(
-                        HandshakeType::Server,
-                        _,
-                        _,
-                    ) => {
-                        println!("Sending to server handshake..");
-                        let _ = server_handshake.send(response).await;
-                    }
-                    /*
-                    ResponseMessage::HandshakeResponder(HandshakeType::Peer, len, buf) => {
-                        println!("got peer handshake responder message to process");
-                    }
-                    */
-                    _ => {
-                        println!("sending to event loop...");
-                        let _ = event_loop.send(response).await;
-                    }
+            Ok(response) => match response {
+                ResponseMessage::HandshakeResponder(
+                    HandshakeType::Server,
+                    _,
+                    _,
+                ) => {
+                    println!("Sending to server handshake..");
+                    let _ = server_handshake.send(response).await;
                 }
-            }
+                _ => {
+                    println!("sending to event loop...");
+                    let _ = event_loop.send(response).await;
+                }
+            },
             Err(e) => {
                 tracing::error!("client decode message error {}", e);
             }
@@ -165,6 +167,9 @@ impl NativeClient {
             mpsc::channel::<ResponseMessage>(32);
         let (server_handshake_tx, server_handshake) =
             mpsc::channel::<ResponseMessage>(32);
+
+        //let (server_handshake_tx, server_handshake) =
+            //mpsc::channel::<ResponseMessage>(32);
 
         let peers = Arc::new(RwLock::new(Default::default()));
         let public_key_id = hex::encode(&options.keypair.public);
@@ -240,8 +245,8 @@ impl NativeClient {
         Ok(())
     }
 
-    /// Initiate handshake with a peer.
-    pub async fn peer_handshake(
+    /// Handshake with a peer.
+    pub async fn connect_peer(
         &mut self,
         public_key: impl AsRef<[u8]>,
     ) -> Result<()> {
@@ -272,11 +277,13 @@ impl NativeClient {
         };
         drop(peers);
 
-        let inner_request = RequestMessage::HandshakeInitiator(
-            HandshakeType::Peer,
-            len,
-            payload,
-        );
+        let inner_request: PeerMessage =
+            RequestMessage::HandshakeInitiator(
+                HandshakeType::Peer,
+                len,
+                payload,
+            )
+            .into();
         let inner_message = encode(&inner_request).await?;
 
         let request = RequestMessage::RelayPeer {
@@ -307,4 +314,3 @@ impl NativeClient {
         Ok(self.writer.flush().await?)
     }
 }
-
