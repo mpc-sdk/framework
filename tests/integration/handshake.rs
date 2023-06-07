@@ -7,6 +7,7 @@ use crate::test_utils::{new_client, spawn};
 #[tokio::test]
 #[serial]
 async fn integration_handshake() -> Result<()> {
+    // Wait for the server to start
     let (rx, _handle) = spawn()?;
     let _ = rx.await?;
 
@@ -23,11 +24,11 @@ async fn integration_handshake() -> Result<()> {
         "participant public key {}",
         hex::encode(&participant_key.public)
     );
-
+    
     // Now we can perform a peer handshake
     initiator.peer_handshake(&participant_key.public).await?;
 
-    std::thread::sleep(Duration::from_millis(1000));
+    std::thread::sleep(Duration::from_millis(2000));
     //loop {}
 
     Ok(())

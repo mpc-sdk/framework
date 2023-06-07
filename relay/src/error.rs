@@ -21,6 +21,10 @@ pub enum Error {
     #[error("server did not reply")]
     NoReply,
 
+    /// Error generated if the client read loop cannot be taken.
+    #[error("client read loop does not exists, probably already taken")]
+    ClientReadLoopAlreadyTaken,
+
     /// Error generated when the config server key file was not found.
     #[error(r#"key file "{0}" not found"#)]
     KeyNotFound(PathBuf),

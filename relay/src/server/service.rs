@@ -120,11 +120,6 @@ async fn handle_request(
                 let mut writer = peer.write().await;
 
                 println!(
-                    "peer writer {:#?}",
-                    hex::encode(&writer.public_key)
-                );
-
-                println!(
                     "relaying: to = {}, from = {}",
                     hex::encode(&public_key),
                     hex::encode(&from_public_key)
