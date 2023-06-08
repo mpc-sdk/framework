@@ -475,7 +475,9 @@ impl EventLoop {
             .send(Notification::ServerHandshake)
             .await?;
 
-        Ok(Event::ServerConnected)
+        Ok(Event::ServerConnected {
+            server_key: self.options.server_public_key.clone(),
+        })
     }
 
     async fn peer_handshake_responder(

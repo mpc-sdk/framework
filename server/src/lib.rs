@@ -11,7 +11,6 @@ mod service;
 mod websocket;
 
 pub use error::Error;
-
 pub use config::ServerConfig;
 pub use server::RelayServer;
 

@@ -19,11 +19,14 @@ use mpc_relay_protocol::snow;
 pub enum Event {
     /// Event dispatched when a handshake with the server
     /// is completed.
-    ServerConnected,
+    ServerConnected {
+        /// Public key of the server.
+        server_key: Vec<u8>,
+    },
     /// Event dispatched when a handshake with a peer
     /// has been completed.
     PeerConnected {
-        /// Peer identifier, hex-encoded public key.
+        /// Public key of the peer.
         peer_key: Vec<u8>,
     },
     /// Binary message received from a peer.
