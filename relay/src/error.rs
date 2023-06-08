@@ -1,4 +1,4 @@
-use crate::{RequestMessage, ResponseMessage};
+use crate::{client::Notification, RequestMessage, ResponseMessage};
 use axum::http::StatusCode;
 use std::path::PathBuf;
 use thiserror::Error;
@@ -114,7 +114,7 @@ pub enum Error {
     ),
 
     #[error(transparent)]
-    BroadcastSend(
-        #[from] tokio::sync::broadcast::error::SendError<Vec<u8>>,
+    NotificationMpscSend(
+        #[from] tokio::sync::mpsc::error::SendError<Notification>,
     ),
 }
