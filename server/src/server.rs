@@ -32,15 +32,15 @@ async fn session_reaper(state: State, interval_secs: u64) {
         tokio::time::interval(Duration::from_secs(interval_secs));
     let mut stream = IntervalStream::new(interval);
     while (stream.next().await).is_some() {
-        let _writer = state.write().await;
-        /*
-        let expired_sessions = writer.sessions.expired_keys();
+        let mut writer = state.write().await;
+        let expired_sessions = writer
+            .sessions
+            .expired_keys(writer.config.session.timeout);
         tracing::debug!(
             expired_sessions = %expired_sessions.len());
         for key in expired_sessions {
             writer.sessions.remove_session(&key);
         }
-        */
     }
 }
 

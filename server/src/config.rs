@@ -43,8 +43,8 @@ pub struct CorsConfig {
 /// Configuration for server sessions.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SessionConfig {
-    /// Duration for sessions in seconds.
-    pub duration: u64,
+    /// Timeout for sessions in seconds.
+    pub timeout: u64,
 
     /// Interval in seconds to reap expired sessions.
     ///
@@ -55,7 +55,7 @@ pub struct SessionConfig {
 impl Default for SessionConfig {
     fn default() -> Self {
         Self {
-            duration: 900,
+            timeout: 300,
             reap_interval: 1800,
         }
     }

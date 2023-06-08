@@ -6,7 +6,7 @@ use std::{net::SocketAddr, path::PathBuf, str::FromStr};
 /// Run a web server.
 pub async fn run(
     reap_interval: Option<u64>,
-    session_duration: Option<u64>,
+    session_timeout: Option<u64>,
     bind: String,
     config: PathBuf,
 ) -> Result<()> {
@@ -16,8 +16,8 @@ pub async fn run(
         config.session.reap_interval = reap_interval;
     }
 
-    if let Some(session_duration) = session_duration {
-        config.session.duration = session_duration;
+    if let Some(session_timeout) = session_timeout {
+        config.session.timeout = session_timeout;
     }
 
     let handle = Handle::new();

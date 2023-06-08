@@ -6,7 +6,11 @@ use binary_stream::{
 use futures::io::{AsyncRead, AsyncSeek, AsyncWrite};
 use http::StatusCode;
 use snow::{HandshakeState, TransportState};
-use std::{collections::HashMap, io::Result, time::SystemTime};
+use std::{
+    collections::HashMap,
+    io::Result,
+    time::{Duration, SystemTime},
+};
 
 pub(crate) fn encoding_error(
     e: impl std::error::Error + Send + Sync + 'static,
@@ -564,5 +568,42 @@ impl SessionManager {
         };
         self.sessions.insert(session_id.clone(), session);
         session_id
+    }
+
+    /// Remove a session.
+    pub fn remove_session(
+        &mut self,
+        id: &SessionId,
+    ) -> Option<Session> {
+        self.sessions.remove(id)
+    }
+
+    /// Retrieve and update the last access time for a session.
+    pub fn touch_session(
+        &mut self,
+        id: &SessionId,
+    ) -> Option<&Session> {
+        if let Some(session) = self.sessions.get_mut(id) {
+            session.last_access = SystemTime::now();
+            Some(&*session)
+        } else { None }
+    }
+
+    /// Get the keys of sessions that have expired.
+    pub fn expired_keys(&self, timeout: u64) -> Vec<SessionId> {
+        self.sessions
+            .iter()
+            .filter(|(_, v)| {
+                let now = SystemTime::now();
+                let ttl = Duration::from_millis(timeout * 1000);
+                if let Some(current) = v.last_access.checked_add(ttl)
+                {
+                    current < now
+                } else {
+                    false
+                }
+            })
+            .map(|(k, _)| *k)
+            .collect::<Vec<_>>()
     }
 }
