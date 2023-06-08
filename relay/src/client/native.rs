@@ -1,4 +1,4 @@
-use async_stream::try_stream;
+use async_stream::stream;
 use futures::{
     select,
     sink::SinkExt,
@@ -61,15 +61,21 @@ impl NativeClient {
         let (stream, response) = connect_async(request).await?;
         let (ws_writer, ws_reader) = stream.split();
 
+        println!("{:#?}", response);
+
         let builder = Builder::new(PATTERN.parse()?);
         let handshake = builder
             .local_private_key(&options.keypair.private)
             .remote_public_key(&options.server_public_key)
             .build_initiator()?;
-
+        
+        // Channel for writing outbound messages to send 
+        // to the server
         let (outbound_tx, outbound_rx) =
             mpsc::channel::<RequestMessage>(32);
-
+        
+        // Internal notification bridge between the client and 
+        // the event loop
         let (notification_tx, notification_rx) =
             mpsc::channel::<Notification>(32);
 
@@ -88,16 +94,17 @@ impl NativeClient {
             server: Arc::clone(&server),
             peers: Arc::clone(&peers),
         };
-
-        let (event_loop_tx, event_loop_rx) =
+        
+        // Decoded socket messages are sent over this channel
+        let (message_tx, message_rx) =
             mpsc::channel::<ResponseMessage>(32);
 
         let event_loop = EventLoop {
             options,
             ws_reader,
             ws_writer,
-            event_loop_tx,
-            event_loop_rx,
+            message_tx,
+            message_rx,
             outbound_tx,
             outbound_rx,
             notification_tx,
@@ -221,8 +228,8 @@ pub struct EventLoop {
         WebSocketStream<MaybeTlsStream<TcpStream>>,
         Message,
     >,
-    event_loop_tx: mpsc::Sender<ResponseMessage>,
-    event_loop_rx: mpsc::Receiver<ResponseMessage>,
+    message_tx: mpsc::Sender<ResponseMessage>,
+    message_rx: mpsc::Receiver<ResponseMessage>,
     outbound_tx: mpsc::Sender<RequestMessage>,
     outbound_rx: mpsc::Receiver<RequestMessage>,
     notification_tx: mpsc::Sender<Notification>,
@@ -233,7 +240,7 @@ pub struct EventLoop {
 impl EventLoop {
     /// Stream of events from the event loop.
     pub fn run<'a>(&'a mut self) -> BoxStream<'a, Result<Event>> {
-        let s = try_stream! {
+        let s = stream! {
             loop {
                 select!(
                     message_in =
@@ -242,13 +249,15 @@ impl EventLoop {
                         Some(message) => {
                             match message {
                                 Ok(message) => {
-                                    Self::decode_socket_message(
+                                    if let Err(e) = Self::read_message(
                                         message,
-                                        &mut self.event_loop_tx,
-                                    ).await;
+                                        &mut self.message_tx,
+                                    ).await {
+                                        yield Err(e);
+                                    }
                                 }
                                 Err(e) => {
-                                    tracing::error!("{}", e);
+                                    yield Err(e.into())
                                 }
                             }
                         }
@@ -259,23 +268,23 @@ impl EventLoop {
                             => match message_out {
                         Some(message) => {
                             if let Err(e) = self.send_message(message).await {
-                                tracing::error!("{}", e);
+                                yield Err(e)
                             }
                         }
                         _ => {}
                     },
                     event_message =
-                        self.event_loop_rx.recv().fuse()
+                        self.message_rx.recv().fuse()
                             => match event_message {
                         Some(event_message) => {
                             match self.handle_incoming_message(
                                 event_message).await {
 
                                 Ok(Some(event)) => {
-                                    yield event;
+                                    yield Ok(event);
                                 }
                                 Err(e) => {
-                                    tracing::error!("{}", e);
+                                    yield Err(e)
                                 }
                                 _ => {}
                             }
@@ -298,13 +307,26 @@ impl EventLoop {
         Ok(self.ws_writer.flush().await?)
     }
 
+    /// Receive and decode socket messages then send to 
+    /// the messages channel.
+    async fn read_message(
+        incoming: Message,
+        event_loop: &mut mpsc::Sender<ResponseMessage>,
+    ) -> Result<()> {
+        if let Message::Binary(buffer) = incoming {
+            let response: ResponseMessage = decode(buffer).await?;
+            event_loop.send(response).await?;
+        }
+        Ok(())
+    }
+
     async fn handle_incoming_message(
         &mut self,
         incoming: ResponseMessage,
     ) -> Result<Option<Event>> {
         match incoming {
             ResponseMessage::Error(code, message) => {
-                tracing::error!("{} {}", code, message);
+                return Err(Error::ServerError(code, message));
             }
             ResponseMessage::HandshakeResponder(
                 HandshakeType::Server,
@@ -364,6 +386,31 @@ impl EventLoop {
         }
 
         Ok(None)
+    }
+
+    async fn server_handshake(
+        &mut self,
+        len: usize,
+        buf: Vec<u8>,
+    ) -> Result<Event> {
+        let mut state = self.server.write().await;
+        let transport = match state.take() {
+            Some(ProtocolState::Handshake(mut initiator)) => {
+                let mut read_buf = vec![0u8; 1024];
+                initiator.read_message(&buf[..len], &mut read_buf)?;
+
+                initiator.into_transport_mode()?
+            }
+            _ => return Err(Error::NotHandshakeState),
+        };
+
+        *state = Some(ProtocolState::Transport(transport));
+
+        self.notification_tx
+            .send(Notification::ServerHandshake)
+            .await?;
+
+        Ok(Event::ServerConnected)
     }
 
     async fn peer_handshake_responder(
@@ -466,44 +513,4 @@ impl EventLoop {
         })
     }
 
-    /// Decode socket messages and send to the appropriate channel.
-    async fn decode_socket_message(
-        incoming: Message,
-        event_loop: &mut mpsc::Sender<ResponseMessage>,
-    ) {
-        let buffer = incoming.into_data();
-        match decode::<ResponseMessage>(buffer).await {
-            Ok(response) => {
-                let _ = event_loop.send(response).await;
-            }
-            Err(e) => {
-                tracing::error!("client decode error {}", e);
-            }
-        }
-    }
-
-    async fn server_handshake(
-        &mut self,
-        len: usize,
-        buf: Vec<u8>,
-    ) -> Result<Event> {
-        let mut state = self.server.write().await;
-        let transport = match state.take() {
-            Some(ProtocolState::Handshake(mut initiator)) => {
-                let mut read_buf = vec![0u8; 1024];
-                initiator.read_message(&buf[..len], &mut read_buf)?;
-
-                initiator.into_transport_mode()?
-            }
-            _ => return Err(Error::NotHandshakeState),
-        };
-
-        *state = Some(ProtocolState::Transport(transport));
-
-        self.notification_tx
-            .send(Notification::ServerHandshake)
-            .await?;
-
-        Ok(Event::ServerConnected)
-    }
 }
