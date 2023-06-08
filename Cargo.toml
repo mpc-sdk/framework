@@ -9,13 +9,13 @@ members = [
 ]
 
 [dependencies]
-clap = { version = "4", features = ["derive", "wrap_help", "env"] }
 mpc-relay-server = { path = "relay" }
 anyhow = "1"
-tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "fs", "io-util" ] }
-axum-server = { version = "0.5", features = ["tls-rustls"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+clap = { version = "4", features = ["derive", "wrap_help", "env"] }
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "fs", "io-util" ] }
+axum-server = { version = "0.5", features = ["tls-rustls"] }
 
 [dev-dependencies]
 serial_test = "2"

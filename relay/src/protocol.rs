@@ -1,10 +1,10 @@
 use async_trait::async_trait;
-use axum::http::StatusCode;
 use binary_stream::{
     futures::{BinaryReader, BinaryWriter, Decodable, Encodable},
     Endian, Options,
 };
 use futures::io::{AsyncRead, AsyncSeek, AsyncWrite};
+use http::StatusCode;
 use snow::{HandshakeState, TransportState};
 use std::io::Result;
 
