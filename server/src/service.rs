@@ -1,11 +1,13 @@
-use super::{Connection, State};
-use crate::{
-    decode, encode, Error, ProtocolState, RequestMessage,
-    ResponseMessage, Result,
-};
 use axum::http::StatusCode;
 use std::sync::Arc;
 use tokio::sync::mpsc;
+
+use mpc_relay_protocol::{
+    decode, encode, hex, ProtocolState, RequestMessage,
+    ResponseMessage,
+};
+
+use crate::{server::State, websocket::Connection, Error, Result};
 
 pub struct RelayService {
     state: State,
@@ -105,6 +107,7 @@ async fn handle_request(
                 .await;
         }
         RequestMessage::RelayPeer {
+            handshake,
             public_key,
             message,
         } => {
@@ -127,6 +130,7 @@ async fn handle_request(
                     "relay",
                 );
                 let relayed = ResponseMessage::RelayPeer {
+                    handshake,
                     public_key: from_public_key,
                     message,
                 };

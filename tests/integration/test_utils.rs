@@ -4,11 +4,13 @@ use axum_server::Handle;
 use std::{net::SocketAddr, thread};
 use tokio::{fs, sync::oneshot};
 
-use mpc_relay_server::{
-    keypair::{decode_keypair, generate_keypair, Keypair},
-    ClientOptions, EventLoop, NativeClient, RelayServer,
-    ServerConfig,
+use mpc_relay_protocol::{
+    decode_keypair, generate_keypair, snow::Keypair,
 };
+
+use mpc_relay_client::{ClientOptions, EventLoop, NativeClient};
+
+use mpc_relay_server::{RelayServer, ServerConfig};
 
 const ADDR: &str = "127.0.0.1:7337";
 const SERVER: &str = "ws://localhost:7337";
@@ -20,6 +22,7 @@ pub async fn server_public_key() -> Result<Vec<u8>> {
     Ok(keypair.public)
 }
 
+#[allow(dead_code)]
 pub fn init_tracing() {
     use tracing_subscriber::{
         layer::SubscriberExt, util::SubscriberInitExt,
@@ -126,7 +129,7 @@ impl Drop for ShutdownHandle {
     }
 }
 
-pub fn spawn(
+pub fn spawn_server(
 ) -> Result<(oneshot::Receiver<SocketAddr>, ShutdownHandle)> {
     let (tx, rx) = oneshot::channel::<SocketAddr>();
     let handle = MockServer::spawn(tx)?;

@@ -1,0 +1,114 @@
+extend= [
+  { path = "coverage.toml" }
+]
+[config]
+default_to_workspace = false
+
+[env]
+RUST_BACKTRACE = 0
+BUILD_TARGET = "${CARGO_MAKE_RUST_TARGET_TRIPLE}"
+# Increase time for integration tests as the CLI
+# tests take a while due to so many exec calls
+RUST_TEST_TIME_INTEGRATION = "120000,240000"
+
+[tasks.fix-all]
+workspace = true
+command = "cargo"
+args = ["fix", "--all-features", "--allow-dirty"]
+
+[tasks.fix-clippy]
+workspace = true
+command = "cargo"
+args = ["clippy", "--fix", "--all-features"]
+
+[tasks.fix]
+dependencies = ["fix-clippy", "fix-all", "format"]
+
+[tasks.format]
+workspace = true
+command = "cargo"
+args = ["fmt"]
+
+[tasks.format-check]
+command = "cargo"
+args = ["fmt", "--all", "--", "--check"]
+
+[tasks.check]
+workspace = true
+command = "cargo"
+args = ["check"]
+
+[tasks.clippy]
+workspace = true
+command = "cargo"
+args = ["clippy", "--all-features"]
+
+[tasks.clean]
+workspace = true
+command = "cargo"
+args = ["clean"]
+
+[tasks.build]
+workspace = true
+command = "cargo"
+args = ["build"]
+dependencies = ["clean"]
+
+[tasks.release]
+command = "cargo"
+args = ["build", "--bins", "--all", "--release"]
+
+[tasks.doc]
+toolchain = "nightly"
+command = "cargo"
+args = ["doc", "--workspace", "--open", "--no-deps", "--all-features"]
+
+[tasks.unit]
+command = "cargo"
+args = ["test", "--all", "--lib", "--", "--nocapture"]
+
+[tasks.integration]
+command = "cargo"
+args = ["test", "integration"]
+
+[tasks.test-wasm]
+command = "wasm-pack"
+args = ["test", "--firefox"]
+
+[tasks.test]
+dependencies = ["unit", "integration"]
+
+[tasks.dev]
+dependencies = ["check-wasm", "test", "format"]
+
+[tasks.check-wasm]
+command = "cargo"
+args = ["check", "--target", "wasm32-unknown-unknown", "-p", "mpc-relay-client"]
+
+[tasks.genhtml]
+script = '''
+grcov ${COVERAGE_PROF_OUTPUT} -s . --binary-path ./target/cover/debug -t html --branch --ignore-not-existing -o ./target/coverage/ --ignore '*/build.rs' --ignore 'tests/*' --ignore 'target/*' --ignore 'src/*'
+'''
+
+[tasks.coverage]
+alias = "coverage_grcov"
+dependencies = ["clean-profraw"]
+
+[tasks.clean-profraw]
+script = '''
+rm -f *.profraw
+rm -f client/*.profraw
+rm -f protocol/*.profraw
+rm -f server/*.profraw
+'''
+
+[tasks.clean-coverage]
+command = "cargo"
+args = ["clean", "--target-dir", "target/coverage"]
+
+[tasks.clean-cover]
+command = "cargo"
+args = ["clean", "--target-dir", "target/cover"]
+
+[tasks.cover]
+dependencies = ["clean-cover", "clean-coverage", "coverage", "genhtml", "clean-profraw"]

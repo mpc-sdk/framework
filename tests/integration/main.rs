@@ -2,6 +2,6 @@
 mod test_utils;
 
 #[cfg(not(target_arch = "wasm32"))]
-mod handshake;
+mod peer_channel;
 
 mod noise_transport;

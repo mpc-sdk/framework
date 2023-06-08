@@ -1,10 +1,10 @@
 use async_trait::async_trait;
-use axum::http::StatusCode;
 use binary_stream::{
     futures::{BinaryReader, BinaryWriter, Decodable, Encodable},
     Endian, Options,
 };
 use futures::io::{AsyncRead, AsyncSeek, AsyncWrite};
+use http::StatusCode;
 use snow::{HandshakeState, TransportState};
 use std::io::Result;
 
@@ -26,6 +26,9 @@ mod types {
     pub const HANDSHAKE_INITIATOR: u8 = 2;
     pub const HANDSHAKE_RESPONDER: u8 = 3;
     pub const RELAY_PEER: u8 = 4;
+
+    pub const ENCODING_BLOB: u8 = 1;
+    pub const ENCODING_JSON: u8 = 2;
 }
 
 /// Default binary encoding options.
@@ -214,10 +217,10 @@ pub enum RequestMessage {
     /// Initiate a handshake.
     HandshakeInitiator(HandshakeType, usize, Vec<u8>),
     /// Relay a message to a peer.
-    ///
-    /// The peer must have already performed a
-    /// handshake with the server.
     RelayPeer {
+        /// Determines if this message is part of the
+        /// peer to peer handshake.
+        handshake: bool,
         /// Public key of the receiver.
         public_key: Vec<u8>,
         /// Message payload.
@@ -254,9 +257,11 @@ impl Encodable for RequestMessage {
                 writer.write_bytes(buf).await?;
             }
             Self::RelayPeer {
+                handshake,
                 public_key,
                 message,
             } => {
+                writer.write_bool(handshake).await?;
                 writer.write_u32(public_key.len() as u32).await?;
                 writer.write_bytes(public_key).await?;
                 writer.write_u32(message.len() as u32).await?;
@@ -288,6 +293,7 @@ impl Decodable for RequestMessage {
                 );
             }
             types::RELAY_PEER => {
+                let handshake = reader.read_bool().await?;
                 let size = reader.read_u32().await?;
                 let public_key =
                     reader.read_bytes(size as usize).await?;
@@ -295,6 +301,7 @@ impl Decodable for RequestMessage {
                 let message =
                     reader.read_bytes(size as usize).await?;
                 *self = RequestMessage::RelayPeer {
+                    handshake,
                     public_key,
                     message,
                 };
@@ -321,6 +328,9 @@ pub enum ResponseMessage {
     HandshakeResponder(HandshakeType, usize, Vec<u8>),
     /// Message being relayed from another peer.
     RelayPeer {
+        /// Determines if this message is part of the
+        /// peer to peer handshake.
+        handshake: bool,
         /// Public key of the sender.
         public_key: Vec<u8>,
         /// Message payload.
@@ -363,9 +373,11 @@ impl Encodable for ResponseMessage {
                 writer.write_bytes(buf).await?;
             }
             Self::RelayPeer {
+                handshake,
                 public_key,
                 message,
             } => {
+                writer.write_bool(handshake).await?;
                 writer.write_u32(public_key.len() as u32).await?;
                 writer.write_bytes(public_key).await?;
                 writer.write_u32(message.len() as u32).await?;
@@ -406,6 +418,7 @@ impl Decodable for ResponseMessage {
                 );
             }
             types::RELAY_PEER => {
+                let handshake = reader.read_bool().await?;
                 let size = reader.read_u32().await?;
                 let public_key =
                     reader.read_bytes(size as usize).await?;
@@ -413,6 +426,7 @@ impl Decodable for ResponseMessage {
                 let message =
                     reader.read_bytes(size as usize).await?;
                 *self = ResponseMessage::RelayPeer {
+                    handshake,
                     public_key,
                     message,
                 };
@@ -423,6 +437,86 @@ impl Decodable for ResponseMessage {
                 ))
             }
         }
+        Ok(())
+    }
+}
+
+/// Encoding for message payloads.
+#[derive(Default, Clone, Copy, Debug)]
+pub enum Encoding {
+    #[default]
+    #[doc(hidden)]
+    Noop,
+    /// Binary encoding.
+    Blob,
+    /// JSON encoding.
+    Json,
+}
+
+impl From<Encoding> for u8 {
+    fn from(value: Encoding) -> Self {
+        match value {
+            Encoding::Noop => types::NOOP,
+            Encoding::Blob => types::ENCODING_BLOB,
+            Encoding::Json => types::ENCODING_JSON,
+        }
+    }
+}
+
+/// Sealed message sent between peers.
+///
+/// The payload has been encrypted using the noise protocol
+/// channel and the recipient must decrypt and decode the payload.
+#[derive(Default, Debug)]
+pub struct SealedEnvelope {
+    /// Encoding for the payload.
+    pub encoding: Encoding,
+    /// Length of the payload data.
+    pub length: usize,
+    /// Encrypted payload.
+    pub payload: Vec<u8>,
+}
+
+#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl Encodable for SealedEnvelope {
+    async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
+        &self,
+        writer: &mut BinaryWriter<W>,
+    ) -> Result<()> {
+        let id: u8 = self.encoding.into();
+        writer.write_u8(id).await?;
+        writer.write_usize(self.length).await?;
+        writer.write_u32(self.payload.len() as u32).await?;
+        writer.write_bytes(&self.payload).await?;
+        Ok(())
+    }
+}
+
+#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl Decodable for SealedEnvelope {
+    async fn decode<R: AsyncRead + AsyncSeek + Unpin + Send>(
+        &mut self,
+        reader: &mut BinaryReader<R>,
+    ) -> Result<()> {
+        let id = reader.read_u8().await?;
+        match id {
+            types::ENCODING_BLOB => {
+                self.encoding = Encoding::Blob;
+            }
+            types::ENCODING_JSON => {
+                self.encoding = Encoding::Json;
+            }
+            _ => {
+                return Err(encoding_error(
+                    crate::Error::EncodingKind(id),
+                ))
+            }
+        }
+        self.length = reader.read_usize().await?;
+        let size = reader.read_u32().await?;
+        self.payload = reader.read_bytes(size as usize).await?;
         Ok(())
     }
 }

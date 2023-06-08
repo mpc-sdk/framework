@@ -1,3 +1,5 @@
+//! Constants used by the relay library.
+
 /// Noise protocol pattern.
 pub const PATTERN: &'static str = "Noise_NN_25519_ChaChaPoly_BLAKE2s";
 

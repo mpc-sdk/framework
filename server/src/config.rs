@@ -1,11 +1,11 @@
 //! Server configuration.
+use mpc_relay_protocol::{decode_keypair, snow::Keypair};
 use serde::{Deserialize, Serialize};
-use snow::Keypair;
 use std::path::{Path, PathBuf};
 use tokio::fs;
 use url::Url;
 
-use crate::{keypair, Error, Result};
+use crate::{Error, Result};
 
 /// Configuration for the web server.
 #[derive(Default, Serialize, Deserialize)]
@@ -88,7 +88,7 @@ impl ServerConfig {
         }
 
         let contents = fs::read_to_string(&config.key).await?;
-        let keypair = keypair::decode_keypair(&contents)?;
+        let keypair = decode_keypair(&contents)?;
 
         if let Some(tls) = config.tls.as_mut() {
             if tls.cert.is_relative() {

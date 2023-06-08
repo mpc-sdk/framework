@@ -1,16 +1,15 @@
 use async_stream::stream;
-use axum::http::StatusCode;
 use futures::{
     select,
     sink::SinkExt,
     stream::{BoxStream, SplitSink, SplitStream},
     FutureExt, StreamExt,
 };
-use snow::Builder;
+use serde::Serialize;
 use std::{collections::HashMap, sync::Arc};
 use tokio::{
     net::TcpStream,
-    sync::{mpsc, RwLock},
+    sync::{mpsc, Mutex, RwLock},
 };
 use tokio_tungstenite::{
     connect_async,
@@ -18,11 +17,13 @@ use tokio_tungstenite::{
     MaybeTlsStream, WebSocketStream,
 };
 
-use crate::{
-    constants::PATTERN, decode, encode, ClientOptions, Error, Event,
+use mpc_relay_protocol::{
+    decode, encode, hex, http::StatusCode, snow::Builder, Encoding,
     HandshakeType, PeerMessage, ProtocolState, RequestMessage,
-    ResponseMessage, Result,
+    ResponseMessage, SealedEnvelope, PATTERN, TAGLEN,
 };
+
+use crate::{ClientOptions, Error, Event, JsonMessage, Result};
 
 type Peers = Arc<RwLock<HashMap<Vec<u8>, ProtocolState>>>;
 type Server = Arc<RwLock<Option<ProtocolState>>>;
@@ -38,9 +39,10 @@ pub enum Notification {
 }
 
 /// Native websocket client using the tokio tungstenite library.
+#[derive(Clone)]
 pub struct NativeClient {
     options: Arc<ClientOptions>,
-    notification_rx: mpsc::Receiver<Notification>,
+    notification_rx: Arc<Mutex<mpsc::Receiver<Notification>>>,
     outbound_tx: mpsc::Sender<RequestMessage>,
     server: Server,
     peers: Peers,
@@ -58,7 +60,7 @@ impl NativeClient {
         let (stream, response) = connect_async(request).await?;
 
         if response.status() != StatusCode::SWITCHING_PROTOCOLS {
-            return Err(Error::ServerError(
+            return Err(Error::HttpError(
                 response.status(),
                 response.status().to_string(),
             ));
@@ -91,7 +93,7 @@ impl NativeClient {
         let options = Arc::new(options);
         let client = Self {
             options: Arc::clone(&options),
-            notification_rx,
+            notification_rx: Arc::new(Mutex::new(notification_rx)),
             outbound_tx: outbound_tx.clone(),
             server: Arc::clone(&server),
             peers: Arc::clone(&peers),
@@ -142,7 +144,8 @@ impl NativeClient {
         self.outbound_tx.send(request).await?;
 
         // Wait for the server handshake notification
-        while let Some(notify) = self.notification_rx.recv().await {
+        let mut notifier = self.notification_rx.lock().await;
+        while let Some(notify) = notifier.recv().await {
             if let Notification::ServerHandshake = notify {
                 break;
             }
@@ -198,6 +201,7 @@ impl NativeClient {
         let inner_message = encode(&inner_request).await?;
 
         let request = RequestMessage::RelayPeer {
+            handshake: true,
             public_key: public_key.as_ref().to_vec(),
             message: inner_message,
         };
@@ -205,12 +209,84 @@ impl NativeClient {
         self.outbound_tx.send(request).await?;
 
         // Wait for the peer handshake notification
-        while let Some(notify) = self.notification_rx.recv().await {
+        let mut notifier = self.notification_rx.lock().await;
+        while let Some(notify) = notifier.recv().await {
             if let Notification::PeerHandshake = notify {
                 break;
             }
         }
         Ok(())
+    }
+
+    /// Encode as JSON and relay to the peer.
+    pub async fn send<S>(
+        &mut self,
+        public_key: impl AsRef<[u8]>,
+        payload: &S,
+    ) -> Result<()>
+    where
+        S: Serialize + ?Sized,
+    {
+        self.relay(
+            public_key,
+            serde_json::to_vec(payload)?,
+            Encoding::Json,
+        )
+        .await
+    }
+
+    /// Encode as binary and relay to the peer.
+    pub async fn send_binary(
+        &mut self,
+        public_key: impl AsRef<[u8]>,
+        payload: Vec<u8>,
+    ) -> Result<()> {
+        self.relay(public_key, payload, Encoding::Blob).await
+    }
+
+    /// Relay a buffer to a peer over the noise protocol channel.
+    ///
+    /// The peers must have already performed the noise protocol
+    /// handshake.
+    async fn relay(
+        &mut self,
+        public_key: impl AsRef<[u8]>,
+        payload: Vec<u8>,
+        encoding: Encoding,
+    ) -> Result<()> {
+        let mut peers = self.peers.write().await;
+        if let Some(peer) = peers.get_mut(public_key.as_ref()) {
+            match peer {
+                ProtocolState::Transport(transport) => {
+                    let mut contents =
+                        vec![0; payload.len() + TAGLEN];
+                    let length = transport
+                        .write_message(&payload, &mut contents)?;
+
+                    let envelope = SealedEnvelope {
+                        length,
+                        encoding,
+                        payload: contents,
+                    };
+
+                    let message = encode(&envelope).await?;
+
+                    let request = RequestMessage::RelayPeer {
+                        handshake: false,
+                        public_key: public_key.as_ref().to_vec(),
+                        message,
+                    };
+
+                    self.outbound_tx.send(request).await?;
+                    Ok(())
+                }
+                _ => Err(Error::NotTransportState),
+            }
+        } else {
+            Err(Error::PeerNotFound(hex::encode(
+                public_key.as_ref().to_vec(),
+            )))
+        }
     }
 }
 
@@ -321,66 +397,60 @@ impl EventLoop {
     ) -> Result<Option<Event>> {
         match incoming {
             ResponseMessage::Error(code, message) => {
-                return Err(Error::ServerError(code, message));
+                Err(Error::HttpError(code, message))
             }
             ResponseMessage::HandshakeResponder(
                 HandshakeType::Server,
                 len,
                 buf,
-            ) => {
-                return Ok(Some(
-                    self.server_handshake(len, buf).await?,
-                ));
-            }
+            ) => Ok(Some(self.server_handshake(len, buf).await?)),
             ResponseMessage::RelayPeer {
+                handshake,
                 public_key,
                 message,
             } => {
-                // Decode the inner message
-                match decode::<PeerMessage>(message).await {
-                    Ok(relayed) => match relayed {
+                if handshake {
+                    // Decode the inner message
+                    let relayed =
+                        decode::<PeerMessage>(message).await?;
+                    match relayed {
                         PeerMessage::Request(
                             RequestMessage::HandshakeInitiator(
                                 HandshakeType::Peer,
                                 len,
                                 buf,
                             ),
-                        ) => {
-                            return Ok(Some(
-                                self.peer_handshake_responder(
-                                    public_key, len, buf,
-                                )
-                                .await?,
-                            ));
-                        }
+                        ) => Ok(Some(
+                            self.peer_handshake_responder(
+                                public_key, len, buf,
+                            )
+                            .await?,
+                        )),
                         PeerMessage::Response(
                             ResponseMessage::HandshakeResponder(
                                 HandshakeType::Peer,
                                 len,
                                 buf,
                             ),
-                        ) => {
-                            return Ok(Some(
-                                self.peer_handshake_ack(
-                                    public_key, len, buf,
-                                )
-                                .await?,
-                            ));
-                        }
-                        _ => todo!(),
-                    },
-                    Err(e) => {
-                        tracing::error!(
-                            "client decode error (inner message) {}",
-                            e
-                        );
+                        ) => Ok(Some(
+                            self.peer_handshake_ack(
+                                public_key, len, buf,
+                            )
+                            .await?,
+                        )),
+                        _ => Err(Error::InvalidPeerHandshakeMessage),
                     }
+                } else {
+                    Ok(Some(
+                        self.handle_relayed_message(
+                            public_key, message,
+                        )
+                        .await?,
+                    ))
                 }
             }
-            _ => {}
+            _ => Ok(None),
         }
-
-        Ok(None)
     }
 
     async fn server_handshake(
@@ -405,7 +475,9 @@ impl EventLoop {
             .send(Notification::ServerHandshake)
             .await?;
 
-        Ok(Event::ServerConnected)
+        Ok(Event::ServerConnected {
+            server_key: self.options.server_public_key.clone(),
+        })
     }
 
     async fn peer_handshake_responder(
@@ -452,6 +524,7 @@ impl EventLoop {
         let inner_message = encode(&inner_request).await?;
 
         let request = RequestMessage::RelayPeer {
+            handshake: true,
             public_key: public_key.as_ref().to_vec(),
             message: inner_message,
         };
@@ -459,7 +532,7 @@ impl EventLoop {
         self.outbound_tx.send(request).await?;
 
         Ok(Event::PeerConnected {
-            peer_id: hex::encode(public_key.as_ref()),
+            peer_key: public_key.as_ref().to_vec(),
         })
     }
 
@@ -504,7 +577,48 @@ impl EventLoop {
             .await?;
 
         Ok(Event::PeerConnected {
-            peer_id: hex::encode(public_key.as_ref()),
+            peer_key: public_key.as_ref().to_vec(),
         })
+    }
+
+    async fn handle_relayed_message(
+        &mut self,
+        public_key: impl AsRef<[u8]>,
+        payload: Vec<u8>,
+    ) -> Result<Event> {
+        let mut peers = self.peers.write().await;
+        if let Some(peer) = peers.get_mut(public_key.as_ref()) {
+            match peer {
+                ProtocolState::Transport(transport) => {
+                    let envelope: SealedEnvelope =
+                        decode(&payload).await?;
+                    let mut contents = vec![0; envelope.length];
+                    transport.read_message(
+                        &envelope.payload[..envelope.length],
+                        &mut contents,
+                    )?;
+
+                    let new_length = contents.len() - TAGLEN;
+                    contents.truncate(new_length);
+
+                    match envelope.encoding {
+                        Encoding::Noop => unreachable!(),
+                        Encoding::Blob => Ok(Event::BinaryMessage {
+                            peer_key: public_key.as_ref().to_vec(),
+                            message: contents,
+                        }),
+                        Encoding::Json => Ok(Event::JsonMessage {
+                            peer_key: public_key.as_ref().to_vec(),
+                            message: JsonMessage { contents },
+                        }),
+                    }
+                }
+                _ => Err(Error::NotTransportState),
+            }
+        } else {
+            Err(Error::PeerNotFound(hex::encode(
+                public_key.as_ref().to_vec(),
+            )))
+        }
     }
 }
