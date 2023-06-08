@@ -1,12 +1,10 @@
 use async_stream::stream;
-use axum::http::StatusCode;
 use futures::{
     select,
     sink::SinkExt,
     stream::{BoxStream, SplitSink, SplitStream},
     FutureExt, StreamExt,
 };
-use snow::Builder;
 use std::{collections::HashMap, sync::Arc};
 use tokio::{
     net::TcpStream,
@@ -18,11 +16,13 @@ use tokio_tungstenite::{
     MaybeTlsStream, WebSocketStream,
 };
 
-use crate::{
-    constants::PATTERN, decode, encode, ClientOptions, Error, Event,
+use mpc_relay_protocol::{
+    PATTERN, decode, encode, 
     HandshakeType, PeerMessage, ProtocolState, RequestMessage,
-    ResponseMessage, Result,
+    ResponseMessage, snow::Builder, hex, http::StatusCode,
 };
+
+use crate::{Result, Error, Event, ClientOptions};
 
 type Peers = Arc<RwLock<HashMap<Vec<u8>, ProtocolState>>>;
 type Server = Arc<RwLock<Option<ProtocolState>>>;
@@ -58,7 +58,7 @@ impl NativeClient {
         let (stream, response) = connect_async(request).await?;
 
         if response.status() != StatusCode::SWITCHING_PROTOCOLS {
-            return Err(Error::ServerError(
+            return Err(Error::HttpError(
                 response.status(),
                 response.status().to_string(),
             ));
@@ -321,7 +321,7 @@ impl EventLoop {
     ) -> Result<Option<Event>> {
         match incoming {
             ResponseMessage::Error(code, message) => {
-                return Err(Error::ServerError(code, message));
+                return Err(Error::HttpError(code, message));
             }
             ResponseMessage::HandshakeResponder(
                 HandshakeType::Server,

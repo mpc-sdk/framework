@@ -4,10 +4,18 @@ use axum_server::Handle;
 use std::{net::SocketAddr, thread};
 use tokio::{fs, sync::oneshot};
 
+use mpc_relay_protocol::{
+    decode_keypair, generate_keypair,
+    snow::Keypair,
+};
+
+use mpc_relay_client::{
+    ClientOptions, EventLoop, NativeClient,
+};
+
 use mpc_relay_server::{
-    keypair::{decode_keypair, generate_keypair},
-    ClientOptions, EventLoop, NativeClient, RelayServer,
-    ServerConfig, snow::Keypair,
+    RelayServer,
+    ServerConfig,
 };
 
 const ADDR: &str = "127.0.0.1:7337";

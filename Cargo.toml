@@ -5,11 +5,14 @@ edition = "2021"
 
 [workspace]
 members = [
-  "relay"
+  "client",
+  "protocol",
+  "server"
 ]
 
 [dependencies]
-mpc-relay-server = { path = "relay" }
+mpc-relay-protocol = { path = "protocol" }
+mpc-relay-server = { path = "server" }
 anyhow = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
@@ -18,6 +21,7 @@ tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "fs", "i
 axum-server = { version = "0.5", features = ["tls-rustls"] }
 
 [dev-dependencies]
+mpc-relay-client= { path = "client" }
 serial_test = "2"
 futures = "0.3"
 hex = "0.4"

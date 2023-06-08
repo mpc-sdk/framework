@@ -12,16 +12,14 @@ use futures::{
 };
 
 use serde::Deserialize;
-use snow::Builder;
 
 use std::sync::Arc;
 use tokio::sync::{mpsc, RwLock};
 
-use uuid::Uuid;
 //use axum_macros::debug_handler;
 
-use super::{Service, State};
-use crate::{constants::PATTERN, ProtocolState, Result};
+use mpc_relay_protocol::{PATTERN, ProtocolState, snow::Builder, uuid::Uuid, hex};
+use crate::{Result, server::{Service, State}};
 
 pub type Connection = Arc<RwLock<WebSocketConnection>>;
 

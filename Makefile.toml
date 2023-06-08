@@ -83,7 +83,7 @@ dependencies = ["check-wasm", "test", "format"]
 
 [tasks.check-wasm]
 command = "cargo"
-args = ["check", "--target", "wasm32-unknown-unknown", "-p", "mpc-relay-server"]
+args = ["check", "--target", "wasm32-unknown-unknown", "-p", "mpc-relay-client"]
 
 [tasks.genhtml]
 script = '''

@@ -1,5 +1,4 @@
 use futures::StreamExt;
-use snow::Keypair;
 use std::{
     collections::HashMap, net::SocketAddr, sync::Arc, time::Duration,
 };
@@ -16,20 +15,17 @@ use axum_server::{tls_rustls::RustlsConfig, Handle};
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use uuid::Uuid;
 
+use mpc_relay_protocol::{snow::Keypair, uuid};
+
 use crate::{
-    server::config::{ServerConfig, TlsConfig},
+    config::{ServerConfig, TlsConfig},
     Result,
 };
 
-pub(crate) mod config;
-mod service;
-mod websocket;
+use crate::{service::RelayService, websocket::Connection};
 
-use service::RelayService;
-use websocket::Connection;
-
-type State = Arc<RwLock<ServerState>>;
-type Service = Arc<RelayService>;
+pub type State = Arc<RwLock<ServerState>>;
+pub(crate) type Service = Arc<RelayService>;
 
 async fn session_reaper(state: State, interval_secs: u64) {
     let interval =
@@ -53,18 +49,18 @@ struct SessionManager {}
 
 pub struct ServerState {
     /// Server keypair.
-    keypair: Keypair,
+    pub(crate) keypair: Keypair,
 
     /// Server config.
     config: ServerConfig,
 
     /// Pending socket connections in the handshake state.
-    pending: HashMap<Uuid, Connection>,
+    pub(crate) pending: HashMap<Uuid, Connection>,
 
     /// Active socket connections in the transport state.
     ///
     /// Now the hashmap key is the client's public key.
-    active: HashMap<Vec<u8>, Connection>,
+    pub(crate) active: HashMap<Vec<u8>, Connection>,
 
     /// Session manager.
     sessions: SessionManager,
@@ -164,7 +160,7 @@ impl RelayServer {
         let service = Arc::new(RelayService::new(Arc::clone(&state)));
 
         let mut app =
-            Router::new().route("/", get(websocket::upgrade));
+            Router::new().route("/", get(crate::websocket::upgrade));
         app = app
             .layer(cors)
             .layer(TraceLayer::new_for_http())
