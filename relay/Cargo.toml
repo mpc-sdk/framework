@@ -36,3 +36,6 @@ getrandom = {version = "0.2", features = ["js"]}
 
 [dev-dependencies]
 anyhow = "1"
+
+[build-dependencies]
+rustc_version = "0.4.0"

@@ -70,6 +70,7 @@ pub struct ServerState {
     sessions: SessionManager,
 }
 
+/// Relay web server.
 pub struct RelayServer {
     state: State,
 }

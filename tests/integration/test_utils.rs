@@ -5,9 +5,9 @@ use std::{net::SocketAddr, thread};
 use tokio::{fs, sync::oneshot};
 
 use mpc_relay_server::{
-    keypair::{decode_keypair, generate_keypair, Keypair},
+    keypair::{decode_keypair, generate_keypair},
     ClientOptions, EventLoop, NativeClient, RelayServer,
-    ServerConfig,
+    ServerConfig, snow::Keypair,
 };
 
 const ADDR: &str = "127.0.0.1:7337";

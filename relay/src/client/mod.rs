@@ -13,7 +13,10 @@ pub enum Event {
 
     /// Event dispatched when a handshake with a peer
     /// has been completed.
-    PeerConnected { peer_id: String },
+    PeerConnected {
+        /// Peer identifier, hex-encoded public key.
+        peer_id: String,
+    },
 }
 
 /// Options used to create a new websocket client.

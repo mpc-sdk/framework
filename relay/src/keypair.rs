@@ -1,10 +1,9 @@
+//! Helper functions for working with static keys.
 use crate::{
     constants::{PATTERN, PEM_PRIVATE, PEM_PUBLIC},
-    Error, Result,
+    Error, Result, snow::Keypair,
 };
 use pem::Pem;
-
-pub use snow::Keypair;
 
 /// Generate a keypair for the noise protocol using the
 /// standard pattern.

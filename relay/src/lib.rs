@@ -1,3 +1,9 @@
+//! Relay server using the noise protocol for E2EE designed
+//! for MPC/TSS applications.
+
+#![deny(missing_docs)]
+#![cfg_attr(all(doc, CHANNEL_NIGHTLY), feature(doc_auto_cfg))]
+
 mod client;
 pub mod constants;
 mod error;
@@ -20,4 +26,7 @@ pub(crate) use protocol::{
 #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
 pub use server::{config::ServerConfig, RelayServer};
 
+pub use snow;
+
+/// Result type for the relay service.
 pub type Result<T> = std::result::Result<T, Error>;
