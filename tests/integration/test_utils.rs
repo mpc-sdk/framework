@@ -128,7 +128,7 @@ impl Drop for ShutdownHandle {
     }
 }
 
-pub fn spawn(
+pub fn spawn_server(
 ) -> Result<(oneshot::Receiver<SocketAddr>, ShutdownHandle)> {
     let (tx, rx) = oneshot::channel::<SocketAddr>();
     let handle = MockServer::spawn(tx)?;

@@ -13,7 +13,6 @@ pem = "2"
 uuid = { version = "1", features = ["v4"] }
 http = "0.2"
 hex = { version = "0.4", features = ["serde"] }
-bitflags = "2"
 
 [dev-dependencies]
 anyhow = "1"

@@ -20,13 +20,41 @@ pub enum Event {
     /// Event dispatched when a handshake with the server
     /// is completed.
     ServerConnected,
-
     /// Event dispatched when a handshake with a peer
     /// has been completed.
     PeerConnected {
         /// Peer identifier, hex-encoded public key.
         peer_id: String,
     },
+    /// Binary message received from a peer.
+    BinaryMessage {
+        /// Public key of the peer.
+        peer_key: Vec<u8>,
+        /// Message buffer.
+        message: Vec<u8>,
+    },
+    /// JSON message received from a peer.
+    JsonMessage {
+        /// Public key of the peer.
+        peer_key: Vec<u8>,
+        /// JSON message.
+        message: JsonMessage,
+    },
+}
+
+/// JSON message received from a peer.
+#[derive(Debug)]
+pub struct JsonMessage {
+    contents: Vec<u8>,
+}
+
+impl JsonMessage {
+    /// Deserialize this message.
+    pub fn deserialize<T: serde::de::DeserializeOwned>(
+        &self,
+    ) -> Result<T> {
+        Ok(serde_json::from_slice::<T>(&self.contents)?)
+    }
 }
 
 /// Options used to create a new websocket client.

@@ -3,7 +3,6 @@ use binary_stream::{
     futures::{BinaryReader, BinaryWriter, Decodable, Encodable},
     Endian, Options,
 };
-use bitflags::bitflags;
 use futures::io::{AsyncRead, AsyncSeek, AsyncWrite};
 use http::StatusCode;
 use snow::{HandshakeState, TransportState};
@@ -27,6 +26,9 @@ mod types {
     pub const HANDSHAKE_INITIATOR: u8 = 2;
     pub const HANDSHAKE_RESPONDER: u8 = 3;
     pub const RELAY_PEER: u8 = 4;
+
+    pub const ENCODING_BLOB: u8 = 1;
+    pub const ENCODING_JSON: u8 = 2;
 }
 
 /// Default binary encoding options.
@@ -216,7 +218,7 @@ pub enum RequestMessage {
     HandshakeInitiator(HandshakeType, usize, Vec<u8>),
     /// Relay a message to a peer.
     RelayPeer {
-        /// Determines if this message is part of the 
+        /// Determines if this message is part of the
         /// peer to peer handshake.
         handshake: bool,
         /// Public key of the receiver.
@@ -326,7 +328,7 @@ pub enum ResponseMessage {
     HandshakeResponder(HandshakeType, usize, Vec<u8>),
     /// Message being relayed from another peer.
     RelayPeer {
-        /// Determines if this message is part of the 
+        /// Determines if this message is part of the
         /// peer to peer handshake.
         handshake: bool,
         /// Public key of the sender.
@@ -439,25 +441,38 @@ impl Decodable for ResponseMessage {
     }
 }
 
-bitflags! {
-    /// Encoding flags for message payloads.
-    #[derive(Default, Clone, Copy, Debug)]
-    pub struct EncodingFlags: u16 {
-        /// Binary encoding.
-        const BLOB      = 0b00000001;
-        /// JSON encoding.
-        const JSON      = 0b00000010;
+/// Encoding for message payloads.
+#[derive(Default, Clone, Copy, Debug)]
+pub enum Encoding {
+    #[default]
+    #[doc(hidden)]
+    Noop,
+    /// Binary encoding.
+    Blob,
+    /// JSON encoding.
+    Json,
+}
+
+impl From<Encoding> for u8 {
+    fn from(value: Encoding) -> Self {
+        match value {
+            Encoding::Noop => types::NOOP,
+            Encoding::Blob => types::ENCODING_BLOB,
+            Encoding::Json => types::ENCODING_JSON,
+        }
     }
 }
 
 /// Sealed message sent between peers.
 ///
-/// The payload has been encrypted using the noise protocol 
+/// The payload has been encrypted using the noise protocol
 /// channel and the recipient must decrypt and decode the payload.
 #[derive(Default, Debug)]
 pub struct SealedEnvelope {
-    /// Encoding for the underlying payload.
-    pub encoding: EncodingFlags,
+    /// Encoding for the payload.
+    pub encoding: Encoding,
+    /// Length of the payload data.
+    pub length: usize,
     /// Encrypted payload.
     pub payload: Vec<u8>,
 }
@@ -469,8 +484,9 @@ impl Encodable for SealedEnvelope {
         &self,
         writer: &mut BinaryWriter<W>,
     ) -> Result<()> {
-        let flags: u16 = self.encoding.bits();
-        writer.write_u16(flags).await?;
+        let id: u8 = self.encoding.into();
+        writer.write_u8(id).await?;
+        writer.write_usize(self.length).await?;
         writer.write_u32(self.payload.len() as u32).await?;
         writer.write_bytes(&self.payload).await?;
         Ok(())
@@ -484,12 +500,23 @@ impl Decodable for SealedEnvelope {
         &mut self,
         reader: &mut BinaryReader<R>,
     ) -> Result<()> {
-        self.encoding = EncodingFlags::from_bits(reader.read_u16().await?)
-            .ok_or(crate::Error::InvalidEncodingFlags)
-            .map_err(encoding_error)?;
+        let id = reader.read_u8().await?;
+        match id {
+            types::ENCODING_BLOB => {
+                self.encoding = Encoding::Blob;
+            }
+            types::ENCODING_JSON => {
+                self.encoding = Encoding::Json;
+            }
+            _ => {
+                return Err(encoding_error(
+                    crate::Error::EncodingKind(id),
+                ))
+            }
+        }
+        self.length = reader.read_usize().await?;
         let size = reader.read_u32().await?;
         self.payload = reader.read_bytes(size as usize).await?;
         Ok(())
     }
 }
-
