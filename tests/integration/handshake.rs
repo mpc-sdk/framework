@@ -12,13 +12,13 @@ async fn integration_handshake() -> Result<()> {
     let (rx, _handle) = spawn()?;
     let _ = rx.await?;
 
-    // Create new clients and automatically perform the
-    // server handshake
+    // Create new clients
     let (mut initiator, mut event_loop_i, _initiator_key) =
         new_client().await?;
     let (mut participant, mut event_loop_p, participant_key) =
         new_client().await?;
-
+    
+    // Setup event loops
     let ev_i = tokio::task::spawn(async move {
         let mut s = event_loop_i.run();
         while let Some(event) = s.next().await {
@@ -36,7 +36,8 @@ async fn integration_handshake() -> Result<()> {
         }
         Ok::<(), anyhow::Error>(())
     });
-
+    
+    // Clients must handshake with the server first
     initiator.handshake().await?;
     participant.handshake().await?;
 
@@ -51,7 +52,7 @@ async fn integration_handshake() -> Result<()> {
     );
     */
 
-    // Now we can perform a peer handshake
+    // Now we can connect to a peer
     initiator.connect_peer(&participant_key.public).await?;
     tracing::info!("peer handshake complete");
 
