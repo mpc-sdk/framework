@@ -17,7 +17,7 @@ async fn integration_handshake() -> Result<()> {
         new_client().await?;
     let (mut participant, mut event_loop_p, participant_key) =
         new_client().await?;
-    
+
     // Setup event loops
     let ev_i = tokio::task::spawn(async move {
         let mut s = event_loop_i.run();
@@ -36,7 +36,7 @@ async fn integration_handshake() -> Result<()> {
         }
         Ok::<(), anyhow::Error>(())
     });
-    
+
     // Clients must handshake with the server first
     initiator.handshake().await?;
     participant.handshake().await?;

@@ -2,7 +2,7 @@ use anyhow::{bail, Result};
 use std::path::PathBuf;
 use tokio::{fs, io::AsyncWriteExt};
 
-use mpc_relay_protocol::{generate_keypair, encode_keypair};
+use mpc_relay_protocol::{encode_keypair, generate_keypair};
 
 /// Generate keypair and write to file.
 pub async fn run(path: PathBuf, force: bool) -> Result<()> {

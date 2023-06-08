@@ -3,11 +3,11 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 
 use mpc_relay_protocol::{
-    decode, encode, ProtocolState, RequestMessage,
-    ResponseMessage, hex,
+    decode, encode, hex, ProtocolState, RequestMessage,
+    ResponseMessage,
 };
 
-use crate::{Error, Result, websocket::Connection, server::State};
+use crate::{server::State, websocket::Connection, Error, Result};
 
 pub struct RelayService {
     state: State,

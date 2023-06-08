@@ -1,9 +1,9 @@
 //! Server configuration.
+use mpc_relay_protocol::{decode_keypair, snow::Keypair};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use tokio::fs;
 use url::Url;
-use mpc_relay_protocol::{decode_keypair, snow::Keypair};
 
 use crate::{Error, Result};
 

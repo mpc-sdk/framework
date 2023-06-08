@@ -5,18 +5,12 @@ use std::{net::SocketAddr, thread};
 use tokio::{fs, sync::oneshot};
 
 use mpc_relay_protocol::{
-    decode_keypair, generate_keypair,
-    snow::Keypair,
+    decode_keypair, generate_keypair, snow::Keypair,
 };
 
-use mpc_relay_client::{
-    ClientOptions, EventLoop, NativeClient,
-};
+use mpc_relay_client::{ClientOptions, EventLoop, NativeClient};
 
-use mpc_relay_server::{
-    RelayServer,
-    ServerConfig,
-};
+use mpc_relay_server::{RelayServer, ServerConfig};
 
 const ADDR: &str = "127.0.0.1:7337";
 const SERVER: &str = "ws://localhost:7337";

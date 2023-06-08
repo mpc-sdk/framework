@@ -1,7 +1,8 @@
 //! Helper functions for working with static keys.
 use crate::{
     constants::{PATTERN, PEM_PRIVATE, PEM_PUBLIC},
-    Error, Result, snow::Keypair,
+    snow::Keypair,
+    Error, Result,
 };
 use pem::Pem;
 

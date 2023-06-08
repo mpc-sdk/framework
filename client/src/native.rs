@@ -5,6 +5,7 @@ use futures::{
     stream::{BoxStream, SplitSink, SplitStream},
     FutureExt, StreamExt,
 };
+use serde::Serialize;
 use std::{collections::HashMap, sync::Arc};
 use tokio::{
     net::TcpStream,
@@ -17,12 +18,12 @@ use tokio_tungstenite::{
 };
 
 use mpc_relay_protocol::{
-    PATTERN, decode, encode, 
+    decode, encode, hex, http::StatusCode, snow::Builder,
     HandshakeType, PeerMessage, ProtocolState, RequestMessage,
-    ResponseMessage, snow::Builder, hex, http::StatusCode,
+    ResponseMessage, PATTERN, TAGLEN,
 };
 
-use crate::{Result, Error, Event, ClientOptions};
+use crate::{ClientOptions, Error, Event, Result};
 
 type Peers = Arc<RwLock<HashMap<Vec<u8>, ProtocolState>>>;
 type Server = Arc<RwLock<Option<ProtocolState>>>;
@@ -211,6 +212,52 @@ impl NativeClient {
             }
         }
         Ok(())
+    }
+
+    /// Encode as JSON and relay to the peer.
+    pub async fn send<S>(
+        &mut self,
+        public_key: impl AsRef<[u8]>,
+        payload: &S,
+    ) -> Result<()>
+    where
+        S: Serialize + ?Sized,
+    {
+        let buffer = serde_json::to_vec(payload)?;
+        self.relay(public_key, buffer).await
+    }
+
+    /// Relay a buffer to a peer over the noise protocol channel.
+    ///
+    /// The peers must have already performed the noise protocol 
+    /// handshake.
+    pub async fn relay(
+        &mut self,
+        public_key: impl AsRef<[u8]>,
+        payload: Vec<u8>,
+    ) -> Result<()> {
+        let mut peers = self.peers.write().await;
+        if let Some(peer) = peers.get_mut(public_key.as_ref()) {
+            match peer {
+                ProtocolState::Transport(transport) => {
+                    let mut message = vec![0; payload.len() + TAGLEN];
+                    transport.write_message(&payload, &mut message)?;
+
+                    let request = RequestMessage::RelayPeer {
+                        public_key: public_key.as_ref().to_vec(),
+                        message,
+                    };
+
+                    self.outbound_tx.send(request).await?;
+                    Ok(())
+                }
+                _ => Err(Error::NotTransportState)
+            }
+        } else {
+            Err(Error::PeerNotFound(hex::encode(
+                public_key.as_ref().to_vec(),
+            )))
+        }
     }
 }
 

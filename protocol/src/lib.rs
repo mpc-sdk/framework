@@ -8,8 +8,8 @@ mod error;
 mod keypair;
 mod protocol;
 
-pub use error::Error;
 pub use constants::*;
+pub use error::Error;
 pub use keypair::*;
 pub use protocol::*;
 

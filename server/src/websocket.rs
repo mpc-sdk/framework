@@ -18,8 +18,13 @@ use tokio::sync::{mpsc, RwLock};
 
 //use axum_macros::debug_handler;
 
-use mpc_relay_protocol::{PATTERN, ProtocolState, snow::Builder, uuid::Uuid, hex};
-use crate::{Result, server::{Service, State}};
+use crate::{
+    server::{Service, State},
+    Result,
+};
+use mpc_relay_protocol::{
+    hex, snow::Builder, uuid::Uuid, ProtocolState, PATTERN,
+};
 
 pub type Connection = Arc<RwLock<WebSocketConnection>>;
 

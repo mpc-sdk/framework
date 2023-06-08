@@ -1,8 +1,8 @@
+use anyhow::Result;
 use binary_stream::{BinaryReader, BinaryWriter, Endian, Options};
+use mpc_relay_protocol::{PATTERN, TAGLEN};
 use serde::{de::DeserializeOwned, Serialize};
 use std::io::Cursor;
-use anyhow::Result;
-use mpc_relay_protocol::{PATTERN, TAGLEN};
 
 /// Default binary encoding options.
 fn encoding_options() -> Options {
