@@ -1,8 +1,9 @@
 use async_stream::stream;
+use axum::http::StatusCode;
 use futures::{
     select,
     sink::SinkExt,
-    stream::{BoxStream, SplitSink, SplitStream, Stream},
+    stream::{BoxStream, SplitSink, SplitStream},
     FutureExt, StreamExt,
 };
 use snow::Builder;
@@ -13,10 +14,7 @@ use tokio::{
 };
 use tokio_tungstenite::{
     connect_async,
-    tungstenite::{
-        client::IntoClientRequest, handshake::client::Response,
-        protocol::Message,
-    },
+    tungstenite::{client::IntoClientRequest, protocol::Message},
     MaybeTlsStream, WebSocketStream,
 };
 
@@ -44,7 +42,6 @@ pub struct NativeClient {
     options: Arc<ClientOptions>,
     notification_rx: mpsc::Receiver<Notification>,
     outbound_tx: mpsc::Sender<RequestMessage>,
-    response: Response,
     server: Server,
     peers: Peers,
 }
@@ -59,27 +56,33 @@ impl NativeClient {
         R: IntoClientRequest + Unpin,
     {
         let (stream, response) = connect_async(request).await?;
-        let (ws_writer, ws_reader) = stream.split();
 
-        println!("{:#?}", response);
+        if response.status() != StatusCode::SWITCHING_PROTOCOLS {
+            return Err(Error::ServerError(
+                response.status(),
+                response.status().to_string(),
+            ));
+        }
+
+        let (ws_writer, ws_reader) = stream.split();
 
         let builder = Builder::new(PATTERN.parse()?);
         let handshake = builder
             .local_private_key(&options.keypair.private)
             .remote_public_key(&options.server_public_key)
             .build_initiator()?;
-        
-        // Channel for writing outbound messages to send 
+
+        // Channel for writing outbound messages to send
         // to the server
         let (outbound_tx, outbound_rx) =
             mpsc::channel::<RequestMessage>(32);
-        
-        // Internal notification bridge between the client and 
+
+        // Internal notification bridge between the client and
         // the event loop
         let (notification_tx, notification_rx) =
             mpsc::channel::<Notification>(32);
 
-        // State for the server transport.
+        // State for the server transport
         let server = Arc::new(RwLock::new(Some(
             ProtocolState::Handshake(handshake),
         )));
@@ -90,11 +93,10 @@ impl NativeClient {
             options: Arc::clone(&options),
             notification_rx,
             outbound_tx: outbound_tx.clone(),
-            response,
             server: Arc::clone(&server),
             peers: Arc::clone(&peers),
         };
-        
+
         // Decoded socket messages are sent over this channel
         let (message_tx, message_rx) =
             mpsc::channel::<ResponseMessage>(32);
@@ -113,13 +115,6 @@ impl NativeClient {
         };
 
         Ok((client, event_loop))
-    }
-
-    /// HTTP response from the connection attempt.
-    ///
-    /// Use this to debug the reason for connection failures.
-    pub fn response(&self) -> &Response {
-        &self.response
     }
 
     /// Perform initial handshake with the server.
@@ -307,7 +302,7 @@ impl EventLoop {
         Ok(self.ws_writer.flush().await?)
     }
 
-    /// Receive and decode socket messages then send to 
+    /// Receive and decode socket messages then send to
     /// the messages channel.
     async fn read_message(
         incoming: Message,
@@ -512,5 +507,4 @@ impl EventLoop {
             peer_id: hex::encode(public_key.as_ref()),
         })
     }
-
 }
