@@ -2,6 +2,14 @@ mod native;
 
 pub use native::{EventLoop, NativeClient};
 
+/// Events dispatched by the client.
+#[derive(Debug)]
+pub enum Event {
+    /// Event dispatched when a handshake with a peer
+    /// has been completed.
+    PeerConnected { peer_id: String },
+}
+
 /// Options used to create a new websocket client.
 pub struct ClientOptions {
     /// Client static keypair.

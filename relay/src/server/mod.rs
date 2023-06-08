@@ -121,7 +121,8 @@ impl RelayServer {
         origins: Vec<HeaderValue>,
         tls: TlsConfig,
     ) -> Result<()> {
-        let tls = RustlsConfig::from_pem_file(&tls.cert, &tls.key).await?;
+        let tls =
+            RustlsConfig::from_pem_file(&tls.cert, &tls.key).await?;
         let app = self.router(Arc::clone(&self.state), origins)?;
         tracing::info!("listening on {}", addr);
         axum_server::bind_rustls(addr, tls)
@@ -161,7 +162,8 @@ impl RelayServer {
 
         let service = Arc::new(RelayService::new(Arc::clone(&state)));
 
-        let mut app = Router::new().route("/", get(websocket::upgrade));
+        let mut app =
+            Router::new().route("/", get(websocket::upgrade));
         app = app
             .layer(cors)
             .layer(TraceLayer::new_for_http())

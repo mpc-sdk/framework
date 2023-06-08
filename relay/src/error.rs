@@ -22,7 +22,9 @@ pub enum Error {
     NoReply,
 
     /// Error generated if the client read loop cannot be taken.
-    #[error("client read loop does not exists, probably already taken")]
+    #[error(
+        "client read loop does not exists, probably already taken"
+    )]
     ClientReadLoopAlreadyTaken,
 
     /// Error generated when the config server key file was not found.

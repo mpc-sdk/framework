@@ -48,13 +48,11 @@ pub async fn encode(encodable: &impl Encodable) -> Result<Vec<u8>> {
 pub async fn decode<T: Decodable + Default>(
     buffer: impl AsRef<[u8]>,
 ) -> Result<T> {
-    Ok(
-        binary_stream::futures::decode(
-            buffer.as_ref(),
-            encoding_options(),
-        )
-        .await?,
+    Ok(binary_stream::futures::decode(
+        buffer.as_ref(),
+        encoding_options(),
     )
+    .await?)
 }
 
 /// Types of noise protocol handshakes.
@@ -105,7 +103,9 @@ impl Decodable for HandshakeType {
                 *self = HandshakeType::Peer;
             }
             _ => {
-                return Err(encoding_error(crate::Error::EncodingKind(id)))
+                return Err(encoding_error(
+                    crate::Error::EncodingKind(id),
+                ))
             }
         }
         Ok(())
@@ -196,7 +196,9 @@ impl Decodable for PeerMessage {
                 *self = PeerMessage::Response(message)
             }
             _ => {
-                return Err(encoding_error(crate::Error::EncodingKind(id)))
+                return Err(encoding_error(
+                    crate::Error::EncodingKind(id),
+                ))
             }
         }
         Ok(())
@@ -281,20 +283,26 @@ impl Decodable for RequestMessage {
                 let len = reader.read_usize().await?;
                 let size = reader.read_u32().await?;
                 let buf = reader.read_bytes(size as usize).await?;
-                *self = RequestMessage::HandshakeInitiator(kind, len, buf);
+                *self = RequestMessage::HandshakeInitiator(
+                    kind, len, buf,
+                );
             }
             types::RELAY_PEER => {
                 let size = reader.read_u32().await?;
-                let public_key = reader.read_bytes(size as usize).await?;
+                let public_key =
+                    reader.read_bytes(size as usize).await?;
                 let size = reader.read_u32().await?;
-                let message = reader.read_bytes(size as usize).await?;
+                let message =
+                    reader.read_bytes(size as usize).await?;
                 *self = RequestMessage::RelayPeer {
                     public_key,
                     message,
                 };
             }
             _ => {
-                return Err(encoding_error(crate::Error::EncodingKind(id)))
+                return Err(encoding_error(
+                    crate::Error::EncodingKind(id),
+                ))
             }
         }
         Ok(())
@@ -393,21 +401,26 @@ impl Decodable for ResponseMessage {
                 let len = reader.read_usize().await?;
                 let size = reader.read_u32().await?;
                 let buf = reader.read_bytes(size as usize).await?;
-                *self =
-                    ResponseMessage::HandshakeResponder(kind, len, buf);
+                *self = ResponseMessage::HandshakeResponder(
+                    kind, len, buf,
+                );
             }
             types::RELAY_PEER => {
                 let size = reader.read_u32().await?;
-                let public_key = reader.read_bytes(size as usize).await?;
+                let public_key =
+                    reader.read_bytes(size as usize).await?;
                 let size = reader.read_u32().await?;
-                let message = reader.read_bytes(size as usize).await?;
+                let message =
+                    reader.read_bytes(size as usize).await?;
                 *self = ResponseMessage::RelayPeer {
                     public_key,
                     message,
                 };
             }
             _ => {
-                return Err(encoding_error(crate::Error::EncodingKind(id)))
+                return Err(encoding_error(
+                    crate::Error::EncodingKind(id),
+                ))
             }
         }
         Ok(())

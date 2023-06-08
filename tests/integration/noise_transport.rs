@@ -5,8 +5,6 @@ use std::io::Cursor;
 use anyhow::Result;
 use mpc_relay_server::constants::{PATTERN, TAGLEN};
 
-const BUF_SIZE: usize = 1024;
-
 /// Default binary encoding options.
 fn encoding_options() -> Options {
     Options {
@@ -23,7 +21,8 @@ where
     let serialized = serde_json::to_vec(payload)?;
     let mut buffer = Vec::new();
     let mut stream = Cursor::new(&mut buffer);
-    let mut writer = BinaryWriter::new(&mut stream, encoding_options());
+    let mut writer =
+        BinaryWriter::new(&mut stream, encoding_options());
     writer.write_u32(serialized.len() as u32)?;
     writer.write_bytes(&serialized)?;
     writer.flush()?;
@@ -36,7 +35,8 @@ where
     T: DeserializeOwned,
 {
     let mut stream = Cursor::new(&mut buffer);
-    let mut reader = BinaryReader::new(&mut stream, encoding_options());
+    let mut reader =
+        BinaryReader::new(&mut stream, encoding_options());
     let length = reader.read_u32()?;
     let serialized = reader.read_bytes(length as usize)?;
     let result: T = serde_json::from_slice(&serialized)?;

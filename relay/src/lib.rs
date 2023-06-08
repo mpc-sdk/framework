@@ -5,7 +5,7 @@ pub mod keypair;
 mod protocol;
 mod server;
 
-pub use client::{ClientOptions, EventLoop, NativeClient};
+pub use client::{ClientOptions, Event, EventLoop, NativeClient};
 pub use error::Error;
 pub(crate) use protocol::{
     decode, encode, HandshakeType, PeerMessage, ProtocolState,

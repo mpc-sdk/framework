@@ -1,7 +1,8 @@
+use async_stream::try_stream;
 use futures::{
     select,
     sink::SinkExt,
-    stream::{SplitSink, SplitStream},
+    stream::{BoxStream, SplitSink, SplitStream, Stream},
     FutureExt, StreamExt,
 };
 use snow::Builder;
@@ -20,7 +21,7 @@ use tokio_tungstenite::{
 };
 
 use crate::{
-    constants::PATTERN, decode, encode, ClientOptions, Error,
+    constants::PATTERN, decode, encode, ClientOptions, Error, Event,
     HandshakeType, PeerMessage, ProtocolState, RequestMessage,
     ResponseMessage, Result,
 };
@@ -93,7 +94,8 @@ impl NativeClient {
         let (len, payload) = match &mut self.state {
             Some(ProtocolState::Handshake(initiator)) => {
                 let mut request = vec![0u8; 1024];
-                let len = initiator.write_message(&[], &mut request)?;
+                let len =
+                    initiator.write_message(&[], &mut request)?;
                 (len, request)
             }
             _ => return Err(Error::NotHandshakeState),
@@ -107,7 +109,8 @@ impl NativeClient {
 
         self.outbound_tx.send(request).await?;
 
-        while let Some(response) = self.server_handshake.recv().await {
+        while let Some(response) = self.server_handshake.recv().await
+        {
             let transport = match self.state.take() {
                 Some(ProtocolState::Handshake(mut initiator)) => {
                     match response {
@@ -167,7 +170,8 @@ impl NativeClient {
         let (len, payload) = match state {
             ProtocolState::Handshake(initiator) => {
                 let mut request = vec![0u8; 1024];
-                let len = initiator.write_message(&[], &mut request)?;
+                let len =
+                    initiator.write_message(&[], &mut request)?;
                 (len, request)
             }
             _ => return Err(Error::NotHandshakeState),
@@ -196,9 +200,12 @@ impl NativeClient {
 /// Event loop for a websocket client.
 pub struct EventLoop {
     options: Arc<ClientOptions>,
-    ws_reader: SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>,
-    ws_writer:
-        SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
+    ws_reader:
+        SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>,
+    ws_writer: SplitSink<
+        WebSocketStream<MaybeTlsStream<TcpStream>>,
+        Message,
+    >,
     event_loop_tx: mpsc::Sender<ResponseMessage>,
     event_loop_rx: mpsc::Receiver<ResponseMessage>,
     outbound_tx: mpsc::Sender<RequestMessage>,
@@ -208,46 +215,62 @@ pub struct EventLoop {
 }
 
 impl EventLoop {
-    /// Start the client event loop running.
-    pub async fn run(mut self) {
-        loop {
-            select!(
-                message_in = self.ws_reader.next().fuse() => match message_in {
-                    Some(message) => {
-                        match message {
-                            Ok(message) => {
-                                Self::decode_socket_message(
-                                    message,
-                                    &mut self.event_loop_tx,
-                                    &mut self.server_handshake,
-                                ).await;
+    /// Stream of events from the event loop.
+    pub fn run<'a>(&'a mut self) -> BoxStream<'a, Result<Event>> {
+        let s = try_stream! {
+            loop {
+                select!(
+                    message_in =
+                        self.ws_reader.next().fuse()
+                            => match message_in {
+                        Some(message) => {
+                            match message {
+                                Ok(message) => {
+                                    Self::decode_socket_message(
+                                        message,
+                                        &mut self.event_loop_tx,
+                                        &mut self.server_handshake,
+                                    ).await;
+                                }
+                                Err(e) => {
+                                    tracing::error!("{}", e);
+                                }
                             }
-                            Err(e) => {
+                        }
+                        _ => {}
+                    },
+                    message_out =
+                        self.outbound_rx.recv().fuse()
+                            => match message_out {
+                        Some(message) => {
+                            if let Err(e) = self.send_message(message).await {
                                 tracing::error!("{}", e);
                             }
                         }
-                    }
-                    _ => {}
-                },
-                message_out = self.outbound_rx.recv().fuse() => match message_out {
-                    Some(message) => {
-                        if let Err(e) = self.send_message(message).await {
-                            tracing::error!("{}", e);
-                        }
-                    }
-                    _ => {}
-                },
-                event_message = self.event_loop_rx.recv().fuse() => match event_message {
-                    Some(event_message) => {
+                        _ => {}
+                    },
+                    event_message =
+                        self.event_loop_rx.recv().fuse()
+                            => match event_message {
+                        Some(event_message) => {
+                            match self.handle_incoming_message(
+                                event_message).await {
 
-                        if let Err(e) = self.handle_incoming_message(event_message).await {
-                            tracing::error!("{}", e);
+                                Ok(Some(event)) => {
+                                    yield event;
+                                }
+                                Err(e) => {
+                                    tracing::error!("{}", e);
+                                }
+                                _ => {}
+                            }
                         }
-                    }
-                    _ => {}
-                },
-            );
-        }
+                        _ => {}
+                    },
+                );
+            }
+        };
+        Box::pin(s)
     }
 
     /// Send a message to the socket and flush the stream.
@@ -263,7 +286,7 @@ impl EventLoop {
     async fn handle_incoming_message(
         &self,
         incoming: ResponseMessage,
-    ) -> Result<()> {
+    ) -> Result<Option<Event>> {
         match incoming {
             ResponseMessage::Error(code, message) => {
                 tracing::error!("{} {}", code, message);
@@ -282,14 +305,12 @@ impl EventLoop {
                                 buf,
                             ),
                         ) => {
-                            if let Err(e) = self
-                                .peer_handshake_responder(
+                            return Ok(Some(
+                                self.peer_handshake_responder(
                                     public_key, len, buf,
                                 )
-                                .await
-                            {
-                                tracing::error!("{}", e);
-                            }
+                                .await?,
+                            ));
                         }
                         PeerMessage::Response(
                             ResponseMessage::HandshakeResponder(
@@ -298,12 +319,12 @@ impl EventLoop {
                                 buf,
                             ),
                         ) => {
-                            if let Err(e) = self
-                                .peer_handshake_ack(public_key, len, buf)
-                                .await
-                            {
-                                tracing::error!("{}", e);
-                            }
+                            return Ok(Some(
+                                self.peer_handshake_ack(
+                                    public_key, len, buf,
+                                )
+                                .await?,
+                            ));
                         }
                         _ => todo!(),
                     },
@@ -318,7 +339,7 @@ impl EventLoop {
             _ => {}
         }
 
-        Ok(())
+        Ok(None)
     }
 
     async fn peer_handshake_responder(
@@ -326,7 +347,7 @@ impl EventLoop {
         public_key: impl AsRef<[u8]>,
         len: usize,
         buf: Vec<u8>,
-    ) -> Result<()> {
+    ) -> Result<Event> {
         let mut peers = self.peers.write().await;
         if peers.get(public_key.as_ref()).is_some() {
             return Err(Error::PeerAlreadyExists);
@@ -371,7 +392,9 @@ impl EventLoop {
 
         self.outbound_tx.send(request).await?;
 
-        Ok(())
+        Ok(Event::PeerConnected {
+            peer_id: hex::encode(public_key.as_ref()),
+        })
     }
 
     async fn peer_handshake_ack(
@@ -379,16 +402,17 @@ impl EventLoop {
         public_key: impl AsRef<[u8]>,
         len: usize,
         buf: Vec<u8>,
-    ) -> Result<()> {
+    ) -> Result<Event> {
         let mut peers = self.peers.write().await;
 
-        let peer = if let Some(peer) = peers.remove(public_key.as_ref()) {
-            peer
-        } else {
-            return Err(Error::PeerNotFound(hex::encode(
-                public_key.as_ref().to_vec(),
-            )));
-        };
+        let peer =
+            if let Some(peer) = peers.remove(public_key.as_ref()) {
+                peer
+            } else {
+                return Err(Error::PeerNotFound(hex::encode(
+                    public_key.as_ref().to_vec(),
+                )));
+            };
 
         tracing::debug!(
             from = ?hex::encode(public_key.as_ref()),
@@ -409,7 +433,9 @@ impl EventLoop {
             ProtocolState::Transport(transport),
         );
 
-        Ok(())
+        Ok(Event::PeerConnected {
+            peer_id: hex::encode(public_key.as_ref()),
+        })
     }
 
     /// Decode socket messages and send to the appropriate channel.
