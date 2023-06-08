@@ -201,6 +201,13 @@ impl NativeClient {
         };
 
         self.outbound_tx.send(request).await?;
+
+        // Wait for the peer handshake notification
+        while let Some(notify) = self.notification_rx.recv().await {
+            if let Notification::PeerHandshake = notify {
+                break;
+            }
+        }
         Ok(())
     }
 }
@@ -449,6 +456,10 @@ impl EventLoop {
             public_key.as_ref().to_vec(),
             ProtocolState::Transport(transport),
         );
+
+        self.notification_tx
+            .send(Notification::PeerHandshake)
+            .await?;
 
         Ok(Event::PeerConnected {
             peer_id: hex::encode(public_key.as_ref()),

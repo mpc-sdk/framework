@@ -53,6 +53,7 @@ async fn integration_handshake() -> Result<()> {
 
     // Now we can perform a peer handshake
     initiator.connect_peer(&participant_key.public).await?;
+    tracing::info!("peer handshake complete");
 
     // Must drive the event loop futures
     let (_, _) = futures::join!(ev_i, ev_p);
