@@ -53,8 +53,8 @@ pub struct JsonMessage {
 
 impl JsonMessage {
     /// Deserialize this message.
-    pub fn deserialize<T: serde::de::DeserializeOwned>(
-        &self,
+    pub fn deserialize<'a, T: serde::de::Deserialize<'a>>(
+        &'a self,
     ) -> Result<T> {
         Ok(serde_json::from_slice::<T>(&self.contents)?)
     }
