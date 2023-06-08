@@ -3,6 +3,7 @@ use binary_stream::{
     futures::{BinaryReader, BinaryWriter, Decodable, Encodable},
     Endian, Options,
 };
+use bitflags::bitflags;
 use futures::io::{AsyncRead, AsyncSeek, AsyncWrite};
 use http::StatusCode;
 use snow::{HandshakeState, TransportState};
@@ -214,10 +215,10 @@ pub enum RequestMessage {
     /// Initiate a handshake.
     HandshakeInitiator(HandshakeType, usize, Vec<u8>),
     /// Relay a message to a peer.
-    ///
-    /// The peer must have already performed a
-    /// handshake with the server.
     RelayPeer {
+        /// Determines if this message is part of the 
+        /// peer to peer handshake.
+        handshake: bool,
         /// Public key of the receiver.
         public_key: Vec<u8>,
         /// Message payload.
@@ -254,9 +255,11 @@ impl Encodable for RequestMessage {
                 writer.write_bytes(buf).await?;
             }
             Self::RelayPeer {
+                handshake,
                 public_key,
                 message,
             } => {
+                writer.write_bool(handshake).await?;
                 writer.write_u32(public_key.len() as u32).await?;
                 writer.write_bytes(public_key).await?;
                 writer.write_u32(message.len() as u32).await?;
@@ -288,6 +291,7 @@ impl Decodable for RequestMessage {
                 );
             }
             types::RELAY_PEER => {
+                let handshake = reader.read_bool().await?;
                 let size = reader.read_u32().await?;
                 let public_key =
                     reader.read_bytes(size as usize).await?;
@@ -295,6 +299,7 @@ impl Decodable for RequestMessage {
                 let message =
                     reader.read_bytes(size as usize).await?;
                 *self = RequestMessage::RelayPeer {
+                    handshake,
                     public_key,
                     message,
                 };
@@ -321,6 +326,9 @@ pub enum ResponseMessage {
     HandshakeResponder(HandshakeType, usize, Vec<u8>),
     /// Message being relayed from another peer.
     RelayPeer {
+        /// Determines if this message is part of the 
+        /// peer to peer handshake.
+        handshake: bool,
         /// Public key of the sender.
         public_key: Vec<u8>,
         /// Message payload.
@@ -363,9 +371,11 @@ impl Encodable for ResponseMessage {
                 writer.write_bytes(buf).await?;
             }
             Self::RelayPeer {
+                handshake,
                 public_key,
                 message,
             } => {
+                writer.write_bool(handshake).await?;
                 writer.write_u32(public_key.len() as u32).await?;
                 writer.write_bytes(public_key).await?;
                 writer.write_u32(message.len() as u32).await?;
@@ -406,6 +416,7 @@ impl Decodable for ResponseMessage {
                 );
             }
             types::RELAY_PEER => {
+                let handshake = reader.read_bool().await?;
                 let size = reader.read_u32().await?;
                 let public_key =
                     reader.read_bytes(size as usize).await?;
@@ -413,6 +424,7 @@ impl Decodable for ResponseMessage {
                 let message =
                     reader.read_bytes(size as usize).await?;
                 *self = ResponseMessage::RelayPeer {
+                    handshake,
                     public_key,
                     message,
                 };
@@ -426,3 +438,58 @@ impl Decodable for ResponseMessage {
         Ok(())
     }
 }
+
+bitflags! {
+    /// Encoding flags for message payloads.
+    #[derive(Default, Clone, Copy, Debug)]
+    pub struct EncodingFlags: u16 {
+        /// Binary encoding.
+        const BLOB      = 0b00000001;
+        /// JSON encoding.
+        const JSON      = 0b00000010;
+    }
+}
+
+/// Sealed message sent between peers.
+///
+/// The payload has been encrypted using the noise protocol 
+/// channel and the recipient must decrypt and decode the payload.
+#[derive(Default, Debug)]
+pub struct SealedEnvelope {
+    /// Encoding for the underlying payload.
+    pub encoding: EncodingFlags,
+    /// Encrypted payload.
+    pub payload: Vec<u8>,
+}
+
+#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl Encodable for SealedEnvelope {
+    async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
+        &self,
+        writer: &mut BinaryWriter<W>,
+    ) -> Result<()> {
+        let flags: u16 = self.encoding.bits();
+        writer.write_u16(flags).await?;
+        writer.write_u32(self.payload.len() as u32).await?;
+        writer.write_bytes(&self.payload).await?;
+        Ok(())
+    }
+}
+
+#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl Decodable for SealedEnvelope {
+    async fn decode<R: AsyncRead + AsyncSeek + Unpin + Send>(
+        &mut self,
+        reader: &mut BinaryReader<R>,
+    ) -> Result<()> {
+        self.encoding = EncodingFlags::from_bits(reader.read_u16().await?)
+            .ok_or(crate::Error::InvalidEncodingFlags)
+            .map_err(encoding_error)?;
+        let size = reader.read_u32().await?;
+        self.payload = reader.read_bytes(size as usize).await?;
+        Ok(())
+    }
+}
+

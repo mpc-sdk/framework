@@ -20,7 +20,7 @@ use tokio_tungstenite::{
 use mpc_relay_protocol::{
     decode, encode, hex, http::StatusCode, snow::Builder,
     HandshakeType, PeerMessage, ProtocolState, RequestMessage,
-    ResponseMessage, PATTERN, TAGLEN,
+    ResponseMessage, PATTERN, TAGLEN, SealedEnvelope, EncodingFlags,
 };
 
 use crate::{ClientOptions, Error, Event, Result};
@@ -199,6 +199,7 @@ impl NativeClient {
         let inner_message = encode(&inner_request).await?;
 
         let request = RequestMessage::RelayPeer {
+            handshake: true,
             public_key: public_key.as_ref().to_vec(),
             message: inner_message,
         };
@@ -240,10 +241,18 @@ impl NativeClient {
         if let Some(peer) = peers.get_mut(public_key.as_ref()) {
             match peer {
                 ProtocolState::Transport(transport) => {
-                    let mut message = vec![0; payload.len() + TAGLEN];
-                    transport.write_message(&payload, &mut message)?;
+                    let mut contents = vec![0; payload.len() + TAGLEN];
+                    transport.write_message(&payload, &mut contents)?;
+
+                    let envelope = SealedEnvelope {
+                        encoding: Default::default(),
+                        payload: contents,
+                    };
+
+                    let message = encode(&envelope).await?;
 
                     let request = RequestMessage::RelayPeer {
+                        handshake: false,
                         public_key: public_key.as_ref().to_vec(),
                         message,
                     };
@@ -380,48 +389,53 @@ impl EventLoop {
                 ));
             }
             ResponseMessage::RelayPeer {
+                handshake,
                 public_key,
                 message,
             } => {
-                // Decode the inner message
-                match decode::<PeerMessage>(message).await {
-                    Ok(relayed) => match relayed {
-                        PeerMessage::Request(
-                            RequestMessage::HandshakeInitiator(
-                                HandshakeType::Peer,
-                                len,
-                                buf,
-                            ),
-                        ) => {
-                            return Ok(Some(
-                                self.peer_handshake_responder(
-                                    public_key, len, buf,
-                                )
-                                .await?,
-                            ));
+                if handshake {
+                    // Decode the inner message
+                    match decode::<PeerMessage>(message).await {
+                        Ok(relayed) => match relayed {
+                            PeerMessage::Request(
+                                RequestMessage::HandshakeInitiator(
+                                    HandshakeType::Peer,
+                                    len,
+                                    buf,
+                                ),
+                            ) => {
+                                return Ok(Some(
+                                    self.peer_handshake_responder(
+                                        public_key, len, buf,
+                                    )
+                                    .await?,
+                                ));
+                            }
+                            PeerMessage::Response(
+                                ResponseMessage::HandshakeResponder(
+                                    HandshakeType::Peer,
+                                    len,
+                                    buf,
+                                ),
+                            ) => {
+                                return Ok(Some(
+                                    self.peer_handshake_ack(
+                                        public_key, len, buf,
+                                    )
+                                    .await?,
+                                ));
+                            }
+                            _ => todo!(),
+                        },
+                        Err(e) => {
+                            tracing::error!(
+                                "client decode error (inner message) {}",
+                                e
+                            );
                         }
-                        PeerMessage::Response(
-                            ResponseMessage::HandshakeResponder(
-                                HandshakeType::Peer,
-                                len,
-                                buf,
-                            ),
-                        ) => {
-                            return Ok(Some(
-                                self.peer_handshake_ack(
-                                    public_key, len, buf,
-                                )
-                                .await?,
-                            ));
-                        }
-                        _ => todo!(),
-                    },
-                    Err(e) => {
-                        tracing::error!(
-                            "client decode error (inner message) {}",
-                            e
-                        );
                     }
+                } else {
+                    todo!("handle p2p encrypted envelope");
                 }
             }
             _ => {}
@@ -499,6 +513,7 @@ impl EventLoop {
         let inner_message = encode(&inner_request).await?;
 
         let request = RequestMessage::RelayPeer {
+            handshake: true,
             public_key: public_key.as_ref().to_vec(),
             message: inner_message,
         };
