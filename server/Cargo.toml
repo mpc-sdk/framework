@@ -2,6 +2,9 @@
 name = "mpc-relay-server"
 version = "0.1.0"
 edition = "2021"
+description = "Noise protocol websocket relay server for MPC/TSS applications"
+keywords = ["mpc", "tss", "relay", "crypto", "e2ee"]
+license = "MIT OR Apache-2.0"
 
 [dependencies]
 mpc-relay-protocol = { path = "../protocol" }
