@@ -57,7 +57,6 @@ pub struct WebSocketConnection {
 impl WebSocketConnection {
     /// Send a buffer to the client at this socket.
     pub async fn send(&mut self, buffer: Vec<u8>) -> Result<()> {
-        //println!("sending buffer to websocket.. {}", buffer.len());
         self.outgoing.send(buffer).await?;
         Ok(())
     }
@@ -123,7 +122,7 @@ async fn disconnect(state: State, conn: Connection) {
         let reader = conn.read().await;
         (reader.id.clone(), reader.public_key.clone())
     };
-    println!("disconnecting client...");
+    //println!("disconnecting client...");
     let mut writer = state.write().await;
     writer.pending.remove(&id);
     writer.active.remove(&public_key);
@@ -137,8 +136,6 @@ async fn handle_socket(
 ) {
     let (writer, reader) = socket.split();
 
-    //tokio::spawn(heartbeat_push(Arc::clone(&conn), 1));
-
     tokio::spawn(write(
         writer,
         Arc::clone(&state),
@@ -147,19 +144,6 @@ async fn handle_socket(
     ));
     tokio::spawn(read(reader, Arc::clone(&state), Arc::clone(&conn)));
 }
-
-/*
-async fn heartbeat_push(conn: Connection, interval_secs: u64) {
-    let interval =
-        tokio::time::interval(Duration::from_secs(interval_secs));
-    let mut stream = IntervalStream::new(interval);
-    while (stream.next().await).is_some() {
-        let mut writer = conn.write().await;
-        let buffer = vec![0; 16];
-        let _ = writer.send(buffer).await;
-    }
-}
-*/
 
 async fn read(
     mut receiver: SplitStream<WebSocket>,

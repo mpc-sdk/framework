@@ -22,6 +22,7 @@ pub async fn server_public_key() -> Result<Vec<u8>> {
     Ok(keypair.public)
 }
 
+#[allow(dead_code)]
 pub fn init_tracing() {
     use tracing_subscriber::{
         layer::SubscriberExt, util::SubscriberInitExt,

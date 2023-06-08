@@ -24,7 +24,7 @@ pub enum Event {
     /// has been completed.
     PeerConnected {
         /// Peer identifier, hex-encoded public key.
-        peer_id: String,
+        peer_key: Vec<u8>,
     },
     /// Binary message received from a peer.
     BinaryMessage {

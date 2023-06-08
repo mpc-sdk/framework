@@ -530,7 +530,7 @@ impl EventLoop {
         self.outbound_tx.send(request).await?;
 
         Ok(Event::PeerConnected {
-            peer_id: hex::encode(public_key.as_ref()),
+            peer_key: public_key.as_ref().to_vec(),
         })
     }
 
@@ -575,7 +575,7 @@ impl EventLoop {
             .await?;
 
         Ok(Event::PeerConnected {
-            peer_id: hex::encode(public_key.as_ref()),
+            peer_key: public_key.as_ref().to_vec(),
         })
     }
 
