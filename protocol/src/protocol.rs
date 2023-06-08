@@ -6,7 +6,7 @@ use binary_stream::{
 use futures::io::{AsyncRead, AsyncSeek, AsyncWrite};
 use http::StatusCode;
 use snow::{HandshakeState, TransportState};
-use std::io::Result;
+use std::{collections::HashMap, io::Result, time::SystemTime};
 
 pub(crate) fn encoding_error(
     e: impl std::error::Error + Send + Sync + 'static,
@@ -38,6 +38,8 @@ fn encoding_options() -> Options {
         max_buffer_size: Some(1024 * 32),
     }
 }
+
+type SessionId = uuid::Uuid;
 
 /// Encode to a binary buffer.
 pub async fn encode(encodable: &impl Encodable) -> Result<Vec<u8>> {
@@ -518,5 +520,49 @@ impl Decodable for SealedEnvelope {
         let size = reader.read_u32().await?;
         self.payload = reader.read_bytes(size as usize).await?;
         Ok(())
+    }
+}
+
+/// Session is a namespace for a group of participants
+/// to communicate for a series of rounds.
+///
+/// Use this for the keygen, signing or key refresh
+/// of an MPC protocol.
+pub struct Session {
+    /// Public key of the owner.
+    ///
+    /// The owner is the initiator that created
+    /// this session.
+    owner_key: Vec<u8>,
+
+    /// Public keys of the other session participants.
+    participant_keys: Vec<Vec<u8>>,
+
+    /// Last access time so the server can reap
+    /// stale sessions.
+    last_access: SystemTime,
+}
+
+/// Manages a collection of sessions.
+#[derive(Default)]
+pub struct SessionManager {
+    sessions: HashMap<SessionId, Session>,
+}
+
+impl SessionManager {
+    /// Create a new session.
+    pub fn new_session(
+        &mut self,
+        owner_key: Vec<u8>,
+        participant_keys: Vec<Vec<u8>>,
+    ) -> SessionId {
+        let session_id = SessionId::new_v4();
+        let session = Session {
+            owner_key,
+            participant_keys,
+            last_access: SystemTime::now(),
+        };
+        self.sessions.insert(session_id.clone(), session);
+        session_id
     }
 }

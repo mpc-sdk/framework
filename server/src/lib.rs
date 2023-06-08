@@ -10,8 +10,8 @@ mod server;
 mod service;
 mod websocket;
 
-pub use error::Error;
 pub use config::ServerConfig;
+pub use error::Error;
 pub use server::RelayServer;
 
 pub use axum;

@@ -3,8 +3,8 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 
 use mpc_relay_protocol::{
-    decode, encode, hex, ProtocolState, RequestMessage,
-    ResponseMessage,
+    decode, encode, hex, HandshakeType, ProtocolState,
+    RequestMessage, ResponseMessage,
 };
 
 use crate::{server::State, websocket::Connection, Error, Result};
@@ -68,7 +68,11 @@ async fn handle_request(
     message: RequestMessage,
 ) -> Result<()> {
     match message {
-        RequestMessage::HandshakeInitiator(kind, len, buf) => {
+        RequestMessage::HandshakeInitiator(
+            HandshakeType::Server,
+            len,
+            buf,
+        ) => {
             let mut writer = conn.write().await;
             let (len, payload) = match &mut writer.state {
                 Some(ProtocolState::Handshake(responder)) => {
@@ -85,7 +89,9 @@ async fn handle_request(
             };
 
             let response = ResponseMessage::HandshakeResponder(
-                kind, len, payload,
+                HandshakeType::Server,
+                len,
+                payload,
             );
             let buffer = encode(&response).await?;
             writer.send(buffer).await?;
@@ -143,7 +149,7 @@ async fn handle_request(
                 )));
             }
         }
-        RequestMessage::Noop => {}
+        _ => {}
     }
 
     Ok(())

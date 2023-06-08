@@ -15,7 +15,7 @@ use axum_server::{tls_rustls::RustlsConfig, Handle};
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use uuid::Uuid;
 
-use mpc_relay_protocol::{snow::Keypair, uuid};
+use mpc_relay_protocol::{snow::Keypair, uuid, SessionManager};
 
 use crate::{
     config::{ServerConfig, TlsConfig},
@@ -43,9 +43,6 @@ async fn session_reaper(state: State, interval_secs: u64) {
         */
     }
 }
-
-#[derive(Default)]
-struct SessionManager {}
 
 pub struct ServerState {
     /// Server keypair.

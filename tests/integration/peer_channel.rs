@@ -1,13 +1,13 @@
 use crate::test_utils::{new_client, spawn_server};
 use anyhow::Result;
-use futures::{StreamExt, select, FutureExt};
+use futures::{select, FutureExt, StreamExt};
 use mpc_relay_client::Event;
 use serial_test::serial;
 use tokio::sync::mpsc;
 
-/// Creates two clients that handshake with the server 
-/// and then each other. Once the peer handshakes are 
-/// complete they send "ping" and "pong" messages over 
+/// Creates two clients that handshake with the server
+/// and then each other. Once the peer handshakes are
+/// complete they send "ping" and "pong" messages over
 /// the noise transport channel.
 #[tokio::test]
 #[serial]
@@ -19,8 +19,7 @@ async fn integration_peer_channel() -> Result<()> {
     let _ = rx.await?;
 
     // Create new clients
-    let (mut initiator, mut event_loop_i, _) =
-        new_client().await?;
+    let (mut initiator, mut event_loop_i, _) = new_client().await?;
     let (mut participant, mut event_loop_p, participant_key) =
         new_client().await?;
 
@@ -67,8 +66,8 @@ async fn integration_peer_channel() -> Result<()> {
                             let event = event?;
                             tracing::trace!("participant {:#?}", event);
                             match &event {
-                                // Once the peer connection is established 
-                                // we can start sending messages over 
+                                // Once the peer connection is established
+                                // we can start sending messages over
                                 // the encrypted channel
                                 Event::JsonMessage { peer_key, message } => {
                                     let message: String = message.deserialize()?;
@@ -85,7 +84,7 @@ async fn integration_peer_channel() -> Result<()> {
                 shutdown = shutdown_rx.recv().fuse() => {
                     if shutdown.is_some() {
                         break;
-                    } 
+                    }
                 }
             }
         }
