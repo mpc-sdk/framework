@@ -1,3 +1,5 @@
+.DS_Store
+*.profraw
 /target
 /Cargo.lock
 *.pem

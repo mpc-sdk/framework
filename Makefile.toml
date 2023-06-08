@@ -1,5 +1,5 @@
 extend= [
-  { path = "Coverage.toml" }
+  { path = "coverage.toml" }
 ]
 [config]
 default_to_workspace = false
@@ -87,7 +87,7 @@ args = ["check", "--target", "wasm32-unknown-unknown", "-p", "mpc-relay-client"]
 
 [tasks.genhtml]
 script = '''
-grcov ${COVERAGE_PROF_OUTPUT} -s . --binary-path ./target/cover/debug -t html --branch --ignore-not-existing -o ./target/coverage/ --ignore '*/src/build.rs' --ignore 'tests/*' --ignore 'target/*'
+grcov ${COVERAGE_PROF_OUTPUT} -s . --binary-path ./target/cover/debug -t html --branch --ignore-not-existing -o ./target/coverage/ --ignore '*/build.rs' --ignore 'tests/*' --ignore 'target/*' --ignore 'src/*'
 '''
 
 [tasks.coverage]
@@ -97,7 +97,9 @@ dependencies = ["clean-profraw"]
 [tasks.clean-profraw]
 script = '''
 rm -f *.profraw
-rm -f workspace/relay/*.profraw
+rm -f client/*.profraw
+rm -f protocol/*.profraw
+rm -f server/*.profraw
 '''
 
 [tasks.clean-coverage]
