@@ -1,7 +1,7 @@
 use super::{Connection, State};
 use crate::{
-    decode, encode, Error, ProtocolState, RequestMessage, ResponseMessage,
-    Result,
+    decode, encode, Error, ProtocolState, RequestMessage,
+    ResponseMessage, Result,
 };
 use axum::http::StatusCode;
 use std::sync::Arc;
@@ -72,16 +72,19 @@ async fn handle_request(
                 Some(ProtocolState::Handshake(responder)) => {
                     let mut reply = vec![0u8; 1024];
                     let mut read_buf = vec![0u8; 1024];
-                    responder.read_message(&buf[..len], &mut read_buf)?;
-                    let len = responder.write_message(&[], &mut reply)?;
+                    responder
+                        .read_message(&buf[..len], &mut read_buf)?;
+                    let len =
+                        responder.write_message(&[], &mut reply)?;
 
                     (len, reply)
                 }
                 _ => return Err(Error::NotHandshakeState),
             };
 
-            let response =
-                ResponseMessage::HandshakeResponder(kind, len, payload);
+            let response = ResponseMessage::HandshakeResponder(
+                kind, len, payload,
+            );
             let buffer = encode(&response).await?;
             writer.send(buffer).await?;
 
@@ -89,7 +92,8 @@ async fn handle_request(
                 writer.state.take()
             {
                 let transport = state.into_transport_mode()?;
-                writer.state = Some(ProtocolState::Transport(transport));
+                writer.state =
+                    Some(ProtocolState::Transport(transport));
             } else {
                 unreachable!();
             }
@@ -130,7 +134,9 @@ async fn handle_request(
                 //println!("relaying the peer message {:#?}", writer.public_key);
                 writer.send(buffer).await?;
             } else {
-                return Err(Error::PeerNotFound(hex::encode(public_key)));
+                return Err(Error::PeerNotFound(hex::encode(
+                    public_key,
+                )));
             }
         }
         RequestMessage::Noop => {}

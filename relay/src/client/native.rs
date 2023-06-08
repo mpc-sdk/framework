@@ -1,7 +1,8 @@
+use async_stream::try_stream;
 use futures::{
     select,
     sink::SinkExt,
-    stream::{SplitSink, SplitStream},
+    stream::{BoxStream, SplitSink, SplitStream, Stream},
     FutureExt, StreamExt,
 };
 use snow::Builder;
@@ -20,20 +21,31 @@ use tokio_tungstenite::{
 };
 
 use crate::{
-    constants::PATTERN, decode, encode, ClientOptions, Error,
+    constants::PATTERN, decode, encode, ClientOptions, Error, Event,
     HandshakeType, PeerMessage, ProtocolState, RequestMessage,
     ResponseMessage, Result,
 };
 
 type Peers = Arc<RwLock<HashMap<Vec<u8>, ProtocolState>>>;
+type Server = Arc<RwLock<Option<ProtocolState>>>;
+
+/// Notifications sent from the event loop to the client.
+#[derive(Debug)]
+#[doc(hidden)]
+pub enum Notification {
+    /// Notification sent when the server handshake is complete.
+    ServerHandshake,
+    /// Notification sent when a peer handshake is complete.
+    PeerHandshake,
+}
 
 /// Native websocket client using the tokio tungstenite library.
 pub struct NativeClient {
     options: Arc<ClientOptions>,
-    server_handshake: mpsc::Receiver<ResponseMessage>,
+    notification_rx: mpsc::Receiver<Notification>,
     outbound_tx: mpsc::Sender<RequestMessage>,
     response: Response,
-    state: Option<ProtocolState>,
+    server: Server,
     peers: Peers,
 }
 
@@ -57,21 +69,28 @@ impl NativeClient {
 
         let (outbound_tx, outbound_rx) =
             mpsc::channel::<RequestMessage>(32);
-        let (event_loop_tx, event_loop_rx) =
-            mpsc::channel::<ResponseMessage>(32);
-        let (server_handshake_tx, server_handshake) =
-            mpsc::channel::<ResponseMessage>(32);
+
+        let (notification_tx, notification_rx) =
+            mpsc::channel::<Notification>(32);
+
+        // State for the server transport.
+        let server = Arc::new(RwLock::new(Some(
+            ProtocolState::Handshake(handshake),
+        )));
 
         let peers = Arc::new(RwLock::new(Default::default()));
         let options = Arc::new(options);
         let client = Self {
             options: Arc::clone(&options),
-            server_handshake,
+            notification_rx,
             outbound_tx: outbound_tx.clone(),
             response,
-            state: Some(ProtocolState::Handshake(handshake)),
+            server: Arc::clone(&server),
             peers: Arc::clone(&peers),
         };
+
+        let (event_loop_tx, event_loop_rx) =
+            mpsc::channel::<ResponseMessage>(32);
 
         let event_loop = EventLoop {
             options,
@@ -81,58 +100,50 @@ impl NativeClient {
             event_loop_rx,
             outbound_tx,
             outbound_rx,
-            server_handshake: server_handshake_tx,
+            notification_tx,
+            server,
             peers,
         };
 
         Ok((client, event_loop))
     }
 
+    /// HTTP response from the connection attempt.
+    ///
+    /// Use this to debug the reason for connection failures.
+    pub fn response(&self) -> &Response {
+        &self.response
+    }
+
     /// Perform initial handshake with the server.
     pub async fn handshake(&mut self) -> Result<()> {
-        let (len, payload) = match &mut self.state {
-            Some(ProtocolState::Handshake(initiator)) => {
-                let mut request = vec![0u8; 1024];
-                let len = initiator.write_message(&[], &mut request)?;
-                (len, request)
-            }
-            _ => return Err(Error::NotHandshakeState),
-        };
+        let request = {
+            let mut state = self.server.write().await;
 
-        let request = RequestMessage::HandshakeInitiator(
-            HandshakeType::Server,
-            len,
-            payload,
-        );
-
-        self.outbound_tx.send(request).await?;
-
-        while let Some(response) = self.server_handshake.recv().await {
-            let transport = match self.state.take() {
-                Some(ProtocolState::Handshake(mut initiator)) => {
-                    match response {
-                        ResponseMessage::HandshakeResponder(
-                            HandshakeType::Server,
-                            len,
-                            buf,
-                        ) => {
-                            let mut read_buf = vec![0u8; 1024];
-                            initiator.read_message(
-                                &buf[..len],
-                                &mut read_buf,
-                            )?;
-
-                            initiator.into_transport_mode()?
-                        }
-                        _ => return Err(Error::NotHandshakeReply),
-                    }
+            let (len, payload) = match &mut *state {
+                Some(ProtocolState::Handshake(initiator)) => {
+                    let mut request = vec![0u8; 1024];
+                    let len =
+                        initiator.write_message(&[], &mut request)?;
+                    (len, request)
                 }
                 _ => return Err(Error::NotHandshakeState),
             };
 
-            self.state = Some(ProtocolState::Transport(transport));
+            RequestMessage::HandshakeInitiator(
+                HandshakeType::Server,
+                len,
+                payload,
+            )
+        };
 
-            break;
+        self.outbound_tx.send(request).await?;
+
+        // Wait for the server handshake notification
+        while let Some(notify) = self.notification_rx.recv().await {
+            if let Notification::ServerHandshake = notify {
+                break;
+            }
         }
         Ok(())
     }
@@ -167,7 +178,8 @@ impl NativeClient {
         let (len, payload) = match state {
             ProtocolState::Handshake(initiator) => {
                 let mut request = vec![0u8; 1024];
-                let len = initiator.write_message(&[], &mut request)?;
+                let len =
+                    initiator.write_message(&[], &mut request)?;
                 (len, request)
             }
             _ => return Err(Error::NotHandshakeState),
@@ -189,6 +201,13 @@ impl NativeClient {
         };
 
         self.outbound_tx.send(request).await?;
+
+        // Wait for the peer handshake notification
+        while let Some(notify) = self.notification_rx.recv().await {
+            if let Notification::PeerHandshake = notify {
+                break;
+            }
+        }
         Ok(())
     }
 }
@@ -196,58 +215,77 @@ impl NativeClient {
 /// Event loop for a websocket client.
 pub struct EventLoop {
     options: Arc<ClientOptions>,
-    ws_reader: SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>,
-    ws_writer:
-        SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
+    ws_reader:
+        SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>,
+    ws_writer: SplitSink<
+        WebSocketStream<MaybeTlsStream<TcpStream>>,
+        Message,
+    >,
     event_loop_tx: mpsc::Sender<ResponseMessage>,
     event_loop_rx: mpsc::Receiver<ResponseMessage>,
     outbound_tx: mpsc::Sender<RequestMessage>,
     outbound_rx: mpsc::Receiver<RequestMessage>,
-    server_handshake: mpsc::Sender<ResponseMessage>,
+    notification_tx: mpsc::Sender<Notification>,
+    server: Server,
     peers: Peers,
 }
 
 impl EventLoop {
-    /// Start the client event loop running.
-    pub async fn run(mut self) {
-        loop {
-            select!(
-                message_in = self.ws_reader.next().fuse() => match message_in {
-                    Some(message) => {
-                        match message {
-                            Ok(message) => {
-                                Self::decode_socket_message(
-                                    message,
-                                    &mut self.event_loop_tx,
-                                    &mut self.server_handshake,
-                                ).await;
+    /// Stream of events from the event loop.
+    pub fn run<'a>(&'a mut self) -> BoxStream<'a, Result<Event>> {
+        let s = try_stream! {
+            loop {
+                select!(
+                    message_in =
+                        self.ws_reader.next().fuse()
+                            => match message_in {
+                        Some(message) => {
+                            match message {
+                                Ok(message) => {
+                                    Self::decode_socket_message(
+                                        message,
+                                        &mut self.event_loop_tx,
+                                    ).await;
+                                }
+                                Err(e) => {
+                                    tracing::error!("{}", e);
+                                }
                             }
-                            Err(e) => {
+                        }
+                        _ => {}
+                    },
+                    message_out =
+                        self.outbound_rx.recv().fuse()
+                            => match message_out {
+                        Some(message) => {
+                            if let Err(e) = self.send_message(message).await {
                                 tracing::error!("{}", e);
                             }
                         }
-                    }
-                    _ => {}
-                },
-                message_out = self.outbound_rx.recv().fuse() => match message_out {
-                    Some(message) => {
-                        if let Err(e) = self.send_message(message).await {
-                            tracing::error!("{}", e);
-                        }
-                    }
-                    _ => {}
-                },
-                event_message = self.event_loop_rx.recv().fuse() => match event_message {
-                    Some(event_message) => {
+                        _ => {}
+                    },
+                    event_message =
+                        self.event_loop_rx.recv().fuse()
+                            => match event_message {
+                        Some(event_message) => {
+                            match self.handle_incoming_message(
+                                event_message).await {
 
-                        if let Err(e) = self.handle_incoming_message(event_message).await {
-                            tracing::error!("{}", e);
+                                Ok(Some(event)) => {
+                                    yield event;
+                                }
+                                Err(e) => {
+                                    tracing::error!("{}", e);
+                                }
+                                _ => {}
+                            }
                         }
-                    }
-                    _ => {}
-                },
-            );
-        }
+                        _ => {}
+                    },
+                );
+            }
+        };
+        Box::pin(s)
     }
 
     /// Send a message to the socket and flush the stream.
@@ -261,12 +299,21 @@ impl EventLoop {
     }
 
     async fn handle_incoming_message(
-        &self,
+        &mut self,
         incoming: ResponseMessage,
-    ) -> Result<()> {
+    ) -> Result<Option<Event>> {
         match incoming {
             ResponseMessage::Error(code, message) => {
                 tracing::error!("{} {}", code, message);
+            }
+            ResponseMessage::HandshakeResponder(
+                HandshakeType::Server,
+                len,
+                buf,
+            ) => {
+                return Ok(Some(
+                    self.server_handshake(len, buf).await?,
+                ));
             }
             ResponseMessage::RelayPeer {
                 public_key,
@@ -282,14 +329,12 @@ impl EventLoop {
                                 buf,
                             ),
                         ) => {
-                            if let Err(e) = self
-                                .peer_handshake_responder(
+                            return Ok(Some(
+                                self.peer_handshake_responder(
                                     public_key, len, buf,
                                 )
-                                .await
-                            {
-                                tracing::error!("{}", e);
-                            }
+                                .await?,
+                            ));
                         }
                         PeerMessage::Response(
                             ResponseMessage::HandshakeResponder(
@@ -298,12 +343,12 @@ impl EventLoop {
                                 buf,
                             ),
                         ) => {
-                            if let Err(e) = self
-                                .peer_handshake_ack(public_key, len, buf)
-                                .await
-                            {
-                                tracing::error!("{}", e);
-                            }
+                            return Ok(Some(
+                                self.peer_handshake_ack(
+                                    public_key, len, buf,
+                                )
+                                .await?,
+                            ));
                         }
                         _ => todo!(),
                     },
@@ -318,7 +363,7 @@ impl EventLoop {
             _ => {}
         }
 
-        Ok(())
+        Ok(None)
     }
 
     async fn peer_handshake_responder(
@@ -326,7 +371,7 @@ impl EventLoop {
         public_key: impl AsRef<[u8]>,
         len: usize,
         buf: Vec<u8>,
-    ) -> Result<()> {
+    ) -> Result<Event> {
         let mut peers = self.peers.write().await;
         if peers.get(public_key.as_ref()).is_some() {
             return Err(Error::PeerAlreadyExists);
@@ -371,7 +416,9 @@ impl EventLoop {
 
         self.outbound_tx.send(request).await?;
 
-        Ok(())
+        Ok(Event::PeerConnected {
+            peer_id: hex::encode(public_key.as_ref()),
+        })
     }
 
     async fn peer_handshake_ack(
@@ -379,16 +426,17 @@ impl EventLoop {
         public_key: impl AsRef<[u8]>,
         len: usize,
         buf: Vec<u8>,
-    ) -> Result<()> {
+    ) -> Result<Event> {
         let mut peers = self.peers.write().await;
 
-        let peer = if let Some(peer) = peers.remove(public_key.as_ref()) {
-            peer
-        } else {
-            return Err(Error::PeerNotFound(hex::encode(
-                public_key.as_ref().to_vec(),
-            )));
-        };
+        let peer =
+            if let Some(peer) = peers.remove(public_key.as_ref()) {
+                peer
+            } else {
+                return Err(Error::PeerNotFound(hex::encode(
+                    public_key.as_ref().to_vec(),
+                )));
+            };
 
         tracing::debug!(
             from = ?hex::encode(public_key.as_ref()),
@@ -409,32 +457,53 @@ impl EventLoop {
             ProtocolState::Transport(transport),
         );
 
-        Ok(())
+        self.notification_tx
+            .send(Notification::PeerHandshake)
+            .await?;
+
+        Ok(Event::PeerConnected {
+            peer_id: hex::encode(public_key.as_ref()),
+        })
     }
 
     /// Decode socket messages and send to the appropriate channel.
     async fn decode_socket_message(
         incoming: Message,
         event_loop: &mut mpsc::Sender<ResponseMessage>,
-        server_handshake: &mut mpsc::Sender<ResponseMessage>,
     ) {
         let buffer = incoming.into_data();
         match decode::<ResponseMessage>(buffer).await {
-            Ok(response) => match response {
-                ResponseMessage::HandshakeResponder(
-                    HandshakeType::Server,
-                    _,
-                    _,
-                ) => {
-                    let _ = server_handshake.send(response).await;
-                }
-                _ => {
-                    let _ = event_loop.send(response).await;
-                }
-            },
+            Ok(response) => {
+                let _ = event_loop.send(response).await;
+            }
             Err(e) => {
                 tracing::error!("client decode error {}", e);
             }
         }
+    }
+
+    async fn server_handshake(
+        &mut self,
+        len: usize,
+        buf: Vec<u8>,
+    ) -> Result<Event> {
+        let mut state = self.server.write().await;
+        let transport = match state.take() {
+            Some(ProtocolState::Handshake(mut initiator)) => {
+                let mut read_buf = vec![0u8; 1024];
+                initiator.read_message(&buf[..len], &mut read_buf)?;
+
+                initiator.into_transport_mode()?
+            }
+            _ => return Err(Error::NotHandshakeState),
+        };
+
+        *state = Some(ProtocolState::Transport(transport));
+
+        self.notification_tx
+            .send(Notification::ServerHandshake)
+            .await?;
+
+        Ok(Event::ServerConnected)
     }
 }

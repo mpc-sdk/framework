@@ -6,7 +6,8 @@ use tokio::{fs, sync::oneshot};
 
 use mpc_relay_server::{
     keypair::{decode_keypair, generate_keypair, Keypair},
-    ClientOptions, EventLoop, NativeClient, RelayServer, ServerConfig,
+    ClientOptions, EventLoop, NativeClient, RelayServer,
+    ServerConfig,
 };
 
 const ADDR: &str = "127.0.0.1:7337";
@@ -25,18 +26,23 @@ pub fn init_tracing() {
     };
     let _ = tracing_subscriber::registry()
         .with(tracing_subscriber::EnvFilter::new(
-            std::env::var("RUST_LOG").unwrap_or_else(|_| "debug".into()),
+            std::env::var("RUST_LOG")
+                .unwrap_or_else(|_| "debug".into()),
         ))
         .with(tracing_subscriber::fmt::layer().without_time())
         .try_init();
 }
 
 /// Create new client connected to the mock server.
-pub async fn new_client() -> Result<(NativeClient, EventLoop, Keypair)> {
+pub async fn new_client() -> Result<(NativeClient, EventLoop, Keypair)>
+{
     let server_public_key = server_public_key().await?;
     let keypair = generate_keypair()?;
-    let url =
-        format!("{}/?public_key={}", SERVER, hex::encode(&keypair.public));
+    let url = format!(
+        "{}/?public_key={}",
+        SERVER,
+        hex::encode(&keypair.public)
+    );
     let copy = Keypair {
         public: keypair.public.clone(),
         private: keypair.public.clone(),
@@ -45,7 +51,8 @@ pub async fn new_client() -> Result<(NativeClient, EventLoop, Keypair)> {
         keypair,
         server_public_key,
     };
-    let (client, event_loop) = NativeClient::new(url, options).await?;
+    let (client, event_loop) =
+        NativeClient::new(url, options).await?;
     Ok((client, event_loop, copy))
 }
 
@@ -71,7 +78,9 @@ impl MockServer {
     }
 
     /// Run the mock server in a separate thread.
-    fn spawn(tx: oneshot::Sender<SocketAddr>) -> Result<ShutdownHandle> {
+    fn spawn(
+        tx: oneshot::Sender<SocketAddr>,
+    ) -> Result<ShutdownHandle> {
         let server = MockServer::new()?;
         let listen_handle = server.handle.clone();
         let user_handle = server.handle.clone();
@@ -80,8 +89,13 @@ impl MockServer {
             let runtime = tokio::runtime::Runtime::new().unwrap();
             runtime.block_on(async move {
                 loop {
-                    if let Some(addr) = listen_handle.listening().await {
-                        tracing::info!("server has started {:#?}", addr);
+                    if let Some(addr) =
+                        listen_handle.listening().await
+                    {
+                        tracing::info!(
+                            "server has started {:#?}",
+                            addr
+                        );
                         tx.send(addr).expect(
                             "failed to send listening notification",
                         );
@@ -112,7 +126,8 @@ impl Drop for ShutdownHandle {
     }
 }
 
-pub fn spawn() -> Result<(oneshot::Receiver<SocketAddr>, ShutdownHandle)> {
+pub fn spawn(
+) -> Result<(oneshot::Receiver<SocketAddr>, ShutdownHandle)> {
     let (tx, rx) = oneshot::channel::<SocketAddr>();
     let handle = MockServer::spawn(tx)?;
     Ok((rx, handle))

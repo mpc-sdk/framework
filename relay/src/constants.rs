@@ -7,4 +7,5 @@ pub const PEM_PRIVATE: &str = "NOISE PRIVATE KEY";
 /// Tag for PEM encoding of public key.
 pub const PEM_PUBLIC: &str = "NOISE PUBLIC KEY";
 
-pub(crate) const TAGLEN: usize = 16;
+/// Tag length for the noise protocol.
+pub const TAGLEN: usize = 16;

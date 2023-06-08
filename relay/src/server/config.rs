@@ -63,7 +63,9 @@ impl Default for SessionConfig {
 
 impl ServerConfig {
     /// Load a server config from a file path.
-    pub async fn load<P: AsRef<Path>>(path: P) -> Result<(Self, Keypair)> {
+    pub async fn load<P: AsRef<Path>>(
+        path: P,
+    ) -> Result<(Self, Keypair)> {
         if !fs::try_exists(path.as_ref()).await? {
             return Err(Error::NotFile(path.as_ref().to_path_buf()));
         }
