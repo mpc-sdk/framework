@@ -12,7 +12,7 @@ mod native;
 #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
 pub use native::{EventLoop, NativeClient, Notification};
 
-use mpc_relay_protocol::snow;
+use mpc_relay_protocol::{snow, SessionResponse};
 
 /// Events dispatched by the client.
 #[derive(Debug)]
@@ -43,6 +43,8 @@ pub enum Event {
         /// JSON message.
         message: JsonMessage,
     },
+    /// Event dispatched when a session is ready.
+    SessionReady(SessionResponse),
 }
 
 /// JSON message received from a peer.

@@ -40,8 +40,6 @@ pub enum Notification {
     ServerHandshake,
     /// Notification sent when a peer handshake is complete.
     PeerHandshake,
-    /// Notification that a session is ready.
-    SessionReady(SessionResponse),
 }
 
 /// Native websocket client using the tokio tungstenite library.
@@ -126,7 +124,7 @@ impl NativeClient {
     }
 
     /// Perform initial handshake with the server.
-    pub async fn handshake(&mut self) -> Result<()> {
+    pub async fn connect(&mut self) -> Result<()> {
         let request = {
             let mut state = self.server.write().await;
 
@@ -279,20 +277,10 @@ impl NativeClient {
     pub async fn new_session(
         &mut self,
         participant_keys: Vec<Vec<u8>>,
-    ) -> Result<SessionResponse> {
+    ) -> Result<()> {
         let session = SessionRequest { participant_keys };
         let message = RequestMessage::Session(session);
-        self.request(message).await?;
-
-        // Wait for the server handshake notification
-        let mut notifier = self.notification_rx.lock().await;
-        while let Some(notify) = notifier.recv().await {
-            if let Notification::SessionReady(response) = notify {
-                return Ok(response);
-            }
-        }
-
-        unreachable!();
+        self.request(message).await
     }
 
     /// Encrypt a request message and send over the encrypted
@@ -301,11 +289,19 @@ impl NativeClient {
         &mut self,
         message: RequestMessage,
     ) -> Result<()> {
-        let mut server = self.server.write().await;
-        if let Some(server) = server.as_mut() {
-            let payload = encode(&message).await?;
-            let inner =
-                encrypt_server_channel(server, payload).await?;
+        let inner = {
+            let mut server = self.server.write().await;
+            if let Some(server) = server.as_mut() {
+                let payload = encode(&message).await?;
+                let inner =
+                    encrypt_server_channel(server, payload).await?;
+                Some(inner)
+            } else {
+                None
+            }
+        };
+
+        if let Some(inner) = inner {
             let request = RequestMessage::Envelope(inner);
             self.outbound_tx.send(request).await?;
             Ok(())
@@ -475,7 +471,6 @@ impl EventLoop {
                 }
             }
             ResponseMessage::Envelope(message) => {
-                println!("got response from server to decrypt...");
                 let mut server = self.server.write().await;
                 if let Some(server) = server.as_mut() {
                     let (encoding, contents) =
@@ -513,11 +508,7 @@ impl EventLoop {
     ) -> Result<Option<Event>> {
         match message {
             ResponseMessage::Session(response) => {
-                println!("got response to create session...");
-                self.notification_tx
-                    .send(Notification::SessionReady(response))
-                    .await?;
-                Ok(None)
+                Ok(Some(Event::SessionReady(response)))
             }
             _ => Ok(None),
         }

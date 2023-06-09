@@ -209,11 +209,19 @@ async fn service(
     match message {
         RequestMessage::Session(request) => {
             let mut writer = state.write().await;
+
+            let connected: Vec<_> = request.participant_keys.iter()
+                .filter(|&k| {
+                    writer.active.get(k).is_some()
+                })
+                .map(|k| k.clone())
+                .collect();
+
             let session_id = writer.sessions.new_session(
                 public_key,
                 request.participant_keys,
             );
-            let response = SessionResponse { session_id };
+            let response = SessionResponse { session_id, connected };
             Ok(Some(ResponseMessage::Session(response)))
         }
         _ => Ok(None),

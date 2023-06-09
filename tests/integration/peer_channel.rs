@@ -92,8 +92,8 @@ async fn integration_peer_channel() -> Result<()> {
     });
 
     // Clients must handshake with the server first
-    initiator.handshake().await?;
-    participant.handshake().await?;
+    initiator.connect().await?;
+    participant.connect().await?;
 
     // Now we can connect to a peer
     initiator.connect_peer(&participant_key.public).await?;
