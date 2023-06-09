@@ -217,7 +217,7 @@ impl Decodable for PeerMessage {
     }
 }
 
-/// Request messages from the client.
+/// Request message sent to the server or another peer.
 #[derive(Default, Debug)]
 pub enum RequestMessage {
     #[default]
@@ -349,7 +349,7 @@ impl Decodable for RequestMessage {
     }
 }
 
-/// Response messages from the server.
+/// Response message sent by the server or a peer.
 #[derive(Default, Debug)]
 pub enum ResponseMessage {
     #[default]
