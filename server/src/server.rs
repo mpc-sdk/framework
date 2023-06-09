@@ -49,7 +49,7 @@ pub struct ServerState {
     pub(crate) keypair: Keypair,
 
     /// Server config.
-    config: ServerConfig,
+    pub(crate) config: ServerConfig,
 
     /// Pending socket connections in the handshake state.
     pub(crate) pending: HashMap<Uuid, Connection>,
@@ -60,7 +60,7 @@ pub struct ServerState {
     pub(crate) active: HashMap<Vec<u8>, Connection>,
 
     /// Session manager.
-    sessions: SessionManager,
+    pub(crate) sessions: SessionManager,
 }
 
 /// Relay web server.

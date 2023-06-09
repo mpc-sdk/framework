@@ -7,7 +7,7 @@ use futures::io::{AsyncRead, AsyncSeek, AsyncWrite};
 use http::StatusCode;
 use snow::{HandshakeState, TransportState};
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     io::Result,
     time::{Duration, SystemTime},
 };
@@ -591,7 +591,7 @@ pub struct Session {
     owner_key: Vec<u8>,
 
     /// Public keys of the other session participants.
-    participant_keys: Vec<Vec<u8>>,
+    participant_keys: HashSet<Vec<u8>>,
 
     /// Last access time so the server can reap
     /// stale sessions.
@@ -614,7 +614,7 @@ impl SessionManager {
         let session_id = SessionId::new_v4();
         let session = Session {
             owner_key,
-            participant_keys,
+            participant_keys: participant_keys.into_iter().collect(),
             last_access: SystemTime::now(),
         };
         self.sessions.insert(session_id.clone(), session);
@@ -663,7 +663,7 @@ impl SessionManager {
 
 /// Request to create a new session.
 ///
-/// Do no include the public key of the initiator as it 
+/// Do no include the public key of the initiator as it
 /// is automatically added as the session *owner*.
 #[derive(Default, Debug)]
 pub struct SessionRequest {
@@ -709,7 +709,7 @@ impl Decodable for SessionRequest {
 #[derive(Default, Debug)]
 pub struct SessionResponse {
     /// Session identifier.
-    pub id: SessionId,
+    pub session_id: SessionId,
 }
 
 #[cfg_attr(target_arch="wasm32", async_trait(?Send))]
@@ -719,7 +719,7 @@ impl Encodable for SessionResponse {
         &self,
         writer: &mut BinaryWriter<W>,
     ) -> Result<()> {
-        writer.write_bytes(self.id.as_bytes()).await?;
+        writer.write_bytes(self.session_id.as_bytes()).await?;
         Ok(())
     }
 }
@@ -731,7 +731,7 @@ impl Decodable for SessionResponse {
         &mut self,
         reader: &mut BinaryReader<R>,
     ) -> Result<()> {
-        self.id = SessionId::from_bytes(
+        self.session_id = SessionId::from_bytes(
             reader
                 .read_bytes(16)
                 .await?

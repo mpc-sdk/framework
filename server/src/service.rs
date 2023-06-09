@@ -3,8 +3,9 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 
 use mpc_relay_protocol::{
-    decode, encode, hex, HandshakeType, ProtocolState,
-    RequestMessage, ResponseMessage,
+    channel::{decrypt_server_channel, encrypt_server_channel},
+    decode, encode, hex, Encoding, HandshakeType, ProtocolState,
+    RequestMessage, ResponseMessage, SessionResponse,
 };
 
 use crate::{server::State, websocket::Connection, Error, Result};
@@ -135,13 +136,13 @@ async fn handle_request(
                     from = ?hex::encode(&from_public_key),
                     "relay",
                 );
+
                 let relayed = ResponseMessage::RelayPeer {
                     handshake,
                     public_key: from_public_key,
                     message,
                 };
                 let buffer = encode(&relayed).await?;
-                //println!("relaying the peer message {:#?}", writer.public_key);
                 writer.send(buffer).await?;
             } else {
                 return Err(Error::PeerNotFound(hex::encode(
@@ -149,10 +150,74 @@ async fn handle_request(
                 )));
             }
         }
+        RequestMessage::Envelope(message) => {
+            let from_public_key = {
+                let reader = conn.read().await;
+                reader.public_key.clone()
+            };
+
+            let peer = {
+                let reader = state.read().await;
+                reader.active.get(&from_public_key).map(Arc::clone)
+            };
+
+            if let Some(peer) = peer {
+                let mut writer = peer.write().await;
+                let peer_state = writer.state.as_mut().unwrap();
+
+                let (encoding, contents) =
+                    decrypt_server_channel(peer_state, message)
+                        .await?;
+
+                if let Encoding::Blob = encoding {
+                    let request: RequestMessage =
+                        decode(&contents).await?;
+
+                    if let Some(response) =
+                        service(state, conn, from_public_key, request).await?
+                    {
+                        let payload = encode(&response).await?;
+                        let inner = encrypt_server_channel(
+                            peer_state, payload,
+                        )
+                        .await?;
+
+                        let response =
+                            ResponseMessage::Envelope(inner);
+                        let buffer = encode(&response).await?;
+
+                        writer.send(buffer).await?;
+                    }
+                }
+            } else {
+                return Err(Error::PeerNotFound(hex::encode(
+                    from_public_key,
+                )));
+            }
+        }
         _ => {}
     }
-
     Ok(())
+}
+
+async fn service(
+    state: State,
+    conn: Connection,
+    public_key: Vec<u8>,
+    message: RequestMessage,
+) -> Result<Option<ResponseMessage>> {
+    match message {
+        RequestMessage::Session(request) => {
+            let mut writer = state.write().await;
+            let session_id = writer.sessions.new_session(
+                public_key,
+                request.participant_keys,
+            );
+            let response = SessionResponse { session_id };
+            Ok(Some(ResponseMessage::Session(response)))
+        }
+        _ => Ok(None),
+    }
 }
 
 /// Promote a connection from pending to active state.

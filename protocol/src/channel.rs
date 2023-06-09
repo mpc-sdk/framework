@@ -13,11 +13,10 @@ use crate::{
 #[doc(hidden)]
 pub async fn encrypt_server_channel(
     server: &mut ProtocolState,
-    message: RequestMessage,
+    payload: Vec<u8>,
 ) -> Result<Vec<u8>> {
     match server {
         ProtocolState::Transport(transport) => {
-            let payload = encode(&message).await?;
             let mut contents = vec![0; payload.len() + TAGLEN];
             let length =
                 transport.write_message(&payload, &mut contents)?;
@@ -39,7 +38,7 @@ pub async fn encrypt_server_channel(
 pub async fn decrypt_server_channel(
     server: &mut ProtocolState,
     payload: Vec<u8>,
-) -> Result<ResponseMessage> {
+) -> Result<(Encoding, Vec<u8>)> {
     match server {
         ProtocolState::Transport(transport) => {
             let envelope: SealedEnvelope = decode(&payload).await?;
@@ -50,16 +49,7 @@ pub async fn decrypt_server_channel(
             )?;
             let new_length = contents.len() - TAGLEN;
             contents.truncate(new_length);
-            match envelope.encoding {
-                Encoding::Blob => {
-                    let response: ResponseMessage =
-                        decode(&contents).await?;
-                    Ok(response)
-                }
-                _ => {
-                    panic!("unexpected encoding received from server")
-                }
-            }
+            Ok((envelope.encoding, contents))
         }
         _ => Err(Error::NotTransportState),
     }

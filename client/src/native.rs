@@ -303,9 +303,10 @@ impl NativeClient {
     ) -> Result<()> {
         let mut server = self.server.write().await;
         if let Some(server) = server.as_mut() {
-            let payload =
-                encrypt_server_channel(server, message).await?;
-            let request = RequestMessage::Envelope(payload);
+            let payload = encode(&message).await?;
+            let inner =
+                encrypt_server_channel(server, payload).await?;
+            let request = RequestMessage::Envelope(inner);
             self.outbound_tx.send(request).await?;
             Ok(())
         } else {
@@ -477,9 +478,19 @@ impl EventLoop {
                 println!("got response from server to decrypt...");
                 let mut server = self.server.write().await;
                 if let Some(server) = server.as_mut() {
-                    let message =
+                    let (encoding, contents) =
                         decrypt_server_channel(server, message)
                             .await?;
+                    let message = match encoding {
+                        Encoding::Blob => {
+                            let response: ResponseMessage =
+                                decode(&contents).await?;
+                            response
+                        }
+                        _ => {
+                            panic!("unexpected encoding received from server")
+                        }
+                    };
                     Ok(self
                         .handle_server_channel_message(message)
                         .await?)
