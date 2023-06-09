@@ -2,6 +2,8 @@
 #![deny(missing_docs)]
 #![cfg_attr(all(doc, CHANNEL_NIGHTLY), feature(doc_auto_cfg))]
 
+#[doc(hidden)]
+pub mod channel;
 mod constants;
 mod error;
 mod keypair;

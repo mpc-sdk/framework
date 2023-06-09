@@ -18,10 +18,13 @@ use tokio_tungstenite::{
 };
 
 use mpc_relay_protocol::{
-    decode, encode, hex, http::StatusCode, snow::Builder, Encoding,
-    HandshakeType, PeerMessage, ProtocolState, RequestMessage,
-    ResponseMessage, SealedEnvelope, SessionRequest, SessionResponse,
-    PATTERN, TAGLEN,
+    channel::{decrypt_server_channel, encrypt_server_channel},
+    decode, encode, hex,
+    http::StatusCode,
+    snow::Builder,
+    Encoding, HandshakeType, PeerMessage, ProtocolState,
+    RequestMessage, ResponseMessage, SealedEnvelope, SessionRequest,
+    SessionResponse, PATTERN, TAGLEN,
 };
 
 use crate::{ClientOptions, Error, Event, JsonMessage, Result};
@@ -611,7 +614,7 @@ impl EventLoop {
 
         tracing::debug!(
             from = ?hex::encode(public_key.as_ref()),
-            "peer handshake ack"
+            "peer handshake done"
         );
 
         let transport = match peer {
@@ -666,6 +669,8 @@ impl EventLoop {
 }
 
 /// Encrypt a message to send to a peer.
+///
+/// The protocol must be in transport mode.
 async fn encrypt_peer_channel(
     public_key: impl AsRef<[u8]>,
     peer: &mut ProtocolState,
@@ -695,6 +700,8 @@ async fn encrypt_peer_channel(
 }
 
 /// Decrypt a message received from a peer.
+///
+/// The protocol must be in transport mode.
 async fn decrypt_peer_channel(
     peer: &mut ProtocolState,
     payload: Vec<u8>,
@@ -710,58 +717,6 @@ async fn decrypt_peer_channel(
             let new_length = contents.len() - TAGLEN;
             contents.truncate(new_length);
             Ok((envelope.encoding, contents))
-        }
-        _ => Err(Error::NotTransportState),
-    }
-}
-
-/// Encrypt a message to send to the server.
-async fn encrypt_server_channel(
-    server: &mut ProtocolState,
-    message: RequestMessage,
-) -> Result<Vec<u8>> {
-    match server {
-        ProtocolState::Transport(transport) => {
-            let payload = encode(&message).await?;
-            let mut contents = vec![0; payload.len() + TAGLEN];
-            let length =
-                transport.write_message(&payload, &mut contents)?;
-            let envelope = SealedEnvelope {
-                length,
-                encoding: Encoding::Blob,
-                payload: contents,
-            };
-            Ok(encode(&envelope).await?)
-        }
-        _ => Err(Error::NotTransportState),
-    }
-}
-
-/// Decrypt a message received from the server.
-async fn decrypt_server_channel(
-    server: &mut ProtocolState,
-    payload: Vec<u8>,
-) -> Result<ResponseMessage> {
-    match server {
-        ProtocolState::Transport(transport) => {
-            let envelope: SealedEnvelope = decode(&payload).await?;
-            let mut contents = vec![0; envelope.length];
-            transport.read_message(
-                &envelope.payload[..envelope.length],
-                &mut contents,
-            )?;
-            let new_length = contents.len() - TAGLEN;
-            contents.truncate(new_length);
-            match envelope.encoding {
-                Encoding::Blob => {
-                    let response: ResponseMessage =
-                        decode(&contents).await?;
-                    Ok(response)
-                }
-                _ => {
-                    panic!("unexpected encoding received from server")
-                }
-            }
         }
         _ => Err(Error::NotTransportState),
     }

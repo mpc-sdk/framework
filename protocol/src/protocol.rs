@@ -45,7 +45,8 @@ fn encoding_options() -> Options {
     }
 }
 
-type SessionId = uuid::Uuid;
+/// Identifier for sessions.
+pub type SessionId = uuid::Uuid;
 
 /// Encode to a binary buffer.
 pub async fn encode(encodable: &impl Encodable) -> Result<Vec<u8>> {
@@ -519,7 +520,7 @@ impl From<Encoding> for u8 {
     }
 }
 
-/// Sealed message sent between peers.
+/// Sealed envelope is an encrypted message.
 ///
 /// The payload has been encrypted using the noise protocol
 /// channel and the recipient must decrypt and decode the payload.
@@ -661,6 +662,9 @@ impl SessionManager {
 }
 
 /// Request to create a new session.
+///
+/// Do no include the public key of the initiator as it 
+/// is automatically added as the session *owner*.
 #[derive(Default, Debug)]
 pub struct SessionRequest {
     /// Public keys of the session participants.
@@ -705,7 +709,7 @@ impl Decodable for SessionRequest {
 #[derive(Default, Debug)]
 pub struct SessionResponse {
     /// Session identifier.
-    pub id: String,
+    pub id: SessionId,
 }
 
 #[cfg_attr(target_arch="wasm32", async_trait(?Send))]
@@ -715,7 +719,7 @@ impl Encodable for SessionResponse {
         &self,
         writer: &mut BinaryWriter<W>,
     ) -> Result<()> {
-        writer.write_string(&self.id).await?;
+        writer.write_bytes(self.id.as_bytes()).await?;
         Ok(())
     }
 }
@@ -727,7 +731,14 @@ impl Decodable for SessionResponse {
         &mut self,
         reader: &mut BinaryReader<R>,
     ) -> Result<()> {
-        self.id = reader.read_string().await?;
+        self.id = SessionId::from_bytes(
+            reader
+                .read_bytes(16)
+                .await?
+                .as_slice()
+                .try_into()
+                .map_err(encoding_error)?,
+        );
         Ok(())
     }
 }
