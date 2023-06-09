@@ -575,8 +575,8 @@ impl EventLoop {
     ) -> Result<Event> {
         let mut peers = self.peers.write().await;
         if let Some(peer) = peers.get_mut(public_key.as_ref()) {
-            let (encoding, contents) = decrypt_peer_channel(
-                peer, payload).await?;
+            let (encoding, contents) =
+                decrypt_peer_channel(peer, payload).await?;
             match encoding {
                 Encoding::Noop => unreachable!(),
                 Encoding::Blob => Ok(Event::BinaryMessage {
@@ -632,8 +632,7 @@ async fn decrypt_peer_channel(
 ) -> Result<(Encoding, Vec<u8>)> {
     match peer {
         ProtocolState::Transport(transport) => {
-            let envelope: SealedEnvelope =
-                decode(&payload).await?;
+            let envelope: SealedEnvelope = decode(&payload).await?;
             let mut contents = vec![0; envelope.length];
             transport.read_message(
                 &envelope.payload[..envelope.length],
@@ -642,6 +641,58 @@ async fn decrypt_peer_channel(
             let new_length = contents.len() - TAGLEN;
             contents.truncate(new_length);
             Ok((envelope.encoding, contents))
+        }
+        _ => Err(Error::NotTransportState),
+    }
+}
+
+/// Encrypt a message to send to the server.
+async fn encrypt_server_channel(
+    server: &mut ProtocolState,
+    message: RequestMessage,
+) -> Result<Vec<u8>> {
+    match server {
+        ProtocolState::Transport(transport) => {
+            let payload = encode(&message).await?;
+            let mut contents = vec![0; payload.len() + TAGLEN];
+            let length =
+                transport.write_message(&payload, &mut contents)?;
+            let envelope = SealedEnvelope {
+                length,
+                encoding: Encoding::Blob,
+                payload: contents,
+            };
+            Ok(encode(&envelope).await?)
+        }
+        _ => Err(Error::NotTransportState),
+    }
+}
+
+/// Decrypt a message received from the server.
+async fn decrypt_server_channel(
+    server: &mut ProtocolState,
+    payload: Vec<u8>,
+) -> Result<ResponseMessage> {
+    match server {
+        ProtocolState::Transport(transport) => {
+            let envelope: SealedEnvelope = decode(&payload).await?;
+            let mut contents = vec![0; envelope.length];
+            transport.read_message(
+                &envelope.payload[..envelope.length],
+                &mut contents,
+            )?;
+            let new_length = contents.len() - TAGLEN;
+            contents.truncate(new_length);
+            match envelope.encoding {
+                Encoding::Blob => {
+                    let response: ResponseMessage =
+                        decode(&contents).await?;
+                    Ok(response)
+                }
+                _ => {
+                    panic!("unexpected encoding received from server")
+                }
+            }
         }
         _ => Err(Error::NotTransportState),
     }
