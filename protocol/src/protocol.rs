@@ -30,6 +30,7 @@ mod types {
     pub const HANDSHAKE_INITIATOR: u8 = 2;
     pub const HANDSHAKE_RESPONDER: u8 = 3;
     pub const RELAY_PEER: u8 = 4;
+    pub const SESSION: u8 = 5;
 
     pub const ENCODING_BLOB: u8 = 1;
     pub const ENCODING_JSON: u8 = 2;
@@ -232,6 +233,8 @@ pub enum RequestMessage {
         /// Message payload.
         message: Vec<u8>,
     },
+    /// Request a new session.
+    Session(SessionRequest),
 }
 
 impl From<&RequestMessage> for u8 {
@@ -242,6 +245,7 @@ impl From<&RequestMessage> for u8 {
                 types::HANDSHAKE_INITIATOR
             }
             RequestMessage::RelayPeer { .. } => types::RELAY_PEER,
+            RequestMessage::Session(_) => types::SESSION,
         }
     }
 }
@@ -272,6 +276,9 @@ impl Encodable for RequestMessage {
                 writer.write_bytes(public_key).await?;
                 writer.write_u32(message.len() as u32).await?;
                 writer.write_bytes(message).await?;
+            }
+            Self::Session(request) => {
+                request.encode(writer).await?;
             }
             Self::Noop => unreachable!(),
         }
@@ -312,6 +319,11 @@ impl Decodable for RequestMessage {
                     message,
                 };
             }
+            types::SESSION => {
+                let mut session: SessionRequest = Default::default();
+                session.decode(reader).await?;
+                *self = RequestMessage::Session(session);
+            }
             _ => {
                 return Err(encoding_error(
                     crate::Error::EncodingKind(id),
@@ -342,6 +354,8 @@ pub enum ResponseMessage {
         /// Message payload.
         message: Vec<u8>,
     },
+    /// Response to a new session request.
+    Session(SessionResponse),
 }
 
 impl From<&ResponseMessage> for u8 {
@@ -353,6 +367,7 @@ impl From<&ResponseMessage> for u8 {
                 types::HANDSHAKE_RESPONDER
             }
             ResponseMessage::RelayPeer { .. } => types::RELAY_PEER,
+            ResponseMessage::Session(_) => types::SESSION,
         }
     }
 }
@@ -388,6 +403,9 @@ impl Encodable for ResponseMessage {
                 writer.write_bytes(public_key).await?;
                 writer.write_u32(message.len() as u32).await?;
                 writer.write_bytes(message).await?;
+            }
+            Self::Session(response) => {
+                response.encode(writer).await?;
             }
             Self::Noop => unreachable!(),
         }
@@ -436,6 +454,11 @@ impl Decodable for ResponseMessage {
                     public_key,
                     message,
                 };
+            }
+            types::SESSION => {
+                let mut session: SessionResponse = Default::default();
+                session.decode(reader).await?;
+                *self = ResponseMessage::Session(session);
             }
             _ => {
                 return Err(encoding_error(
@@ -586,7 +609,9 @@ impl SessionManager {
         if let Some(session) = self.sessions.get_mut(id) {
             session.last_access = SystemTime::now();
             Some(&*session)
-        } else { None }
+        } else {
+            None
+        }
     }
 
     /// Get the keys of sessions that have expired.
@@ -605,5 +630,77 @@ impl SessionManager {
             })
             .map(|(k, _)| *k)
             .collect::<Vec<_>>()
+    }
+}
+
+/// Request to create a new session.
+#[derive(Default, Debug)]
+pub struct SessionRequest {
+    /// Public keys of the session participants.
+    participant_keys: Vec<Vec<u8>>,
+}
+
+#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl Encodable for SessionRequest {
+    async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
+        &self,
+        writer: &mut BinaryWriter<W>,
+    ) -> Result<()> {
+        // TODO: handle too many participants
+        writer.write_u32(self.participant_keys.len() as u32).await?;
+        for key in self.participant_keys.iter() {
+            writer.write_u32(key.len() as u32).await?;
+            writer.write_bytes(key).await?;
+        }
+        Ok(())
+    }
+}
+
+#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl Decodable for SessionRequest {
+    async fn decode<R: AsyncRead + AsyncSeek + Unpin + Send>(
+        &mut self,
+        reader: &mut BinaryReader<R>,
+    ) -> Result<()> {
+        let size = reader.read_u32().await? as usize;
+        for _ in 0..size {
+            let len = reader.read_u32().await? as usize;
+            let key = reader.read_bytes(len).await?;
+            self.participant_keys.push(key);
+        }
+        Ok(())
+    }
+}
+
+/// Response from creating new session.
+#[derive(Default, Debug)]
+pub struct SessionResponse {
+    /// Session identifier.
+    id: String,
+}
+
+#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl Encodable for SessionResponse {
+    async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
+        &self,
+        writer: &mut BinaryWriter<W>,
+    ) -> Result<()> {
+        writer.write_string(&self.id).await?;
+        Ok(())
+    }
+}
+
+#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl Decodable for SessionResponse {
+    async fn decode<R: AsyncRead + AsyncSeek + Unpin + Send>(
+        &mut self,
+        reader: &mut BinaryReader<R>,
+    ) -> Result<()> {
+        self.id = reader.read_string().await?;
+        Ok(())
     }
 }

@@ -23,8 +23,8 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[cfg(test)]
 mod tests {
-    use anyhow::Result;
     use crate::{PATTERN, TAGLEN};
+    use anyhow::Result;
 
     #[tokio::test]
     async fn noise_transport_encrypt_decrypt() -> Result<()> {

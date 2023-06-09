@@ -256,32 +256,12 @@ impl NativeClient {
     ) -> Result<()> {
         let mut peers = self.peers.write().await;
         if let Some(peer) = peers.get_mut(public_key.as_ref()) {
-            match peer {
-                ProtocolState::Transport(transport) => {
-                    let mut contents =
-                        vec![0; payload.len() + TAGLEN];
-                    let length = transport
-                        .write_message(&payload, &mut contents)?;
-
-                    let envelope = SealedEnvelope {
-                        length,
-                        encoding,
-                        payload: contents,
-                    };
-
-                    let message = encode(&envelope).await?;
-
-                    let request = RequestMessage::RelayPeer {
-                        handshake: false,
-                        public_key: public_key.as_ref().to_vec(),
-                        message,
-                    };
-
-                    self.outbound_tx.send(request).await?;
-                    Ok(())
-                }
-                _ => Err(Error::NotTransportState),
-            }
+            let request = encrypt_peer_channel(
+                public_key, peer, payload, encoding,
+            )
+            .await?;
+            self.outbound_tx.send(request).await?;
+            Ok(())
         } else {
             Err(Error::PeerNotFound(hex::encode(
                 public_key.as_ref().to_vec(),
@@ -449,7 +429,14 @@ impl EventLoop {
                     ))
                 }
             }
-            _ => Ok(None),
+            ResponseMessage::Session(response) => {
+                println!("got response to create session...");
+                Ok(None)
+            }
+            _ => {
+                panic!("unhandled message");
+                //Ok(None)
+            }
         }
     }
 
@@ -588,37 +575,74 @@ impl EventLoop {
     ) -> Result<Event> {
         let mut peers = self.peers.write().await;
         if let Some(peer) = peers.get_mut(public_key.as_ref()) {
-            match peer {
-                ProtocolState::Transport(transport) => {
-                    let envelope: SealedEnvelope =
-                        decode(&payload).await?;
-                    let mut contents = vec![0; envelope.length];
-                    transport.read_message(
-                        &envelope.payload[..envelope.length],
-                        &mut contents,
-                    )?;
-
-                    let new_length = contents.len() - TAGLEN;
-                    contents.truncate(new_length);
-
-                    match envelope.encoding {
-                        Encoding::Noop => unreachable!(),
-                        Encoding::Blob => Ok(Event::BinaryMessage {
-                            peer_key: public_key.as_ref().to_vec(),
-                            message: contents,
-                        }),
-                        Encoding::Json => Ok(Event::JsonMessage {
-                            peer_key: public_key.as_ref().to_vec(),
-                            message: JsonMessage { contents },
-                        }),
-                    }
-                }
-                _ => Err(Error::NotTransportState),
+            let (encoding, contents) = decrypt_peer_channel(
+                peer, payload).await?;
+            match encoding {
+                Encoding::Noop => unreachable!(),
+                Encoding::Blob => Ok(Event::BinaryMessage {
+                    peer_key: public_key.as_ref().to_vec(),
+                    message: contents,
+                }),
+                Encoding::Json => Ok(Event::JsonMessage {
+                    peer_key: public_key.as_ref().to_vec(),
+                    message: JsonMessage { contents },
+                }),
             }
         } else {
             Err(Error::PeerNotFound(hex::encode(
                 public_key.as_ref().to_vec(),
             )))
         }
+    }
+}
+
+/// Encrypt a message to send to a peer.
+async fn encrypt_peer_channel(
+    public_key: impl AsRef<[u8]>,
+    peer: &mut ProtocolState,
+    payload: Vec<u8>,
+    encoding: Encoding,
+) -> Result<RequestMessage> {
+    match peer {
+        ProtocolState::Transport(transport) => {
+            let mut contents = vec![0; payload.len() + TAGLEN];
+            let length =
+                transport.write_message(&payload, &mut contents)?;
+            let envelope = SealedEnvelope {
+                length,
+                encoding,
+                payload: contents,
+            };
+            let message = encode(&envelope).await?;
+            let request = RequestMessage::RelayPeer {
+                handshake: false,
+                public_key: public_key.as_ref().to_vec(),
+                message,
+            };
+            Ok(request)
+        }
+        _ => Err(Error::NotTransportState),
+    }
+}
+
+/// Decrypt a message received from a peer.
+async fn decrypt_peer_channel(
+    peer: &mut ProtocolState,
+    payload: Vec<u8>,
+) -> Result<(Encoding, Vec<u8>)> {
+    match peer {
+        ProtocolState::Transport(transport) => {
+            let envelope: SealedEnvelope =
+                decode(&payload).await?;
+            let mut contents = vec![0; envelope.length];
+            transport.read_message(
+                &envelope.payload[..envelope.length],
+                &mut contents,
+            )?;
+            let new_length = contents.len() - TAGLEN;
+            contents.truncate(new_length);
+            Ok((envelope.encoding, contents))
+        }
+        _ => Err(Error::NotTransportState),
     }
 }
