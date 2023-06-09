@@ -8,7 +8,7 @@ use tokio::sync::broadcast;
 /// Creates three clients that handshake with the server
 /// and then each other.
 ///
-/// Once the handshakes are complete a session is created 
+/// Once the handshakes are complete a session is created
 /// and the initiator broadcasts a message to all participants.
 #[tokio::test]
 #[serial]
@@ -49,13 +49,17 @@ async fn integration_session_broadcast() -> Result<()> {
             match &event {
                 Event::PeerConnected { peer_key } => {
                     if peer_key == &last_connected_peer {
-                        let session_response = init_client.new_session(
-                            session_participants.clone()).await?;
+                        let session_response = init_client
+                            .new_session(session_participants.clone())
+                            .await?;
                     }
                 }
                 Event::SessionReady(session) => {
                     if session.connected == session_participants {
-                        println!("all participants are ready..");
+                        println!(
+                            "all participants are ready {}",
+                            session.session_id
+                        );
                     } else {
                         panic!("expected all participants to be connected");
                     }
@@ -77,7 +81,9 @@ async fn integration_session_broadcast() -> Result<()> {
                             let event = event?;
                             //tracing::trace!("participant {:#?}", event);
                             match &event {
-
+                                Event::SessionReady(session) => {
+                                    println!("part 1 got session ready {}", session.session_id);
+                                }
                                 /*
                                 Event::JsonMessage { peer_key, message } => {
                                     let message: &str = message.deserialize()?;
@@ -113,6 +119,9 @@ async fn integration_session_broadcast() -> Result<()> {
                             let event = event?;
                             //tracing::trace!("participant {:#?}", event);
                             match &event {
+                                Event::SessionReady(session) => {
+                                    println!("part 2 got session ready {}", session.session_id);
+                                }
                                 /*
                                 Event::JsonMessage { peer_key, message } => {
                                     let message: &str = message.deserialize()?;
@@ -147,7 +156,8 @@ async fn integration_session_broadcast() -> Result<()> {
     initiator.connect_peer(&participant_key_2.public).await?;
 
     // Must drive the event loop futures
-    let (res_i, res_p_1, res_p_2) = futures::join!(ev_i, ev_p_1, ev_p_2);
+    let (res_i, res_p_1, res_p_2) =
+        futures::join!(ev_i, ev_p_1, ev_p_2);
 
     assert!(res_i?.is_ok());
     assert!(res_p_1?.is_ok());

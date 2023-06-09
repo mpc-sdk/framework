@@ -162,20 +162,44 @@ async fn handle_request(
             };
 
             if let Some(peer) = peer {
-                let mut writer = peer.write().await;
-                let peer_state = writer.state.as_mut().unwrap();
-
-                let (encoding, contents) =
+                let (encoding, contents) = {
+                    let mut writer = peer.write().await;
+                    let peer_state = writer.state.as_mut().unwrap();
                     decrypt_server_channel(peer_state, message)
-                        .await?;
+                        .await?
+                };
 
                 if let Encoding::Blob = encoding {
                     let request: RequestMessage =
                         decode(&contents).await?;
 
-                    if let Some(response) =
-                        service(state, conn, from_public_key, request).await?
+                    if let Some(response) = service(
+                        Arc::clone(&state),
+                        conn,
+                        &from_public_key,
+                        request,
+                    )
+                    .await?
                     {
+                        let mut connections =
+                            if let ResponseMessage::Session(
+                                response,
+                            ) = &response
+                            {
+                                response.connected.clone()
+                            } else {
+                                vec![]
+                            };
+                        connections.push(from_public_key);
+
+                        notify_session_ready(
+                            state,
+                            connections,
+                            response,
+                        )
+                        .await?;
+
+                        /*
                         let payload = encode(&response).await?;
                         let inner = encrypt_server_channel(
                             peer_state, payload,
@@ -187,6 +211,7 @@ async fn handle_request(
                         let buffer = encode(&response).await?;
 
                         writer.send(buffer).await?;
+                        */
                     }
                 }
             } else {
@@ -203,29 +228,59 @@ async fn handle_request(
 async fn service(
     state: State,
     conn: Connection,
-    public_key: Vec<u8>,
+    public_key: impl AsRef<[u8]>,
     message: RequestMessage,
 ) -> Result<Option<ResponseMessage>> {
     match message {
         RequestMessage::Session(request) => {
             let mut writer = state.write().await;
-
-            let connected: Vec<_> = request.participant_keys.iter()
-                .filter(|&k| {
-                    writer.active.get(k).is_some()
-                })
+            let connected: Vec<_> = request
+                .participant_keys
+                .iter()
+                .filter(|&k| writer.active.get(k).is_some())
                 .map(|k| k.clone())
                 .collect();
 
             let session_id = writer.sessions.new_session(
-                public_key,
+                public_key.as_ref().to_vec(),
                 request.participant_keys,
             );
-            let response = SessionResponse { session_id, connected };
+            let response = SessionResponse {
+                session_id,
+                connected,
+            };
             Ok(Some(ResponseMessage::Session(response)))
         }
         _ => Ok(None),
     }
+}
+
+/// Notify all connected participants in a session
+/// (including the owner) that a new session is ready.
+async fn notify_session_ready(
+    state: State,
+    public_keys: Vec<Vec<u8>>,
+    message: ResponseMessage,
+) -> Result<()> {
+    let reader = state.read().await;
+    for key in &public_keys {
+        if let Some(conn) = reader.active.get(key) {
+            let mut writer = conn.write().await;
+
+            let payload = encode(&message).await?;
+            let inner = encrypt_server_channel(
+                writer.state.as_mut().unwrap(),
+                payload,
+            )
+            .await?;
+
+            let response = ResponseMessage::Envelope(inner);
+            let buffer = encode(&response).await?;
+
+            writer.send(buffer).await?;
+        }
+    }
+    Ok(())
 }
 
 /// Promote a connection from pending to active state.

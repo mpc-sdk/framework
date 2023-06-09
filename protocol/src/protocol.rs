@@ -749,7 +749,8 @@ impl Decodable for SessionResponse {
         let connections = reader.read_u32().await?;
         for _ in 0..connections {
             let len = reader.read_u32().await?;
-            self.connected.push(reader.read_bytes(len as usize).await?);
+            self.connected
+                .push(reader.read_bytes(len as usize).await?);
         }
         Ok(())
     }
