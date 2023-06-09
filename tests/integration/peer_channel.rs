@@ -19,7 +19,8 @@ async fn integration_peer_channel() -> Result<()> {
     let _ = rx.await?;
 
     // Create new clients
-    let (mut initiator, mut event_loop_i, _) = new_client().await?;
+    let (mut initiator, mut event_loop_i, initiator_key) =
+        new_client().await?;
     let (mut participant, mut event_loop_p, participant_key) =
         new_client().await?;
 
@@ -66,6 +67,10 @@ async fn integration_peer_channel() -> Result<()> {
                             let event = event?;
                             tracing::trace!("participant {:#?}", event);
                             match &event {
+                                Event::ServerConnected { .. } => {
+                                    // Now we can connect to a peer
+                                    part_client.connect_peer(&initiator_key.public).await?;
+                                }
                                 // Once the peer connection is established
                                 // we can start sending messages over
                                 // the encrypted channel
@@ -94,9 +99,6 @@ async fn integration_peer_channel() -> Result<()> {
     // Clients must handshake with the server first
     initiator.connect().await?;
     participant.connect().await?;
-
-    // Now we can connect to a peer
-    initiator.connect_peer(&participant_key.public).await?;
 
     // Must drive the event loop futures
     let (res_i, res_p) = futures::join!(ev_i, ev_p);

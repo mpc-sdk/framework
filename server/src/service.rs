@@ -173,6 +173,15 @@ async fn handle_request(
                     let request: RequestMessage =
                         decode(&contents).await?;
 
+                    service(
+                        Arc::clone(&state),
+                        conn,
+                        &from_public_key,
+                        request,
+                    )
+                    .await?;
+
+                    /*
                     if let Some(response) = service(
                         Arc::clone(&state),
                         conn,
@@ -199,20 +208,8 @@ async fn handle_request(
                         )
                         .await?;
 
-                        /*
-                        let payload = encode(&response).await?;
-                        let inner = encrypt_server_channel(
-                            peer_state, payload,
-                        )
-                        .await?;
-
-                        let response =
-                            ResponseMessage::Envelope(inner);
-                        let buffer = encode(&response).await?;
-
-                        writer.send(buffer).await?;
-                        */
                     }
+                    */
                 }
             } else {
                 return Err(Error::PeerNotFound(hex::encode(
@@ -233,23 +230,42 @@ async fn service(
 ) -> Result<Option<ResponseMessage>> {
     match message {
         RequestMessage::Session(request) => {
-            let mut writer = state.write().await;
-            let connected: Vec<_> = request
-                .participant_keys
-                .iter()
-                .filter(|&k| writer.active.get(k).is_some())
-                .map(|k| k.clone())
-                .collect();
+            let mut all_participants =
+                request.participant_keys.clone();
+            all_participants.push(public_key.as_ref().to_vec());
 
-            let session_id = writer.sessions.new_session(
-                public_key.as_ref().to_vec(),
-                request.participant_keys,
-            );
+            let (session_id, connected) = {
+                let mut writer = state.write().await;
+
+                let mut connected: Vec<_> = request
+                    .participant_keys
+                    .iter()
+                    .filter(|&k| writer.active.get(k).is_some())
+                    .map(|k| k.clone())
+                    .collect();
+                connected.push(public_key.as_ref().to_vec());
+
+                let session_id = writer.sessions.new_session(
+                    public_key.as_ref().to_vec(),
+                    request.participant_keys,
+                );
+                (session_id, connected)
+            };
+
             let response = SessionResponse {
                 session_id,
-                connected,
+                all_participants,
             };
-            Ok(Some(ResponseMessage::Session(response)))
+
+            notify_session_ready(
+                state,
+                connected,
+                ResponseMessage::Session(response),
+            )
+            .await?;
+
+            //Ok(Some())
+            Ok(None)
         }
         _ => Ok(None),
     }

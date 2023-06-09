@@ -1,9 +1,14 @@
-use crate::test_utils::{new_client, spawn_server};
 use anyhow::Result;
-use futures::{select, FutureExt, StreamExt};
-use mpc_relay_client::Event;
+use futures::{select, Future, FutureExt, StreamExt};
+use mpc_relay_client::{Error, Event, EventLoop, NativeClient};
 use serial_test::serial;
-use tokio::sync::broadcast;
+use std::pin::Pin;
+use tokio::{
+    sync::{broadcast, mpsc},
+    task::JoinHandle,
+};
+
+use crate::test_utils::{new_client, spawn_server};
 
 /// Creates three clients that handshake with the server
 /// and then each other.
@@ -13,7 +18,7 @@ use tokio::sync::broadcast;
 #[tokio::test]
 #[serial]
 async fn integration_session_broadcast() -> Result<()> {
-    crate::test_utils::init_tracing();
+    //crate::test_utils::init_tracing();
 
     // Wait for the server to start
     let (rx, _handle) = spawn_server()?;
@@ -31,137 +36,224 @@ async fn integration_session_broadcast() -> Result<()> {
     let mut part_1_client = participant_1.clone();
     let mut part_2_client = participant_2.clone();
 
-    let last_connected_peer = participant_key_2.public.clone();
     let session_participants = vec![
         participant_key_1.public.clone(),
         participant_key_2.public.clone(),
     ];
 
-    let (shutdown_tx, _) = broadcast::channel::<()>(1);
+    // Notification channel for when all the clients are
+    // connected to the server.
+    let (server_conn_tx, server_conn_rx) = mpsc::channel::<()>(16);
+    let (shutdown_tx, _) = broadcast::channel::<()>(16);
 
     // Setup event loops
     let shutdown_init_tx = shutdown_tx.clone();
-    let ev_i = tokio::task::spawn(async move {
-        let mut s = event_loop_i.run();
-        while let Some(event) = s.next().await {
-            let event = event?;
-            tracing::trace!("initiator {:#?}", event);
-            match &event {
-                Event::PeerConnected { peer_key } => {
-                    if peer_key == &last_connected_peer {
-                        let session_response = init_client
-                            .new_session(session_participants.clone())
-                            .await?;
-                    }
-                }
-                Event::SessionReady(session) => {
-                    if session.connected == session_participants {
-                        println!("initiator session is ready {}", session.session_id);
-                    } else {
-                        panic!("expected all participants to be connected");
-                    }
-                }
-                _ => {}
-            }
-        }
-        Ok::<(), anyhow::Error>(())
-    });
 
-    let mut shutdown_1_rx = shutdown_tx.subscribe();
-    let ev_p_1 = tokio::task::spawn(async move {
-        let mut s = event_loop_p_1.run();
-        loop {
-            select! {
-                event = s.next().fuse() => {
-                    match event {
-                        Some(event) => {
-                            let event = event?;
-                            //tracing::trace!("participant {:#?}", event);
-                            match &event {
-                                Event::SessionReady(session) => {
-                                    println!("part 1 got session ready {}", session.session_id);
-                                }
-                                /*
-                                Event::JsonMessage { peer_key, message } => {
-                                    let message: &str = message.deserialize()?;
-                                    if message == "ping" {
-                                        part_1_client.send(&peer_key, "pong").await?;
-                                    }
-                                }
-                                */
-                                _ => {}
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-                shutdown = shutdown_1_rx.recv().fuse() => {
-                    if shutdown.is_ok() {
-                        break;
-                    }
-                }
-            }
-        }
-        Ok::<(), anyhow::Error>(())
-    });
-
-    let mut shutdown_2_rx = shutdown_tx.subscribe();
-    let ev_p_2 = tokio::task::spawn(async move {
-        let mut s = event_loop_p_2.run();
-        loop {
-            select! {
-                event = s.next().fuse() => {
-                    match event {
-                        Some(event) => {
-                            let event = event?;
-                            //tracing::trace!("participant {:#?}", event);
-                            match &event {
-                                Event::SessionReady(session) => {
-                                    println!("part 2 got session ready {}", session.session_id);
-                                }
-                                /*
-                                Event::JsonMessage { peer_key, message } => {
-                                    let message: &str = message.deserialize()?;
-                                    if message == "ping" {
-                                        part_2_client.send(&peer_key, "pong").await?;
-                                    }
-                                }
-                                */
-                                _ => {}
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-                shutdown = shutdown_2_rx.recv().fuse() => {
-                    if shutdown.is_ok() {
-                        break;
-                    }
-                }
-            }
-        }
-        Ok::<(), anyhow::Error>(())
-    });
+    let ev_i = event_loop_1(
+        event_loop_i,
+        init_client,
+        session_participants,
+        server_conn_rx,
+    );
+    let ev_p_1 = event_loop_2(event_loop_p_1, part_1_client);
+    let ev_p_2 = event_loop_3(event_loop_p_2, part_2_client);
 
     // Clients must handshake with the server first
     initiator.connect().await?;
     participant_1.connect().await?;
     participant_2.connect().await?;
 
-    // Connect all the peers together
-    initiator.connect_peer(&participant_key_1.public).await?;
-    initiator.connect_peer(&participant_key_2.public).await?;
-    participant_1.connect_peer(&participant_key_2.public).await?;
-
-    println!("after peers connected...");
+    // Inform the initiator that all clients
+    // are connected to the server
+    server_conn_tx.send(()).await?;
 
     // Must drive the event loop futures
     let (res_i, res_p_1, res_p_2) =
         futures::join!(ev_i, ev_p_1, ev_p_2);
+
+    println!("{:#?}", res_i);
 
     assert!(res_i?.is_ok());
     assert!(res_p_1?.is_ok());
     assert!(res_p_2?.is_ok());
 
     Ok(())
+}
+
+async fn try_connect_peer(
+    client: &mut NativeClient,
+    key: &[u8],
+) -> Result<()> {
+    println!("connecting to peer...");
+    if let Err(e) = client.connect_peer(key).await {
+        match e {
+            Error::PeerAlreadyExists => {
+                println!("GOT EXISTS ERROR");
+            }
+            _ => return Err(e.into()),
+        }
+    }
+    Ok(())
+}
+
+fn event_loop_1(
+    mut event_loop: EventLoop,
+    mut client: NativeClient,
+    session_participants: Vec<Vec<u8>>,
+    mut server_conn_rx: mpsc::Receiver<()>,
+) -> JoinHandle<Result<()>> {
+    async fn handler(
+        client: &mut NativeClient,
+        event: Event,
+    ) -> Result<()> {
+        match &event {
+            Event::SessionReady(session) => {
+                println!(
+                    "part 1 got session ready {}",
+                    session.session_id
+                );
+
+                for key in &session.all_participants {
+                    if key != client.public_key() {
+                        println!("connect peers");
+                        try_connect_peer(client, key).await?;
+                    }
+                }
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    tokio::task::spawn(async move {
+        let mut s = event_loop.run();
+        loop {
+            select! {
+                _ = server_conn_rx.recv().fuse() => {
+                    // Initiate a session context for broadcasting
+                    client
+                        .new_session(session_participants.clone())
+                        .await?;
+                }
+                event = s.next().fuse() => {
+                    match event {
+                        Some(event) => {
+                            let event = event?;
+                            handler(&mut client, event).await?;
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+        Ok::<(), anyhow::Error>(())
+    })
+}
+
+fn event_loop_2(
+    mut event_loop: EventLoop,
+    mut client: NativeClient,
+) -> JoinHandle<Result<()>> {
+    async fn handler(
+        client: &mut NativeClient,
+        event: Event,
+    ) -> Result<()> {
+        match &event {
+            Event::SessionReady(session) => {
+                println!(
+                    "part 1 got session ready {}",
+                    session.session_id
+                );
+
+                for key in &session.all_participants {
+                    if key != client.public_key() {
+                        println!("connect peers");
+                        try_connect_peer(client, key).await?;
+                    }
+                }
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    tokio::task::spawn(async move {
+        let mut s = event_loop.run();
+        loop {
+            select! {
+                /*
+                _ = server_conn_rx.recv().fuse() => {
+                    // Initiate a session context for broadcasting
+                    init_client
+                        .new_session(session_participants.clone())
+                        .await?;
+                }
+                */
+                event = s.next().fuse() => {
+                    match event {
+                        Some(event) => {
+                            let event = event?;
+                            handler(&mut client, event).await?;
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+        Ok::<(), anyhow::Error>(())
+    })
+}
+
+fn event_loop_3(
+    mut event_loop: EventLoop,
+    mut client: NativeClient,
+) -> JoinHandle<Result<()>> {
+    async fn handler(
+        client: &mut NativeClient,
+        event: Event,
+    ) -> Result<()> {
+        match &event {
+            Event::SessionReady(session) => {
+                println!(
+                    "part 1 got session ready {}",
+                    session.session_id
+                );
+
+                for key in &session.all_participants {
+                    if key != client.public_key() {
+                        println!("connect peers");
+                        try_connect_peer(client, key).await?;
+                    }
+                }
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    tokio::task::spawn(async move {
+        let mut s = event_loop.run();
+        loop {
+            select! {
+                /*
+                _ = server_conn_rx.recv().fuse() => {
+                    // Initiate a session context for broadcasting
+                    init_client
+                        .new_session(session_participants.clone())
+                        .await?;
+                }
+                */
+                event = s.next().fuse() => {
+                    match event {
+                        Some(event) => {
+                            let event = event?;
+                            handler(&mut client, event).await?;
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+        Ok::<(), anyhow::Error>(())
+    })
 }

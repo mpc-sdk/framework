@@ -38,8 +38,6 @@ type Server = Arc<RwLock<Option<ProtocolState>>>;
 pub enum Notification {
     /// Notification sent when the server handshake is complete.
     ServerHandshake,
-    /// Notification sent when a peer handshake is complete.
-    PeerHandshake,
 }
 
 /// Native websocket client using the tokio tungstenite library.
@@ -121,6 +119,11 @@ impl NativeClient {
         };
 
         Ok((client, event_loop))
+    }
+
+    /// The public key for this client.
+    pub fn public_key(&self) -> &[u8] {
+        &self.options.keypair.public
     }
 
     /// Perform initial handshake with the server.
@@ -212,13 +215,6 @@ impl NativeClient {
 
         self.outbound_tx.send(request).await?;
 
-        // Wait for the peer handshake notification
-        let mut notifier = self.notification_rx.lock().await;
-        while let Some(notify) = notifier.recv().await {
-            if let Notification::PeerHandshake = notify {
-                break;
-            }
-        }
         Ok(())
     }
 
@@ -549,6 +545,7 @@ impl EventLoop {
     ) -> Result<Event> {
         let mut peers = self.peers.write().await;
         if peers.get(public_key.as_ref()).is_some() {
+            println!("responder returning exists error...");
             return Err(Error::PeerAlreadyExists);
         }
 
@@ -632,10 +629,6 @@ impl EventLoop {
             public_key.as_ref().to_vec(),
             ProtocolState::Transport(transport),
         );
-
-        self.notification_tx
-            .send(Notification::PeerHandshake)
-            .await?;
 
         Ok(Event::PeerConnected {
             peer_key: public_key.as_ref().to_vec(),

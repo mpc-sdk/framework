@@ -710,8 +710,8 @@ impl Decodable for SessionRequest {
 pub struct SessionResponse {
     /// Session identifier.
     pub session_id: SessionId,
-    /// Public keys of participants that are active.
-    pub connected: Vec<Vec<u8>>,
+    /// Public keys of all participants.
+    pub all_participants: Vec<Vec<u8>>,
 }
 
 #[cfg_attr(target_arch="wasm32", async_trait(?Send))]
@@ -722,8 +722,8 @@ impl Encodable for SessionResponse {
         writer: &mut BinaryWriter<W>,
     ) -> Result<()> {
         writer.write_bytes(self.session_id.as_bytes()).await?;
-        writer.write_u32(self.connected.len() as u32).await?;
-        for conn in &self.connected {
+        writer.write_u32(self.all_participants.len() as u32).await?;
+        for conn in &self.all_participants {
             writer.write_u32(conn.len() as u32).await?;
             writer.write_bytes(conn).await?;
         }
@@ -746,10 +746,10 @@ impl Decodable for SessionResponse {
                 .try_into()
                 .map_err(encoding_error)?,
         );
-        let connections = reader.read_u32().await?;
-        for _ in 0..connections {
+        let size = reader.read_u32().await?;
+        for _ in 0..size {
             let len = reader.read_u32().await?;
-            self.connected
+            self.all_participants
                 .push(reader.read_bytes(len as usize).await?);
         }
         Ok(())
