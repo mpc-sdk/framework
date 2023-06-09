@@ -30,7 +30,8 @@ mod types {
     pub const HANDSHAKE_INITIATOR: u8 = 2;
     pub const HANDSHAKE_RESPONDER: u8 = 3;
     pub const RELAY_PEER: u8 = 4;
-    pub const SESSION: u8 = 5;
+    pub const ENVELOPE: u8 = 5;
+    pub const SESSION: u8 = 6;
 
     pub const ENCODING_BLOB: u8 = 1;
     pub const ENCODING_JSON: u8 = 2;
@@ -233,6 +234,8 @@ pub enum RequestMessage {
         /// Message payload.
         message: Vec<u8>,
     },
+    /// Envelope for an encrypted message over the server channel.
+    Envelope(Vec<u8>),
     /// Request a new session.
     Session(SessionRequest),
 }
@@ -245,6 +248,7 @@ impl From<&RequestMessage> for u8 {
                 types::HANDSHAKE_INITIATOR
             }
             RequestMessage::RelayPeer { .. } => types::RELAY_PEER,
+            RequestMessage::Envelope(_) => types::ENVELOPE,
             RequestMessage::Session(_) => types::SESSION,
         }
     }
@@ -274,6 +278,10 @@ impl Encodable for RequestMessage {
                 writer.write_bool(handshake).await?;
                 writer.write_u32(public_key.len() as u32).await?;
                 writer.write_bytes(public_key).await?;
+                writer.write_u32(message.len() as u32).await?;
+                writer.write_bytes(message).await?;
+            }
+            Self::Envelope(message) => {
                 writer.write_u32(message.len() as u32).await?;
                 writer.write_bytes(message).await?;
             }
@@ -319,6 +327,12 @@ impl Decodable for RequestMessage {
                     message,
                 };
             }
+            types::ENVELOPE => {
+                let size = reader.read_u32().await?;
+                let message =
+                    reader.read_bytes(size as usize).await?;
+                *self = RequestMessage::Envelope(message);
+            }
             types::SESSION => {
                 let mut session: SessionRequest = Default::default();
                 session.decode(reader).await?;
@@ -354,6 +368,8 @@ pub enum ResponseMessage {
         /// Message payload.
         message: Vec<u8>,
     },
+    /// Envelope for an encrypted message over the server channel.
+    Envelope(Vec<u8>),
     /// Response to a new session request.
     Session(SessionResponse),
 }
@@ -367,6 +383,7 @@ impl From<&ResponseMessage> for u8 {
                 types::HANDSHAKE_RESPONDER
             }
             ResponseMessage::RelayPeer { .. } => types::RELAY_PEER,
+            ResponseMessage::Envelope(_) => types::ENVELOPE,
             ResponseMessage::Session(_) => types::SESSION,
         }
     }
@@ -401,6 +418,10 @@ impl Encodable for ResponseMessage {
                 writer.write_bool(handshake).await?;
                 writer.write_u32(public_key.len() as u32).await?;
                 writer.write_bytes(public_key).await?;
+                writer.write_u32(message.len() as u32).await?;
+                writer.write_bytes(message).await?;
+            }
+            Self::Envelope(message) => {
                 writer.write_u32(message.len() as u32).await?;
                 writer.write_bytes(message).await?;
             }
@@ -454,6 +475,12 @@ impl Decodable for ResponseMessage {
                     public_key,
                     message,
                 };
+            }
+            types::ENVELOPE => {
+                let size = reader.read_u32().await?;
+                let message =
+                    reader.read_bytes(size as usize).await?;
+                *self = ResponseMessage::Envelope(message);
             }
             types::SESSION => {
                 let mut session: SessionResponse = Default::default();
@@ -637,7 +664,7 @@ impl SessionManager {
 #[derive(Default, Debug)]
 pub struct SessionRequest {
     /// Public keys of the session participants.
-    participant_keys: Vec<Vec<u8>>,
+    pub participant_keys: Vec<Vec<u8>>,
 }
 
 #[cfg_attr(target_arch="wasm32", async_trait(?Send))]
@@ -678,7 +705,7 @@ impl Decodable for SessionRequest {
 #[derive(Default, Debug)]
 pub struct SessionResponse {
     /// Session identifier.
-    id: String,
+    pub id: String,
 }
 
 #[cfg_attr(target_arch="wasm32", async_trait(?Send))]

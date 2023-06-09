@@ -20,7 +20,8 @@ use tokio_tungstenite::{
 use mpc_relay_protocol::{
     decode, encode, hex, http::StatusCode, snow::Builder, Encoding,
     HandshakeType, PeerMessage, ProtocolState, RequestMessage,
-    ResponseMessage, SealedEnvelope, PATTERN, TAGLEN,
+    ResponseMessage, SealedEnvelope, SessionRequest, SessionResponse,
+    PATTERN, TAGLEN,
 };
 
 use crate::{ClientOptions, Error, Event, JsonMessage, Result};
@@ -36,6 +37,8 @@ pub enum Notification {
     ServerHandshake,
     /// Notification sent when a peer handshake is complete.
     PeerHandshake,
+    /// Notification that a session is ready.
+    SessionReady(SessionResponse),
 }
 
 /// Native websocket client using the tokio tungstenite library.
@@ -268,6 +271,44 @@ impl NativeClient {
             )))
         }
     }
+
+    /// Create a new session and await the response.
+    pub async fn new_session(
+        &mut self,
+        participant_keys: Vec<Vec<u8>>,
+    ) -> Result<SessionResponse> {
+        let session = SessionRequest { participant_keys };
+        let message = RequestMessage::Session(session);
+        self.request(message).await?;
+
+        // Wait for the server handshake notification
+        let mut notifier = self.notification_rx.lock().await;
+        while let Some(notify) = notifier.recv().await {
+            if let Notification::SessionReady(response) = notify {
+                return Ok(response);
+            }
+        }
+
+        unreachable!();
+    }
+
+    /// Encrypt a request message and send over the encrypted
+    /// server channel.
+    async fn request(
+        &mut self,
+        message: RequestMessage,
+    ) -> Result<()> {
+        let mut server = self.server.write().await;
+        if let Some(server) = server.as_mut() {
+            let payload =
+                encrypt_server_channel(server, message).await?;
+            let request = RequestMessage::Envelope(payload);
+            self.outbound_tx.send(request).await?;
+            Ok(())
+        } else {
+            unreachable!()
+        }
+    }
 }
 
 /// Event loop for a websocket client.
@@ -429,14 +470,42 @@ impl EventLoop {
                     ))
                 }
             }
-            ResponseMessage::Session(response) => {
-                println!("got response to create session...");
-                Ok(None)
+            ResponseMessage::Envelope(message) => {
+                println!("got response from server to decrypt...");
+                let mut server = self.server.write().await;
+                if let Some(server) = server.as_mut() {
+                    let message =
+                        decrypt_server_channel(server, message)
+                            .await?;
+                    Ok(self
+                        .handle_server_channel_message(message)
+                        .await?)
+                } else {
+                    unreachable!()
+                }
             }
             _ => {
                 panic!("unhandled message");
                 //Ok(None)
             }
+        }
+    }
+
+    /// Process an inner message from the server after
+    /// decrypting the envelope.
+    async fn handle_server_channel_message(
+        &self,
+        message: ResponseMessage,
+    ) -> Result<Option<Event>> {
+        match message {
+            ResponseMessage::Session(response) => {
+                println!("got response to create session...");
+                self.notification_tx
+                    .send(Notification::SessionReady(response))
+                    .await?;
+                Ok(None)
+            }
+            _ => Ok(None),
         }
     }
 
