@@ -56,10 +56,7 @@ async fn integration_session_broadcast() -> Result<()> {
                 }
                 Event::SessionReady(session) => {
                     if session.connected == session_participants {
-                        println!(
-                            "all participants are ready {}",
-                            session.session_id
-                        );
+                        println!("initiator session is ready {}", session.session_id);
                     } else {
                         panic!("expected all participants to be connected");
                     }
@@ -151,9 +148,12 @@ async fn integration_session_broadcast() -> Result<()> {
     participant_1.connect().await?;
     participant_2.connect().await?;
 
-    // Connect to the peers
+    // Connect all the peers together
     initiator.connect_peer(&participant_key_1.public).await?;
     initiator.connect_peer(&participant_key_2.public).await?;
+    participant_1.connect_peer(&participant_key_2.public).await?;
+
+    println!("after peers connected...");
 
     // Must drive the event loop futures
     let (res_i, res_p_1, res_p_2) =
