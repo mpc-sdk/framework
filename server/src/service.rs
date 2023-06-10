@@ -173,16 +173,6 @@ async fn handle_request(
                     let request: RequestMessage =
                         decode(&contents).await?;
 
-                    /*
-                    service(
-                        Arc::clone(&state),
-                        conn,
-                        &from_public_key,
-                        request,
-                    )
-                    .await?;
-                    */
-
                     if let Some(response) = service(
                         Arc::clone(&state),
                         Arc::clone(&conn),
@@ -191,27 +181,7 @@ async fn handle_request(
                     )
                     .await?
                     {
-                        send_response(conn, &response).await?;
-
-                        /*
-                        let mut connections =
-                            if let ResponseMessage::Session(
-                                response,
-                            ) = &response
-                            {
-                                response.connected.clone()
-                            } else {
-                                vec![]
-                            };
-                        connections.push(from_public_key);
-
-                        notify_session_ready(
-                            state,
-                            connections,
-                            response,
-                        )
-                        .await?;
-                        */
+                        send_message(conn, &response).await?;
                     }
                 }
             } else {
@@ -226,7 +196,7 @@ async fn handle_request(
 }
 
 /// Send a response message to a client over the server channel.
-async fn send_response(
+async fn send_message(
     conn: Connection,
     message: &ResponseMessage,
 ) -> Result<()> {
@@ -257,9 +227,6 @@ async fn service(
             let mut all_participants =
                 request.participant_keys.clone();
             all_participants.push(public_key.as_ref().to_vec());
-
-            /*
-             */
 
             let session_id = {
                 let mut writer = state.write().await;
@@ -321,6 +288,27 @@ async fn service(
             }
             Ok(None)
         }
+        RequestMessage::SessionConnection {
+            session_id,
+            peer_key,
+        } => {
+            let from_public_key = {
+                let reader = conn.read().await;
+                reader.public_key.clone()
+            };
+
+            let mut writer = state.write().await;
+            if let Some(session) =
+                writer.sessions.get_session_mut(&session_id)
+            {
+                session
+                    .register_connection(from_public_key, peer_key);
+                Ok(None)
+            } else {
+                todo!("handle session not found");
+                Ok(None)
+            }
+        }
         _ => Ok(None),
     }
 }
@@ -335,24 +323,7 @@ async fn notify_session_ready(
     let reader = state.read().await;
     for key in &public_keys {
         if let Some(conn) = reader.active.get(key).map(Arc::clone) {
-            //println!("sending ready message...");
-            send_response(conn, &message).await?;
-
-            /*
-            let mut writer = conn.write().await;
-
-            let payload = encode(&message).await?;
-            let inner = encrypt_server_channel(
-                writer.state.as_mut().unwrap(),
-                payload,
-            )
-            .await?;
-
-            let response = ResponseMessage::Envelope(inner);
-            let buffer = encode(&response).await?;
-
-            writer.send(buffer).await?;
-            */
+            send_message(conn, &message).await?;
         }
     }
     Ok(())

@@ -109,7 +109,6 @@ async fn event_loop_1(
         match &event {
             Event::ServerConnected { .. } => {
                 tracing::info!("initiator connected to server");
-
                 // Initiate a session context for broadcasting
                 client.new_session(session_participants).await?;
             }
@@ -137,7 +136,16 @@ async fn event_loop_1(
 
                 for key in &session.all_participants {
                     if key != client.public_key() {
-                        client.try_connect_peer(key).await?;
+                        let connected =
+                            client.try_connect_peer(key).await?;
+                        if connected {
+                            client
+                                .register_session_connection(
+                                    &session.session_id,
+                                    key,
+                                )
+                                .await?;
+                        }
                     }
                 }
             }
@@ -190,7 +198,16 @@ async fn event_loop_2(
 
                 for key in &session.all_participants {
                     if key != client.public_key() {
-                        client.try_connect_peer(key).await?;
+                        let connected =
+                            client.try_connect_peer(key).await?;
+                        if connected {
+                            client
+                                .register_session_connection(
+                                    &session.session_id,
+                                    key,
+                                )
+                                .await?;
+                        }
                     }
                 }
             }
@@ -245,7 +262,16 @@ async fn event_loop_3(
 
                 for key in &session.all_participants {
                     if key != client.public_key() {
-                        client.try_connect_peer(key).await?;
+                        let connected =
+                            client.try_connect_peer(key).await?;
+                        if connected {
+                            client
+                                .register_session_connection(
+                                    &session.session_id,
+                                    key,
+                                )
+                                .await?;
+                        }
                     }
                 }
             }

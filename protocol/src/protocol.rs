@@ -35,6 +35,7 @@ mod types {
     pub const SESSION_CREATED: u8 = 7;
     pub const SESSION_PING: u8 = 8;
     pub const SESSION_READY: u8 = 9;
+    pub const SESSION_CONNECTION: u8 = 10;
 
     pub const ENCODING_BLOB: u8 = 1;
     pub const ENCODING_JSON: u8 = 2;
@@ -244,6 +245,13 @@ pub enum RequestMessage {
     NewSession(SessionRequest),
     /// Ping a session.
     SessionPing(SessionId),
+    /// Register a peer connection in a session.
+    SessionConnection {
+        /// Session identifier.
+        session_id: SessionId,
+        /// Public key of the peer.
+        peer_key: Vec<u8>,
+    },
 }
 
 impl From<&RequestMessage> for u8 {
@@ -257,6 +265,9 @@ impl From<&RequestMessage> for u8 {
             RequestMessage::Envelope(_) => types::ENVELOPE,
             RequestMessage::NewSession(_) => types::SESSION_NEW,
             RequestMessage::SessionPing(_) => types::SESSION_PING,
+            RequestMessage::SessionConnection { .. } => {
+                types::SESSION_CONNECTION
+            }
         }
     }
 }
@@ -297,6 +308,14 @@ impl Encodable for RequestMessage {
             }
             Self::SessionPing(session_id) => {
                 writer.write_bytes(session_id.as_bytes()).await?;
+            }
+            Self::SessionConnection {
+                session_id,
+                peer_key,
+            } => {
+                writer.write_bytes(session_id.as_bytes()).await?;
+                writer.write_u32(peer_key.len() as u32).await?;
+                writer.write_bytes(peer_key).await?;
             }
             Self::Noop => unreachable!(),
         }
@@ -358,6 +377,25 @@ impl Decodable for RequestMessage {
                         .map_err(encoding_error)?,
                 );
                 *self = RequestMessage::SessionPing(session_id);
+            }
+            types::SESSION_CONNECTION => {
+                let session_id = SessionId::from_bytes(
+                    reader
+                        .read_bytes(16)
+                        .await?
+                        .as_slice()
+                        .try_into()
+                        .map_err(encoding_error)?,
+                );
+
+                let size = reader.read_u32().await?;
+                let peer_key =
+                    reader.read_bytes(size as usize).await?;
+
+                *self = RequestMessage::SessionConnection {
+                    session_id,
+                    peer_key,
+                };
             }
             _ => {
                 return Err(encoding_error(
@@ -628,6 +666,10 @@ pub struct Session {
     /// Public keys of the other session participants.
     participant_keys: HashSet<Vec<u8>>,
 
+    /// Connections between peers established in this
+    /// session context.
+    connections: HashSet<(Vec<u8>, Vec<u8>)>,
+
     /// Last access time so the server can reap
     /// stale sessions.
     last_access: SystemTime,
@@ -644,6 +686,60 @@ impl Session {
             .collect();
         keys.append(&mut participants);
         keys
+    }
+
+    /// Register a connection between peers.
+    pub fn register_connection(
+        &mut self,
+        peer: Vec<u8>,
+        other: Vec<u8>,
+    ) {
+        self.connections.insert((peer, other));
+    }
+
+    /// Determine if this session is active.
+    ///
+    /// A session is active when all participants have created
+    /// their peer connections.
+    pub fn is_active(&self) -> bool {
+        let all_participants = self.public_keys();
+
+        fn check_connection(
+            connections: &HashSet<(Vec<u8>, Vec<u8>)>,
+            peer: &[u8],
+            all: &[&[u8]],
+        ) -> bool {
+            for key in all {
+                if key == &peer {
+                    continue;
+                }
+                // We don't know the order the connections
+                // were established as both peers might
+                // race to connect
+                let left =
+                    connections.get(&(peer.to_vec(), key.to_vec()));
+                let right =
+                    connections.get(&(key.to_vec(), peer.to_vec()));
+                let is_connected = left.is_some() || right.is_some();
+                if !is_connected {
+                    return false;
+                }
+            }
+            true
+        }
+
+        for key in &all_participants {
+            let is_connected_others = check_connection(
+                &self.connections,
+                key,
+                all_participants.as_slice(),
+            );
+            if !is_connected_others {
+                return false;
+            }
+        }
+
+        true
     }
 }
 
@@ -664,6 +760,7 @@ impl SessionManager {
         let session = Session {
             owner_key,
             participant_keys: participant_keys.into_iter().collect(),
+            connections: Default::default(),
             last_access: SystemTime::now(),
         };
         self.sessions.insert(session_id.clone(), session);
@@ -673,6 +770,14 @@ impl SessionManager {
     /// Get a session.
     pub fn get_session(&self, id: &SessionId) -> Option<&Session> {
         self.sessions.get(id)
+    }
+
+    /// Get a mutable session.
+    pub fn get_session_mut(
+        &mut self,
+        id: &SessionId,
+    ) -> Option<&mut Session> {
+        self.sessions.get_mut(id)
     }
 
     /// Remove a session.

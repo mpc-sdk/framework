@@ -315,6 +315,19 @@ impl NativeClient {
         self.request(message).await
     }
 
+    /// Register a peer connection in a session.
+    pub async fn register_session_connection(
+        &mut self,
+        session_id: &SessionId,
+        peer_key: &Vec<u8>,
+    ) -> Result<()> {
+        let message = RequestMessage::SessionConnection {
+            session_id: *session_id,
+            peer_key: peer_key.to_vec(),
+        };
+        self.request(message).await
+    }
+
     /// Encrypt a request message and send over the encrypted
     /// server channel.
     async fn request(
