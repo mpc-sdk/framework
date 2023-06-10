@@ -53,6 +53,12 @@ pub enum Event {
     ///
     /// Peers can now race to handshake with each other.
     SessionReady(SessionResponse),
+
+    /// Event dispatched when a session is active.
+    ///
+    /// A session is active when all the participants
+    /// have connected to each other.
+    SessionActive(SessionResponse),
 }
 
 /// JSON message received from a peer.

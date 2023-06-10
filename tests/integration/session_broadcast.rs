@@ -63,48 +63,87 @@ async fn integration_session_broadcast() -> Result<()> {
     Ok(())
 }
 
+/// Poll the server to trigger a notification when
+/// all the session participants have established
+/// a connection to the server.
+fn poll_session_ready(
+    mut client: NativeClient,
+    session_id: SessionId,
+    ready_rx: Arc<Mutex<mpsc::Receiver<()>>>,
+) -> JoinHandle<Result<()>> {
+    tokio::spawn(async move {
+        let interval_secs = 2;
+        let interval =
+            tokio::time::interval(Duration::from_secs(interval_secs));
+        let mut stream = IntervalStream::new(interval);
+        let mut stop_polling = ready_rx.lock().await;
+        loop {
+            select! {
+                tick = stream.next().fuse() => {
+                    if tick.is_some() {
+                        client.session_ready_notify(&session_id).await?;
+                    }
+                }
+                _ = stop_polling.recv().fuse() => {
+                    break;
+                }
+            }
+        }
+        Ok(())
+    })
+}
+
+/// Poll the server to trigger a notification when
+/// all the session participants have established
+/// connections to each other.
+fn poll_session_active(
+    mut client: NativeClient,
+    session_id: SessionId,
+    active_rx: Arc<Mutex<mpsc::Receiver<()>>>,
+) -> JoinHandle<Result<()>> {
+    tokio::spawn(async move {
+        let interval_secs = 2;
+        let interval =
+            tokio::time::interval(Duration::from_secs(interval_secs));
+        let mut stream = IntervalStream::new(interval);
+        let mut stop_polling = active_rx.lock().await;
+        loop {
+            select! {
+                tick = stream.next().fuse() => {
+                    if tick.is_some() {
+                        client.session_active_notify(&session_id).await?;
+                    }
+                }
+                _ = stop_polling.recv().fuse() => {
+                    break;
+                }
+            }
+        }
+        Ok(())
+    })
+}
+
 async fn event_loop_1(
     mut event_loop: EventLoop,
     mut client: NativeClient,
     session_participants: Vec<Vec<u8>>,
 ) -> Result<JoinHandle<Result<()>>> {
-    let (mut poll_tx, poll_rx) = mpsc::channel::<()>(32);
-    let poll_rx = Arc::new(Mutex::new(poll_rx));
+    // Channel used to shutdown polling for session ready
+    let (mut ready_tx, ready_rx) = mpsc::channel::<()>(32);
+    let ready_rx = Arc::new(Mutex::new(ready_rx));
 
-    fn poll_session_ready(
-        mut client: NativeClient,
-        session_id: SessionId,
-        poll_rx: Arc<Mutex<mpsc::Receiver<()>>>,
-    ) -> JoinHandle<Result<()>> {
-        tokio::spawn(async move {
-            let interval_secs = 2;
-            let interval = tokio::time::interval(
-                Duration::from_secs(interval_secs),
-            );
-            let mut stream = IntervalStream::new(interval);
-            let mut stop_polling = poll_rx.lock().await;
-            loop {
-                select! {
-                    tick = stream.next().fuse() => {
-                        if tick.is_some() {
-                            client.session_ready_notify(&session_id).await?;
-                        }
-                    }
-                    _ = stop_polling.recv().fuse() => {
-                        break;
-                    }
-                }
-            }
-            Ok(())
-        })
-    }
+    // Channel used to shutdown polling for session active
+    let (mut active_tx, active_rx) = mpsc::channel::<()>(32);
+    let active_rx = Arc::new(Mutex::new(active_rx));
 
     async fn handler(
         client: &mut NativeClient,
         event: Event,
         session_participants: Vec<Vec<u8>>,
-        poll_tx: &mut mpsc::Sender<()>,
-        poll_rx: Arc<Mutex<mpsc::Receiver<()>>>,
+        ready_tx: &mut mpsc::Sender<()>,
+        ready_rx: Arc<Mutex<mpsc::Receiver<()>>>,
+        active_tx: &mut mpsc::Sender<()>,
+        active_rx: Arc<Mutex<mpsc::Receiver<()>>>,
     ) -> Result<()> {
         match &event {
             Event::ServerConnected { .. } => {
@@ -123,16 +162,23 @@ async fn event_loop_1(
                 poll_session_ready(
                     client.clone(),
                     session.session_id,
-                    poll_rx,
+                    ready_rx,
                 );
             }
             Event::SessionReady(session) => {
                 // Stop polling
-                poll_tx.send(()).await?;
+                ready_tx.send(()).await?;
 
                 tracing::info!(
                     id = ?session.session_id.to_string(),
                     "initiator session ready");
+
+                // Start polling for the session active notification
+                poll_session_active(
+                    client.clone(),
+                    session.session_id,
+                    active_rx,
+                );
 
                 for key in &session.all_participants {
                     if key != client.public_key() {
@@ -148,6 +194,11 @@ async fn event_loop_1(
                         }
                     }
                 }
+            }
+            Event::SessionActive(session) => {
+                // Stop polling
+                active_tx.send(()).await?;
+                println!("INIT session active");
             }
             _ => {}
         }
@@ -169,8 +220,10 @@ async fn event_loop_1(
                                 &mut client,
                                 event,
                                 session_participants.clone(),
-                                &mut poll_tx,
-                                Arc::clone(&poll_rx),
+                                &mut ready_tx,
+                                Arc::clone(&ready_rx),
+                                &mut active_tx,
+                                Arc::clone(&active_rx),
                             ).await?;
                         }
                         _ => {}
@@ -210,6 +263,9 @@ async fn event_loop_2(
                         }
                     }
                 }
+            }
+            Event::SessionActive(session) => {
+                println!("PART1 session active");
             }
             _ => {}
         }
@@ -274,6 +330,9 @@ async fn event_loop_3(
                         }
                     }
                 }
+            }
+            Event::SessionActive(session) => {
+                println!("PART2 session active");
             }
             _ => {}
         }

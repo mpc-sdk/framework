@@ -573,6 +573,9 @@ impl EventLoop {
             ResponseMessage::SessionReady(response) => {
                 Ok(Some(Event::SessionReady(response)))
             }
+            ResponseMessage::SessionActive(response) => {
+                Ok(Some(Event::SessionActive(response)))
+            }
             _ => Ok(None),
         }
     }
