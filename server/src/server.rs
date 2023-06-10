@@ -15,7 +15,7 @@ use axum_server::{tls_rustls::RustlsConfig, Handle};
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use uuid::Uuid;
 
-use mpc_relay_protocol::{snow::Keypair, uuid};
+use mpc_relay_protocol::{snow::Keypair, uuid, SessionManager};
 
 use crate::{
     config::{ServerConfig, TlsConfig},
@@ -31,28 +31,25 @@ async fn session_reaper(state: State, interval_secs: u64) {
     let interval =
         tokio::time::interval(Duration::from_secs(interval_secs));
     let mut stream = IntervalStream::new(interval);
-    while (stream.next().await).is_some() {
-        let _writer = state.write().await;
-        /*
-        let expired_sessions = writer.sessions.expired_keys();
+    while stream.next().await.is_some() {
+        let mut writer = state.write().await;
+        let expired_sessions = writer
+            .sessions
+            .expired_keys(writer.config.session.timeout);
         tracing::debug!(
             expired_sessions = %expired_sessions.len());
         for key in expired_sessions {
             writer.sessions.remove_session(&key);
         }
-        */
     }
 }
-
-#[derive(Default)]
-struct SessionManager {}
 
 pub struct ServerState {
     /// Server keypair.
     pub(crate) keypair: Keypair,
 
     /// Server config.
-    config: ServerConfig,
+    pub(crate) config: ServerConfig,
 
     /// Pending socket connections in the handshake state.
     pub(crate) pending: HashMap<Uuid, Connection>,
@@ -63,7 +60,7 @@ pub struct ServerState {
     pub(crate) active: HashMap<Vec<u8>, Connection>,
 
     /// Session manager.
-    sessions: SessionManager,
+    pub(crate) sessions: SessionManager,
 }
 
 /// Relay web server.

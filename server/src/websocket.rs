@@ -87,10 +87,11 @@ pub async fn upgrade(
         .remote_public_key(&query.public_key)
         .build_responder()
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-    let protocol_state = ProtocolState::Handshake(responder);
+    let protocol_state =
+        ProtocolState::Handshake(Box::new(responder));
 
     let conn = Arc::new(RwLock::new(WebSocketConnection {
-        id: id.clone(),
+        id,
         public_key: query.public_key,
         outgoing: outgoing_tx,
         //outgoing_rx,
@@ -120,7 +121,7 @@ pub async fn upgrade(
 async fn disconnect(state: State, conn: Connection) {
     let (id, public_key) = {
         let reader = conn.read().await;
-        (reader.id.clone(), reader.public_key.clone())
+        (reader.id, reader.public_key.clone())
     };
     //println!("disconnecting client...");
     let mut writer = state.write().await;
@@ -160,6 +161,7 @@ async fn read(
             Ok(msg) => match msg {
                 Message::Text(_) => {}
                 Message::Binary(buffer) => {
+                    //println!("server ws read buffer");
                     tx.send(buffer).await?;
                 }
                 Message::Ping(_) => {}

@@ -65,7 +65,7 @@ args = ["doc", "--workspace", "--open", "--no-deps", "--all-features"]
 
 [tasks.unit]
 command = "cargo"
-args = ["test", "--all", "--lib", "--", "--nocapture"]
+args = ["test", "--all", "--lib"]
 
 [tasks.integration]
 command = "cargo"

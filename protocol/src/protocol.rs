@@ -6,7 +6,11 @@ use binary_stream::{
 use futures::io::{AsyncRead, AsyncSeek, AsyncWrite};
 use http::StatusCode;
 use snow::{HandshakeState, TransportState};
-use std::io::Result;
+use std::{
+    collections::{HashMap, HashSet},
+    io::Result,
+    time::{Duration, SystemTime},
+};
 
 pub(crate) fn encoding_error(
     e: impl std::error::Error + Send + Sync + 'static,
@@ -26,6 +30,14 @@ mod types {
     pub const HANDSHAKE_INITIATOR: u8 = 2;
     pub const HANDSHAKE_RESPONDER: u8 = 3;
     pub const RELAY_PEER: u8 = 4;
+    pub const ENVELOPE: u8 = 5;
+    pub const SESSION_NEW: u8 = 6;
+    pub const SESSION_CREATED: u8 = 7;
+    pub const SESSION_READY_NOTIFY: u8 = 8;
+    pub const SESSION_READY: u8 = 9;
+    pub const SESSION_CONNECTION: u8 = 10;
+    pub const SESSION_ACTIVE_NOTIFY: u8 = 11;
+    pub const SESSION_ACTIVE: u8 = 12;
 
     pub const ENCODING_BLOB: u8 = 1;
     pub const ENCODING_JSON: u8 = 2;
@@ -39,23 +51,24 @@ fn encoding_options() -> Options {
     }
 }
 
+/// Identifier for sessions.
+pub type SessionId = uuid::Uuid;
+
 /// Encode to a binary buffer.
 pub async fn encode(encodable: &impl Encodable) -> Result<Vec<u8>> {
-    Ok(
-        binary_stream::futures::encode(encodable, encoding_options())
-            .await?,
-    )
+    binary_stream::futures::encode(encodable, encoding_options())
+        .await
 }
 
 /// Decode from a binary buffer.
 pub async fn decode<T: Decodable + Default>(
     buffer: impl AsRef<[u8]>,
 ) -> Result<T> {
-    Ok(binary_stream::futures::decode(
+    binary_stream::futures::decode(
         buffer.as_ref(),
         encoding_options(),
     )
-    .await?)
+    .await
 }
 
 /// Types of noise protocol handshakes.
@@ -118,7 +131,7 @@ impl Decodable for HandshakeType {
 /// Enumeration of protocol states.
 pub enum ProtocolState {
     /// Noise handshake state.
-    Handshake(HandshakeState),
+    Handshake(Box<HandshakeState>),
     /// Noise transport state.
     Transport(TransportState),
 }
@@ -208,7 +221,7 @@ impl Decodable for PeerMessage {
     }
 }
 
-/// Request messages from the client.
+/// Request message sent to the server or another peer.
 #[derive(Default, Debug)]
 pub enum RequestMessage {
     #[default]
@@ -225,7 +238,26 @@ pub enum RequestMessage {
         public_key: Vec<u8>,
         /// Message payload.
         message: Vec<u8>,
+        /// Session identifier.
+        session_id: Option<SessionId>,
     },
+    /// Envelope for an encrypted message over the server channel.
+    Envelope(Vec<u8>),
+    /// Request a new session.
+    NewSession(SessionRequest),
+    /// Request to notify all participants when the
+    /// session is ready.
+    SessionReadyNotify(SessionId),
+    /// Register a peer connection in a session.
+    SessionConnection {
+        /// Session identifier.
+        session_id: SessionId,
+        /// Public key of the peer.
+        peer_key: Vec<u8>,
+    },
+    /// Request to notify all participants when the
+    /// session is active.
+    SessionActiveNotify(SessionId),
 }
 
 impl From<&RequestMessage> for u8 {
@@ -236,6 +268,17 @@ impl From<&RequestMessage> for u8 {
                 types::HANDSHAKE_INITIATOR
             }
             RequestMessage::RelayPeer { .. } => types::RELAY_PEER,
+            RequestMessage::Envelope(_) => types::ENVELOPE,
+            RequestMessage::NewSession(_) => types::SESSION_NEW,
+            RequestMessage::SessionReadyNotify(_) => {
+                types::SESSION_READY_NOTIFY
+            }
+            RequestMessage::SessionConnection { .. } => {
+                types::SESSION_CONNECTION
+            }
+            RequestMessage::SessionActiveNotify(_) => {
+                types::SESSION_ACTIVE_NOTIFY
+            }
         }
     }
 }
@@ -260,12 +303,38 @@ impl Encodable for RequestMessage {
                 handshake,
                 public_key,
                 message,
+                session_id,
             } => {
                 writer.write_bool(handshake).await?;
                 writer.write_u32(public_key.len() as u32).await?;
                 writer.write_bytes(public_key).await?;
                 writer.write_u32(message.len() as u32).await?;
                 writer.write_bytes(message).await?;
+                writer.write_bool(session_id.is_some()).await?;
+                if let Some(id) = session_id {
+                    writer.write_bytes(id.as_bytes()).await?;
+                }
+            }
+            Self::Envelope(message) => {
+                writer.write_u32(message.len() as u32).await?;
+                writer.write_bytes(message).await?;
+            }
+            Self::NewSession(request) => {
+                request.encode(writer).await?;
+            }
+            Self::SessionReadyNotify(session_id) => {
+                writer.write_bytes(session_id.as_bytes()).await?;
+            }
+            Self::SessionConnection {
+                session_id,
+                peer_key,
+            } => {
+                writer.write_bytes(session_id.as_bytes()).await?;
+                writer.write_u32(peer_key.len() as u32).await?;
+                writer.write_bytes(peer_key).await?;
+            }
+            Self::SessionActiveNotify(session_id) => {
+                writer.write_bytes(session_id.as_bytes()).await?;
             }
             Self::Noop => unreachable!(),
         }
@@ -300,11 +369,82 @@ impl Decodable for RequestMessage {
                 let size = reader.read_u32().await?;
                 let message =
                     reader.read_bytes(size as usize).await?;
+                let has_session_id = reader.read_bool().await?;
+
+                let session_id = if has_session_id {
+                    let session_id = SessionId::from_bytes(
+                        reader
+                            .read_bytes(16)
+                            .await?
+                            .as_slice()
+                            .try_into()
+                            .map_err(encoding_error)?,
+                    );
+                    Some(session_id)
+                } else {
+                    None
+                };
+
                 *self = RequestMessage::RelayPeer {
                     handshake,
                     public_key,
                     message,
+                    session_id,
                 };
+            }
+            types::ENVELOPE => {
+                let size = reader.read_u32().await?;
+                let message =
+                    reader.read_bytes(size as usize).await?;
+                *self = RequestMessage::Envelope(message);
+            }
+            types::SESSION_NEW => {
+                let mut session: SessionRequest = Default::default();
+                session.decode(reader).await?;
+                *self = RequestMessage::NewSession(session);
+            }
+            types::SESSION_READY_NOTIFY => {
+                let session_id = SessionId::from_bytes(
+                    reader
+                        .read_bytes(16)
+                        .await?
+                        .as_slice()
+                        .try_into()
+                        .map_err(encoding_error)?,
+                );
+                *self =
+                    RequestMessage::SessionReadyNotify(session_id);
+            }
+            types::SESSION_CONNECTION => {
+                let session_id = SessionId::from_bytes(
+                    reader
+                        .read_bytes(16)
+                        .await?
+                        .as_slice()
+                        .try_into()
+                        .map_err(encoding_error)?,
+                );
+
+                let size = reader.read_u32().await?;
+                let peer_key =
+                    reader.read_bytes(size as usize).await?;
+
+                *self = RequestMessage::SessionConnection {
+                    session_id,
+                    peer_key,
+                };
+            }
+            types::SESSION_ACTIVE_NOTIFY => {
+                let session_id = SessionId::from_bytes(
+                    reader
+                        .read_bytes(16)
+                        .await?
+                        .as_slice()
+                        .try_into()
+                        .map_err(encoding_error)?,
+                );
+                *self =
+                    RequestMessage::SessionActiveNotify(session_id);
             }
             _ => {
                 return Err(encoding_error(
@@ -316,7 +456,7 @@ impl Decodable for RequestMessage {
     }
 }
 
-/// Response messages from the server.
+/// Response message sent by the server or a peer.
 #[derive(Default, Debug)]
 pub enum ResponseMessage {
     #[default]
@@ -336,6 +476,18 @@ pub enum ResponseMessage {
         /// Message payload.
         message: Vec<u8>,
     },
+    /// Envelope for an encrypted message over the server channel.
+    Envelope(Vec<u8>),
+    /// Response to a new session request.
+    SessionCreated(SessionState),
+    /// Notification dispatched to all participants
+    /// in a session when they have all completed
+    /// the server handshake.
+    SessionReady(SessionState),
+    /// Notification dispatched to all participants
+    /// in a session when they have all established
+    /// peer connections to each other.
+    SessionActive(SessionState),
 }
 
 impl From<&ResponseMessage> for u8 {
@@ -347,6 +499,14 @@ impl From<&ResponseMessage> for u8 {
                 types::HANDSHAKE_RESPONDER
             }
             ResponseMessage::RelayPeer { .. } => types::RELAY_PEER,
+            ResponseMessage::Envelope(_) => types::ENVELOPE,
+            ResponseMessage::SessionCreated(_) => {
+                types::SESSION_CREATED
+            }
+            ResponseMessage::SessionReady(_) => types::SESSION_READY,
+            ResponseMessage::SessionActive(_) => {
+                types::SESSION_ACTIVE
+            }
         }
     }
 }
@@ -382,6 +542,19 @@ impl Encodable for ResponseMessage {
                 writer.write_bytes(public_key).await?;
                 writer.write_u32(message.len() as u32).await?;
                 writer.write_bytes(message).await?;
+            }
+            Self::Envelope(message) => {
+                writer.write_u32(message.len() as u32).await?;
+                writer.write_bytes(message).await?;
+            }
+            Self::SessionCreated(response) => {
+                response.encode(writer).await?;
+            }
+            Self::SessionReady(response) => {
+                response.encode(writer).await?;
+            }
+            Self::SessionActive(response) => {
+                response.encode(writer).await?;
             }
             Self::Noop => unreachable!(),
         }
@@ -431,6 +604,27 @@ impl Decodable for ResponseMessage {
                     message,
                 };
             }
+            types::ENVELOPE => {
+                let size = reader.read_u32().await?;
+                let message =
+                    reader.read_bytes(size as usize).await?;
+                *self = ResponseMessage::Envelope(message);
+            }
+            types::SESSION_CREATED => {
+                let mut session: SessionState = Default::default();
+                session.decode(reader).await?;
+                *self = ResponseMessage::SessionCreated(session);
+            }
+            types::SESSION_READY => {
+                let mut session: SessionState = Default::default();
+                session.decode(reader).await?;
+                *self = ResponseMessage::SessionReady(session);
+            }
+            types::SESSION_ACTIVE => {
+                let mut session: SessionState = Default::default();
+                session.decode(reader).await?;
+                *self = ResponseMessage::SessionActive(session);
+            }
             _ => {
                 return Err(encoding_error(
                     crate::Error::EncodingKind(id),
@@ -463,7 +657,7 @@ impl From<Encoding> for u8 {
     }
 }
 
-/// Sealed message sent between peers.
+/// Sealed envelope is an encrypted message.
 ///
 /// The payload has been encrypted using the noise protocol
 /// channel and the recipient must decrypt and decode the payload.
@@ -475,6 +669,8 @@ pub struct SealedEnvelope {
     pub length: usize,
     /// Encrypted payload.
     pub payload: Vec<u8>,
+    /// Whether this is a broadcast message.
+    pub broadcast: bool,
 }
 
 #[cfg_attr(target_arch="wasm32", async_trait(?Send))]
@@ -489,6 +685,7 @@ impl Encodable for SealedEnvelope {
         writer.write_usize(self.length).await?;
         writer.write_u32(self.payload.len() as u32).await?;
         writer.write_bytes(&self.payload).await?;
+        writer.write_bool(self.broadcast).await?;
         Ok(())
     }
 }
@@ -517,6 +714,291 @@ impl Decodable for SealedEnvelope {
         self.length = reader.read_usize().await?;
         let size = reader.read_u32().await?;
         self.payload = reader.read_bytes(size as usize).await?;
+        self.broadcast = reader.read_bool().await?;
+        Ok(())
+    }
+}
+
+/// Session is a namespace for a group of participants
+/// to communicate for a series of rounds.
+///
+/// Use this for the keygen, signing or key refresh
+/// of an MPC protocol.
+pub struct Session {
+    /// Public key of the owner.
+    ///
+    /// The owner is the initiator that created
+    /// this session.
+    owner_key: Vec<u8>,
+
+    /// Public keys of the other session participants.
+    participant_keys: HashSet<Vec<u8>>,
+
+    /// Connections between peers established in this
+    /// session context.
+    connections: HashSet<(Vec<u8>, Vec<u8>)>,
+
+    /// Last access time so the server can reap
+    /// stale sessions.
+    last_access: SystemTime,
+}
+
+impl Session {
+    /// Get all participant's public keys
+    pub fn public_keys(&self) -> Vec<&[u8]> {
+        let mut keys = vec![self.owner_key.as_slice()];
+        let mut participants: Vec<_> = self
+            .participant_keys
+            .iter()
+            .map(|k| k.as_slice())
+            .collect();
+        keys.append(&mut participants);
+        keys
+    }
+
+    /// Register a connection between peers.
+    pub fn register_connection(
+        &mut self,
+        peer: Vec<u8>,
+        other: Vec<u8>,
+    ) {
+        self.connections.insert((peer, other));
+    }
+
+    /// Determine if this session is active.
+    ///
+    /// A session is active when all participants have created
+    /// their peer connections.
+    pub fn is_active(&self) -> bool {
+        let all_participants = self.public_keys();
+
+        fn check_connection(
+            connections: &HashSet<(Vec<u8>, Vec<u8>)>,
+            peer: &[u8],
+            all: &[&[u8]],
+        ) -> bool {
+            for key in all {
+                if key == &peer {
+                    continue;
+                }
+                // We don't know the order the connections
+                // were established so check both.
+                let left =
+                    connections.get(&(peer.to_vec(), key.to_vec()));
+                let right =
+                    connections.get(&(key.to_vec(), peer.to_vec()));
+                let is_connected = left.is_some() || right.is_some();
+                if !is_connected {
+                    return false;
+                }
+            }
+            true
+        }
+
+        for key in &all_participants {
+            let is_connected_others = check_connection(
+                &self.connections,
+                key,
+                all_participants.as_slice(),
+            );
+            if !is_connected_others {
+                return false;
+            }
+        }
+
+        true
+    }
+}
+
+/// Manages a collection of sessions.
+#[derive(Default)]
+pub struct SessionManager {
+    sessions: HashMap<SessionId, Session>,
+}
+
+impl SessionManager {
+    /// Create a new session.
+    pub fn new_session(
+        &mut self,
+        owner_key: Vec<u8>,
+        participant_keys: Vec<Vec<u8>>,
+    ) -> SessionId {
+        let session_id = SessionId::new_v4();
+        let session = Session {
+            owner_key,
+            participant_keys: participant_keys.into_iter().collect(),
+            connections: Default::default(),
+            last_access: SystemTime::now(),
+        };
+        self.sessions.insert(session_id, session);
+        session_id
+    }
+
+    /// Get a session.
+    pub fn get_session(&self, id: &SessionId) -> Option<&Session> {
+        self.sessions.get(id)
+    }
+
+    /// Get a mutable session.
+    pub fn get_session_mut(
+        &mut self,
+        id: &SessionId,
+    ) -> Option<&mut Session> {
+        self.sessions.get_mut(id)
+    }
+
+    /// Remove a session.
+    pub fn remove_session(
+        &mut self,
+        id: &SessionId,
+    ) -> Option<Session> {
+        self.sessions.remove(id)
+    }
+
+    /// Retrieve and update the last access time for a session.
+    pub fn touch_session(
+        &mut self,
+        id: &SessionId,
+    ) -> Option<&Session> {
+        if let Some(session) = self.sessions.get_mut(id) {
+            session.last_access = SystemTime::now();
+            Some(&*session)
+        } else {
+            None
+        }
+    }
+
+    /// Get the keys of sessions that have expired.
+    pub fn expired_keys(&self, timeout: u64) -> Vec<SessionId> {
+        self.sessions
+            .iter()
+            .filter(|(_, v)| {
+                let now = SystemTime::now();
+                let ttl = Duration::from_millis(timeout * 1000);
+                if let Some(current) = v.last_access.checked_add(ttl)
+                {
+                    current < now
+                } else {
+                    false
+                }
+            })
+            .map(|(k, _)| *k)
+            .collect::<Vec<_>>()
+    }
+}
+
+/// Request to create a new session.
+///
+/// Do no include the public key of the initiator as it
+/// is automatically added as the session *owner*.
+#[derive(Default, Debug)]
+pub struct SessionRequest {
+    /// Public keys of the session participants.
+    pub participant_keys: Vec<Vec<u8>>,
+}
+
+#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl Encodable for SessionRequest {
+    async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
+        &self,
+        writer: &mut BinaryWriter<W>,
+    ) -> Result<()> {
+        // TODO: handle too many participants
+        writer.write_u32(self.participant_keys.len() as u32).await?;
+        for key in self.participant_keys.iter() {
+            writer.write_u32(key.len() as u32).await?;
+            writer.write_bytes(key).await?;
+        }
+        Ok(())
+    }
+}
+
+#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl Decodable for SessionRequest {
+    async fn decode<R: AsyncRead + AsyncSeek + Unpin + Send>(
+        &mut self,
+        reader: &mut BinaryReader<R>,
+    ) -> Result<()> {
+        let size = reader.read_u32().await? as usize;
+        for _ in 0..size {
+            let len = reader.read_u32().await? as usize;
+            let key = reader.read_bytes(len).await?;
+            self.participant_keys.push(key);
+        }
+        Ok(())
+    }
+}
+
+/// Response from creating new session.
+#[derive(Default, Debug, Clone)]
+pub struct SessionState {
+    /// Session identifier.
+    pub session_id: SessionId,
+    /// Public keys of all participants.
+    pub all_participants: Vec<Vec<u8>>,
+}
+
+impl SessionState {
+    /// Get the connections a peer should make.
+    pub fn connections(&self, own_key: &[u8]) -> &[Vec<u8>] {
+        if self.all_participants.is_empty() {
+            return &[];
+        }
+
+        if let Some(position) =
+            self.all_participants.iter().position(|k| k == own_key)
+        {
+            if position < self.all_participants.len() - 1 {
+                &self.all_participants[position + 1..]
+            } else {
+                &[]
+            }
+        } else {
+            &[]
+        }
+    }
+}
+
+#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl Encodable for SessionState {
+    async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
+        &self,
+        writer: &mut BinaryWriter<W>,
+    ) -> Result<()> {
+        writer.write_bytes(self.session_id.as_bytes()).await?;
+        writer.write_u32(self.all_participants.len() as u32).await?;
+        for conn in &self.all_participants {
+            writer.write_u32(conn.len() as u32).await?;
+            writer.write_bytes(conn).await?;
+        }
+        Ok(())
+    }
+}
+
+#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl Decodable for SessionState {
+    async fn decode<R: AsyncRead + AsyncSeek + Unpin + Send>(
+        &mut self,
+        reader: &mut BinaryReader<R>,
+    ) -> Result<()> {
+        self.session_id = SessionId::from_bytes(
+            reader
+                .read_bytes(16)
+                .await?
+                .as_slice()
+                .try_into()
+                .map_err(encoding_error)?,
+        );
+        let size = reader.read_u32().await?;
+        for _ in 0..size {
+            let len = reader.read_u32().await?;
+            self.all_participants
+                .push(reader.read_bytes(len as usize).await?);
+        }
         Ok(())
     }
 }

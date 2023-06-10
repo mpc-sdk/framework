@@ -9,7 +9,7 @@ use serde::Serialize;
 use std::{collections::HashMap, sync::Arc};
 use tokio::{
     net::TcpStream,
-    sync::{mpsc, Mutex, RwLock},
+    sync::{mpsc, RwLock},
 };
 use tokio_tungstenite::{
     connect_async,
@@ -18,9 +18,13 @@ use tokio_tungstenite::{
 };
 
 use mpc_relay_protocol::{
-    decode, encode, hex, http::StatusCode, snow::Builder, Encoding,
-    HandshakeType, PeerMessage, ProtocolState, RequestMessage,
-    ResponseMessage, SealedEnvelope, PATTERN, TAGLEN,
+    channel::{decrypt_server_channel, encrypt_server_channel},
+    decode, encode, hex,
+    http::StatusCode,
+    snow::Builder,
+    Encoding, HandshakeType, PeerMessage, ProtocolState,
+    RequestMessage, ResponseMessage, SealedEnvelope, SessionId,
+    SessionRequest, PATTERN, TAGLEN,
 };
 
 use crate::{ClientOptions, Error, Event, JsonMessage, Result};
@@ -28,21 +32,10 @@ use crate::{ClientOptions, Error, Event, JsonMessage, Result};
 type Peers = Arc<RwLock<HashMap<Vec<u8>, ProtocolState>>>;
 type Server = Arc<RwLock<Option<ProtocolState>>>;
 
-/// Notifications sent from the event loop to the client.
-#[derive(Debug)]
-#[doc(hidden)]
-pub enum Notification {
-    /// Notification sent when the server handshake is complete.
-    ServerHandshake,
-    /// Notification sent when a peer handshake is complete.
-    PeerHandshake,
-}
-
 /// Native websocket client using the tokio tungstenite library.
 #[derive(Clone)]
 pub struct NativeClient {
     options: Arc<ClientOptions>,
-    notification_rx: Arc<Mutex<mpsc::Receiver<Notification>>>,
     outbound_tx: mpsc::Sender<RequestMessage>,
     server: Server,
     peers: Peers,
@@ -79,21 +72,15 @@ impl NativeClient {
         let (outbound_tx, outbound_rx) =
             mpsc::channel::<RequestMessage>(32);
 
-        // Internal notification bridge between the client and
-        // the event loop
-        let (notification_tx, notification_rx) =
-            mpsc::channel::<Notification>(32);
-
         // State for the server transport
         let server = Arc::new(RwLock::new(Some(
-            ProtocolState::Handshake(handshake),
+            ProtocolState::Handshake(Box::new(handshake)),
         )));
 
         let peers = Arc::new(RwLock::new(Default::default()));
         let options = Arc::new(options);
         let client = Self {
             options: Arc::clone(&options),
-            notification_rx: Arc::new(Mutex::new(notification_rx)),
             outbound_tx: outbound_tx.clone(),
             server: Arc::clone(&server),
             peers: Arc::clone(&peers),
@@ -111,7 +98,6 @@ impl NativeClient {
             message_rx,
             outbound_tx,
             outbound_rx,
-            notification_tx,
             server,
             peers,
         };
@@ -119,8 +105,13 @@ impl NativeClient {
         Ok((client, event_loop))
     }
 
+    /// The public key for this client.
+    pub fn public_key(&self) -> &[u8] {
+        &self.options.keypair.public
+    }
+
     /// Perform initial handshake with the server.
-    pub async fn handshake(&mut self) -> Result<()> {
+    pub async fn connect(&mut self) -> Result<()> {
         let request = {
             let mut state = self.server.write().await;
 
@@ -143,17 +134,13 @@ impl NativeClient {
 
         self.outbound_tx.send(request).await?;
 
-        // Wait for the server handshake notification
-        let mut notifier = self.notification_rx.lock().await;
-        while let Some(notify) = notifier.recv().await {
-            if let Notification::ServerHandshake = notify {
-                break;
-            }
-        }
         Ok(())
     }
 
     /// Handshake with a peer.
+    ///
+    /// Peer already exists error is returned if this
+    /// client is already connecting to the peer.
     pub async fn connect_peer(
         &mut self,
         public_key: impl AsRef<[u8]>,
@@ -174,7 +161,8 @@ impl NativeClient {
             .local_private_key(&self.options.keypair.private)
             .remote_public_key(public_key.as_ref())
             .build_initiator()?;
-        let peer_state = ProtocolState::Handshake(handshake);
+        let peer_state =
+            ProtocolState::Handshake(Box::new(handshake));
 
         let state = peers
             .entry(public_key.as_ref().to_vec())
@@ -204,17 +192,11 @@ impl NativeClient {
             handshake: true,
             public_key: public_key.as_ref().to_vec(),
             message: inner_message,
+            session_id: None,
         };
 
         self.outbound_tx.send(request).await?;
 
-        // Wait for the peer handshake notification
-        let mut notifier = self.notification_rx.lock().await;
-        while let Some(notify) = notifier.recv().await {
-            if let Notification::PeerHandshake = notify {
-                break;
-            }
-        }
         Ok(())
     }
 
@@ -229,8 +211,10 @@ impl NativeClient {
     {
         self.relay(
             public_key,
-            serde_json::to_vec(payload)?,
+            &serde_json::to_vec(payload)?,
             Encoding::Json,
+            false,
+            None,
         )
         .await
     }
@@ -241,7 +225,8 @@ impl NativeClient {
         public_key: impl AsRef<[u8]>,
         payload: Vec<u8>,
     ) -> Result<()> {
-        self.relay(public_key, payload, Encoding::Blob).await
+        self.relay(public_key, &payload, Encoding::Blob, false, None)
+            .await
     }
 
     /// Relay a buffer to a peer over the noise protocol channel.
@@ -251,42 +236,161 @@ impl NativeClient {
     async fn relay(
         &mut self,
         public_key: impl AsRef<[u8]>,
-        payload: Vec<u8>,
+        payload: &[u8],
         encoding: Encoding,
+        broadcast: bool,
+        session_id: Option<SessionId>,
     ) -> Result<()> {
         let mut peers = self.peers.write().await;
         if let Some(peer) = peers.get_mut(public_key.as_ref()) {
-            match peer {
-                ProtocolState::Transport(transport) => {
-                    let mut contents =
-                        vec![0; payload.len() + TAGLEN];
-                    let length = transport
-                        .write_message(&payload, &mut contents)?;
-
-                    let envelope = SealedEnvelope {
-                        length,
-                        encoding,
-                        payload: contents,
-                    };
-
-                    let message = encode(&envelope).await?;
-
-                    let request = RequestMessage::RelayPeer {
-                        handshake: false,
-                        public_key: public_key.as_ref().to_vec(),
-                        message,
-                    };
-
-                    self.outbound_tx.send(request).await?;
-                    Ok(())
-                }
-                _ => Err(Error::NotTransportState),
-            }
+            let request = encrypt_peer_channel(
+                public_key, peer, payload, encoding, broadcast,
+                session_id,
+            )
+            .await?;
+            self.outbound_tx.send(request).await?;
+            Ok(())
         } else {
             Err(Error::PeerNotFound(hex::encode(
                 public_key.as_ref().to_vec(),
             )))
         }
+    }
+
+    /// Create a new session.
+    pub async fn new_session(
+        &mut self,
+        participant_keys: Vec<Vec<u8>>,
+    ) -> Result<()> {
+        let session = SessionRequest { participant_keys };
+        let message = RequestMessage::NewSession(session);
+        self.request(message).await
+    }
+
+    /// Request to be notified when all session participants are ready.
+    ///
+    /// Sends a request to the server to check whether all participants
+    /// have completed their server handshake.
+    ///
+    /// When the server detects all participants are connected a session
+    /// ready notification is sent to all the peers.
+    ///
+    /// Once peers receive the session ready notification they can
+    /// connect to each other.
+    pub async fn session_ready_notify(
+        &mut self,
+        session_id: &SessionId,
+    ) -> Result<()> {
+        self.request(RequestMessage::SessionReadyNotify(*session_id))
+            .await
+    }
+
+    /// Request to be notified when a session is active.
+    ///
+    /// A session is active when all of the participants in a session
+    /// have established peer connections.
+    pub async fn session_active_notify(
+        &mut self,
+        session_id: &SessionId,
+    ) -> Result<()> {
+        self.request(RequestMessage::SessionActiveNotify(*session_id))
+            .await
+    }
+
+    /// Register a peer connection in a session.
+    pub async fn register_session_connection(
+        &mut self,
+        session_id: &SessionId,
+        peer_key: &[u8],
+    ) -> Result<()> {
+        let message = RequestMessage::SessionConnection {
+            session_id: *session_id,
+            peer_key: peer_key.to_vec(),
+        };
+        self.request(message).await
+    }
+
+    /// Encrypt a request message and send over the encrypted
+    /// server channel.
+    async fn request(
+        &mut self,
+        message: RequestMessage,
+    ) -> Result<()> {
+        let inner = {
+            let mut server = self.server.write().await;
+            if let Some(server) = server.as_mut() {
+                let payload = encode(&message).await?;
+                let inner =
+                    encrypt_server_channel(server, payload, false)
+                        .await?;
+                Some(inner)
+            } else {
+                None
+            }
+        };
+
+        if let Some(inner) = inner {
+            let request = RequestMessage::Envelope(inner);
+            self.outbound_tx.send(request).await?;
+            Ok(())
+        } else {
+            unreachable!()
+        }
+    }
+
+    /// Broadcast JSON in the context of a session.
+    pub async fn broadcast<S>(
+        &mut self,
+        session_id: &SessionId,
+        recipient_public_keys: &[Vec<u8>],
+        payload: &S,
+    ) -> Result<()>
+    where
+        S: Serialize + ?Sized,
+    {
+        self.relay_broadcast(
+            session_id,
+            recipient_public_keys,
+            &serde_json::to_vec(payload)?,
+            Encoding::Json,
+        )
+        .await
+    }
+
+    /// Broadcast as binary in the context of a session.
+    pub async fn broadcast_binary(
+        &mut self,
+        session_id: &SessionId,
+        recipient_public_keys: &[Vec<u8>],
+        payload: Vec<u8>,
+    ) -> Result<()> {
+        self.relay_broadcast(
+            session_id,
+            recipient_public_keys,
+            &payload,
+            Encoding::Blob,
+        )
+        .await
+    }
+
+    async fn relay_broadcast(
+        &mut self,
+        session_id: &SessionId,
+        recipient_public_keys: &[Vec<u8>],
+        payload: &[u8],
+        encoding: Encoding,
+    ) -> Result<()> {
+        for key in recipient_public_keys {
+            self.relay(
+                key,
+                payload,
+                encoding,
+                true,
+                Some(*session_id),
+            )
+            .await?;
+        }
+        Ok(())
     }
 }
 
@@ -303,7 +407,6 @@ pub struct EventLoop {
     message_rx: mpsc::Receiver<ResponseMessage>,
     outbound_tx: mpsc::Sender<RequestMessage>,
     outbound_rx: mpsc::Receiver<RequestMessage>,
-    notification_tx: mpsc::Sender<Notification>,
     server: Server,
     peers: Peers,
 }
@@ -420,12 +523,11 @@ impl EventLoop {
                                 len,
                                 buf,
                             ),
-                        ) => Ok(Some(
-                            self.peer_handshake_responder(
+                        ) => Ok(self
+                            .peer_handshake_responder(
                                 public_key, len, buf,
                             )
-                            .await?,
-                        )),
+                            .await?),
                         PeerMessage::Response(
                             ResponseMessage::HandshakeResponder(
                                 HandshakeType::Peer,
@@ -449,6 +551,55 @@ impl EventLoop {
                     ))
                 }
             }
+            ResponseMessage::Envelope(message) => {
+                let mut server = self.server.write().await;
+                if let Some(server) = server.as_mut() {
+                    let (encoding, contents) =
+                        decrypt_server_channel(server, message)
+                            .await?;
+                    let message = match encoding {
+                        Encoding::Blob => {
+                            let response: ResponseMessage =
+                                decode(&contents).await?;
+                            response
+                        }
+                        _ => {
+                            panic!("unexpected encoding received from server")
+                        }
+                    };
+                    Ok(self
+                        .handle_server_channel_message(message)
+                        .await?)
+                } else {
+                    unreachable!()
+                }
+            }
+            _ => {
+                panic!("unhandled message");
+                //Ok(None)
+            }
+        }
+    }
+
+    /// Process an inner message from the server after
+    /// decrypting the envelope.
+    async fn handle_server_channel_message(
+        &self,
+        message: ResponseMessage,
+    ) -> Result<Option<Event>> {
+        match message {
+            ResponseMessage::Error(code, message) => {
+                Err(Error::ServerError(code, message))
+            }
+            ResponseMessage::SessionCreated(response) => {
+                Ok(Some(Event::SessionCreated(response)))
+            }
+            ResponseMessage::SessionReady(response) => {
+                Ok(Some(Event::SessionReady(response)))
+            }
+            ResponseMessage::SessionActive(response) => {
+                Ok(Some(Event::SessionActive(response)))
+            }
             _ => Ok(None),
         }
     }
@@ -471,10 +622,6 @@ impl EventLoop {
 
         *state = Some(ProtocolState::Transport(transport));
 
-        self.notification_tx
-            .send(Notification::ServerHandshake)
-            .await?;
-
         Ok(Event::ServerConnected {
             server_key: self.options.server_public_key.clone(),
         })
@@ -485,55 +632,57 @@ impl EventLoop {
         public_key: impl AsRef<[u8]>,
         len: usize,
         buf: Vec<u8>,
-    ) -> Result<Event> {
+    ) -> Result<Option<Event>> {
         let mut peers = self.peers.write().await;
+
         if peers.get(public_key.as_ref()).is_some() {
-            return Err(Error::PeerAlreadyExists);
+            return Err(Error::PeerAlreadyExistsMaybeRace);
+        } else {
+            tracing::debug!(
+                from = ?hex::encode(public_key.as_ref()),
+                "peer handshake responder"
+            );
+
+            let builder = Builder::new(PATTERN.parse()?);
+            let mut responder = builder
+                .local_private_key(&self.options.keypair.private)
+                .remote_public_key(public_key.as_ref())
+                .build_responder()?;
+
+            let mut read_buf = vec![0u8; 1024];
+            responder.read_message(&buf[..len], &mut read_buf)?;
+
+            let mut payload = vec![0u8; 1024];
+            let len = responder.write_message(&[], &mut payload)?;
+
+            let transport = responder.into_transport_mode()?;
+            peers.insert(
+                public_key.as_ref().to_vec(),
+                ProtocolState::Transport(transport),
+            );
+
+            let inner_request: PeerMessage =
+                ResponseMessage::HandshakeResponder(
+                    HandshakeType::Peer,
+                    len,
+                    payload,
+                )
+                .into();
+            let inner_message = encode(&inner_request).await?;
+
+            let request = RequestMessage::RelayPeer {
+                handshake: true,
+                public_key: public_key.as_ref().to_vec(),
+                message: inner_message,
+                session_id: None,
+            };
+
+            self.outbound_tx.send(request).await?;
+
+            Ok(Some(Event::PeerConnected {
+                peer_key: public_key.as_ref().to_vec(),
+            }))
         }
-
-        tracing::debug!(
-            from = ?hex::encode(public_key.as_ref()),
-            "peer handshake responder"
-        );
-
-        let builder = Builder::new(PATTERN.parse()?);
-        let mut responder = builder
-            .local_private_key(&self.options.keypair.private)
-            .remote_public_key(public_key.as_ref())
-            .build_responder()?;
-
-        let mut read_buf = vec![0u8; 1024];
-        responder.read_message(&buf[..len], &mut read_buf)?;
-
-        let mut payload = vec![0u8; 1024];
-        let len = responder.write_message(&[], &mut payload)?;
-
-        let transport = responder.into_transport_mode()?;
-        peers.insert(
-            public_key.as_ref().to_vec(),
-            ProtocolState::Transport(transport),
-        );
-
-        let inner_request: PeerMessage =
-            ResponseMessage::HandshakeResponder(
-                HandshakeType::Peer,
-                len,
-                payload,
-            )
-            .into();
-        let inner_message = encode(&inner_request).await?;
-
-        let request = RequestMessage::RelayPeer {
-            handshake: true,
-            public_key: public_key.as_ref().to_vec(),
-            message: inner_message,
-        };
-
-        self.outbound_tx.send(request).await?;
-
-        Ok(Event::PeerConnected {
-            peer_key: public_key.as_ref().to_vec(),
-        })
     }
 
     async fn peer_handshake_ack(
@@ -555,7 +704,7 @@ impl EventLoop {
 
         tracing::debug!(
             from = ?hex::encode(public_key.as_ref()),
-            "peer handshake ack"
+            "peer handshake done"
         );
 
         let transport = match peer {
@@ -572,10 +721,6 @@ impl EventLoop {
             ProtocolState::Transport(transport),
         );
 
-        self.notification_tx
-            .send(Notification::PeerHandshake)
-            .await?;
-
         Ok(Event::PeerConnected {
             peer_key: public_key.as_ref().to_vec(),
         })
@@ -588,37 +733,81 @@ impl EventLoop {
     ) -> Result<Event> {
         let mut peers = self.peers.write().await;
         if let Some(peer) = peers.get_mut(public_key.as_ref()) {
-            match peer {
-                ProtocolState::Transport(transport) => {
-                    let envelope: SealedEnvelope =
-                        decode(&payload).await?;
-                    let mut contents = vec![0; envelope.length];
-                    transport.read_message(
-                        &envelope.payload[..envelope.length],
-                        &mut contents,
-                    )?;
-
-                    let new_length = contents.len() - TAGLEN;
-                    contents.truncate(new_length);
-
-                    match envelope.encoding {
-                        Encoding::Noop => unreachable!(),
-                        Encoding::Blob => Ok(Event::BinaryMessage {
-                            peer_key: public_key.as_ref().to_vec(),
-                            message: contents,
-                        }),
-                        Encoding::Json => Ok(Event::JsonMessage {
-                            peer_key: public_key.as_ref().to_vec(),
-                            message: JsonMessage { contents },
-                        }),
-                    }
-                }
-                _ => Err(Error::NotTransportState),
+            let (envelope, contents) =
+                decrypt_peer_channel(peer, payload).await?;
+            match envelope.encoding {
+                Encoding::Noop => unreachable!(),
+                Encoding::Blob => Ok(Event::BinaryMessage {
+                    peer_key: public_key.as_ref().to_vec(),
+                    message: contents,
+                }),
+                Encoding::Json => Ok(Event::JsonMessage {
+                    peer_key: public_key.as_ref().to_vec(),
+                    message: JsonMessage { contents },
+                }),
             }
         } else {
             Err(Error::PeerNotFound(hex::encode(
                 public_key.as_ref().to_vec(),
             )))
         }
+    }
+}
+
+/// Encrypt a message to send to a peer.
+///
+/// The protocol must be in transport mode.
+async fn encrypt_peer_channel(
+    public_key: impl AsRef<[u8]>,
+    peer: &mut ProtocolState,
+    payload: &[u8],
+    encoding: Encoding,
+    broadcast: bool,
+    session_id: Option<SessionId>,
+) -> Result<RequestMessage> {
+    match peer {
+        ProtocolState::Transport(transport) => {
+            let mut contents = vec![0; payload.len() + TAGLEN];
+            let length =
+                transport.write_message(payload, &mut contents)?;
+            let envelope = SealedEnvelope {
+                length,
+                encoding,
+                payload: contents,
+                broadcast,
+            };
+            let message = encode(&envelope).await?;
+            let request = RequestMessage::RelayPeer {
+                handshake: false,
+                public_key: public_key.as_ref().to_vec(),
+                message,
+                session_id,
+            };
+            Ok(request)
+        }
+        _ => Err(Error::NotTransportState),
+    }
+}
+
+/// Decrypt a message received from a peer.
+///
+/// The protocol must be in transport mode.
+async fn decrypt_peer_channel(
+    peer: &mut ProtocolState,
+    payload: Vec<u8>,
+) -> Result<(SealedEnvelope, Vec<u8>)> {
+    match peer {
+        ProtocolState::Transport(transport) => {
+            let envelope: SealedEnvelope = decode(&payload).await?;
+            let mut contents = vec![0; envelope.length];
+            transport.read_message(
+                &envelope.payload[..envelope.length],
+                &mut contents,
+            )?;
+            let new_length = contents.len() - TAGLEN;
+            contents.truncate(new_length);
+            Ok((envelope, contents))
+        }
+        _ => Err(Error::NotTransportState),
     }
 }

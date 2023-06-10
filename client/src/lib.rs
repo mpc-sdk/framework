@@ -10,9 +10,9 @@ mod error;
 mod native;
 
 #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
-pub use native::{EventLoop, NativeClient, Notification};
+pub use native::{EventLoop, NativeClient};
 
-use mpc_relay_protocol::snow;
+use mpc_relay_protocol::{snow, SessionState};
 
 /// Events dispatched by the client.
 #[derive(Debug)]
@@ -43,6 +43,22 @@ pub enum Event {
         /// JSON message.
         message: JsonMessage,
     },
+    /// Event dispatched when a session has been created.
+    SessionCreated(SessionState),
+
+    /// Event dispatched when a session is ready.
+    ///
+    /// A session is ready when all participants
+    /// have completed the server handshake.
+    ///
+    /// Peers can now handshake with each other.
+    SessionReady(SessionState),
+
+    /// Event dispatched when a session is active.
+    ///
+    /// A session is active when all the participants
+    /// have connected to each other.
+    SessionActive(SessionState),
 }
 
 /// JSON message received from a peer.
@@ -53,8 +69,8 @@ pub struct JsonMessage {
 
 impl JsonMessage {
     /// Deserialize this message.
-    pub fn deserialize<T: serde::de::DeserializeOwned>(
-        &self,
+    pub fn deserialize<'a, T: serde::de::Deserialize<'a>>(
+        &'a self,
     ) -> Result<T> {
         Ok(serde_json::from_slice::<T>(&self.contents)?)
     }

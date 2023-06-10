@@ -29,9 +29,9 @@ pub enum Command {
         #[clap(long)]
         reap_interval: Option<u64>,
 
-        /// Override the default session duration in seconds.
+        /// Override the default session timeout in seconds.
         #[clap(long)]
-        session_duration: Option<u64>,
+        session_timeout: Option<u64>,
 
         /// Bind to host:port.
         #[clap(short, long, default_value = "0.0.0.0:7007")]
@@ -51,13 +51,13 @@ async fn run() -> Result<()> {
         }
         Command::Start {
             reap_interval,
-            session_duration,
+            session_timeout,
             bind,
             config,
         } => {
             commands::server::run(
                 reap_interval,
-                session_duration,
+                session_timeout,
                 bind,
                 config,
             )

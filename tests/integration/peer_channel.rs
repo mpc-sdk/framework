@@ -1,13 +1,13 @@
 use crate::test_utils::{new_client, spawn_server};
 use anyhow::Result;
-use futures::{StreamExt, select, FutureExt};
+use futures::{select, FutureExt, StreamExt};
 use mpc_relay_client::Event;
 use serial_test::serial;
 use tokio::sync::mpsc;
 
-/// Creates two clients that handshake with the server 
-/// and then each other. Once the peer handshakes are 
-/// complete they send "ping" and "pong" messages over 
+/// Creates two clients that handshake with the server
+/// and then each other. Once the peer handshakes are
+/// complete they send "ping" and "pong" messages over
 /// the noise transport channel.
 #[tokio::test]
 #[serial]
@@ -19,9 +19,9 @@ async fn integration_peer_channel() -> Result<()> {
     let _ = rx.await?;
 
     // Create new clients
-    let (mut initiator, mut event_loop_i, _) =
+    let (mut initiator, mut event_loop_i, initiator_key) =
         new_client().await?;
-    let (mut participant, mut event_loop_p, participant_key) =
+    let (mut participant, mut event_loop_p, _participant_key) =
         new_client().await?;
 
     // Copy clients to move into the event loops
@@ -32,6 +32,8 @@ async fn integration_peer_channel() -> Result<()> {
 
     // Setup event loops
     let ev_i = tokio::task::spawn(async move {
+        initiator.connect().await?;
+
         let mut s = event_loop_i.run();
         while let Some(event) = s.next().await {
             let event = event?;
@@ -44,8 +46,8 @@ async fn integration_peer_channel() -> Result<()> {
                     init_client.send(&peer_key, "ping").await?;
                 }
                 Event::JsonMessage { message, .. } => {
-                    let message: String = message.deserialize()?;
-                    if &message == "pong" {
+                    let message: &str = message.deserialize()?;
+                    if message == "pong" {
                         // Got a pong so break out of the event loop
                         shutdown_tx.send(()).await?;
                         break;
@@ -58,6 +60,8 @@ async fn integration_peer_channel() -> Result<()> {
     });
 
     let ev_p = tokio::task::spawn(async move {
+        participant.connect().await?;
+
         let mut s = event_loop_p.run();
         loop {
             select! {
@@ -67,12 +71,16 @@ async fn integration_peer_channel() -> Result<()> {
                             let event = event?;
                             tracing::trace!("participant {:#?}", event);
                             match &event {
-                                // Once the peer connection is established 
-                                // we can start sending messages over 
+                                Event::ServerConnected { .. } => {
+                                    // Now we can connect to a peer
+                                    part_client.connect_peer(&initiator_key.public).await?;
+                                }
+                                // Once the peer connection is established
+                                // we can start sending messages over
                                 // the encrypted channel
                                 Event::JsonMessage { peer_key, message } => {
-                                    let message: String = message.deserialize()?;
-                                    if &message == "ping" {
+                                    let message: &str = message.deserialize()?;
+                                    if message == "ping" {
                                         part_client.send(&peer_key, "pong").await?;
                                     }
                                 }
@@ -85,19 +93,12 @@ async fn integration_peer_channel() -> Result<()> {
                 shutdown = shutdown_rx.recv().fuse() => {
                     if shutdown.is_some() {
                         break;
-                    } 
+                    }
                 }
             }
         }
         Ok::<(), anyhow::Error>(())
     });
-
-    // Clients must handshake with the server first
-    initiator.handshake().await?;
-    participant.handshake().await?;
-
-    // Now we can connect to a peer
-    initiator.connect_peer(&participant_key.public).await?;
 
     // Must drive the event loop futures
     let (res_i, res_p) = futures::join!(ev_i, ev_p);
