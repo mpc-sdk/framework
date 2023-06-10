@@ -200,7 +200,7 @@ impl NativeClient {
         Ok(())
     }
 
-    /// Encode as JSON and relay to the peer.
+    /// Send a JSON message to a peer via the relay service.
     pub async fn send<S>(
         &mut self,
         public_key: impl AsRef<[u8]>,
@@ -220,8 +220,8 @@ impl NativeClient {
         .await
     }
 
-    /// Encode as binary and relay to the peer.
-    pub async fn send_binary(
+    /// Send a binary message to a peer via the relay service.
+    pub async fn send_blob(
         &mut self,
         public_key: impl AsRef<[u8]>,
         payload: Vec<u8>,
@@ -340,7 +340,7 @@ impl NativeClient {
         }
     }
 
-    /// Broadcast JSON in the context of a session.
+    /// Broadcast a JSON message in the context of a session.
     pub async fn broadcast<S>(
         &mut self,
         session_id: &SessionId,
@@ -359,8 +359,8 @@ impl NativeClient {
         .await
     }
 
-    /// Broadcast as binary in the context of a session.
-    pub async fn broadcast_binary(
+    /// Broadcast a binary message in the context of a session.
+    pub async fn broadcast_blob(
         &mut self,
         session_id: &SessionId,
         recipient_public_keys: &[Vec<u8>],

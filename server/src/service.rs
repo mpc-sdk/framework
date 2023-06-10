@@ -122,9 +122,9 @@ async fn handle_request(
             // When we have a session identifier check the session
             // is valid and the target peer is a session participant.
             if let Some(id) = session_id {
-                let reader = state.read().await;
+                let mut writer = state.write().await;
                 if let Some(session) =
-                    reader.sessions.get_session(&id)
+                    writer.sessions.touch_session(&id)
                 {
                     let public_keys = session.public_keys();
                     let is_participant = public_keys
