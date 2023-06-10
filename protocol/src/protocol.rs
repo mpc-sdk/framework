@@ -240,6 +240,8 @@ pub enum RequestMessage {
         public_key: Vec<u8>,
         /// Message payload.
         message: Vec<u8>,
+        /// Session identifier.
+        session_id: Option<SessionId>,
     },
     /// Envelope for an encrypted message over the server channel.
     Envelope(Vec<u8>),
@@ -303,12 +305,17 @@ impl Encodable for RequestMessage {
                 handshake,
                 public_key,
                 message,
+                session_id,
             } => {
                 writer.write_bool(handshake).await?;
                 writer.write_u32(public_key.len() as u32).await?;
                 writer.write_bytes(public_key).await?;
                 writer.write_u32(message.len() as u32).await?;
                 writer.write_bytes(message).await?;
+                writer.write_bool(session_id.is_some()).await?;
+                if let Some(id) = session_id {
+                    writer.write_bytes(id.as_bytes()).await?;
+                }
             }
             Self::Envelope(message) => {
                 writer.write_u32(message.len() as u32).await?;
@@ -364,10 +371,27 @@ impl Decodable for RequestMessage {
                 let size = reader.read_u32().await?;
                 let message =
                     reader.read_bytes(size as usize).await?;
+                let has_session_id = reader.read_bool().await?;
+
+                let session_id = if has_session_id {
+                    let session_id = SessionId::from_bytes(
+                        reader
+                            .read_bytes(16)
+                            .await?
+                            .as_slice()
+                            .try_into()
+                            .map_err(encoding_error)?,
+                    );
+                    Some(session_id)
+                } else {
+                    None
+                };
+
                 *self = RequestMessage::RelayPeer {
                     handshake,
                     public_key,
                     message,
+                    session_id,
                 };
             }
             types::ENVELOPE => {

@@ -117,7 +117,32 @@ async fn handle_request(
             handshake,
             public_key,
             message,
+            session_id,
         } => {
+            // When we have a session identifier check the session
+            // is valid and the target peer is a session participant.
+            if let Some(id) = session_id {
+                let reader = state.read().await;
+                if let Some(session) =
+                    reader.sessions.get_session(&id)
+                {
+                    let public_keys = session.public_keys();
+                    let is_participant = public_keys
+                        .into_iter()
+                        .find(|k| k == &public_key)
+                        .is_some();
+
+                    if !is_participant {
+                        return Err(Error::NotSessionParticipant(
+                            id,
+                            hex::encode(public_key),
+                        ));
+                    }
+                } else {
+                    return Err(Error::SessionNotFound(id));
+                }
+            }
+
             let from_public_key = {
                 let reader = conn.read().await;
                 reader.public_key.clone()

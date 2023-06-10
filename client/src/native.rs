@@ -207,6 +207,7 @@ impl NativeClient {
             handshake: true,
             public_key: public_key.as_ref().to_vec(),
             message: inner_message,
+            session_id: None,
         };
 
         self.outbound_tx.send(request).await?;
@@ -250,6 +251,7 @@ impl NativeClient {
             &serde_json::to_vec(payload)?,
             Encoding::Json,
             false,
+            None,
         )
         .await
     }
@@ -260,7 +262,8 @@ impl NativeClient {
         public_key: impl AsRef<[u8]>,
         payload: Vec<u8>,
     ) -> Result<()> {
-        self.relay(public_key, &payload, Encoding::Blob, false).await
+        self.relay(public_key, &payload, Encoding::Blob, false, None)
+            .await
     }
 
     /// Relay a buffer to a peer over the noise protocol channel.
@@ -273,11 +276,13 @@ impl NativeClient {
         payload: &[u8],
         encoding: Encoding,
         broadcast: bool,
+        session_id: Option<SessionId>,
     ) -> Result<()> {
         let mut peers = self.peers.write().await;
         if let Some(peer) = peers.get_mut(public_key.as_ref()) {
             let request = encrypt_peer_channel(
                 public_key, peer, payload, encoding, broadcast,
+                session_id,
             )
             .await?;
             self.outbound_tx.send(request).await?;
@@ -353,7 +358,8 @@ impl NativeClient {
             if let Some(server) = server.as_mut() {
                 let payload = encode(&message).await?;
                 let inner =
-                    encrypt_server_channel(server, payload, false).await?;
+                    encrypt_server_channel(server, payload, false)
+                        .await?;
                 Some(inner)
             } else {
                 None
@@ -412,7 +418,14 @@ impl NativeClient {
         encoding: Encoding,
     ) -> Result<()> {
         for key in recipient_public_keys {
-            self.relay(key, &payload, encoding, true).await?;
+            self.relay(
+                key,
+                &payload,
+                encoding,
+                true,
+                Some(*session_id),
+            )
+            .await?;
         }
         Ok(())
     }
@@ -702,6 +715,7 @@ impl EventLoop {
                 handshake: true,
                 public_key: public_key.as_ref().to_vec(),
                 message: inner_message,
+                session_id: None,
             };
 
             self.outbound_tx.send(request).await?;
@@ -792,6 +806,7 @@ async fn encrypt_peer_channel(
     payload: &[u8],
     encoding: Encoding,
     broadcast: bool,
+    session_id: Option<SessionId>,
 ) -> Result<RequestMessage> {
     match peer {
         ProtocolState::Transport(transport) => {
@@ -809,6 +824,7 @@ async fn encrypt_peer_channel(
                 handshake: false,
                 public_key: public_key.as_ref().to_vec(),
                 message,
+                session_id,
             };
             Ok(request)
         }
