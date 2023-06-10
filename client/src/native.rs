@@ -161,6 +161,9 @@ impl NativeClient {
     }
 
     /// Handshake with a peer.
+    ///
+    /// Peer already exists error is returned if this 
+    /// client is already connecting to the peer.
     pub async fn connect_peer(
         &mut self,
         public_key: impl AsRef<[u8]>,
@@ -216,6 +219,28 @@ impl NativeClient {
         self.outbound_tx.send(request).await?;
 
         Ok(())
+    }
+    
+    /// Try to connect to a peer.
+    ///
+    /// If the peer already exists the error is ignored 
+    /// and this method will return `false`.
+    ///
+    /// Use this when peers need to race to connect to 
+    /// each other.
+    pub async fn try_connect_peer(
+        &mut self,
+        key: impl AsRef<[u8]>,
+    ) -> Result<bool> {
+        if let Err(e) = self.connect_peer(key).await {
+            match e {
+                Error::PeerAlreadyExists => {
+                    return Ok(false);
+                }
+                _ => return Err(e.into()),
+            }
+        }
+        Ok(true)
     }
 
     /// Encode as JSON and relay to the peer.

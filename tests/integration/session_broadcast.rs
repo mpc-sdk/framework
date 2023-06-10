@@ -80,22 +80,6 @@ async fn integration_session_broadcast() -> Result<()> {
     Ok(())
 }
 
-async fn try_connect_peer(
-    client: &mut NativeClient,
-    key: &[u8],
-) -> Result<()> {
-    println!("connecting to peer...");
-    if let Err(e) = client.connect_peer(key).await {
-        match e {
-            Error::PeerAlreadyExists => {
-                println!("GOT EXISTS ERROR");
-            }
-            _ => return Err(e.into()),
-        }
-    }
-    Ok(())
-}
-
 fn event_loop_1(
     mut event_loop: EventLoop,
     mut client: NativeClient,
@@ -116,7 +100,7 @@ fn event_loop_1(
                 for key in &session.all_participants {
                     if key != client.public_key() {
                         println!("connect peers");
-                        try_connect_peer(client, key).await?;
+                        let _ = client.try_connect_peer(key).await?;
                     }
                 }
             }
@@ -168,7 +152,7 @@ fn event_loop_2(
                 for key in &session.all_participants {
                     if key != client.public_key() {
                         println!("connect peers");
-                        try_connect_peer(client, key).await?;
+                        let _ = client.try_connect_peer(key).await?;
                     }
                 }
             }
@@ -222,7 +206,7 @@ fn event_loop_3(
                 for key in &session.all_participants {
                     if key != client.public_key() {
                         println!("connect peers");
-                        try_connect_peer(client, key).await?;
+                        let _ = client.try_connect_peer(key).await?;
                     }
                 }
             }
