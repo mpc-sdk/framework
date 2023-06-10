@@ -33,9 +33,11 @@ mod types {
     pub const ENVELOPE: u8 = 5;
     pub const SESSION_NEW: u8 = 6;
     pub const SESSION_CREATED: u8 = 7;
-    pub const SESSION_PING: u8 = 8;
+    pub const SESSION_READY_NOTIFY: u8 = 8;
     pub const SESSION_READY: u8 = 9;
     pub const SESSION_CONNECTION: u8 = 10;
+    pub const SESSION_ACTIVE_NOTIFY: u8 = 11;
+    pub const SESSION_ACTIVE: u8 = 12;
 
     pub const ENCODING_BLOB: u8 = 1;
     pub const ENCODING_JSON: u8 = 2;
@@ -243,8 +245,9 @@ pub enum RequestMessage {
     Envelope(Vec<u8>),
     /// Request a new session.
     NewSession(SessionRequest),
-    /// Ping a session.
-    SessionPing(SessionId),
+    /// Request to notify all participants when the
+    /// session is ready.
+    SessionReadyNotify(SessionId),
     /// Register a peer connection in a session.
     SessionConnection {
         /// Session identifier.
@@ -252,6 +255,9 @@ pub enum RequestMessage {
         /// Public key of the peer.
         peer_key: Vec<u8>,
     },
+    /// Request to notify all participants when the
+    /// session is active.
+    SessionActiveNotify(SessionId),
 }
 
 impl From<&RequestMessage> for u8 {
@@ -264,9 +270,14 @@ impl From<&RequestMessage> for u8 {
             RequestMessage::RelayPeer { .. } => types::RELAY_PEER,
             RequestMessage::Envelope(_) => types::ENVELOPE,
             RequestMessage::NewSession(_) => types::SESSION_NEW,
-            RequestMessage::SessionPing(_) => types::SESSION_PING,
+            RequestMessage::SessionReadyNotify(_) => {
+                types::SESSION_READY_NOTIFY
+            }
             RequestMessage::SessionConnection { .. } => {
                 types::SESSION_CONNECTION
+            }
+            RequestMessage::SessionActiveNotify(_) => {
+                types::SESSION_ACTIVE_NOTIFY
             }
         }
     }
@@ -306,7 +317,7 @@ impl Encodable for RequestMessage {
             Self::NewSession(request) => {
                 request.encode(writer).await?;
             }
-            Self::SessionPing(session_id) => {
+            Self::SessionReadyNotify(session_id) => {
                 writer.write_bytes(session_id.as_bytes()).await?;
             }
             Self::SessionConnection {
@@ -316,6 +327,9 @@ impl Encodable for RequestMessage {
                 writer.write_bytes(session_id.as_bytes()).await?;
                 writer.write_u32(peer_key.len() as u32).await?;
                 writer.write_bytes(peer_key).await?;
+            }
+            Self::SessionActiveNotify(session_id) => {
+                writer.write_bytes(session_id.as_bytes()).await?;
             }
             Self::Noop => unreachable!(),
         }
@@ -367,7 +381,7 @@ impl Decodable for RequestMessage {
                 session.decode(reader).await?;
                 *self = RequestMessage::NewSession(session);
             }
-            types::SESSION_PING => {
+            types::SESSION_READY_NOTIFY => {
                 let session_id = SessionId::from_bytes(
                     reader
                         .read_bytes(16)
@@ -376,7 +390,8 @@ impl Decodable for RequestMessage {
                         .try_into()
                         .map_err(encoding_error)?,
                 );
-                *self = RequestMessage::SessionPing(session_id);
+                *self =
+                    RequestMessage::SessionReadyNotify(session_id);
             }
             types::SESSION_CONNECTION => {
                 let session_id = SessionId::from_bytes(
@@ -396,6 +411,18 @@ impl Decodable for RequestMessage {
                     session_id,
                     peer_key,
                 };
+            }
+            types::SESSION_ACTIVE_NOTIFY => {
+                let session_id = SessionId::from_bytes(
+                    reader
+                        .read_bytes(16)
+                        .await?
+                        .as_slice()
+                        .try_into()
+                        .map_err(encoding_error)?,
+                );
+                *self =
+                    RequestMessage::SessionActiveNotify(session_id);
             }
             _ => {
                 return Err(encoding_error(
@@ -435,6 +462,10 @@ pub enum ResponseMessage {
     /// in a session when they have all completed
     /// the server handshake.
     SessionReady(SessionResponse),
+    /// Notification dispatched to all participants
+    /// in a session when they have all established
+    /// peer connections to each other.
+    SessionActive(SessionResponse),
 }
 
 impl From<&ResponseMessage> for u8 {
@@ -451,6 +482,9 @@ impl From<&ResponseMessage> for u8 {
                 types::SESSION_CREATED
             }
             ResponseMessage::SessionReady(_) => types::SESSION_READY,
+            ResponseMessage::SessionActive(_) => {
+                types::SESSION_ACTIVE
+            }
         }
     }
 }
@@ -495,6 +529,9 @@ impl Encodable for ResponseMessage {
                 response.encode(writer).await?;
             }
             Self::SessionReady(response) => {
+                response.encode(writer).await?;
+            }
+            Self::SessionActive(response) => {
                 response.encode(writer).await?;
             }
             Self::Noop => unreachable!(),
@@ -560,6 +597,11 @@ impl Decodable for ResponseMessage {
                 let mut session: SessionResponse = Default::default();
                 session.decode(reader).await?;
                 *self = ResponseMessage::SessionReady(session);
+            }
+            types::SESSION_ACTIVE => {
+                let mut session: SessionResponse = Default::default();
+                session.decode(reader).await?;
+                *self = ResponseMessage::SessionActive(session);
             }
             _ => {
                 return Err(encoding_error(

@@ -87,7 +87,7 @@ async fn event_loop_1(
                 select! {
                     tick = stream.next().fuse() => {
                         if tick.is_some() {
-                            client.session_ping(&session_id).await?;
+                            client.session_ready_notify(&session_id).await?;
                         }
                     }
                     _ = stop_polling.recv().fuse() => {

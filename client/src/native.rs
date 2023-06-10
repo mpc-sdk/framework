@@ -297,7 +297,7 @@ impl NativeClient {
         self.request(message).await
     }
 
-    /// Ping a session.
+    /// Request to be notified when all session participants are ready.
     ///
     /// Sends a request to the server to check whether all participants
     /// have completed their server handshake.
@@ -307,12 +307,24 @@ impl NativeClient {
     ///
     /// Once peers receive the session ready notification they can
     /// race to connect to each other.
-    pub async fn session_ping(
+    pub async fn session_ready_notify(
         &mut self,
         session_id: &SessionId,
     ) -> Result<()> {
-        let message = RequestMessage::SessionPing(*session_id);
-        self.request(message).await
+        self.request(RequestMessage::SessionReadyNotify(*session_id))
+            .await
+    }
+
+    /// Request to be notified when a session is active.
+    ///
+    /// A session is active when all of the participants in a session
+    /// have established peer connections.
+    pub async fn session_active_notify(
+        &mut self,
+        session_id: &SessionId,
+    ) -> Result<()> {
+        self.request(RequestMessage::SessionActiveNotify(*session_id))
+            .await
     }
 
     /// Register a peer connection in a session.

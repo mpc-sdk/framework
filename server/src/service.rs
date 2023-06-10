@@ -195,27 +195,6 @@ async fn handle_request(
     Ok(())
 }
 
-/// Send a response message to a client over the server channel.
-async fn send_message(
-    conn: Connection,
-    message: &ResponseMessage,
-) -> Result<()> {
-    let mut writer = conn.write().await;
-
-    let payload = encode(message).await?;
-    let inner = encrypt_server_channel(
-        writer.state.as_mut().unwrap(),
-        payload,
-    )
-    .await?;
-
-    let response = ResponseMessage::Envelope(inner);
-    let buffer = encode(&response).await?;
-
-    writer.send(buffer).await?;
-    Ok(())
-}
-
 async fn service(
     state: State,
     conn: Connection,
@@ -244,7 +223,7 @@ async fn service(
 
             Ok(Some(ResponseMessage::SessionCreated(response)))
         }
-        RequestMessage::SessionPing(session_id) => {
+        RequestMessage::SessionReadyNotify(session_id) => {
             let notification = {
                 let reader = state.read().await;
                 if let Some(session) =
@@ -283,8 +262,7 @@ async fn service(
             };
 
             if let Some((message, public_keys)) = notification {
-                notify_session_ready(state, public_keys, message)
-                    .await?;
+                notify_peers(state, public_keys, message).await?;
             }
             Ok(None)
         }
@@ -309,13 +287,50 @@ async fn service(
                 Ok(None)
             }
         }
+        RequestMessage::SessionActiveNotify(session_id) => {
+            let notification = {
+                let reader = state.read().await;
+                if let Some(session) =
+                    reader.sessions.get_session(&session_id)
+                {
+                    if session.is_active() {
+                        let all_participants = session.public_keys();
+                        let session = SessionResponse {
+                            session_id,
+                            all_participants: all_participants
+                                .iter()
+                                .map(|k| k.to_vec())
+                                .collect(),
+                        };
+                        let message =
+                            ResponseMessage::SessionActive(session);
+
+                        let public_keys: Vec<Vec<u8>> =
+                            all_participants
+                                .into_iter()
+                                .map(|key| key.to_vec())
+                                .collect();
+                        Some((message, public_keys))
+                    } else {
+                        None
+                    }
+                } else {
+                    todo!("handle session not found");
+                    None
+                }
+            };
+
+            if let Some((message, public_keys)) = notification {
+                notify_peers(state, public_keys, message).await?;
+            }
+            Ok(None)
+        }
         _ => Ok(None),
     }
 }
 
-/// Notify all connected participants in a session
-/// (including the owner) that a new session is ready.
-async fn notify_session_ready(
+/// Send a message to a collection of peers.
+async fn notify_peers(
     state: State,
     public_keys: Vec<Vec<u8>>,
     message: ResponseMessage,
@@ -326,6 +341,27 @@ async fn notify_session_ready(
             send_message(conn, &message).await?;
         }
     }
+    Ok(())
+}
+
+/// Send a response message to a client over the server channel.
+async fn send_message(
+    conn: Connection,
+    message: &ResponseMessage,
+) -> Result<()> {
+    let mut writer = conn.write().await;
+
+    let payload = encode(message).await?;
+    let inner = encrypt_server_channel(
+        writer.state.as_mut().unwrap(),
+        payload,
+    )
+    .await?;
+
+    let response = ResponseMessage::Envelope(inner);
+    let buffer = encode(&response).await?;
+
+    writer.send(buffer).await?;
     Ok(())
 }
 
