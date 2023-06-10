@@ -160,6 +160,7 @@ async fn read(
             Ok(msg) => match msg {
                 Message::Text(_) => {}
                 Message::Binary(buffer) => {
+                    //println!("server ws read buffer");
                     tx.send(buffer).await?;
                 }
                 Message::Ping(_) => {}

@@ -173,6 +173,7 @@ async fn handle_request(
                     let request: RequestMessage =
                         decode(&contents).await?;
 
+                    /*
                     service(
                         Arc::clone(&state),
                         conn,
@@ -180,16 +181,19 @@ async fn handle_request(
                         request,
                     )
                     .await?;
+                    */
 
-                    /*
                     if let Some(response) = service(
                         Arc::clone(&state),
-                        conn,
+                        Arc::clone(&conn),
                         &from_public_key,
                         request,
                     )
                     .await?
                     {
+                        send_response(conn, &response).await?;
+
+                        /*
                         let mut connections =
                             if let ResponseMessage::Session(
                                 response,
@@ -207,9 +211,8 @@ async fn handle_request(
                             response,
                         )
                         .await?;
-
+                        */
                     }
-                    */
                 }
             } else {
                 return Err(Error::PeerNotFound(hex::encode(
@@ -222,6 +225,27 @@ async fn handle_request(
     Ok(())
 }
 
+/// Send a response message to a client over the server channel.
+async fn send_response(
+    conn: Connection,
+    message: &ResponseMessage,
+) -> Result<()> {
+    let mut writer = conn.write().await;
+
+    let payload = encode(message).await?;
+    let inner = encrypt_server_channel(
+        writer.state.as_mut().unwrap(),
+        payload,
+    )
+    .await?;
+
+    let response = ResponseMessage::Envelope(inner);
+    let buffer = encode(&response).await?;
+
+    writer.send(buffer).await?;
+    Ok(())
+}
+
 async fn service(
     state: State,
     conn: Connection,
@@ -229,27 +253,21 @@ async fn service(
     message: RequestMessage,
 ) -> Result<Option<ResponseMessage>> {
     match message {
-        RequestMessage::Session(request) => {
+        RequestMessage::NewSession(request) => {
             let mut all_participants =
                 request.participant_keys.clone();
             all_participants.push(public_key.as_ref().to_vec());
 
-            let (session_id, connected) = {
+            /*
+             */
+
+            let session_id = {
                 let mut writer = state.write().await;
-
-                let mut connected: Vec<_> = request
-                    .participant_keys
-                    .iter()
-                    .filter(|&k| writer.active.get(k).is_some())
-                    .map(|k| k.clone())
-                    .collect();
-                connected.push(public_key.as_ref().to_vec());
-
                 let session_id = writer.sessions.new_session(
                     public_key.as_ref().to_vec(),
                     request.participant_keys,
                 );
-                (session_id, connected)
+                session_id
             };
 
             let response = SessionResponse {
@@ -257,14 +275,50 @@ async fn service(
                 all_participants,
             };
 
-            notify_session_ready(
-                state,
-                connected,
-                ResponseMessage::Session(response),
-            )
-            .await?;
+            Ok(Some(ResponseMessage::SessionCreated(response)))
+        }
+        RequestMessage::SessionPing(session_id) => {
+            let notification = {
+                let reader = state.read().await;
+                if let Some(session) =
+                    reader.sessions.get_session(&session_id)
+                {
+                    let all_participants = session.public_keys();
+                    let total_participants = all_participants.len();
+                    let connected: Vec<_> = all_participants
+                        .iter()
+                        .map(|&key| reader.active.get(key).is_some())
+                        .collect();
 
-            //Ok(Some())
+                    if connected.len() == total_participants {
+                        let session = SessionResponse {
+                            session_id,
+                            all_participants: all_participants
+                                .iter()
+                                .map(|k| k.to_vec())
+                                .collect(),
+                        };
+                        let message =
+                            ResponseMessage::SessionReady(session);
+                        let public_keys: Vec<Vec<u8>> =
+                            all_participants
+                                .into_iter()
+                                .map(|key| key.to_vec())
+                                .collect();
+                        Some((message, public_keys))
+                    } else {
+                        None
+                    }
+                } else {
+                    todo!("handle session not found");
+                    None
+                }
+            };
+
+            if let Some((message, public_keys)) = notification {
+                notify_session_ready(state, public_keys, message)
+                    .await?;
+            }
             Ok(None)
         }
         _ => Ok(None),
@@ -280,7 +334,11 @@ async fn notify_session_ready(
 ) -> Result<()> {
     let reader = state.read().await;
     for key in &public_keys {
-        if let Some(conn) = reader.active.get(key) {
+        if let Some(conn) = reader.active.get(key).map(Arc::clone) {
+            //println!("sending ready message...");
+            send_response(conn, &message).await?;
+
+            /*
             let mut writer = conn.write().await;
 
             let payload = encode(&message).await?;
@@ -294,6 +352,7 @@ async fn notify_session_ready(
             let buffer = encode(&response).await?;
 
             writer.send(buffer).await?;
+            */
         }
     }
     Ok(())

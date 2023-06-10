@@ -43,7 +43,15 @@ pub enum Event {
         /// JSON message.
         message: JsonMessage,
     },
+    /// Event dispatched when a session has been created.
+    SessionCreated(SessionResponse),
+
     /// Event dispatched when a session is ready.
+    ///
+    /// A session is ready when all participants
+    /// have completed the server handshake.
+    ///
+    /// Peers can now race to handshake with each other.
     SessionReady(SessionResponse),
 }
 

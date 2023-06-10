@@ -21,7 +21,7 @@ async fn integration_peer_channel() -> Result<()> {
     // Create new clients
     let (mut initiator, mut event_loop_i, initiator_key) =
         new_client().await?;
-    let (mut participant, mut event_loop_p, participant_key) =
+    let (mut participant, mut event_loop_p, _participant_key) =
         new_client().await?;
 
     // Copy clients to move into the event loops
@@ -32,6 +32,8 @@ async fn integration_peer_channel() -> Result<()> {
 
     // Setup event loops
     let ev_i = tokio::task::spawn(async move {
+        initiator.connect().await?;
+
         let mut s = event_loop_i.run();
         while let Some(event) = s.next().await {
             let event = event?;
@@ -58,6 +60,8 @@ async fn integration_peer_channel() -> Result<()> {
     });
 
     let ev_p = tokio::task::spawn(async move {
+        participant.connect().await?;
+
         let mut s = event_loop_p.run();
         loop {
             select! {
@@ -95,10 +99,6 @@ async fn integration_peer_channel() -> Result<()> {
         }
         Ok::<(), anyhow::Error>(())
     });
-
-    // Clients must handshake with the server first
-    initiator.connect().await?;
-    participant.connect().await?;
 
     // Must drive the event loop futures
     let (res_i, res_p) = futures::join!(ev_i, ev_p);

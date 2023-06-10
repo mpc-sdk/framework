@@ -32,3 +32,4 @@ binary-stream = { version = "8", features = ["async"] }
 serde = {version = "1", features = ["derive"]}
 serde_json = "1"
 snow = "0.9.2"
+tokio-stream = "0.1"

@@ -31,7 +31,10 @@ mod types {
     pub const HANDSHAKE_RESPONDER: u8 = 3;
     pub const RELAY_PEER: u8 = 4;
     pub const ENVELOPE: u8 = 5;
-    pub const SESSION: u8 = 6;
+    pub const SESSION_NEW: u8 = 6;
+    pub const SESSION_CREATED: u8 = 7;
+    pub const SESSION_PING: u8 = 8;
+    pub const SESSION_READY: u8 = 9;
 
     pub const ENCODING_BLOB: u8 = 1;
     pub const ENCODING_JSON: u8 = 2;
@@ -238,7 +241,9 @@ pub enum RequestMessage {
     /// Envelope for an encrypted message over the server channel.
     Envelope(Vec<u8>),
     /// Request a new session.
-    Session(SessionRequest),
+    NewSession(SessionRequest),
+    /// Ping a session.
+    SessionPing(SessionId),
 }
 
 impl From<&RequestMessage> for u8 {
@@ -250,7 +255,8 @@ impl From<&RequestMessage> for u8 {
             }
             RequestMessage::RelayPeer { .. } => types::RELAY_PEER,
             RequestMessage::Envelope(_) => types::ENVELOPE,
-            RequestMessage::Session(_) => types::SESSION,
+            RequestMessage::NewSession(_) => types::SESSION_NEW,
+            RequestMessage::SessionPing(_) => types::SESSION_PING,
         }
     }
 }
@@ -286,8 +292,11 @@ impl Encodable for RequestMessage {
                 writer.write_u32(message.len() as u32).await?;
                 writer.write_bytes(message).await?;
             }
-            Self::Session(request) => {
+            Self::NewSession(request) => {
                 request.encode(writer).await?;
+            }
+            Self::SessionPing(session_id) => {
+                writer.write_bytes(session_id.as_bytes()).await?;
             }
             Self::Noop => unreachable!(),
         }
@@ -334,10 +343,21 @@ impl Decodable for RequestMessage {
                     reader.read_bytes(size as usize).await?;
                 *self = RequestMessage::Envelope(message);
             }
-            types::SESSION => {
+            types::SESSION_NEW => {
                 let mut session: SessionRequest = Default::default();
                 session.decode(reader).await?;
-                *self = RequestMessage::Session(session);
+                *self = RequestMessage::NewSession(session);
+            }
+            types::SESSION_PING => {
+                let session_id = SessionId::from_bytes(
+                    reader
+                        .read_bytes(16)
+                        .await?
+                        .as_slice()
+                        .try_into()
+                        .map_err(encoding_error)?,
+                );
+                *self = RequestMessage::SessionPing(session_id);
             }
             _ => {
                 return Err(encoding_error(
@@ -372,7 +392,11 @@ pub enum ResponseMessage {
     /// Envelope for an encrypted message over the server channel.
     Envelope(Vec<u8>),
     /// Response to a new session request.
-    Session(SessionResponse),
+    SessionCreated(SessionResponse),
+    /// Notification dispatched to all participants
+    /// in a session when they have all completed
+    /// the server handshake.
+    SessionReady(SessionResponse),
 }
 
 impl From<&ResponseMessage> for u8 {
@@ -385,7 +409,10 @@ impl From<&ResponseMessage> for u8 {
             }
             ResponseMessage::RelayPeer { .. } => types::RELAY_PEER,
             ResponseMessage::Envelope(_) => types::ENVELOPE,
-            ResponseMessage::Session(_) => types::SESSION,
+            ResponseMessage::SessionCreated(_) => {
+                types::SESSION_CREATED
+            }
+            ResponseMessage::SessionReady(_) => types::SESSION_READY,
         }
     }
 }
@@ -426,7 +453,10 @@ impl Encodable for ResponseMessage {
                 writer.write_u32(message.len() as u32).await?;
                 writer.write_bytes(message).await?;
             }
-            Self::Session(response) => {
+            Self::SessionCreated(response) => {
+                response.encode(writer).await?;
+            }
+            Self::SessionReady(response) => {
                 response.encode(writer).await?;
             }
             Self::Noop => unreachable!(),
@@ -483,10 +513,15 @@ impl Decodable for ResponseMessage {
                     reader.read_bytes(size as usize).await?;
                 *self = ResponseMessage::Envelope(message);
             }
-            types::SESSION => {
+            types::SESSION_CREATED => {
                 let mut session: SessionResponse = Default::default();
                 session.decode(reader).await?;
-                *self = ResponseMessage::Session(session);
+                *self = ResponseMessage::SessionCreated(session);
+            }
+            types::SESSION_READY => {
+                let mut session: SessionResponse = Default::default();
+                session.decode(reader).await?;
+                *self = ResponseMessage::SessionReady(session);
             }
             _ => {
                 return Err(encoding_error(
@@ -598,6 +633,20 @@ pub struct Session {
     last_access: SystemTime,
 }
 
+impl Session {
+    /// Get all participant's public keys
+    pub fn public_keys(&self) -> Vec<&[u8]> {
+        let mut keys = vec![self.owner_key.as_slice()];
+        let mut participants: Vec<_> = self
+            .participant_keys
+            .iter()
+            .map(|k| k.as_slice())
+            .collect();
+        keys.append(&mut participants);
+        keys
+    }
+}
+
 /// Manages a collection of sessions.
 #[derive(Default)]
 pub struct SessionManager {
@@ -619,6 +668,11 @@ impl SessionManager {
         };
         self.sessions.insert(session_id.clone(), session);
         session_id
+    }
+
+    /// Get a session.
+    pub fn get_session(&self, id: &SessionId) -> Option<&Session> {
+        self.sessions.get(id)
     }
 
     /// Remove a session.

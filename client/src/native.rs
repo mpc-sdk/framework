@@ -23,8 +23,8 @@ use mpc_relay_protocol::{
     http::StatusCode,
     snow::Builder,
     Encoding, HandshakeType, PeerMessage, ProtocolState,
-    RequestMessage, ResponseMessage, SealedEnvelope, SessionRequest,
-    SessionResponse, PATTERN, TAGLEN,
+    RequestMessage, ResponseMessage, SealedEnvelope, SessionId,
+    SessionRequest, SessionResponse, PATTERN, TAGLEN,
 };
 
 use crate::{ClientOptions, Error, Event, JsonMessage, Result};
@@ -150,19 +150,12 @@ impl NativeClient {
 
         self.outbound_tx.send(request).await?;
 
-        // Wait for the server handshake notification
-        let mut notifier = self.notification_rx.lock().await;
-        while let Some(notify) = notifier.recv().await {
-            if let Notification::ServerHandshake = notify {
-                break;
-            }
-        }
         Ok(())
     }
 
     /// Handshake with a peer.
     ///
-    /// Peer already exists error is returned if this 
+    /// Peer already exists error is returned if this
     /// client is already connecting to the peer.
     pub async fn connect_peer(
         &mut self,
@@ -220,13 +213,13 @@ impl NativeClient {
 
         Ok(())
     }
-    
+
     /// Try to connect to a peer.
     ///
-    /// If the peer already exists the error is ignored 
+    /// If the peer already exists the error is ignored
     /// and this method will return `false`.
     ///
-    /// Use this when peers need to race to connect to 
+    /// Use this when peers need to race to connect to
     /// each other.
     pub async fn try_connect_peer(
         &mut self,
@@ -300,7 +293,25 @@ impl NativeClient {
         participant_keys: Vec<Vec<u8>>,
     ) -> Result<()> {
         let session = SessionRequest { participant_keys };
-        let message = RequestMessage::Session(session);
+        let message = RequestMessage::NewSession(session);
+        self.request(message).await
+    }
+
+    /// Ping a session.
+    ///
+    /// Sends a request to the server to check whether all participants
+    /// have completed their server handshake.
+    ///
+    /// When the server detects all participants are connected a session
+    /// ready notification is sent to all the peers.
+    ///
+    /// Once peers receive the session ready notification they can
+    /// race to connect to each other.
+    pub async fn session_ping(
+        &mut self,
+        session_id: &SessionId,
+    ) -> Result<()> {
+        let message = RequestMessage::SessionPing(*session_id);
         self.request(message).await
     }
 
@@ -527,7 +538,14 @@ impl EventLoop {
         message: ResponseMessage,
     ) -> Result<Option<Event>> {
         match message {
-            ResponseMessage::Session(response) => {
+            ResponseMessage::Error(code, message) => {
+                eprintln!("{} {}", code, message);
+                Ok(None)
+            }
+            ResponseMessage::SessionCreated(response) => {
+                Ok(Some(Event::SessionCreated(response)))
+            }
+            ResponseMessage::SessionReady(response) => {
                 Ok(Some(Event::SessionReady(response)))
             }
             _ => Ok(None),

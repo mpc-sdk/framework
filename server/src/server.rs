@@ -31,7 +31,7 @@ async fn session_reaper(state: State, interval_secs: u64) {
     let interval =
         tokio::time::interval(Duration::from_secs(interval_secs));
     let mut stream = IntervalStream::new(interval);
-    while (stream.next().await).is_some() {
+    while stream.next().await.is_some() {
         let mut writer = state.write().await;
         let expired_sessions = writer
             .sessions
