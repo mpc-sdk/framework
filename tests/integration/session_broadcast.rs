@@ -25,7 +25,8 @@ struct ClientState {
 /// and then each other.
 ///
 /// Once the handshakes are complete a session is created
-/// and the initiator broadcasts a message to all participants.
+/// and each node broadcasts a message to all the other 
+/// participants in the session.
 #[tokio::test]
 #[serial]
 async fn integration_session_broadcast() -> Result<()> {

@@ -43,7 +43,7 @@ async fn integration_peer_channel() -> Result<()> {
                 // start sending messages over the encrypted channel
                 Event::PeerConnected { peer_key } => {
                     // Send the ping
-                    init_client.send(&peer_key, "ping").await?;
+                    init_client.send(&peer_key, "ping", None).await?;
                 }
                 Event::JsonMessage { message, .. } => {
                     let message: &str = message.deserialize()?;
@@ -81,7 +81,7 @@ async fn integration_peer_channel() -> Result<()> {
                                 Event::JsonMessage { peer_key, message } => {
                                     let message: &str = message.deserialize()?;
                                     if message == "ping" {
-                                        part_client.send(&peer_key, "pong").await?;
+                                        part_client.send(&peer_key, "pong", None).await?;
                                     }
                                 }
                                 _ => {}

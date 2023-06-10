@@ -205,6 +205,7 @@ impl NativeClient {
         &mut self,
         public_key: impl AsRef<[u8]>,
         payload: &S,
+        session_id: Option<SessionId>,
     ) -> Result<()>
     where
         S: Serialize + ?Sized,
@@ -214,7 +215,7 @@ impl NativeClient {
             &serde_json::to_vec(payload)?,
             Encoding::Json,
             false,
-            None,
+            session_id,
         )
         .await
     }
@@ -224,8 +225,9 @@ impl NativeClient {
         &mut self,
         public_key: impl AsRef<[u8]>,
         payload: Vec<u8>,
+        session_id: Option<SessionId>,
     ) -> Result<()> {
-        self.relay(public_key, &payload, Encoding::Blob, false, None)
+        self.relay(public_key, &payload, Encoding::Blob, false, session_id)
             .await
     }
 
