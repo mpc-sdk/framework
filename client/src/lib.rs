@@ -10,7 +10,7 @@ mod error;
 mod native;
 
 #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
-pub use native::{EventLoop, NativeClient, Notification};
+pub use native::{EventLoop, NativeClient};
 
 use mpc_relay_protocol::{snow, SessionState};
 
@@ -51,7 +51,7 @@ pub enum Event {
     /// A session is ready when all participants
     /// have completed the server handshake.
     ///
-    /// Peers can now race to handshake with each other.
+    /// Peers can now handshake with each other.
     SessionReady(SessionState),
 
     /// Event dispatched when a session is active.

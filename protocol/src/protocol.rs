@@ -56,21 +56,19 @@ pub type SessionId = uuid::Uuid;
 
 /// Encode to a binary buffer.
 pub async fn encode(encodable: &impl Encodable) -> Result<Vec<u8>> {
-    Ok(
-        binary_stream::futures::encode(encodable, encoding_options())
-            .await?,
-    )
+    binary_stream::futures::encode(encodable, encoding_options())
+        .await
 }
 
 /// Decode from a binary buffer.
 pub async fn decode<T: Decodable + Default>(
     buffer: impl AsRef<[u8]>,
 ) -> Result<T> {
-    Ok(binary_stream::futures::decode(
+    binary_stream::futures::decode(
         buffer.as_ref(),
         encoding_options(),
     )
-    .await?)
+    .await
 }
 
 /// Types of noise protocol handshakes.
@@ -133,7 +131,7 @@ impl Decodable for HandshakeType {
 /// Enumeration of protocol states.
 pub enum ProtocolState {
     /// Noise handshake state.
-    Handshake(HandshakeState),
+    Handshake(Box<HandshakeState>),
     /// Noise transport state.
     Transport(TransportState),
 }
@@ -784,8 +782,7 @@ impl Session {
                     continue;
                 }
                 // We don't know the order the connections
-                // were established as both peers might
-                // race to connect
+                // were established so check both.
                 let left =
                     connections.get(&(peer.to_vec(), key.to_vec()));
                 let right =
@@ -833,7 +830,7 @@ impl SessionManager {
             connections: Default::default(),
             last_access: SystemTime::now(),
         };
-        self.sessions.insert(session_id.clone(), session);
+        self.sessions.insert(session_id, session);
         session_id
     }
 
@@ -941,6 +938,27 @@ pub struct SessionState {
     pub session_id: SessionId,
     /// Public keys of all participants.
     pub all_participants: Vec<Vec<u8>>,
+}
+
+impl SessionState {
+    /// Get the connections a peer should make.
+    pub fn connections(&self, own_key: &[u8]) -> &[Vec<u8>] {
+        if self.all_participants.is_empty() {
+            return &[];
+        }
+
+        if let Some(position) =
+            self.all_participants.iter().position(|k| k == own_key)
+        {
+            if position < self.all_participants.len() - 1 {
+                &self.all_participants[position + 1..]
+            } else {
+                &[]
+            }
+        } else {
+            &[]
+        }
+    }
 }
 
 #[cfg_attr(target_arch="wasm32", async_trait(?Send))]

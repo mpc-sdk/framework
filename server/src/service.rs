@@ -129,8 +129,7 @@ async fn handle_request(
                     let public_keys = session.public_keys();
                     let is_participant = public_keys
                         .into_iter()
-                        .find(|k| k == &public_key)
-                        .is_some();
+                        .any(|k| k == public_key);
 
                     if !is_participant {
                         return Err(Error::NotSessionParticipant(
@@ -281,8 +280,7 @@ async fn service(
                         None
                     }
                 } else {
-                    todo!("handle session not found");
-                    None
+                    return Err(Error::SessionNotFound(session_id));
                 }
             };
 
@@ -308,8 +306,7 @@ async fn service(
                     .register_connection(from_public_key, peer_key);
                 Ok(None)
             } else {
-                todo!("handle session not found");
-                Ok(None)
+                Err(Error::SessionNotFound(session_id))
             }
         }
         RequestMessage::SessionActiveNotify(session_id) => {
@@ -340,8 +337,7 @@ async fn service(
                         None
                     }
                 } else {
-                    todo!("handle session not found");
-                    None
+                    return Err(Error::SessionNotFound(session_id));
                 }
             };
 
@@ -398,7 +394,7 @@ async fn send_message(
 async fn promote_connection(state: State, conn: Connection) {
     let (id, public_key) = {
         let reader = conn.read().await;
-        (reader.id.clone(), reader.public_key.clone())
+        (reader.id, reader.public_key.clone())
     };
     let mut writer = state.write().await;
     writer.pending.remove(&id);

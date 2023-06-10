@@ -9,7 +9,7 @@ use serde::Serialize;
 use std::{collections::HashMap, sync::Arc};
 use tokio::{
     net::TcpStream,
-    sync::{mpsc, Mutex, RwLock},
+    sync::{mpsc, RwLock},
 };
 use tokio_tungstenite::{
     connect_async,
@@ -24,7 +24,7 @@ use mpc_relay_protocol::{
     snow::Builder,
     Encoding, HandshakeType, PeerMessage, ProtocolState,
     RequestMessage, ResponseMessage, SealedEnvelope, SessionId,
-    SessionRequest, SessionState, PATTERN, TAGLEN,
+    SessionRequest, PATTERN, TAGLEN,
 };
 
 use crate::{ClientOptions, Error, Event, JsonMessage, Result};
@@ -32,19 +32,10 @@ use crate::{ClientOptions, Error, Event, JsonMessage, Result};
 type Peers = Arc<RwLock<HashMap<Vec<u8>, ProtocolState>>>;
 type Server = Arc<RwLock<Option<ProtocolState>>>;
 
-/// Notifications sent from the event loop to the client.
-#[derive(Debug)]
-#[doc(hidden)]
-pub enum Notification {
-    /// Notification sent when the server handshake is complete.
-    ServerHandshake,
-}
-
 /// Native websocket client using the tokio tungstenite library.
 #[derive(Clone)]
 pub struct NativeClient {
     options: Arc<ClientOptions>,
-    notification_rx: Arc<Mutex<mpsc::Receiver<Notification>>>,
     outbound_tx: mpsc::Sender<RequestMessage>,
     server: Server,
     peers: Peers,
@@ -81,21 +72,15 @@ impl NativeClient {
         let (outbound_tx, outbound_rx) =
             mpsc::channel::<RequestMessage>(32);
 
-        // Internal notification bridge between the client and
-        // the event loop
-        let (notification_tx, notification_rx) =
-            mpsc::channel::<Notification>(32);
-
         // State for the server transport
         let server = Arc::new(RwLock::new(Some(
-            ProtocolState::Handshake(handshake),
+            ProtocolState::Handshake(Box::new(handshake)),
         )));
 
         let peers = Arc::new(RwLock::new(Default::default()));
         let options = Arc::new(options);
         let client = Self {
             options: Arc::clone(&options),
-            notification_rx: Arc::new(Mutex::new(notification_rx)),
             outbound_tx: outbound_tx.clone(),
             server: Arc::clone(&server),
             peers: Arc::clone(&peers),
@@ -113,7 +98,6 @@ impl NativeClient {
             message_rx,
             outbound_tx,
             outbound_rx,
-            notification_tx,
             server,
             peers,
         };
@@ -177,13 +161,12 @@ impl NativeClient {
             .local_private_key(&self.options.keypair.private)
             .remote_public_key(public_key.as_ref())
             .build_initiator()?;
-        let peer_state = ProtocolState::Handshake(handshake);
+        let peer_state =
+            ProtocolState::Handshake(Box::new(handshake));
 
         let state = peers
             .entry(public_key.as_ref().to_vec())
             .or_insert(peer_state);
-
-        println!("Adding peer {}", hex::encode(public_key.as_ref()));
 
         let (len, payload) = match state {
             ProtocolState::Handshake(initiator) => {
@@ -215,28 +198,6 @@ impl NativeClient {
         self.outbound_tx.send(request).await?;
 
         Ok(())
-    }
-
-    /// Try to connect to a peer.
-    ///
-    /// If the peer already exists the error is ignored
-    /// and this method will return `false`.
-    ///
-    /// Use this when peers need to race to connect to
-    /// each other.
-    pub async fn try_connect_peer(
-        &mut self,
-        key: impl AsRef<[u8]>,
-    ) -> Result<bool> {
-        if let Err(e) = self.connect_peer(key).await {
-            match e {
-                Error::PeerAlreadyExists => {
-                    return Ok(false);
-                }
-                _ => return Err(e.into()),
-            }
-        }
-        Ok(true)
     }
 
     /// Encode as JSON and relay to the peer.
@@ -315,7 +276,7 @@ impl NativeClient {
     /// ready notification is sent to all the peers.
     ///
     /// Once peers receive the session ready notification they can
-    /// race to connect to each other.
+    /// connect to each other.
     pub async fn session_ready_notify(
         &mut self,
         session_id: &SessionId,
@@ -446,7 +407,6 @@ pub struct EventLoop {
     message_rx: mpsc::Receiver<ResponseMessage>,
     outbound_tx: mpsc::Sender<RequestMessage>,
     outbound_rx: mpsc::Receiver<RequestMessage>,
-    notification_tx: mpsc::Sender<Notification>,
     server: Server,
     peers: Peers,
 }
@@ -629,8 +589,7 @@ impl EventLoop {
     ) -> Result<Option<Event>> {
         match message {
             ResponseMessage::Error(code, message) => {
-                eprintln!("{} {}", code, message);
-                Ok(None)
+                Err(Error::ServerError(code, message))
             }
             ResponseMessage::SessionCreated(response) => {
                 Ok(Some(Event::SessionCreated(response)))
@@ -663,10 +622,6 @@ impl EventLoop {
 
         *state = Some(ProtocolState::Transport(transport));
 
-        self.notification_tx
-            .send(Notification::ServerHandshake)
-            .await?;
-
         Ok(Event::ServerConnected {
             server_key: self.options.server_public_key.clone(),
         })
@@ -678,14 +633,10 @@ impl EventLoop {
         len: usize,
         buf: Vec<u8>,
     ) -> Result<Option<Event>> {
-        println!("PEER HANDSHAKE RESPONDER CALLED {}", hex::encode(public_key.as_ref()));
         let mut peers = self.peers.write().await;
 
-        if let Some(peer) = peers.get(public_key.as_ref()) {
-            // TODO: error here...
-            println!("peer already exists in responder phase");
-            Ok(None)
-            //Err(Error::Peer)
+        if peers.get(public_key.as_ref()).is_some() {
+            return Err(Error::PeerAlreadyExistsMaybeRace);
         } else {
             tracing::debug!(
                 from = ?hex::encode(public_key.as_ref()),
@@ -726,11 +677,7 @@ impl EventLoop {
                 session_id: None,
             };
 
-            println!("HANDLING PEER RESPONDER");
-
             self.outbound_tx.send(request).await?;
-
-            println!("RETURNING PEER CONNECTED EVENT...");
 
             Ok(Some(Event::PeerConnected {
                 peer_key: public_key.as_ref().to_vec(),
@@ -759,8 +706,7 @@ impl EventLoop {
             from = ?hex::encode(public_key.as_ref()),
             "peer handshake done"
         );
-        
-        println!("performing the ack...");
+
         let transport = match peer {
             ProtocolState::Handshake(mut initiator) => {
                 let mut read_buf = vec![0u8; 1024];

@@ -88,7 +88,7 @@ impl ServerConfig {
         }
 
         let contents = fs::read_to_string(&config.key).await?;
-        let keypair = decode_keypair(&contents)?;
+        let keypair = decode_keypair(contents)?;
 
         if let Some(tls) = config.tls.as_mut() {
             if tls.cert.is_relative() {

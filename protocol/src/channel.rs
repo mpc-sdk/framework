@@ -3,8 +3,8 @@
 //! You should not use these functions directly, they are
 //! exposed so they can be shared between the client and server.
 use crate::{
-    decode, encode, Encoding, Error, ProtocolState, RequestMessage,
-    ResponseMessage, Result, SealedEnvelope, TAGLEN,
+    decode, encode, Encoding, Error, ProtocolState, Result,
+    SealedEnvelope, TAGLEN,
 };
 
 /// Encrypt a message to send to the server.
