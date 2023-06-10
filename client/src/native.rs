@@ -24,7 +24,7 @@ use mpc_relay_protocol::{
     snow::Builder,
     Encoding, HandshakeType, PeerMessage, ProtocolState,
     RequestMessage, ResponseMessage, SealedEnvelope, SessionId,
-    SessionRequest, SessionResponse, PATTERN, TAGLEN,
+    SessionRequest, SessionState, PATTERN, TAGLEN,
 };
 
 use crate::{ClientOptions, Error, Event, JsonMessage, Result};

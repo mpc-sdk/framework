@@ -481,15 +481,15 @@ pub enum ResponseMessage {
     /// Envelope for an encrypted message over the server channel.
     Envelope(Vec<u8>),
     /// Response to a new session request.
-    SessionCreated(SessionResponse),
+    SessionCreated(SessionState),
     /// Notification dispatched to all participants
     /// in a session when they have all completed
     /// the server handshake.
-    SessionReady(SessionResponse),
+    SessionReady(SessionState),
     /// Notification dispatched to all participants
     /// in a session when they have all established
     /// peer connections to each other.
-    SessionActive(SessionResponse),
+    SessionActive(SessionState),
 }
 
 impl From<&ResponseMessage> for u8 {
@@ -613,17 +613,17 @@ impl Decodable for ResponseMessage {
                 *self = ResponseMessage::Envelope(message);
             }
             types::SESSION_CREATED => {
-                let mut session: SessionResponse = Default::default();
+                let mut session: SessionState = Default::default();
                 session.decode(reader).await?;
                 *self = ResponseMessage::SessionCreated(session);
             }
             types::SESSION_READY => {
-                let mut session: SessionResponse = Default::default();
+                let mut session: SessionState = Default::default();
                 session.decode(reader).await?;
                 *self = ResponseMessage::SessionReady(session);
             }
             types::SESSION_ACTIVE => {
-                let mut session: SessionResponse = Default::default();
+                let mut session: SessionState = Default::default();
                 session.decode(reader).await?;
                 *self = ResponseMessage::SessionActive(session);
             }
@@ -936,7 +936,7 @@ impl Decodable for SessionRequest {
 
 /// Response from creating new session.
 #[derive(Default, Debug)]
-pub struct SessionResponse {
+pub struct SessionState {
     /// Session identifier.
     pub session_id: SessionId,
     /// Public keys of all participants.
@@ -945,7 +945,7 @@ pub struct SessionResponse {
 
 #[cfg_attr(target_arch="wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-impl Encodable for SessionResponse {
+impl Encodable for SessionState {
     async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
         &self,
         writer: &mut BinaryWriter<W>,
@@ -962,7 +962,7 @@ impl Encodable for SessionResponse {
 
 #[cfg_attr(target_arch="wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-impl Decodable for SessionResponse {
+impl Decodable for SessionState {
     async fn decode<R: AsyncRead + AsyncSeek + Unpin + Send>(
         &mut self,
         reader: &mut BinaryReader<R>,

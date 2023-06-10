@@ -5,7 +5,7 @@ use tokio::sync::mpsc;
 use mpc_relay_protocol::{
     channel::{decrypt_server_channel, encrypt_server_channel},
     decode, encode, hex, Encoding, HandshakeType, ProtocolState,
-    RequestMessage, ResponseMessage, SessionResponse,
+    RequestMessage, ResponseMessage, SessionState,
 };
 
 use crate::{server::State, websocket::Connection, Error, Result};
@@ -241,7 +241,7 @@ async fn service(
                 session_id
             };
 
-            let response = SessionResponse {
+            let response = SessionState {
                 session_id,
                 all_participants,
             };
@@ -262,7 +262,7 @@ async fn service(
                         .collect();
 
                     if connected.len() == total_participants {
-                        let session = SessionResponse {
+                        let session = SessionState {
                             session_id,
                             all_participants: all_participants
                                 .iter()
@@ -320,7 +320,7 @@ async fn service(
                 {
                     if session.is_active() {
                         let all_participants = session.public_keys();
-                        let session = SessionResponse {
+                        let session = SessionState {
                             session_id,
                             all_participants: all_participants
                                 .iter()

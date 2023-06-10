@@ -12,7 +12,7 @@ mod native;
 #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
 pub use native::{EventLoop, NativeClient, Notification};
 
-use mpc_relay_protocol::{snow, SessionResponse};
+use mpc_relay_protocol::{snow, SessionState};
 
 /// Events dispatched by the client.
 #[derive(Debug)]
@@ -44,7 +44,7 @@ pub enum Event {
         message: JsonMessage,
     },
     /// Event dispatched when a session has been created.
-    SessionCreated(SessionResponse),
+    SessionCreated(SessionState),
 
     /// Event dispatched when a session is ready.
     ///
@@ -52,13 +52,13 @@ pub enum Event {
     /// have completed the server handshake.
     ///
     /// Peers can now race to handshake with each other.
-    SessionReady(SessionResponse),
+    SessionReady(SessionState),
 
     /// Event dispatched when a session is active.
     ///
     /// A session is active when all the participants
     /// have connected to each other.
-    SessionActive(SessionResponse),
+    SessionActive(SessionState),
 }
 
 /// JSON message received from a peer.
