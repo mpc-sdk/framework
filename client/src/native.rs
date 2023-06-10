@@ -437,12 +437,11 @@ impl EventLoop {
                                 len,
                                 buf,
                             ),
-                        ) => Ok(Some(
-                            self.peer_handshake_responder(
+                        ) => Ok(self
+                            .peer_handshake_responder(
                                 public_key, len, buf,
                             )
-                            .await?,
-                        )),
+                            .await?),
                         PeerMessage::Response(
                             ResponseMessage::HandshakeResponder(
                                 HandshakeType::Peer,
@@ -542,56 +541,56 @@ impl EventLoop {
         public_key: impl AsRef<[u8]>,
         len: usize,
         buf: Vec<u8>,
-    ) -> Result<Event> {
+    ) -> Result<Option<Event>> {
         let mut peers = self.peers.write().await;
-        if peers.get(public_key.as_ref()).is_some() {
-            println!("responder returning exists error...");
-            return Err(Error::PeerAlreadyExists);
+
+        if peers.get(public_key.as_ref()).is_none() {
+            tracing::debug!(
+                from = ?hex::encode(public_key.as_ref()),
+                "peer handshake responder"
+            );
+
+            let builder = Builder::new(PATTERN.parse()?);
+            let mut responder = builder
+                .local_private_key(&self.options.keypair.private)
+                .remote_public_key(public_key.as_ref())
+                .build_responder()?;
+
+            let mut read_buf = vec![0u8; 1024];
+            responder.read_message(&buf[..len], &mut read_buf)?;
+
+            let mut payload = vec![0u8; 1024];
+            let len = responder.write_message(&[], &mut payload)?;
+
+            let transport = responder.into_transport_mode()?;
+            peers.insert(
+                public_key.as_ref().to_vec(),
+                ProtocolState::Transport(transport),
+            );
+
+            let inner_request: PeerMessage =
+                ResponseMessage::HandshakeResponder(
+                    HandshakeType::Peer,
+                    len,
+                    payload,
+                )
+                .into();
+            let inner_message = encode(&inner_request).await?;
+
+            let request = RequestMessage::RelayPeer {
+                handshake: true,
+                public_key: public_key.as_ref().to_vec(),
+                message: inner_message,
+            };
+
+            self.outbound_tx.send(request).await?;
+
+            Ok(Some(Event::PeerConnected {
+                peer_key: public_key.as_ref().to_vec(),
+            }))
+        } else {
+            Ok(None)
         }
-
-        tracing::debug!(
-            from = ?hex::encode(public_key.as_ref()),
-            "peer handshake responder"
-        );
-
-        let builder = Builder::new(PATTERN.parse()?);
-        let mut responder = builder
-            .local_private_key(&self.options.keypair.private)
-            .remote_public_key(public_key.as_ref())
-            .build_responder()?;
-
-        let mut read_buf = vec![0u8; 1024];
-        responder.read_message(&buf[..len], &mut read_buf)?;
-
-        let mut payload = vec![0u8; 1024];
-        let len = responder.write_message(&[], &mut payload)?;
-
-        let transport = responder.into_transport_mode()?;
-        peers.insert(
-            public_key.as_ref().to_vec(),
-            ProtocolState::Transport(transport),
-        );
-
-        let inner_request: PeerMessage =
-            ResponseMessage::HandshakeResponder(
-                HandshakeType::Peer,
-                len,
-                payload,
-            )
-            .into();
-        let inner_message = encode(&inner_request).await?;
-
-        let request = RequestMessage::RelayPeer {
-            handshake: true,
-            public_key: public_key.as_ref().to_vec(),
-            message: inner_message,
-        };
-
-        self.outbound_tx.send(request).await?;
-
-        Ok(Event::PeerConnected {
-            peer_key: public_key.as_ref().to_vec(),
-        })
     }
 
     async fn peer_handshake_ack(
