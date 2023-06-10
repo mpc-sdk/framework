@@ -14,6 +14,7 @@ use crate::{
 pub async fn encrypt_server_channel(
     server: &mut ProtocolState,
     payload: Vec<u8>,
+    broadcast: bool,
 ) -> Result<Vec<u8>> {
     match server {
         ProtocolState::Transport(transport) => {
@@ -24,6 +25,7 @@ pub async fn encrypt_server_channel(
                 length,
                 encoding: Encoding::Blob,
                 payload: contents,
+                broadcast,
             };
             Ok(encode(&envelope).await?)
         }

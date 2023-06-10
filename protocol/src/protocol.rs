@@ -647,6 +647,8 @@ pub struct SealedEnvelope {
     pub length: usize,
     /// Encrypted payload.
     pub payload: Vec<u8>,
+    /// Whether this is a broadcast message.
+    pub broadcast: bool,
 }
 
 #[cfg_attr(target_arch="wasm32", async_trait(?Send))]
@@ -661,6 +663,7 @@ impl Encodable for SealedEnvelope {
         writer.write_usize(self.length).await?;
         writer.write_u32(self.payload.len() as u32).await?;
         writer.write_bytes(&self.payload).await?;
+        writer.write_bool(self.broadcast).await?;
         Ok(())
     }
 }
@@ -689,6 +692,7 @@ impl Decodable for SealedEnvelope {
         self.length = reader.read_usize().await?;
         let size = reader.read_u32().await?;
         self.payload = reader.read_bytes(size as usize).await?;
+        self.broadcast = reader.read_bool().await?;
         Ok(())
     }
 }

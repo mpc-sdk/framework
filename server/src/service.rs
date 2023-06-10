@@ -181,7 +181,7 @@ async fn handle_request(
                     )
                     .await?
                     {
-                        send_message(conn, &response).await?;
+                        send_message(conn, &response, false).await?;
                     }
                 }
             } else {
@@ -338,7 +338,7 @@ async fn notify_peers(
     let reader = state.read().await;
     for key in &public_keys {
         if let Some(conn) = reader.active.get(key).map(Arc::clone) {
-            send_message(conn, &message).await?;
+            send_message(conn, &message, true).await?;
         }
     }
     Ok(())
@@ -348,6 +348,7 @@ async fn notify_peers(
 async fn send_message(
     conn: Connection,
     message: &ResponseMessage,
+    broadcast: bool,
 ) -> Result<()> {
     let mut writer = conn.write().await;
 
@@ -355,6 +356,7 @@ async fn send_message(
     let inner = encrypt_server_channel(
         writer.state.as_mut().unwrap(),
         payload,
+        broadcast,
     )
     .await?;
 
