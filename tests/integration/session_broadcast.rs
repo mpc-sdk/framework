@@ -9,7 +9,7 @@ use tokio::{
 use tokio_stream::wrappers::IntervalStream;
 
 use mpc_relay_client::{Error, Event, EventLoop, NativeClient};
-use mpc_relay_protocol::SessionId;
+use mpc_relay_protocol::{SessionId, SessionState};
 
 use crate::test_utils::{new_client, spawn_server};
 
@@ -21,7 +21,7 @@ use crate::test_utils::{new_client, spawn_server};
 #[tokio::test]
 #[serial]
 async fn integration_session_broadcast() -> Result<()> {
-    crate::test_utils::init_tracing();
+    //crate::test_utils::init_tracing();
 
     // Wait for the server to start
     let (rx, _handle) = spawn_server()?;
@@ -55,6 +55,8 @@ async fn integration_session_broadcast() -> Result<()> {
     // Must drive the event loop futures
     let (res_i, res_p_1, res_p_2) =
         futures::join!(ev_i, ev_p_1, ev_p_2);
+
+    println!("{:#?}", res_i);
 
     assert!(res_i?.is_ok());
     assert!(res_p_1?.is_ok());
@@ -123,11 +125,19 @@ fn poll_session_active(
     })
 }
 
+#[derive(Default)]
+struct ClientState {
+    session: Option<SessionState>,
+    registrations: Vec<Vec<u8>>,
+}
+
 async fn event_loop_1(
     mut event_loop: EventLoop,
     mut client: NativeClient,
     session_participants: Vec<Vec<u8>>,
 ) -> Result<JoinHandle<Result<()>>> {
+    let session_state = Arc::new(Mutex::new(Default::default()));
+
     // Channel used to shutdown polling for session ready
     let (mut ready_tx, ready_rx) = mpsc::channel::<()>(32);
     let ready_rx = Arc::new(Mutex::new(ready_rx));
@@ -144,8 +154,9 @@ async fn event_loop_1(
         ready_rx: Arc<Mutex<mpsc::Receiver<()>>>,
         active_tx: &mut mpsc::Sender<()>,
         active_rx: Arc<Mutex<mpsc::Receiver<()>>>,
+        session_state: Arc<Mutex<ClientState>>,
     ) -> Result<()> {
-        match &event {
+        match event {
             Event::ServerConnected { .. } => {
                 tracing::info!("initiator connected to server");
                 // Initiate a session context for broadcasting
@@ -169,6 +180,9 @@ async fn event_loop_1(
                 // Stop polling
                 ready_tx.send(()).await?;
 
+                let mut state = session_state.lock().await;
+                state.session = Some(session.clone());
+
                 tracing::info!(
                     id = ?session.session_id.to_string(),
                     "initiator session ready");
@@ -180,25 +194,46 @@ async fn event_loop_1(
                     active_rx,
                 );
 
+                println!("init connecting to peers");
                 for key in &session.all_participants {
                     if key != client.public_key() {
-                        let connected =
-                            client.try_connect_peer(key).await?;
+                        let connected = client.try_connect_peer(key).await?;
                         if connected {
-                            client
-                                .register_session_connection(
-                                    &session.session_id,
-                                    key,
-                                )
-                                .await?;
+                            println!("init adding registration...");
+                            state.registrations.push(key.to_vec());
                         }
                     }
+                }
+            }
+            Event::PeerConnected { peer_key } => {
+                println!("INIT GOT PEER CONNECTED EVENT");
+                let state = session_state.lock().await;
+                let session = state.session.as_ref().unwrap();
+                if state.registrations.contains(&peer_key) {
+                    client
+                        .register_session_connection(
+                            &session.session_id,
+                            peer_key.as_slice(),
+                        )
+                        .await?;
                 }
             }
             Event::SessionActive(session) => {
                 // Stop polling
                 active_tx.send(()).await?;
                 println!("INIT session active");
+                let message = "1";
+                let session_id = session.session_id.clone();
+                let mut recipients = session.all_participants;
+                let own_key = client.public_key();
+                recipients.retain(|k| k != own_key);
+                println!("recipients {}", recipients.len());
+
+                /*
+                client.broadcast(
+                    &session_id, recipients.as_slice(), message).await?;
+                */
+
             }
             _ => {}
         }
@@ -224,6 +259,7 @@ async fn event_loop_1(
                                 Arc::clone(&ready_rx),
                                 &mut active_tx,
                                 Arc::clone(&active_rx),
+                                Arc::clone(&session_state),
                             ).await?;
                         }
                         _ => {}
@@ -239,34 +275,59 @@ async fn event_loop_2(
     mut event_loop: EventLoop,
     mut client: NativeClient,
 ) -> Result<JoinHandle<Result<()>>> {
+    let session_state = Arc::new(Mutex::new(Default::default()));
+
     async fn handler(
         client: &mut NativeClient,
         event: Event,
+        session_state: Arc<Mutex<ClientState>>,
     ) -> Result<()> {
-        match &event {
+        match event {
             Event::SessionReady(session) => {
                 tracing::info!(
                     id = ?session.session_id.to_string(),
                     "participant(1) session ready");
 
+                let mut state = session_state.lock().await;
+                state.session = Some(session.clone());
+
                 for key in &session.all_participants {
                     if key != client.public_key() {
-                        let connected =
-                            client.try_connect_peer(key).await?;
+                        let connected = client.try_connect_peer(key).await?;
                         if connected {
-                            client
-                                .register_session_connection(
-                                    &session.session_id,
-                                    key,
-                                )
-                                .await?;
+                            println!("part(1) adding registration...");
+                            state.registrations.push(key.to_vec());
                         }
                     }
                 }
             }
+            Event::PeerConnected { peer_key } => {
+                let state = session_state.lock().await;
+                let session = state.session.as_ref().unwrap();
+                if state.registrations.contains(&peer_key) {
+                    client
+                        .register_session_connection(
+                            &session.session_id,
+                            peer_key.as_slice(),
+                        )
+                        .await?;
+                }
+            }
             Event::SessionActive(session) => {
                 println!("PART1 session active");
+
+                let message = "2";
+                let session_id = session.session_id.clone();
+                let mut recipients = session.all_participants;
+                let own_key = client.public_key();
+                recipients.retain(|k| k != own_key);
+                println!("recipients {}", recipients.len());
+                /*
+                client.broadcast(
+                    &session_id, recipients.as_slice(), message).await?;
+                */
             }
+
             _ => {}
         }
         Ok(())
@@ -291,7 +352,7 @@ async fn event_loop_2(
                     match event {
                         Some(event) => {
                             let event = event?;
-                            handler(&mut client, event).await?;
+                            handler(&mut client, event, Arc::clone(&session_state)).await?;
                         }
                         _ => {}
                     }
@@ -306,33 +367,57 @@ async fn event_loop_3(
     mut event_loop: EventLoop,
     mut client: NativeClient,
 ) -> Result<JoinHandle<Result<()>>> {
+    let session_state = Arc::new(Mutex::new(Default::default()));
+
     async fn handler(
         client: &mut NativeClient,
         event: Event,
+        session_state: Arc<Mutex<ClientState>>,
     ) -> Result<()> {
-        match &event {
+        match event {
             Event::SessionReady(session) => {
                 tracing::info!(
                     id = ?session.session_id.to_string(),
                     "participant(2) session ready");
 
+                let mut state = session_state.lock().await;
+                state.session = Some(session.clone());
+
                 for key in &session.all_participants {
                     if key != client.public_key() {
-                        let connected =
-                            client.try_connect_peer(key).await?;
+                        let connected = client.try_connect_peer(key).await?;
                         if connected {
-                            client
-                                .register_session_connection(
-                                    &session.session_id,
-                                    key,
-                                )
-                                .await?;
+                            println!("part(2) adding registration...");
+                            state.registrations.push(key.to_vec());
                         }
                     }
                 }
             }
+            Event::PeerConnected { peer_key } => {
+                let state = session_state.lock().await;
+                let session = state.session.as_ref().unwrap();
+                if state.registrations.contains(&peer_key) {
+                    client
+                        .register_session_connection(
+                            &session.session_id,
+                            peer_key.as_slice(),
+                        )
+                        .await?;
+                }
+            }
             Event::SessionActive(session) => {
                 println!("PART2 session active");
+
+                let message = "3";
+                let session_id = session.session_id.clone();
+                let mut recipients = session.all_participants;
+                let own_key = client.public_key();
+                recipients.retain(|k| k != own_key);
+                println!("recipients {}", recipients.len());
+                /*
+                client.broadcast(
+                    &session_id, recipients.as_slice(), message).await?;
+                */
             }
             _ => {}
         }
@@ -358,7 +443,7 @@ async fn event_loop_3(
                     match event {
                         Some(event) => {
                             let event = event?;
-                            handler(&mut client, event).await?;
+                            handler(&mut client, event, Arc::clone(&session_state)).await?;
                         }
                         _ => {}
                     }

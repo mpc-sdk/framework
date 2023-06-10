@@ -183,6 +183,8 @@ impl NativeClient {
             .entry(public_key.as_ref().to_vec())
             .or_insert(peer_state);
 
+        println!("Adding peer {}", hex::encode(public_key.as_ref()));
+
         let (len, payload) = match state {
             ProtocolState::Handshake(initiator) => {
                 let mut request = vec![0u8; 1024];
@@ -338,7 +340,7 @@ impl NativeClient {
     pub async fn register_session_connection(
         &mut self,
         session_id: &SessionId,
-        peer_key: &Vec<u8>,
+        peer_key: &[u8],
     ) -> Result<()> {
         let message = RequestMessage::SessionConnection {
             session_id: *session_id,
@@ -379,7 +381,7 @@ impl NativeClient {
     pub async fn broadcast<S>(
         &mut self,
         session_id: &SessionId,
-        recipient_public_keys: Vec<Vec<u8>>,
+        recipient_public_keys: &[Vec<u8>],
         payload: &S,
     ) -> Result<()>
     where
@@ -388,7 +390,7 @@ impl NativeClient {
         self.relay_broadcast(
             session_id,
             recipient_public_keys,
-            serde_json::to_vec(payload)?,
+            &serde_json::to_vec(payload)?,
             Encoding::Json,
         )
         .await
@@ -398,13 +400,13 @@ impl NativeClient {
     pub async fn broadcast_binary(
         &mut self,
         session_id: &SessionId,
-        recipient_public_keys: Vec<Vec<u8>>,
+        recipient_public_keys: &[Vec<u8>],
         payload: Vec<u8>,
     ) -> Result<()> {
         self.relay_broadcast(
             session_id,
             recipient_public_keys,
-            payload,
+            &payload,
             Encoding::Blob,
         )
         .await
@@ -413,14 +415,14 @@ impl NativeClient {
     async fn relay_broadcast(
         &mut self,
         session_id: &SessionId,
-        recipient_public_keys: Vec<Vec<u8>>,
-        payload: Vec<u8>,
+        recipient_public_keys: &[Vec<u8>],
+        payload: &[u8],
         encoding: Encoding,
     ) -> Result<()> {
         for key in recipient_public_keys {
             self.relay(
                 key,
-                &payload,
+                payload,
                 encoding,
                 true,
                 Some(*session_id),
@@ -676,9 +678,15 @@ impl EventLoop {
         len: usize,
         buf: Vec<u8>,
     ) -> Result<Option<Event>> {
+        println!("PEER HANDSHAKE RESPONDER CALLED {}", hex::encode(public_key.as_ref()));
         let mut peers = self.peers.write().await;
 
-        if peers.get(public_key.as_ref()).is_none() {
+        if let Some(peer) = peers.get(public_key.as_ref()) {
+            // TODO: error here...
+            println!("peer already exists in responder phase");
+            Ok(None)
+            //Err(Error::Peer)
+        } else {
             tracing::debug!(
                 from = ?hex::encode(public_key.as_ref()),
                 "peer handshake responder"
@@ -718,13 +726,15 @@ impl EventLoop {
                 session_id: None,
             };
 
+            println!("HANDLING PEER RESPONDER");
+
             self.outbound_tx.send(request).await?;
+
+            println!("RETURNING PEER CONNECTED EVENT...");
 
             Ok(Some(Event::PeerConnected {
                 peer_key: public_key.as_ref().to_vec(),
             }))
-        } else {
-            Ok(None)
         }
     }
 
@@ -749,7 +759,8 @@ impl EventLoop {
             from = ?hex::encode(public_key.as_ref()),
             "peer handshake done"
         );
-
+        
+        println!("performing the ack...");
         let transport = match peer {
             ProtocolState::Handshake(mut initiator) => {
                 let mut read_buf = vec![0u8; 1024];

@@ -935,7 +935,7 @@ impl Decodable for SessionRequest {
 }
 
 /// Response from creating new session.
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct SessionState {
     /// Session identifier.
     pub session_id: SessionId,
