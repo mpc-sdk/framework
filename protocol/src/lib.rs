@@ -1,4 +1,10 @@
 //! Relay server protocol types, encoding and helper functions.
+//!
+//! # Size Limitations
+//!
+//! The maximum size of a [noise protocol](https://noiseprotocol.org/)
+//! message is 65535 and we further limit the size of buffers
+//! for encoding to 32KB.
 #![deny(missing_docs)]
 #![cfg_attr(all(doc, CHANNEL_NIGHTLY), feature(doc_auto_cfg))]
 

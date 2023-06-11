@@ -538,10 +538,12 @@ impl EventLoop {
             ResponseMessage::Opaque(OpaqueMessage::PeerMessage {
                 public_key,
                 envelope,
-                ..
+                session_id,
             }) => Ok(Some(
-                self.handle_relayed_message(public_key, envelope)
-                    .await?,
+                self.handle_relayed_message(
+                    public_key, envelope, session_id,
+                )
+                .await?,
             )),
             ResponseMessage::Opaque(
                 OpaqueMessage::ServerMessage(envelope),
@@ -719,6 +721,7 @@ impl EventLoop {
         &mut self,
         public_key: impl AsRef<[u8]>,
         envelope: SealedEnvelope,
+        session_id: Option<SessionId>,
     ) -> Result<Event> {
         let mut peers = self.peers.write().await;
         if let Some(peer) = peers.get_mut(public_key.as_ref()) {
@@ -729,10 +732,12 @@ impl EventLoop {
                 Encoding::Blob => Ok(Event::BinaryMessage {
                     peer_key: public_key.as_ref().to_vec(),
                     message: contents,
+                    session_id,
                 }),
                 Encoding::Json => Ok(Event::JsonMessage {
                     peer_key: public_key.as_ref().to_vec(),
                     message: JsonMessage { contents },
+                    session_id,
                 }),
             }
         } else {
