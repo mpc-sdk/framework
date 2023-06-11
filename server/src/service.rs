@@ -4,8 +4,9 @@ use tokio::sync::mpsc;
 
 use mpc_relay_protocol::{
     channel::{decrypt_server_channel, encrypt_server_channel},
-    decode, encode, hex, Encoding, HandshakeType, ProtocolState,
+    decode, encode, hex, Encoding, HandshakeMessage, ProtocolState,
     RequestMessage, ResponseMessage, SessionState,
+    TransparentMessage,
 };
 
 use crate::{server::State, websocket::Connection, Error, Result};
@@ -40,7 +41,11 @@ async fn listen(
     mut read_channel: mpsc::Receiver<Vec<u8>>,
 ) -> Result<()> {
     while let Some(buffer) = read_channel.recv().await {
+        println!("service got a buffer to handle");
         let message: RequestMessage = decode(&buffer).await?;
+
+        println!("server decoded a message");
+
         match handle_request(
             Arc::clone(&state),
             Arc::clone(&conn),
@@ -69,11 +74,13 @@ async fn handle_request(
     message: RequestMessage,
 ) -> Result<()> {
     match message {
-        RequestMessage::HandshakeInitiator(
-            HandshakeType::Server,
-            len,
-            buf,
+        RequestMessage::Transparent(
+            TransparentMessage::ServerHandshake(
+                HandshakeMessage::Initiator(len, buf),
+            ),
         ) => {
+            println!("server got handshake init");
+
             let mut writer = conn.write().await;
             let (len, payload) = match &mut writer.state {
                 Some(ProtocolState::Handshake(responder)) => {
@@ -89,10 +96,10 @@ async fn handle_request(
                 _ => return Err(Error::NotHandshakeState),
             };
 
-            let response = ResponseMessage::HandshakeResponder(
-                HandshakeType::Server,
-                len,
-                payload,
+            let response = ResponseMessage::Transparent(
+                TransparentMessage::ServerHandshake(
+                    HandshakeMessage::Responder(len, payload),
+                ),
             );
             let buffer = encode(&response).await?;
             writer.send(buffer).await?;

@@ -22,9 +22,9 @@ use mpc_relay_protocol::{
     decode, encode, hex,
     http::StatusCode,
     snow::Builder,
-    Encoding, HandshakeType, PeerMessage, ProtocolState,
-    RequestMessage, ResponseMessage, SealedEnvelope, SessionId,
-    SessionRequest, PATTERN, TAGLEN,
+    Encoding, HandshakeMessage, HandshakeType, PeerMessage,
+    ProtocolState, RequestMessage, ResponseMessage, SealedEnvelope,
+    SessionId, SessionRequest, TransparentMessage, PATTERN, TAGLEN,
 };
 
 use crate::{ClientOptions, Error, Event, JsonMessage, Result};
@@ -125,12 +125,14 @@ impl NativeClient {
                 _ => return Err(Error::NotHandshakeState),
             };
 
-            RequestMessage::HandshakeInitiator(
-                HandshakeType::Server,
-                len,
-                payload,
+            RequestMessage::Transparent(
+                TransparentMessage::ServerHandshake(
+                    HandshakeMessage::Initiator(len, payload),
+                ),
             )
         };
+
+        //println!("send {:#?}", request);
 
         self.outbound_tx.send(request).await?;
 
@@ -227,8 +229,14 @@ impl NativeClient {
         payload: Vec<u8>,
         session_id: Option<SessionId>,
     ) -> Result<()> {
-        self.relay(public_key, &payload, Encoding::Blob, false, session_id)
-            .await
+        self.relay(
+            public_key,
+            &payload,
+            Encoding::Blob,
+            false,
+            session_id,
+        )
+        .await
     }
 
     /// Relay a buffer to a peer over the noise protocol channel.
@@ -504,10 +512,10 @@ impl EventLoop {
             ResponseMessage::Error(code, message) => {
                 Err(Error::HttpError(code, message))
             }
-            ResponseMessage::HandshakeResponder(
-                HandshakeType::Server,
-                len,
-                buf,
+            ResponseMessage::Transparent(
+                TransparentMessage::ServerHandshake(
+                    HandshakeMessage::Responder(len, buf),
+                ),
             ) => Ok(Some(self.server_handshake(len, buf).await?)),
             ResponseMessage::RelayPeer {
                 handshake,

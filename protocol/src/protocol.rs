@@ -28,6 +28,9 @@ mod types {
     pub const HANDSHAKE_SERVER: u8 = 1;
     pub const HANDSHAKE_PEER: u8 = 2;
 
+    pub const TRANSPARENT: u8 = 128;
+    pub const OPAQUE: u8 = 129;
+
     pub const PEER_REQUEST: u8 = 1;
     pub const PEER_RESPONSE: u8 = 2;
 
@@ -243,8 +246,12 @@ impl From<&HandshakeMessage> for u8 {
     fn from(value: &HandshakeMessage) -> Self {
         match value {
             HandshakeMessage::Noop => types::NOOP,
-            HandshakeMessage::Initiator(_, _) => types::HANDSHAKE_MSG_INITIATOR,
-            HandshakeMessage::Responder(_, _) => types::HANDSHAKE_MSG_RESPONDER,
+            HandshakeMessage::Initiator(_, _) => {
+                types::HANDSHAKE_MSG_INITIATOR
+            }
+            HandshakeMessage::Responder(_, _) => {
+                types::HANDSHAKE_MSG_RESPONDER
+            }
         }
     }
 }
@@ -284,21 +291,17 @@ impl Decodable for HandshakeMessage {
     ) -> Result<()> {
         let id = reader.read_u8().await?;
         match id {
-            types::HANDSHAKE_INITIATOR => {
+            types::HANDSHAKE_MSG_INITIATOR => {
                 let len = reader.read_usize().await?;
                 let size = reader.read_u32().await?;
                 let buf = reader.read_bytes(size as usize).await?;
-                *self = HandshakeMessage::Initiator(
-                    len, buf,
-                );
+                *self = HandshakeMessage::Initiator(len, buf);
             }
-            types::HANDSHAKE_RESPONDER => {
+            types::HANDSHAKE_MSG_RESPONDER => {
                 let len = reader.read_usize().await?;
                 let size = reader.read_u32().await?;
                 let buf = reader.read_bytes(size as usize).await?;
-                *self = HandshakeMessage::Responder(
-                    len, buf,
-                );
+                *self = HandshakeMessage::Responder(len, buf);
             }
             _ => {
                 return Err(encoding_error(
@@ -331,8 +334,12 @@ impl From<&TransparentMessage> for u8 {
     fn from(value: &TransparentMessage) -> Self {
         match value {
             TransparentMessage::Noop => types::NOOP,
-            TransparentMessage::ServerHandshake(_) => types::HANDSHAKE_SERVER,
-            TransparentMessage::PeerHandshake { .. } => types::HANDSHAKE_PEER,
+            TransparentMessage::ServerHandshake(_) => {
+                types::HANDSHAKE_SERVER
+            }
+            TransparentMessage::PeerHandshake { .. } => {
+                types::HANDSHAKE_PEER
+            }
         }
     }
 }
@@ -350,7 +357,10 @@ impl Encodable for TransparentMessage {
             Self::ServerHandshake(message) => {
                 message.encode(writer).await?;
             }
-            Self::PeerHandshake { public_key, message } => {
+            Self::PeerHandshake {
+                public_key,
+                message,
+            } => {
                 writer.write_u32(public_key.len() as u32).await?;
                 writer.write_bytes(public_key).await?;
                 message.encode(writer).await?;
@@ -369,18 +379,26 @@ impl Decodable for TransparentMessage {
         reader: &mut BinaryReader<R>,
     ) -> Result<()> {
         let id = reader.read_u8().await?;
+        println!("decoding transparent with id {}", id);
         match id {
             types::HANDSHAKE_SERVER => {
-                let mut message: HandshakeMessage = Default::default();
+                println!("decoding server handshake message...");
+                let mut message: HandshakeMessage =
+                    Default::default();
                 message.decode(reader).await?;
                 *self = TransparentMessage::ServerHandshake(message);
             }
             types::HANDSHAKE_PEER => {
                 let size = reader.read_u32().await?;
-                let public_key = reader.read_bytes(size as usize).await?;
-                let mut message: HandshakeMessage = Default::default();
+                let public_key =
+                    reader.read_bytes(size as usize).await?;
+                let mut message: HandshakeMessage =
+                    Default::default();
                 message.decode(reader).await?;
-                *self = TransparentMessage::PeerHandshake { public_key, message };
+                *self = TransparentMessage::PeerHandshake {
+                    public_key,
+                    message,
+                };
             }
             _ => {
                 return Err(encoding_error(
@@ -407,8 +425,13 @@ pub enum RequestMessage {
     #[default]
     #[doc(hidden)]
     Noop,
+
+    /// Transparent message used for the handshake(s).
+    Transparent(TransparentMessage),
+
     /// Initiate a handshake.
     HandshakeInitiator(HandshakeType, usize, Vec<u8>),
+
     /// Relay a message to a peer.
     RelayPeer {
         /// Determines if this message is part of the
@@ -444,6 +467,7 @@ impl From<&RequestMessage> for u8 {
     fn from(value: &RequestMessage) -> Self {
         match value {
             RequestMessage::Noop => types::NOOP,
+            RequestMessage::Transparent(_) => types::TRANSPARENT,
             RequestMessage::HandshakeInitiator(_, _, _) => {
                 types::HANDSHAKE_INITIATOR
             }
@@ -473,6 +497,9 @@ impl Encodable for RequestMessage {
         let id: u8 = self.into();
         writer.write_u8(id).await?;
         match self {
+            Self::Transparent(message) => {
+                message.encode(writer).await?;
+            }
             Self::HandshakeInitiator(kind, len, buf) => {
                 kind.encode(&mut *writer).await?;
                 writer.write_usize(len).await?;
@@ -530,7 +557,17 @@ impl Decodable for RequestMessage {
         reader: &mut BinaryReader<R>,
     ) -> Result<()> {
         let id = reader.read_u8().await?;
+        println!("request decoding with id {}", id);
         match id {
+            types::TRANSPARENT => {
+                println!("decoding transparent message...");
+                let mut message: TransparentMessage =
+                    Default::default();
+                message.decode(reader).await?;
+
+                println!("DECODED");
+                *self = RequestMessage::Transparent(message);
+            }
             types::HANDSHAKE_INITIATOR => {
                 let mut kind: HandshakeType = Default::default();
                 kind.decode(&mut *reader).await?;
@@ -644,6 +681,10 @@ pub enum ResponseMessage {
     Noop,
     /// Return an error message to the client.
     Error(StatusCode, String),
+
+    /// Transparent message used for the handshake(s).
+    Transparent(TransparentMessage),
+
     /// Respond to a handshake initiation.
     HandshakeResponder(HandshakeType, usize, Vec<u8>),
     /// Message being relayed from another peer.
@@ -675,6 +716,7 @@ impl From<&ResponseMessage> for u8 {
         match value {
             ResponseMessage::Noop => types::NOOP,
             ResponseMessage::Error(_, _) => types::ERROR,
+            ResponseMessage::Transparent(_) => types::TRANSPARENT,
             ResponseMessage::HandshakeResponder(_, _, _) => {
                 types::HANDSHAKE_RESPONDER
             }
@@ -705,6 +747,9 @@ impl Encodable for ResponseMessage {
                 let code: u16 = (*code).into();
                 writer.write_u16(code).await?;
                 writer.write_string(message).await?;
+            }
+            Self::Transparent(message) => {
+                message.encode(&mut *writer).await?;
             }
             Self::HandshakeResponder(kind, len, buf) => {
                 kind.encode(&mut *writer).await?;
@@ -759,6 +804,12 @@ impl Decodable for ResponseMessage {
                     .map_err(encoding_error)?;
                 let message = reader.read_string().await?;
                 *self = ResponseMessage::Error(code, message);
+            }
+            types::TRANSPARENT => {
+                let mut message: TransparentMessage =
+                    Default::default();
+                message.decode(reader).await?;
+                *self = ResponseMessage::Transparent(message);
             }
             types::HANDSHAKE_RESPONDER => {
                 let mut kind: HandshakeType = Default::default();
