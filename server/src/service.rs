@@ -42,7 +42,6 @@ async fn listen(
 ) -> Result<()> {
     while let Some(buffer) = read_channel.recv().await {
         let message: RequestMessage = decode(&buffer).await?;
-
         match handle_request(
             Arc::clone(&state),
             Arc::clone(&conn),
@@ -52,6 +51,7 @@ async fn listen(
         {
             Ok(_) => {}
             Err(e) => {
+                // FIXME: return errors for both transport states!
                 let response = ServerMessage::Error(
                     StatusCode::INTERNAL_SERVER_ERROR,
                     e.to_string(),
@@ -154,11 +154,19 @@ async fn handle_request(
                 )));
             }
         }
+
+        /*
         RequestMessage::RelayPeer {
             public_key,
             message,
             session_id,
         } => {
+        */
+        RequestMessage::Opaque(OpaqueMessage::PeerMessage {
+            public_key,
+            session_id,
+            envelope,
+        }) => {
             // When we have a session identifier check the session
             // is valid and the target peer is a session participant.
             if let Some(id) = session_id {
@@ -201,10 +209,21 @@ async fn handle_request(
                     "relay",
                 );
 
+                /*
                 let relayed = ResponseMessage::RelayPeer {
                     public_key: from_public_key,
                     message,
                 };
+                */
+
+                let relayed = ResponseMessage::Opaque(
+                    OpaqueMessage::PeerMessage {
+                        public_key: from_public_key,
+                        session_id,
+                        envelope,
+                    },
+                );
+
                 let buffer = encode(&relayed).await?;
                 writer.send(buffer).await?;
             } else {

@@ -526,11 +526,12 @@ impl EventLoop {
             ) => Ok(Some(
                 self.peer_handshake_ack(public_key, len, buf).await?,
             )),
-            ResponseMessage::RelayPeer {
+            ResponseMessage::Opaque(OpaqueMessage::PeerMessage {
                 public_key,
-                message,
-            } => Ok(Some(
-                self.handle_relayed_message(public_key, message)
+                envelope,
+                ..
+            }) => Ok(Some(
+                self.handle_relayed_message(public_key, envelope)
                     .await?,
             )),
             ResponseMessage::Opaque(
@@ -705,12 +706,12 @@ impl EventLoop {
     async fn handle_relayed_message(
         &mut self,
         public_key: impl AsRef<[u8]>,
-        payload: Vec<u8>,
+        envelope: SealedEnvelope,
     ) -> Result<Event> {
         let mut peers = self.peers.write().await;
         if let Some(peer) = peers.get_mut(public_key.as_ref()) {
-            let (envelope, contents) =
-                decrypt_peer_channel(peer, payload).await?;
+            let contents =
+                decrypt_peer_channel(peer, &envelope).await?;
             match envelope.encoding {
                 Encoding::Noop => unreachable!(),
                 Encoding::Blob => Ok(Event::BinaryMessage {
@@ -752,12 +753,23 @@ async fn encrypt_peer_channel(
                 payload: contents,
                 broadcast,
             };
+
+            let request =
+                RequestMessage::Opaque(OpaqueMessage::PeerMessage {
+                    public_key: public_key.as_ref().to_vec(),
+                    session_id,
+                    envelope,
+                });
+
+            /*
             let message = encode(&envelope).await?;
             let request = RequestMessage::RelayPeer {
                 public_key: public_key.as_ref().to_vec(),
                 message,
                 session_id,
             };
+            */
+
             Ok(request)
         }
         _ => Err(Error::NotTransportState),
@@ -769,11 +781,10 @@ async fn encrypt_peer_channel(
 /// The protocol must be in transport mode.
 async fn decrypt_peer_channel(
     peer: &mut ProtocolState,
-    payload: Vec<u8>,
-) -> Result<(SealedEnvelope, Vec<u8>)> {
+    envelope: &SealedEnvelope,
+) -> Result<Vec<u8>> {
     match peer {
         ProtocolState::Transport(transport) => {
-            let envelope: SealedEnvelope = decode(&payload).await?;
             let mut contents = vec![0; envelope.length];
             transport.read_message(
                 &envelope.payload[..envelope.length],
@@ -781,7 +792,7 @@ async fn decrypt_peer_channel(
             )?;
             let new_length = contents.len() - TAGLEN;
             contents.truncate(new_length);
-            Ok((envelope, contents))
+            Ok(contents)
         }
         _ => Err(Error::NotTransportState),
     }

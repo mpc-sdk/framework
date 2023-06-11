@@ -19,6 +19,9 @@ pub(crate) fn encoding_error(
 }
 
 mod types {
+    pub const NOOP: u8 = 0;
+    pub const ERROR: u8 = 255;
+
     pub const HANDSHAKE_INITIATOR: u8 = 1;
     pub const HANDSHAKE_RESPONDER: u8 = 2;
 
@@ -31,9 +34,6 @@ mod types {
     pub const OPAQUE_SERVER: u8 = 1;
     pub const OPAQUE_PEER: u8 = 2;
 
-    pub const NOOP: u8 = 0;
-    pub const RELAY_PEER: u8 = 2;
-
     pub const SESSION_NEW: u8 = 1;
     pub const SESSION_CREATED: u8 = 2;
     pub const SESSION_READY_NOTIFY: u8 = 3;
@@ -44,8 +44,6 @@ mod types {
 
     pub const ENCODING_BLOB: u8 = 1;
     pub const ENCODING_JSON: u8 = 2;
-
-    pub const ERROR: u8 = 255;
 }
 
 /// Default binary encoding options.
@@ -588,16 +586,6 @@ pub enum RequestMessage {
 
     /// Opaque encrypted messages.
     Opaque(OpaqueMessage),
-
-    /// Relay a message to a peer.
-    RelayPeer {
-        /// Public key of the receiver.
-        public_key: Vec<u8>,
-        /// Message payload.
-        message: Vec<u8>,
-        /// Session identifier.
-        session_id: Option<SessionId>,
-    },
 }
 
 impl From<&RequestMessage> for u8 {
@@ -606,7 +594,6 @@ impl From<&RequestMessage> for u8 {
             RequestMessage::Noop => types::NOOP,
             RequestMessage::Transparent(_) => types::TRANSPARENT,
             RequestMessage::Opaque(_) => types::OPAQUE,
-            RequestMessage::RelayPeer { .. } => types::RELAY_PEER,
         }
     }
 }
@@ -626,20 +613,6 @@ impl Encodable for RequestMessage {
             }
             Self::Opaque(message) => {
                 message.encode(writer).await?;
-            }
-            Self::RelayPeer {
-                public_key,
-                message,
-                session_id,
-            } => {
-                writer.write_u32(public_key.len() as u32).await?;
-                writer.write_bytes(public_key).await?;
-                writer.write_u32(message.len() as u32).await?;
-                writer.write_bytes(message).await?;
-                writer.write_bool(session_id.is_some()).await?;
-                if let Some(id) = session_id {
-                    writer.write_bytes(id.as_bytes()).await?;
-                }
             }
             Self::Noop => unreachable!(),
         }
@@ -667,35 +640,6 @@ impl Decodable for RequestMessage {
                 message.decode(reader).await?;
                 *self = RequestMessage::Opaque(message);
             }
-            types::RELAY_PEER => {
-                let size = reader.read_u32().await?;
-                let public_key =
-                    reader.read_bytes(size as usize).await?;
-                let size = reader.read_u32().await?;
-                let message =
-                    reader.read_bytes(size as usize).await?;
-                let has_session_id = reader.read_bool().await?;
-
-                let session_id = if has_session_id {
-                    let session_id = SessionId::from_bytes(
-                        reader
-                            .read_bytes(16)
-                            .await?
-                            .as_slice()
-                            .try_into()
-                            .map_err(encoding_error)?,
-                    );
-                    Some(session_id)
-                } else {
-                    None
-                };
-
-                *self = RequestMessage::RelayPeer {
-                    public_key,
-                    message,
-                    session_id,
-                };
-            }
             _ => {
                 return Err(encoding_error(
                     crate::Error::EncodingKind(id),
@@ -718,14 +662,6 @@ pub enum ResponseMessage {
 
     /// Opaque encrypted messages.
     Opaque(OpaqueMessage),
-
-    /// Message being relayed from another peer.
-    RelayPeer {
-        /// Public key of the sender.
-        public_key: Vec<u8>,
-        /// Message payload.
-        message: Vec<u8>,
-    },
 }
 
 impl From<&ResponseMessage> for u8 {
@@ -734,8 +670,6 @@ impl From<&ResponseMessage> for u8 {
             ResponseMessage::Noop => types::NOOP,
             ResponseMessage::Transparent(_) => types::TRANSPARENT,
             ResponseMessage::Opaque(_) => types::OPAQUE,
-
-            ResponseMessage::RelayPeer { .. } => types::RELAY_PEER,
         }
     }
 }
@@ -755,15 +689,6 @@ impl Encodable for ResponseMessage {
             }
             Self::Opaque(message) => {
                 message.encode(&mut *writer).await?;
-            }
-            Self::RelayPeer {
-                public_key,
-                message,
-            } => {
-                writer.write_u32(public_key.len() as u32).await?;
-                writer.write_bytes(public_key).await?;
-                writer.write_u32(message.len() as u32).await?;
-                writer.write_bytes(message).await?;
             }
             Self::Noop => unreachable!(),
         }
@@ -790,18 +715,6 @@ impl Decodable for ResponseMessage {
                 let mut message: OpaqueMessage = Default::default();
                 message.decode(reader).await?;
                 *self = ResponseMessage::Opaque(message);
-            }
-            types::RELAY_PEER => {
-                let size = reader.read_u32().await?;
-                let public_key =
-                    reader.read_bytes(size as usize).await?;
-                let size = reader.read_u32().await?;
-                let message =
-                    reader.read_bytes(size as usize).await?;
-                *self = ResponseMessage::RelayPeer {
-                    public_key,
-                    message,
-                };
             }
             _ => {
                 return Err(encoding_error(
