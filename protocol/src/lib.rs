@@ -5,11 +5,13 @@
 #[doc(hidden)]
 pub mod channel;
 mod constants;
+pub(crate) mod encoding;
 mod error;
 mod keypair;
 mod protocol;
 
 pub use constants::*;
+pub use encoding::{decode, encode, VERSION};
 pub use error::Error;
 pub use keypair::*;
 pub use protocol::*;

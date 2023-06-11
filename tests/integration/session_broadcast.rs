@@ -25,7 +25,7 @@ struct ClientState {
 /// and then each other.
 ///
 /// Once the handshakes are complete a session is created
-/// and each node broadcasts a message to all the other 
+/// and each node broadcasts a message to all the other
 /// participants in the session.
 #[tokio::test]
 #[serial]

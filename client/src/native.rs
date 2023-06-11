@@ -22,9 +22,9 @@ use mpc_relay_protocol::{
     decode, encode, hex,
     http::StatusCode,
     snow::Builder,
-    Encoding, HandshakeType, PeerMessage, ProtocolState,
-    RequestMessage, ResponseMessage, SealedEnvelope, SessionId,
-    SessionRequest, PATTERN, TAGLEN,
+    Encoding, HandshakeMessage, OpaqueMessage, ProtocolState,
+    RequestMessage, ResponseMessage, SealedEnvelope, ServerMessage,
+    SessionId, SessionRequest, TransparentMessage, PATTERN, TAGLEN,
 };
 
 use crate::{ClientOptions, Error, Event, JsonMessage, Result};
@@ -125,10 +125,10 @@ impl NativeClient {
                 _ => return Err(Error::NotHandshakeState),
             };
 
-            RequestMessage::HandshakeInitiator(
-                HandshakeType::Server,
-                len,
-                payload,
+            RequestMessage::Transparent(
+                TransparentMessage::ServerHandshake(
+                    HandshakeMessage::Initiator(len, payload),
+                ),
             )
         };
 
@@ -179,21 +179,12 @@ impl NativeClient {
         };
         drop(peers);
 
-        let inner_request: PeerMessage =
-            RequestMessage::HandshakeInitiator(
-                HandshakeType::Peer,
-                len,
-                payload,
-            )
-            .into();
-        let inner_message = encode(&inner_request).await?;
-
-        let request = RequestMessage::RelayPeer {
-            handshake: true,
-            public_key: public_key.as_ref().to_vec(),
-            message: inner_message,
-            session_id: None,
-        };
+        let request = RequestMessage::Transparent(
+            TransparentMessage::PeerHandshake {
+                public_key: public_key.as_ref().to_vec(),
+                message: HandshakeMessage::Initiator(len, payload),
+            },
+        );
 
         self.outbound_tx.send(request).await?;
 
@@ -227,8 +218,14 @@ impl NativeClient {
         payload: Vec<u8>,
         session_id: Option<SessionId>,
     ) -> Result<()> {
-        self.relay(public_key, &payload, Encoding::Blob, false, session_id)
-            .await
+        self.relay(
+            public_key,
+            &payload,
+            Encoding::Blob,
+            false,
+            session_id,
+        )
+        .await
     }
 
     /// Relay a buffer to a peer over the noise protocol channel.
@@ -265,7 +262,7 @@ impl NativeClient {
         participant_keys: Vec<Vec<u8>>,
     ) -> Result<()> {
         let session = SessionRequest { participant_keys };
-        let message = RequestMessage::NewSession(session);
+        let message = ServerMessage::NewSession(session);
         self.request(message).await
     }
 
@@ -283,7 +280,7 @@ impl NativeClient {
         &mut self,
         session_id: &SessionId,
     ) -> Result<()> {
-        self.request(RequestMessage::SessionReadyNotify(*session_id))
+        self.request(ServerMessage::SessionReadyNotify(*session_id))
             .await
     }
 
@@ -295,7 +292,7 @@ impl NativeClient {
         &mut self,
         session_id: &SessionId,
     ) -> Result<()> {
-        self.request(RequestMessage::SessionActiveNotify(*session_id))
+        self.request(ServerMessage::SessionActiveNotify(*session_id))
             .await
     }
 
@@ -305,7 +302,7 @@ impl NativeClient {
         session_id: &SessionId,
         peer_key: &[u8],
     ) -> Result<()> {
-        let message = RequestMessage::SessionConnection {
+        let message = ServerMessage::SessionConnection {
             session_id: *session_id,
             peer_key: peer_key.to_vec(),
         };
@@ -316,9 +313,9 @@ impl NativeClient {
     /// server channel.
     async fn request(
         &mut self,
-        message: RequestMessage,
+        message: ServerMessage,
     ) -> Result<()> {
-        let inner = {
+        let envelope = {
             let mut server = self.server.write().await;
             if let Some(server) = server.as_mut() {
                 let payload = encode(&message).await?;
@@ -331,8 +328,10 @@ impl NativeClient {
             }
         };
 
-        if let Some(inner) = inner {
-            let request = RequestMessage::Envelope(inner);
+        if let Some(envelope) = envelope {
+            let request = RequestMessage::Opaque(
+                OpaqueMessage::ServerMessage(envelope),
+            );
             self.outbound_tx.send(request).await?;
             Ok(())
         } else {
@@ -501,67 +500,51 @@ impl EventLoop {
         incoming: ResponseMessage,
     ) -> Result<Option<Event>> {
         match incoming {
+            /*
             ResponseMessage::Error(code, message) => {
                 Err(Error::HttpError(code, message))
             }
-            ResponseMessage::HandshakeResponder(
-                HandshakeType::Server,
-                len,
-                buf,
+            */
+            ResponseMessage::Transparent(
+                TransparentMessage::ServerHandshake(
+                    HandshakeMessage::Responder(len, buf),
+                ),
             ) => Ok(Some(self.server_handshake(len, buf).await?)),
-            ResponseMessage::RelayPeer {
-                handshake,
+            ResponseMessage::Transparent(
+                TransparentMessage::PeerHandshake {
+                    message: HandshakeMessage::Initiator(len, buf),
+                    public_key,
+                },
+            ) => Ok(self
+                .peer_handshake_responder(public_key, len, buf)
+                .await?),
+            ResponseMessage::Transparent(
+                TransparentMessage::PeerHandshake {
+                    message: HandshakeMessage::Responder(len, buf),
+                    public_key,
+                },
+            ) => Ok(Some(
+                self.peer_handshake_ack(public_key, len, buf).await?,
+            )),
+            ResponseMessage::Opaque(OpaqueMessage::PeerMessage {
                 public_key,
-                message,
-            } => {
-                if handshake {
-                    // Decode the inner message
-                    let relayed =
-                        decode::<PeerMessage>(message).await?;
-                    match relayed {
-                        PeerMessage::Request(
-                            RequestMessage::HandshakeInitiator(
-                                HandshakeType::Peer,
-                                len,
-                                buf,
-                            ),
-                        ) => Ok(self
-                            .peer_handshake_responder(
-                                public_key, len, buf,
-                            )
-                            .await?),
-                        PeerMessage::Response(
-                            ResponseMessage::HandshakeResponder(
-                                HandshakeType::Peer,
-                                len,
-                                buf,
-                            ),
-                        ) => Ok(Some(
-                            self.peer_handshake_ack(
-                                public_key, len, buf,
-                            )
-                            .await?,
-                        )),
-                        _ => Err(Error::InvalidPeerHandshakeMessage),
-                    }
-                } else {
-                    Ok(Some(
-                        self.handle_relayed_message(
-                            public_key, message,
-                        )
-                        .await?,
-                    ))
-                }
-            }
-            ResponseMessage::Envelope(message) => {
+                envelope,
+                ..
+            }) => Ok(Some(
+                self.handle_relayed_message(public_key, envelope)
+                    .await?,
+            )),
+            ResponseMessage::Opaque(
+                OpaqueMessage::ServerMessage(envelope),
+            ) => {
                 let mut server = self.server.write().await;
                 if let Some(server) = server.as_mut() {
                     let (encoding, contents) =
-                        decrypt_server_channel(server, message)
+                        decrypt_server_channel(server, envelope)
                             .await?;
                     let message = match encoding {
                         Encoding::Blob => {
-                            let response: ResponseMessage =
+                            let response: ServerMessage =
                                 decode(&contents).await?;
                             response
                         }
@@ -578,7 +561,6 @@ impl EventLoop {
             }
             _ => {
                 panic!("unhandled message");
-                //Ok(None)
             }
         }
     }
@@ -587,19 +569,19 @@ impl EventLoop {
     /// decrypting the envelope.
     async fn handle_server_channel_message(
         &self,
-        message: ResponseMessage,
+        message: ServerMessage,
     ) -> Result<Option<Event>> {
         match message {
-            ResponseMessage::Error(code, message) => {
+            ServerMessage::Error(code, message) => {
                 Err(Error::ServerError(code, message))
             }
-            ResponseMessage::SessionCreated(response) => {
+            ServerMessage::SessionCreated(response) => {
                 Ok(Some(Event::SessionCreated(response)))
             }
-            ResponseMessage::SessionReady(response) => {
+            ServerMessage::SessionReady(response) => {
                 Ok(Some(Event::SessionReady(response)))
             }
-            ResponseMessage::SessionActive(response) => {
+            ServerMessage::SessionActive(response) => {
                 Ok(Some(Event::SessionActive(response)))
             }
             _ => Ok(None),
@@ -663,21 +645,14 @@ impl EventLoop {
                 ProtocolState::Transport(transport),
             );
 
-            let inner_request: PeerMessage =
-                ResponseMessage::HandshakeResponder(
-                    HandshakeType::Peer,
-                    len,
-                    payload,
-                )
-                .into();
-            let inner_message = encode(&inner_request).await?;
-
-            let request = RequestMessage::RelayPeer {
-                handshake: true,
-                public_key: public_key.as_ref().to_vec(),
-                message: inner_message,
-                session_id: None,
-            };
+            let request = RequestMessage::Transparent(
+                TransparentMessage::PeerHandshake {
+                    public_key: public_key.as_ref().to_vec(),
+                    message: HandshakeMessage::Responder(
+                        len, payload,
+                    ),
+                },
+            );
 
             self.outbound_tx.send(request).await?;
 
@@ -731,12 +706,12 @@ impl EventLoop {
     async fn handle_relayed_message(
         &mut self,
         public_key: impl AsRef<[u8]>,
-        payload: Vec<u8>,
+        envelope: SealedEnvelope,
     ) -> Result<Event> {
         let mut peers = self.peers.write().await;
         if let Some(peer) = peers.get_mut(public_key.as_ref()) {
-            let (envelope, contents) =
-                decrypt_peer_channel(peer, payload).await?;
+            let contents =
+                decrypt_peer_channel(peer, &envelope).await?;
             match envelope.encoding {
                 Encoding::Noop => unreachable!(),
                 Encoding::Blob => Ok(Event::BinaryMessage {
@@ -778,13 +753,23 @@ async fn encrypt_peer_channel(
                 payload: contents,
                 broadcast,
             };
+
+            let request =
+                RequestMessage::Opaque(OpaqueMessage::PeerMessage {
+                    public_key: public_key.as_ref().to_vec(),
+                    session_id,
+                    envelope,
+                });
+
+            /*
             let message = encode(&envelope).await?;
             let request = RequestMessage::RelayPeer {
-                handshake: false,
                 public_key: public_key.as_ref().to_vec(),
                 message,
                 session_id,
             };
+            */
+
             Ok(request)
         }
         _ => Err(Error::NotTransportState),
@@ -796,11 +781,10 @@ async fn encrypt_peer_channel(
 /// The protocol must be in transport mode.
 async fn decrypt_peer_channel(
     peer: &mut ProtocolState,
-    payload: Vec<u8>,
-) -> Result<(SealedEnvelope, Vec<u8>)> {
+    envelope: &SealedEnvelope,
+) -> Result<Vec<u8>> {
     match peer {
         ProtocolState::Transport(transport) => {
-            let envelope: SealedEnvelope = decode(&payload).await?;
             let mut contents = vec![0; envelope.length];
             transport.read_message(
                 &envelope.payload[..envelope.length],
@@ -808,7 +792,7 @@ async fn decrypt_peer_channel(
             )?;
             let new_length = contents.len() - TAGLEN;
             contents.truncate(new_length);
-            Ok((envelope, contents))
+            Ok(contents)
         }
         _ => Err(Error::NotTransportState),
     }

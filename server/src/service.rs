@@ -4,8 +4,9 @@ use tokio::sync::mpsc;
 
 use mpc_relay_protocol::{
     channel::{decrypt_server_channel, encrypt_server_channel},
-    decode, encode, hex, Encoding, HandshakeType, ProtocolState,
-    RequestMessage, ResponseMessage, SessionState,
+    decode, encode, hex, Encoding, HandshakeMessage, OpaqueMessage,
+    ProtocolState, RequestMessage, ResponseMessage, ServerMessage,
+    SessionState, TransparentMessage,
 };
 
 use crate::{server::State, websocket::Connection, Error, Result};
@@ -50,13 +51,13 @@ async fn listen(
         {
             Ok(_) => {}
             Err(e) => {
-                let mut writer = conn.write().await;
-                let response = ResponseMessage::Error(
+                // FIXME: return errors for both transport states!
+                let response = ServerMessage::Error(
                     StatusCode::INTERNAL_SERVER_ERROR,
                     e.to_string(),
                 );
-                let buffer = encode(&response).await?;
-                writer.send(buffer).await?;
+                send_message(Arc::clone(&conn), &response, false)
+                    .await?;
             }
         }
     }
@@ -69,10 +70,10 @@ async fn handle_request(
     message: RequestMessage,
 ) -> Result<()> {
     match message {
-        RequestMessage::HandshakeInitiator(
-            HandshakeType::Server,
-            len,
-            buf,
+        RequestMessage::Transparent(
+            TransparentMessage::ServerHandshake(
+                HandshakeMessage::Initiator(len, buf),
+            ),
         ) => {
             let mut writer = conn.write().await;
             let (len, payload) = match &mut writer.state {
@@ -89,10 +90,10 @@ async fn handle_request(
                 _ => return Err(Error::NotHandshakeState),
             };
 
-            let response = ResponseMessage::HandshakeResponder(
-                HandshakeType::Server,
-                len,
-                payload,
+            let response = ResponseMessage::Transparent(
+                TransparentMessage::ServerHandshake(
+                    HandshakeMessage::Responder(len, payload),
+                ),
             );
             let buffer = encode(&response).await?;
             writer.send(buffer).await?;
@@ -113,12 +114,59 @@ async fn handle_request(
             promote_connection(Arc::clone(&state), Arc::clone(&conn))
                 .await;
         }
+        RequestMessage::Transparent(
+            TransparentMessage::PeerHandshake {
+                public_key,
+                message,
+            },
+        ) => {
+            let from_public_key = {
+                let reader = conn.read().await;
+                reader.public_key.clone()
+            };
+
+            let peer = {
+                let reader = state.read().await;
+                reader.active.get(&public_key).map(Arc::clone)
+            };
+
+            if let Some(peer) = peer {
+                let mut writer = peer.write().await;
+
+                tracing::debug!(
+                    to = ?hex::encode(&public_key),
+                    from = ?hex::encode(&from_public_key),
+                    "relay",
+                );
+
+                let relayed = ResponseMessage::Transparent(
+                    TransparentMessage::PeerHandshake {
+                        public_key: from_public_key,
+                        message,
+                    },
+                );
+
+                let buffer = encode(&relayed).await?;
+                writer.send(buffer).await?;
+            } else {
+                return Err(Error::PeerNotFound(hex::encode(
+                    public_key,
+                )));
+            }
+        }
+
+        /*
         RequestMessage::RelayPeer {
-            handshake,
             public_key,
             message,
             session_id,
         } => {
+        */
+        RequestMessage::Opaque(OpaqueMessage::PeerMessage {
+            public_key,
+            session_id,
+            envelope,
+        }) => {
             // When we have a session identifier check the session
             // is valid and the target peer is a session participant.
             if let Some(id) = session_id {
@@ -161,11 +209,21 @@ async fn handle_request(
                     "relay",
                 );
 
+                /*
                 let relayed = ResponseMessage::RelayPeer {
-                    handshake,
                     public_key: from_public_key,
                     message,
                 };
+                */
+
+                let relayed = ResponseMessage::Opaque(
+                    OpaqueMessage::PeerMessage {
+                        public_key: from_public_key,
+                        session_id,
+                        envelope,
+                    },
+                );
+
                 let buffer = encode(&relayed).await?;
                 writer.send(buffer).await?;
             } else {
@@ -174,7 +232,9 @@ async fn handle_request(
                 )));
             }
         }
-        RequestMessage::Envelope(message) => {
+        RequestMessage::Opaque(OpaqueMessage::ServerMessage(
+            envelope,
+        )) => {
             let from_public_key = {
                 let reader = conn.read().await;
                 reader.public_key.clone()
@@ -189,12 +249,12 @@ async fn handle_request(
                 let (encoding, contents) = {
                     let mut writer = peer.write().await;
                     let peer_state = writer.state.as_mut().unwrap();
-                    decrypt_server_channel(peer_state, message)
+                    decrypt_server_channel(peer_state, envelope)
                         .await?
                 };
 
                 if let Encoding::Blob = encoding {
-                    let request: RequestMessage =
+                    let request: ServerMessage =
                         decode(&contents).await?;
 
                     if let Some(response) = service(
@@ -223,10 +283,10 @@ async fn service(
     state: State,
     conn: Connection,
     public_key: impl AsRef<[u8]>,
-    message: RequestMessage,
-) -> Result<Option<ResponseMessage>> {
+    message: ServerMessage,
+) -> Result<Option<ServerMessage>> {
     match message {
-        RequestMessage::NewSession(request) => {
+        ServerMessage::NewSession(request) => {
             let mut all_participants =
                 request.participant_keys.clone();
             all_participants.push(public_key.as_ref().to_vec());
@@ -245,9 +305,9 @@ async fn service(
                 all_participants,
             };
 
-            Ok(Some(ResponseMessage::SessionCreated(response)))
+            Ok(Some(ServerMessage::SessionCreated(response)))
         }
-        RequestMessage::SessionReadyNotify(session_id) => {
+        ServerMessage::SessionReadyNotify(session_id) => {
             let notification = {
                 let reader = state.read().await;
                 if let Some(session) =
@@ -269,7 +329,7 @@ async fn service(
                                 .collect(),
                         };
                         let message =
-                            ResponseMessage::SessionReady(session);
+                            ServerMessage::SessionReady(session);
                         let public_keys: Vec<Vec<u8>> =
                             all_participants
                                 .into_iter()
@@ -289,7 +349,7 @@ async fn service(
             }
             Ok(None)
         }
-        RequestMessage::SessionConnection {
+        ServerMessage::SessionConnection {
             session_id,
             peer_key,
         } => {
@@ -309,7 +369,7 @@ async fn service(
                 Err(Error::SessionNotFound(session_id))
             }
         }
-        RequestMessage::SessionActiveNotify(session_id) => {
+        ServerMessage::SessionActiveNotify(session_id) => {
             let notification = {
                 let reader = state.read().await;
                 if let Some(session) =
@@ -325,7 +385,7 @@ async fn service(
                                 .collect(),
                         };
                         let message =
-                            ResponseMessage::SessionActive(session);
+                            ServerMessage::SessionActive(session);
 
                         let public_keys: Vec<Vec<u8>> =
                             all_participants
@@ -354,7 +414,7 @@ async fn service(
 async fn notify_peers(
     state: State,
     public_keys: Vec<Vec<u8>>,
-    message: ResponseMessage,
+    message: ServerMessage,
 ) -> Result<()> {
     let reader = state.read().await;
     for key in &public_keys {
@@ -368,20 +428,22 @@ async fn notify_peers(
 /// Send a response message to a client over the server channel.
 async fn send_message(
     conn: Connection,
-    message: &ResponseMessage,
+    message: &ServerMessage,
     broadcast: bool,
 ) -> Result<()> {
     let mut writer = conn.write().await;
 
     let payload = encode(message).await?;
-    let inner = encrypt_server_channel(
+    let envelope = encrypt_server_channel(
         writer.state.as_mut().unwrap(),
         payload,
         broadcast,
     )
     .await?;
 
-    let response = ResponseMessage::Envelope(inner);
+    let response = ResponseMessage::Opaque(
+        OpaqueMessage::ServerMessage(envelope),
+    );
     let buffer = encode(&response).await?;
 
     writer.send(buffer).await?;
