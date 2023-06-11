@@ -536,20 +536,15 @@ impl EventLoop {
                 .await?,
             )),
             ResponseMessage::RelayPeer {
-                handshake,
                 public_key,
                 message,
             } => {
-                if !handshake {
-                    Ok(Some(
-                        self.handle_relayed_message(
-                            public_key, message,
-                        )
-                        .await?,
-                    ))
-                } else {
-                    Ok(None)
-                }
+                Ok(Some(
+                    self.handle_relayed_message(
+                        public_key, message,
+                    )
+                    .await?,
+                ))
             }
             ResponseMessage::Envelope(message) => {
                 let mut server = self.server.write().await;
@@ -769,7 +764,6 @@ async fn encrypt_peer_channel(
             };
             let message = encode(&envelope).await?;
             let request = RequestMessage::RelayPeer {
-                handshake: false,
                 public_key: public_key.as_ref().to_vec(),
                 message,
                 session_id,

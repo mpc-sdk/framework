@@ -156,7 +156,6 @@ async fn handle_request(
             }
         }
         RequestMessage::RelayPeer {
-            handshake,
             public_key,
             message,
             session_id,
@@ -204,7 +203,6 @@ async fn handle_request(
                 );
 
                 let relayed = ResponseMessage::RelayPeer {
-                    handshake,
                     public_key: from_public_key,
                     message,
                 };

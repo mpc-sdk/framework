@@ -372,9 +372,6 @@ pub enum RequestMessage {
 
     /// Relay a message to a peer.
     RelayPeer {
-        /// Determines if this message is part of the
-        /// peer to peer handshake.
-        handshake: bool,
         /// Public key of the receiver.
         public_key: Vec<u8>,
         /// Message payload.
@@ -436,12 +433,10 @@ impl Encodable for RequestMessage {
                 message.encode(writer).await?;
             }
             Self::RelayPeer {
-                handshake,
                 public_key,
                 message,
                 session_id,
             } => {
-                writer.write_bool(handshake).await?;
                 writer.write_u32(public_key.len() as u32).await?;
                 writer.write_bytes(public_key).await?;
                 writer.write_u32(message.len() as u32).await?;
@@ -494,7 +489,6 @@ impl Decodable for RequestMessage {
                 *self = RequestMessage::Transparent(message);
             }
             types::RELAY_PEER => {
-                let handshake = reader.read_bool().await?;
                 let size = reader.read_u32().await?;
                 let public_key =
                     reader.read_bytes(size as usize).await?;
@@ -518,7 +512,6 @@ impl Decodable for RequestMessage {
                 };
 
                 *self = RequestMessage::RelayPeer {
-                    handshake,
                     public_key,
                     message,
                     session_id,
@@ -602,9 +595,6 @@ pub enum ResponseMessage {
 
     /// Message being relayed from another peer.
     RelayPeer {
-        /// Determines if this message is part of the
-        /// peer to peer handshake.
-        handshake: bool,
         /// Public key of the sender.
         public_key: Vec<u8>,
         /// Message payload.
@@ -662,11 +652,9 @@ impl Encodable for ResponseMessage {
                 message.encode(&mut *writer).await?;
             }
             Self::RelayPeer {
-                handshake,
                 public_key,
                 message,
             } => {
-                writer.write_bool(handshake).await?;
                 writer.write_u32(public_key.len() as u32).await?;
                 writer.write_bytes(public_key).await?;
                 writer.write_u32(message.len() as u32).await?;
@@ -716,7 +704,6 @@ impl Decodable for ResponseMessage {
                 *self = ResponseMessage::Transparent(message);
             }
             types::RELAY_PEER => {
-                let handshake = reader.read_bool().await?;
                 let size = reader.read_u32().await?;
                 let public_key =
                     reader.read_bytes(size as usize).await?;
@@ -724,7 +711,6 @@ impl Decodable for ResponseMessage {
                 let message =
                     reader.read_bytes(size as usize).await?;
                 *self = ResponseMessage::RelayPeer {
-                    handshake,
                     public_key,
                     message,
                 };
