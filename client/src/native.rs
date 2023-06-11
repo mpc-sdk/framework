@@ -179,32 +179,12 @@ impl NativeClient {
         };
         drop(peers);
 
-        /*
-        let inner_request: PeerMessage =
-            RequestMessage::HandshakeInitiator(
-                HandshakeType::Peer,
-                len,
-                payload,
-            )
-            .into();
-        let inner_message = encode(&inner_request).await?;
-        */
-
         let request = RequestMessage::Transparent(
             TransparentMessage::PeerHandshake {
                 public_key: public_key.as_ref().to_vec(),
                 message: HandshakeMessage::Initiator(len, payload),
             },
         );
-
-        /*
-        let request = RequestMessage::RelayPeer {
-            handshake: true,
-            public_key: public_key.as_ref().to_vec(),
-            message: inner_message,
-            session_id: None,
-        };
-        */
 
         self.outbound_tx.send(request).await?;
 

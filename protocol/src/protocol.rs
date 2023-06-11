@@ -80,63 +80,6 @@ pub async fn decode<T: Decodable + Default>(
     .await
 }
 
-/// Types of noise protocol handshakes.
-#[derive(Debug, Default)]
-pub enum HandshakeType {
-    /// Server handshake.
-    #[default]
-    Server,
-    /// Peer handshake.
-    Peer,
-}
-
-impl From<&HandshakeType> for u8 {
-    fn from(value: &HandshakeType) -> Self {
-        match value {
-            HandshakeType::Server => types::HANDSHAKE_TYPE_SERVER,
-            HandshakeType::Peer => types::HANDSHAKE_TYPE_PEER,
-        }
-    }
-}
-
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-impl Encodable for HandshakeType {
-    async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
-        &self,
-        writer: &mut BinaryWriter<W>,
-    ) -> Result<()> {
-        let id: u8 = self.into();
-        writer.write_u8(id).await?;
-        Ok(())
-    }
-}
-
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-impl Decodable for HandshakeType {
-    async fn decode<R: AsyncRead + AsyncSeek + Unpin + Send>(
-        &mut self,
-        reader: &mut BinaryReader<R>,
-    ) -> Result<()> {
-        let id = reader.read_u8().await?;
-        match id {
-            types::HANDSHAKE_TYPE_SERVER => {
-                *self = HandshakeType::Server;
-            }
-            types::HANDSHAKE_TYPE_PEER => {
-                *self = HandshakeType::Peer;
-            }
-            _ => {
-                return Err(encoding_error(
-                    crate::Error::EncodingKind(id),
-                ))
-            }
-        }
-        Ok(())
-    }
-}
-
 /// Enumeration of protocol states.
 pub enum ProtocolState {
     /// Noise handshake state.
