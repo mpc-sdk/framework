@@ -28,6 +28,9 @@ mod types {
     pub const TRANSPARENT: u8 = 128;
     pub const OPAQUE: u8 = 129;
 
+    pub const OPAQUE_SERVER: u8 = 1;
+    pub const OPAQUE_PEER: u8 = 2;
+
     pub const NOOP: u8 = 0;
     pub const ERROR: u8 = 1;
     pub const RELAY_PEER: u8 = 2;
@@ -443,7 +446,7 @@ impl Decodable for ServerMessage {
 
 /// Opaque messaages are encrypted.
 #[derive(Default, Debug)]
-pub enum Opaque {
+pub enum OpaqueMessage {
     #[default]
     #[doc(hidden)]
     Noop,
@@ -457,11 +460,112 @@ pub enum Opaque {
     PeerMessage {
         /// Public key of the receiver.
         public_key: Vec<u8>,
-        /// Message payload.
-        message: Vec<u8>,
         /// Session identifier.
         session_id: Option<SessionId>,
+        /// Message envelope.
+        envelope: SealedEnvelope,
     },
+}
+
+impl From<&OpaqueMessage> for u8 {
+    fn from(value: &OpaqueMessage) -> Self {
+        match value {
+            OpaqueMessage::Noop => types::NOOP,
+            OpaqueMessage::ServerMessage(_, _) => {
+                types::OPAQUE_SERVER
+            }
+            OpaqueMessage::PeerMessage { .. } => {
+                types::OPAQUE_PEER
+            }
+        }
+    }
+}
+
+#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl Encodable for OpaqueMessage {
+    async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
+        &self,
+        writer: &mut BinaryWriter<W>,
+    ) -> Result<()> {
+        let id: u8 = self.into();
+        writer.write_u8(id).await?;
+        match self {
+            Self::ServerMessage(len, buf) => {
+                writer.write_u32(*len as u32).await?;
+                writer.write_u32(buf.len() as u32).await?;
+                writer.write_bytes(buf).await?;
+            }
+            Self::PeerMessage {
+                public_key,
+                session_id,
+                envelope,
+            } => {
+                writer.write_u32(public_key.len() as u32).await?;
+                writer.write_bytes(public_key).await?;
+                writer.write_bool(session_id.is_some()).await?;
+                if let Some(id) = session_id {
+                    writer.write_bytes(id.as_bytes()).await?;
+                }
+                envelope.encode(writer).await?;
+            }
+            Self::Noop => unreachable!(),
+        }
+        Ok(())
+    }
+}
+
+#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl Decodable for OpaqueMessage {
+    async fn decode<R: AsyncRead + AsyncSeek + Unpin + Send>(
+        &mut self,
+        reader: &mut BinaryReader<R>,
+    ) -> Result<()> {
+        let id = reader.read_u8().await?;
+        match id {
+            types::OPAQUE_SERVER => {
+                let len = reader.read_u32().await? as usize;
+                let size = reader.read_u32().await?;
+                let buf =
+                    reader.read_bytes(size as usize).await?;
+                *self = OpaqueMessage::ServerMessage(len, buf);
+            }
+            types::OPAQUE_PEER => {
+
+                let size = reader.read_u32().await?;
+                let public_key =
+                    reader.read_bytes(size as usize).await?;
+
+                let has_session_id = reader.read_bool().await?;
+                let session_id = if has_session_id {
+                    let session_id = SessionId::from_bytes(
+                        reader
+                            .read_bytes(16)
+                            .await?
+                            .as_slice()
+                            .try_into()
+                            .map_err(encoding_error)?,
+                    );
+                    Some(session_id)
+                } else {
+                    None
+                };
+
+                let mut envelope: SealedEnvelope = Default::default();
+                envelope.decode(reader).await?;
+
+                *self = OpaqueMessage::PeerMessage {
+                    public_key, session_id, envelope };
+            }
+            _ => {
+                return Err(encoding_error(
+                    crate::Error::EncodingKind(id),
+                ))
+            }
+        }
+        Ok(())
+    }
 }
 
 /// Request message sent to the server or another peer.
