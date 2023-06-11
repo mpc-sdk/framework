@@ -7,18 +7,22 @@ pub enum Error {
     #[error("buffer exceeds maximum size {0}")]
     MaxBufferSize(usize),
 
-    /// Error generated when the PEM encoding does not match
-    /// the expected format.
-    #[error("encoding in PEM is invalid")]
-    BadKeypairPem,
+    /// Error generated when encoding identity bytes are invalid.
+    #[error("encoding identity bytes are invalid")]
+    BadEncodingIdentity,
+
+    /// Error generated when encoding versions are mismatched.
+    #[error("encoding version is not supported, expecting version {0} but got version {1}")]
+    EncodingVersion(u16, u16),
 
     /// Error generated decoding the kind for an encoding is invalid.
     #[error("invalid encoding kind identifier {0}")]
     EncodingKind(u8),
 
-    /// Error generated when the envelope encoding flags are invalid.
-    #[error("invalid encoding flags")]
-    InvalidEncodingFlags,
+    /// Error generated when the PEM encoding does not match
+    /// the expected format.
+    #[error("encoding in PEM is invalid")]
+    BadKeypairPem,
 
     /// Error generated when a node expects to be in the transport
     /// protocol state.
