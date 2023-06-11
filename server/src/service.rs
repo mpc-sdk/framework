@@ -42,22 +42,15 @@ async fn listen(
 ) -> Result<()> {
     while let Some(buffer) = read_channel.recv().await {
         let message: RequestMessage = decode(&buffer).await?;
-        match handle_request(
+        if let Err(e) = handle_request(
             Arc::clone(&state),
             Arc::clone(&conn),
             message,
         )
         .await
         {
-            Ok(_) => {}
-            Err(e) => {
-                // FIXME: return errors for both transport states!
-                let response = ServerMessage::Error(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    e.to_string(),
-                );
-                send_message(Arc::clone(&conn), &response, false)
-                    .await?;
+            if let Err(e) = handle_error(Arc::clone(&conn), e).await {
+                tracing::error!("{}", e);
             }
         }
     }
@@ -429,6 +422,35 @@ async fn notify_peers(
     Ok(())
 }
 
+/// Handle a server error.
+async fn handle_error(conn: Connection, error: Error) -> Result<()> {
+    let is_transport = {
+        let reader = conn.read().await;
+        matches!(reader.state, Some(ProtocolState::Transport(_)))
+    };
+
+    // Connection is in transport mode so we can
+    // send over the encrypted server channel
+    if is_transport {
+        let response = ServerMessage::Error(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            error.to_string(),
+        );
+        send_message(Arc::clone(&conn), &response, false).await?;
+    } else {
+        let response =
+            ResponseMessage::Transparent(TransparentMessage::Error(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                error.to_string(),
+            ));
+
+        let mut writer = conn.write().await;
+        let buffer = encode(&response).await?;
+        writer.send(buffer).await?;
+    }
+    Ok(())
+}
+
 /// Send a response message to a client over the server channel.
 async fn send_message(
     conn: Connection,
@@ -449,7 +471,6 @@ async fn send_message(
         OpaqueMessage::ServerMessage(envelope),
     );
     let buffer = encode(&response).await?;
-
     writer.send(buffer).await?;
     Ok(())
 }
