@@ -19,11 +19,8 @@ pub(crate) fn encoding_error(
 }
 
 mod types {
-    pub const HANDSHAKE_TYPE_SERVER: u8 = 1;
-    pub const HANDSHAKE_TYPE_PEER: u8 = 2;
-
-    pub const HANDSHAKE_MSG_INITIATOR: u8 = 1;
-    pub const HANDSHAKE_MSG_RESPONDER: u8 = 2;
+    pub const HANDSHAKE_INITIATOR: u8 = 1;
+    pub const HANDSHAKE_RESPONDER: u8 = 2;
 
     pub const HANDSHAKE_SERVER: u8 = 1;
     pub const HANDSHAKE_PEER: u8 = 2;
@@ -31,22 +28,18 @@ mod types {
     pub const TRANSPARENT: u8 = 128;
     pub const OPAQUE: u8 = 129;
 
-    pub const PEER_REQUEST: u8 = 1;
-    pub const PEER_RESPONSE: u8 = 2;
-
     pub const NOOP: u8 = 0;
     pub const ERROR: u8 = 1;
-    pub const HANDSHAKE_INITIATOR: u8 = 2;
-    pub const HANDSHAKE_RESPONDER: u8 = 3;
-    pub const RELAY_PEER: u8 = 4;
-    pub const ENVELOPE: u8 = 5;
-    pub const SESSION_NEW: u8 = 6;
-    pub const SESSION_CREATED: u8 = 7;
-    pub const SESSION_READY_NOTIFY: u8 = 8;
-    pub const SESSION_READY: u8 = 9;
-    pub const SESSION_CONNECTION: u8 = 10;
-    pub const SESSION_ACTIVE_NOTIFY: u8 = 11;
-    pub const SESSION_ACTIVE: u8 = 12;
+    pub const RELAY_PEER: u8 = 2;
+    pub const ENVELOPE: u8 = 3;
+
+    pub const SESSION_NEW: u8 = 4;
+    pub const SESSION_CREATED: u8 = 5;
+    pub const SESSION_READY_NOTIFY: u8 = 6;
+    pub const SESSION_READY: u8 = 7;
+    pub const SESSION_CONNECTION: u8 = 8;
+    pub const SESSION_ACTIVE_NOTIFY: u8 = 9;
+    pub const SESSION_ACTIVE: u8 = 10;
 
     pub const ENCODING_BLOB: u8 = 1;
     pub const ENCODING_JSON: u8 = 2;
@@ -105,10 +98,10 @@ impl From<&HandshakeMessage> for u8 {
         match value {
             HandshakeMessage::Noop => types::NOOP,
             HandshakeMessage::Initiator(_, _) => {
-                types::HANDSHAKE_MSG_INITIATOR
+                types::HANDSHAKE_INITIATOR
             }
             HandshakeMessage::Responder(_, _) => {
-                types::HANDSHAKE_MSG_RESPONDER
+                types::HANDSHAKE_RESPONDER
             }
         }
     }
@@ -149,13 +142,13 @@ impl Decodable for HandshakeMessage {
     ) -> Result<()> {
         let id = reader.read_u8().await?;
         match id {
-            types::HANDSHAKE_MSG_INITIATOR => {
+            types::HANDSHAKE_INITIATOR => {
                 let len = reader.read_usize().await?;
                 let size = reader.read_u32().await?;
                 let buf = reader.read_bytes(size as usize).await?;
                 *self = HandshakeMessage::Initiator(len, buf);
             }
-            types::HANDSHAKE_MSG_RESPONDER => {
+            types::HANDSHAKE_RESPONDER => {
                 let len = reader.read_usize().await?;
                 let size = reader.read_u32().await?;
                 let buf = reader.read_bytes(size as usize).await?;
