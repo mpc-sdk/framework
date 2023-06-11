@@ -546,7 +546,7 @@ impl Encodable for SessionRequest {
         writer: &mut BinaryWriter<W>,
     ) -> Result<()> {
         // TODO: handle too many participants
-        writer.write_u32(self.participant_keys.len() as u32).await?;
+        writer.write_u16(self.participant_keys.len() as u16).await?;
         for key in self.participant_keys.iter() {
             encode_buffer(writer, key).await?;
         }
@@ -561,7 +561,7 @@ impl Decodable for SessionRequest {
         &mut self,
         reader: &mut BinaryReader<R>,
     ) -> Result<()> {
-        let size = reader.read_u32().await? as usize;
+        let size = reader.read_u16().await? as usize;
         for _ in 0..size {
             let key = decode_buffer(reader).await?;
             self.participant_keys.push(key);
@@ -578,7 +578,7 @@ impl Encodable for SessionState {
         writer: &mut BinaryWriter<W>,
     ) -> Result<()> {
         writer.write_bytes(self.session_id.as_bytes()).await?;
-        writer.write_u32(self.all_participants.len() as u32).await?;
+        writer.write_u16(self.all_participants.len() as u16).await?;
         for key in &self.all_participants {
             encode_buffer(writer, key).await?;
         }
@@ -601,7 +601,7 @@ impl Decodable for SessionState {
                 .try_into()
                 .map_err(encoding_error)?,
         );
-        let size = reader.read_u32().await?;
+        let size = reader.read_u16().await? as usize;
         for _ in 0..size {
             let key = decode_buffer(reader).await?;
             self.all_participants.push(key);
