@@ -132,8 +132,6 @@ impl NativeClient {
             )
         };
 
-        //println!("send {:#?}", request);
-
         self.outbound_tx.send(request).await?;
 
         Ok(())
@@ -181,6 +179,7 @@ impl NativeClient {
         };
         drop(peers);
 
+        /*
         let inner_request: PeerMessage =
             RequestMessage::HandshakeInitiator(
                 HandshakeType::Peer,
@@ -189,13 +188,23 @@ impl NativeClient {
             )
             .into();
         let inner_message = encode(&inner_request).await?;
+        */
 
+        let request = RequestMessage::Transparent(
+            TransparentMessage::PeerHandshake {
+                public_key: public_key.as_ref().to_vec(),
+                message: HandshakeMessage::Initiator(len, payload),
+            },
+        );
+
+        /*
         let request = RequestMessage::RelayPeer {
             handshake: true,
             public_key: public_key.as_ref().to_vec(),
             message: inner_message,
             session_id: None,
         };
+        */
 
         self.outbound_tx.send(request).await?;
 
@@ -517,6 +526,35 @@ impl EventLoop {
                     HandshakeMessage::Responder(len, buf),
                 ),
             ) => Ok(Some(self.server_handshake(len, buf).await?)),
+            ResponseMessage::Transparent(
+                TransparentMessage::PeerHandshake {
+                    message:
+                        HandshakeMessage::Initiator(
+                            len,
+                            buf,
+                        ),
+                    public_key,
+                },
+            ) => Ok(self
+                .peer_handshake_responder(
+                    public_key, len, buf,
+                )
+                .await?),
+            ResponseMessage::Transparent(
+                TransparentMessage::PeerHandshake {
+                    message:
+                        HandshakeMessage::Responder(
+                            len,
+                            buf,
+                        ),
+                    public_key,
+                },
+            ) => Ok(Some(
+                self.peer_handshake_ack(
+                    public_key, len, buf,
+                )
+                .await?,
+            )),
             ResponseMessage::RelayPeer {
                 handshake,
                 public_key,
@@ -528,10 +566,15 @@ impl EventLoop {
                         decode::<PeerMessage>(message).await?;
                     match relayed {
                         PeerMessage::Request(
-                            RequestMessage::HandshakeInitiator(
-                                HandshakeType::Peer,
-                                len,
-                                buf,
+                            RequestMessage::Transparent(
+                                TransparentMessage::PeerHandshake {
+                                    message:
+                                        HandshakeMessage::Initiator(
+                                            len,
+                                            buf,
+                                        ),
+                                    public_key,
+                                },
                             ),
                         ) => Ok(self
                             .peer_handshake_responder(
@@ -539,10 +582,15 @@ impl EventLoop {
                             )
                             .await?),
                         PeerMessage::Response(
-                            ResponseMessage::HandshakeResponder(
-                                HandshakeType::Peer,
-                                len,
-                                buf,
+                            ResponseMessage::Transparent(
+                                TransparentMessage::PeerHandshake {
+                                    message:
+                                        HandshakeMessage::Responder(
+                                            len,
+                                            buf,
+                                        ),
+                                    public_key,
+                                },
                             ),
                         ) => Ok(Some(
                             self.peer_handshake_ack(
@@ -586,7 +634,6 @@ impl EventLoop {
             }
             _ => {
                 panic!("unhandled message");
-                //Ok(None)
             }
         }
     }
@@ -643,6 +690,7 @@ impl EventLoop {
         len: usize,
         buf: Vec<u8>,
     ) -> Result<Option<Event>> {
+        
         let mut peers = self.peers.write().await;
 
         if peers.get(public_key.as_ref()).is_some() {
@@ -670,22 +718,13 @@ impl EventLoop {
                 public_key.as_ref().to_vec(),
                 ProtocolState::Transport(transport),
             );
-
-            let inner_request: PeerMessage =
-                ResponseMessage::HandshakeResponder(
-                    HandshakeType::Peer,
-                    len,
-                    payload,
-                )
-                .into();
-            let inner_message = encode(&inner_request).await?;
-
-            let request = RequestMessage::RelayPeer {
-                handshake: true,
-                public_key: public_key.as_ref().to_vec(),
-                message: inner_message,
-                session_id: None,
-            };
+            
+            let request = RequestMessage::Transparent(
+                TransparentMessage::PeerHandshake {
+                    public_key: public_key.as_ref().to_vec(),
+                    message: HandshakeMessage::Responder(len, payload),
+                }
+            );
 
             self.outbound_tx.send(request).await?;
 

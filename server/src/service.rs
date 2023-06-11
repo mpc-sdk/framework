@@ -41,10 +41,7 @@ async fn listen(
     mut read_channel: mpsc::Receiver<Vec<u8>>,
 ) -> Result<()> {
     while let Some(buffer) = read_channel.recv().await {
-        println!("service got a buffer to handle");
         let message: RequestMessage = decode(&buffer).await?;
-
-        println!("server decoded a message");
 
         match handle_request(
             Arc::clone(&state),
@@ -79,8 +76,6 @@ async fn handle_request(
                 HandshakeMessage::Initiator(len, buf),
             ),
         ) => {
-            println!("server got handshake init");
-
             let mut writer = conn.write().await;
             let (len, payload) = match &mut writer.state {
                 Some(ProtocolState::Handshake(responder)) => {
@@ -119,6 +114,46 @@ async fn handle_request(
             // Now move from pending to transport active
             promote_connection(Arc::clone(&state), Arc::clone(&conn))
                 .await;
+        }
+        RequestMessage::Transparent(
+            TransparentMessage::PeerHandshake {
+                public_key,
+                message,
+            }
+        ) => {
+            let from_public_key = {
+                let reader = conn.read().await;
+                reader.public_key.clone()
+            };
+
+            let peer = {
+                let reader = state.read().await;
+                reader.active.get(&public_key).map(Arc::clone)
+            };
+
+            if let Some(peer) = peer {
+                let mut writer = peer.write().await;
+
+                tracing::debug!(
+                    to = ?hex::encode(&public_key),
+                    from = ?hex::encode(&from_public_key),
+                    "relay",
+                );
+
+                let relayed = ResponseMessage::Transparent(
+                    TransparentMessage::PeerHandshake {
+                        public_key: from_public_key,
+                        message,
+                    }
+                );
+
+                let buffer = encode(&relayed).await?;
+                writer.send(buffer).await?;
+            } else {
+                return Err(Error::PeerNotFound(hex::encode(
+                    public_key,
+                )));
+            }
         }
         RequestMessage::RelayPeer {
             handshake,

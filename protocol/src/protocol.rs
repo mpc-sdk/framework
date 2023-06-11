@@ -379,10 +379,8 @@ impl Decodable for TransparentMessage {
         reader: &mut BinaryReader<R>,
     ) -> Result<()> {
         let id = reader.read_u8().await?;
-        println!("decoding transparent with id {}", id);
         match id {
             types::HANDSHAKE_SERVER => {
-                println!("decoding server handshake message...");
                 let mut message: HandshakeMessage =
                     Default::default();
                 message.decode(reader).await?;
@@ -557,15 +555,11 @@ impl Decodable for RequestMessage {
         reader: &mut BinaryReader<R>,
     ) -> Result<()> {
         let id = reader.read_u8().await?;
-        println!("request decoding with id {}", id);
         match id {
             types::TRANSPARENT => {
-                println!("decoding transparent message...");
                 let mut message: TransparentMessage =
                     Default::default();
                 message.decode(reader).await?;
-
-                println!("DECODED");
                 *self = RequestMessage::Transparent(message);
             }
             types::HANDSHAKE_INITIATOR => {
