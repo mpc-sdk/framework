@@ -32,20 +32,21 @@ mod types {
     pub const OPAQUE_PEER: u8 = 2;
 
     pub const NOOP: u8 = 0;
-    pub const ERROR: u8 = 1;
     pub const RELAY_PEER: u8 = 2;
     pub const ENVELOPE: u8 = 3;
 
-    pub const SESSION_NEW: u8 = 4;
-    pub const SESSION_CREATED: u8 = 5;
-    pub const SESSION_READY_NOTIFY: u8 = 6;
-    pub const SESSION_READY: u8 = 7;
-    pub const SESSION_CONNECTION: u8 = 8;
-    pub const SESSION_ACTIVE_NOTIFY: u8 = 9;
-    pub const SESSION_ACTIVE: u8 = 10;
+    pub const SESSION_NEW: u8 = 1;
+    pub const SESSION_CREATED: u8 = 2;
+    pub const SESSION_READY_NOTIFY: u8 = 3;
+    pub const SESSION_READY: u8 = 4;
+    pub const SESSION_CONNECTION: u8 = 5;
+    pub const SESSION_ACTIVE_NOTIFY: u8 = 6;
+    pub const SESSION_ACTIVE: u8 = 7;
 
     pub const ENCODING_BLOB: u8 = 1;
     pub const ENCODING_JSON: u8 = 2;
+
+    pub const ERROR: u8 = 255;
 }
 
 /// Default binary encoding options.
@@ -268,6 +269,8 @@ pub enum ServerMessage {
     #[default]
     #[doc(hidden)]
     Noop,
+    /// Return an error message to the client.
+    Error(StatusCode, String),
     /// Request a new session.
     NewSession(SessionRequest),
     /// Request to notify all participants when the
@@ -299,6 +302,7 @@ impl From<&ServerMessage> for u8 {
     fn from(value: &ServerMessage) -> Self {
         match value {
             ServerMessage::Noop => types::NOOP,
+            ServerMessage::Error(_, _) => types::ERROR,
             ServerMessage::NewSession(_) => types::SESSION_NEW,
             ServerMessage::SessionReadyNotify(_) => {
                 types::SESSION_READY_NOTIFY
@@ -328,6 +332,11 @@ impl Encodable for ServerMessage {
         let id: u8 = self.into();
         writer.write_u8(id).await?;
         match self {
+            Self::Error(code, message) => {
+                let code: u16 = (*code).into();
+                writer.write_u16(code).await?;
+                writer.write_string(message).await?;
+            }
             Self::NewSession(request) => {
                 request.encode(writer).await?;
             }
@@ -369,6 +378,15 @@ impl Decodable for ServerMessage {
     ) -> Result<()> {
         let id = reader.read_u8().await?;
         match id {
+            types::ERROR => {
+                let code = reader
+                    .read_u16()
+                    .await?
+                    .try_into()
+                    .map_err(encoding_error)?;
+                let message = reader.read_string().await?;
+                *self = ServerMessage::Error(code, message);
+            }
             types::SESSION_NEW => {
                 let mut session: SessionRequest = Default::default();
                 session.decode(reader).await?;
@@ -583,21 +601,6 @@ pub enum RequestMessage {
     },
     /// Envelope for an encrypted message over the server channel.
     Envelope(Vec<u8>),
-    /// Request a new session.
-    NewSession(SessionRequest),
-    /// Request to notify all participants when the
-    /// session is ready.
-    SessionReadyNotify(SessionId),
-    /// Register a peer connection in a session.
-    SessionConnection {
-        /// Session identifier.
-        session_id: SessionId,
-        /// Public key of the peer.
-        peer_key: Vec<u8>,
-    },
-    /// Request to notify all participants when the
-    /// session is active.
-    SessionActiveNotify(SessionId),
 }
 
 impl From<&RequestMessage> for u8 {
@@ -609,16 +612,6 @@ impl From<&RequestMessage> for u8 {
 
             RequestMessage::RelayPeer { .. } => types::RELAY_PEER,
             RequestMessage::Envelope(_) => types::ENVELOPE,
-            RequestMessage::NewSession(_) => types::SESSION_NEW,
-            RequestMessage::SessionReadyNotify(_) => {
-                types::SESSION_READY_NOTIFY
-            }
-            RequestMessage::SessionConnection { .. } => {
-                types::SESSION_CONNECTION
-            }
-            RequestMessage::SessionActiveNotify(_) => {
-                types::SESSION_ACTIVE_NOTIFY
-            }
         }
     }
 }
@@ -656,23 +649,6 @@ impl Encodable for RequestMessage {
             Self::Envelope(message) => {
                 writer.write_u32(message.len() as u32).await?;
                 writer.write_bytes(message).await?;
-            }
-            Self::NewSession(request) => {
-                request.encode(writer).await?;
-            }
-            Self::SessionReadyNotify(session_id) => {
-                writer.write_bytes(session_id.as_bytes()).await?;
-            }
-            Self::SessionConnection {
-                session_id,
-                peer_key,
-            } => {
-                writer.write_bytes(session_id.as_bytes()).await?;
-                writer.write_u32(peer_key.len() as u32).await?;
-                writer.write_bytes(peer_key).await?;
-            }
-            Self::SessionActiveNotify(session_id) => {
-                writer.write_bytes(session_id.as_bytes()).await?;
             }
             Self::Noop => unreachable!(),
         }
@@ -735,54 +711,6 @@ impl Decodable for RequestMessage {
                     reader.read_bytes(size as usize).await?;
                 *self = RequestMessage::Envelope(message);
             }
-            types::SESSION_NEW => {
-                let mut session: SessionRequest = Default::default();
-                session.decode(reader).await?;
-                *self = RequestMessage::NewSession(session);
-            }
-            types::SESSION_READY_NOTIFY => {
-                let session_id = SessionId::from_bytes(
-                    reader
-                        .read_bytes(16)
-                        .await?
-                        .as_slice()
-                        .try_into()
-                        .map_err(encoding_error)?,
-                );
-                *self =
-                    RequestMessage::SessionReadyNotify(session_id);
-            }
-            types::SESSION_CONNECTION => {
-                let session_id = SessionId::from_bytes(
-                    reader
-                        .read_bytes(16)
-                        .await?
-                        .as_slice()
-                        .try_into()
-                        .map_err(encoding_error)?,
-                );
-
-                let size = reader.read_u32().await?;
-                let peer_key =
-                    reader.read_bytes(size as usize).await?;
-
-                *self = RequestMessage::SessionConnection {
-                    session_id,
-                    peer_key,
-                };
-            }
-            types::SESSION_ACTIVE_NOTIFY => {
-                let session_id = SessionId::from_bytes(
-                    reader
-                        .read_bytes(16)
-                        .await?
-                        .as_slice()
-                        .try_into()
-                        .map_err(encoding_error)?,
-                );
-                *self =
-                    RequestMessage::SessionActiveNotify(session_id);
-            }
             _ => {
                 return Err(encoding_error(
                     crate::Error::EncodingKind(id),
@@ -799,8 +727,6 @@ pub enum ResponseMessage {
     #[default]
     #[doc(hidden)]
     Noop,
-    /// Return an error message to the client.
-    Error(StatusCode, String),
 
     /// Transparent message used for the handshake(s).
     Transparent(TransparentMessage),
@@ -817,35 +743,17 @@ pub enum ResponseMessage {
     },
     /// Envelope for an encrypted message over the server channel.
     Envelope(Vec<u8>),
-    /// Response to a new session request.
-    SessionCreated(SessionState),
-    /// Notification dispatched to all participants
-    /// in a session when they have all completed
-    /// the server handshake.
-    SessionReady(SessionState),
-    /// Notification dispatched to all participants
-    /// in a session when they have all established
-    /// peer connections to each other.
-    SessionActive(SessionState),
 }
 
 impl From<&ResponseMessage> for u8 {
     fn from(value: &ResponseMessage) -> Self {
         match value {
             ResponseMessage::Noop => types::NOOP,
-            ResponseMessage::Error(_, _) => types::ERROR,
             ResponseMessage::Transparent(_) => types::TRANSPARENT,
             ResponseMessage::Opaque(_) => types::OPAQUE,
 
             ResponseMessage::RelayPeer { .. } => types::RELAY_PEER,
             ResponseMessage::Envelope(_) => types::ENVELOPE,
-            ResponseMessage::SessionCreated(_) => {
-                types::SESSION_CREATED
-            }
-            ResponseMessage::SessionReady(_) => types::SESSION_READY,
-            ResponseMessage::SessionActive(_) => {
-                types::SESSION_ACTIVE
-            }
         }
     }
 }
@@ -860,11 +768,6 @@ impl Encodable for ResponseMessage {
         let id: u8 = self.into();
         writer.write_u8(id).await?;
         match self {
-            Self::Error(code, message) => {
-                let code: u16 = (*code).into();
-                writer.write_u16(code).await?;
-                writer.write_string(message).await?;
-            }
             Self::Transparent(message) => {
                 message.encode(&mut *writer).await?;
             }
@@ -884,15 +787,6 @@ impl Encodable for ResponseMessage {
                 writer.write_u32(message.len() as u32).await?;
                 writer.write_bytes(message).await?;
             }
-            Self::SessionCreated(response) => {
-                response.encode(writer).await?;
-            }
-            Self::SessionReady(response) => {
-                response.encode(writer).await?;
-            }
-            Self::SessionActive(response) => {
-                response.encode(writer).await?;
-            }
             Self::Noop => unreachable!(),
         }
         Ok(())
@@ -908,15 +802,6 @@ impl Decodable for ResponseMessage {
     ) -> Result<()> {
         let id = reader.read_u8().await?;
         match id {
-            types::ERROR => {
-                let code = reader
-                    .read_u16()
-                    .await?
-                    .try_into()
-                    .map_err(encoding_error)?;
-                let message = reader.read_string().await?;
-                *self = ResponseMessage::Error(code, message);
-            }
             types::TRANSPARENT => {
                 let mut message: TransparentMessage =
                     Default::default();
@@ -945,21 +830,6 @@ impl Decodable for ResponseMessage {
                 let message =
                     reader.read_bytes(size as usize).await?;
                 *self = ResponseMessage::Envelope(message);
-            }
-            types::SESSION_CREATED => {
-                let mut session: SessionState = Default::default();
-                session.decode(reader).await?;
-                *self = ResponseMessage::SessionCreated(session);
-            }
-            types::SESSION_READY => {
-                let mut session: SessionState = Default::default();
-                session.decode(reader).await?;
-                *self = ResponseMessage::SessionReady(session);
-            }
-            types::SESSION_ACTIVE => {
-                let mut session: SessionState = Default::default();
-                session.decode(reader).await?;
-                *self = ResponseMessage::SessionActive(session);
             }
             _ => {
                 return Err(encoding_error(

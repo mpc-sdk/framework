@@ -500,9 +500,11 @@ impl EventLoop {
         incoming: ResponseMessage,
     ) -> Result<Option<Event>> {
         match incoming {
+            /*
             ResponseMessage::Error(code, message) => {
                 Err(Error::HttpError(code, message))
             }
+            */
             ResponseMessage::Transparent(
                 TransparentMessage::ServerHandshake(
                     HandshakeMessage::Responder(len, buf),
@@ -541,7 +543,7 @@ impl EventLoop {
                             .await?;
                     let message = match encoding {
                         Encoding::Blob => {
-                            let response: ResponseMessage =
+                            let response: ServerMessage =
                                 decode(&contents).await?;
                             response
                         }
@@ -566,19 +568,19 @@ impl EventLoop {
     /// decrypting the envelope.
     async fn handle_server_channel_message(
         &self,
-        message: ResponseMessage,
+        message: ServerMessage,
     ) -> Result<Option<Event>> {
         match message {
-            ResponseMessage::Error(code, message) => {
+            ServerMessage::Error(code, message) => {
                 Err(Error::ServerError(code, message))
             }
-            ResponseMessage::SessionCreated(response) => {
+            ServerMessage::SessionCreated(response) => {
                 Ok(Some(Event::SessionCreated(response)))
             }
-            ResponseMessage::SessionReady(response) => {
+            ServerMessage::SessionReady(response) => {
                 Ok(Some(Event::SessionReady(response)))
             }
-            ResponseMessage::SessionActive(response) => {
+            ServerMessage::SessionActive(response) => {
                 Ok(Some(Event::SessionActive(response)))
             }
             _ => Ok(None),

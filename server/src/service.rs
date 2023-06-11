@@ -52,13 +52,12 @@ async fn listen(
         {
             Ok(_) => {}
             Err(e) => {
-                let mut writer = conn.write().await;
-                let response = ResponseMessage::Error(
+                let response = ServerMessage::Error(
                     StatusCode::INTERNAL_SERVER_ERROR,
                     e.to_string(),
                 );
-                let buffer = encode(&response).await?;
-                writer.send(buffer).await?;
+                send_message(Arc::clone(&conn), &response, false)
+                    .await?;
             }
         }
     }
