@@ -9,6 +9,10 @@ pub enum Error {
     #[error(r#"not a file "{0}""#)]
     NotFile(PathBuf),
 
+    /// Error generated when permission is denied.
+    #[error("permission denied")]
+    PermissionDenied,
+
     /// Error generated when the config server key file was not specified.
     #[error("server config requires path to a key file")]
     KeyFileRequired,

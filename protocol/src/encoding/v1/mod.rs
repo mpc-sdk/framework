@@ -177,6 +177,12 @@ impl Encodable for ServerMessage {
             Self::SessionActive(response) => {
                 response.encode(writer).await?;
             }
+            Self::CloseSession(session_id) => {
+                writer.write_bytes(session_id.as_bytes()).await?;
+            }
+            Self::SessionFinished(session_id) => {
+                writer.write_bytes(session_id.as_bytes()).await?;
+            }
             Self::Noop => unreachable!(),
         }
         Ok(())
@@ -262,6 +268,28 @@ impl Decodable for ServerMessage {
                 let mut session: SessionState = Default::default();
                 session.decode(reader).await?;
                 *self = ServerMessage::SessionActive(session);
+            }
+            types::SESSION_CLOSE => {
+                let session_id = SessionId::from_bytes(
+                    reader
+                        .read_bytes(16)
+                        .await?
+                        .as_slice()
+                        .try_into()
+                        .map_err(encoding_error)?,
+                );
+                *self = ServerMessage::CloseSession(session_id);
+            }
+            types::SESSION_FINISHED => {
+                let session_id = SessionId::from_bytes(
+                    reader
+                        .read_bytes(16)
+                        .await?
+                        .as_slice()
+                        .try_into()
+                        .map_err(encoding_error)?,
+                );
+                *self = ServerMessage::SessionFinished(session_id);
             }
             _ => {
                 return Err(encoding_error(

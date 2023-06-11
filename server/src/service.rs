@@ -154,14 +154,6 @@ async fn handle_request(
                 )));
             }
         }
-
-        /*
-        RequestMessage::RelayPeer {
-            public_key,
-            message,
-            session_id,
-        } => {
-        */
         RequestMessage::Opaque(OpaqueMessage::PeerMessage {
             public_key,
             session_id,
@@ -208,13 +200,6 @@ async fn handle_request(
                     from = ?hex::encode(&from_public_key),
                     "relay",
                 );
-
-                /*
-                let relayed = ResponseMessage::RelayPeer {
-                    public_key: from_public_key,
-                    message,
-                };
-                */
 
                 let relayed = ResponseMessage::Opaque(
                     OpaqueMessage::PeerMessage {
@@ -405,6 +390,25 @@ async fn service(
                 notify_peers(state, public_keys, message).await?;
             }
             Ok(None)
+        }
+        ServerMessage::CloseSession(session_id) => {
+            {
+                let reader = state.read().await;
+                if let Some(session) =
+                    reader.sessions.get_session(&session_id)
+                {
+                    if public_key.as_ref() != session.owner_key() {
+                        return Err(Error::PermissionDenied);
+                    }
+                } else {
+                    return Err(Error::SessionNotFound(session_id));
+                }
+            }
+
+            let mut writer = state.write().await;
+            writer.sessions.remove_session(&session_id);
+
+            Ok(Some(ServerMessage::SessionFinished(session_id)))
         }
         _ => Ok(None),
     }
