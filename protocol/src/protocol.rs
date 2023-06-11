@@ -33,7 +33,6 @@ mod types {
 
     pub const NOOP: u8 = 0;
     pub const RELAY_PEER: u8 = 2;
-    pub const ENVELOPE: u8 = 3;
 
     pub const SESSION_NEW: u8 = 1;
     pub const SESSION_CREATED: u8 = 2;
@@ -599,8 +598,6 @@ pub enum RequestMessage {
         /// Session identifier.
         session_id: Option<SessionId>,
     },
-    /// Envelope for an encrypted message over the server channel.
-    Envelope(Vec<u8>),
 }
 
 impl From<&RequestMessage> for u8 {
@@ -609,9 +606,7 @@ impl From<&RequestMessage> for u8 {
             RequestMessage::Noop => types::NOOP,
             RequestMessage::Transparent(_) => types::TRANSPARENT,
             RequestMessage::Opaque(_) => types::OPAQUE,
-
             RequestMessage::RelayPeer { .. } => types::RELAY_PEER,
-            RequestMessage::Envelope(_) => types::ENVELOPE,
         }
     }
 }
@@ -645,10 +640,6 @@ impl Encodable for RequestMessage {
                 if let Some(id) = session_id {
                     writer.write_bytes(id.as_bytes()).await?;
                 }
-            }
-            Self::Envelope(message) => {
-                writer.write_u32(message.len() as u32).await?;
-                writer.write_bytes(message).await?;
             }
             Self::Noop => unreachable!(),
         }
@@ -705,12 +696,6 @@ impl Decodable for RequestMessage {
                     session_id,
                 };
             }
-            types::ENVELOPE => {
-                let size = reader.read_u32().await?;
-                let message =
-                    reader.read_bytes(size as usize).await?;
-                *self = RequestMessage::Envelope(message);
-            }
             _ => {
                 return Err(encoding_error(
                     crate::Error::EncodingKind(id),
@@ -741,8 +726,6 @@ pub enum ResponseMessage {
         /// Message payload.
         message: Vec<u8>,
     },
-    /// Envelope for an encrypted message over the server channel.
-    Envelope(Vec<u8>),
 }
 
 impl From<&ResponseMessage> for u8 {
@@ -753,7 +736,6 @@ impl From<&ResponseMessage> for u8 {
             ResponseMessage::Opaque(_) => types::OPAQUE,
 
             ResponseMessage::RelayPeer { .. } => types::RELAY_PEER,
-            ResponseMessage::Envelope(_) => types::ENVELOPE,
         }
     }
 }
@@ -780,10 +762,6 @@ impl Encodable for ResponseMessage {
             } => {
                 writer.write_u32(public_key.len() as u32).await?;
                 writer.write_bytes(public_key).await?;
-                writer.write_u32(message.len() as u32).await?;
-                writer.write_bytes(message).await?;
-            }
-            Self::Envelope(message) => {
                 writer.write_u32(message.len() as u32).await?;
                 writer.write_bytes(message).await?;
             }
@@ -824,12 +802,6 @@ impl Decodable for ResponseMessage {
                     public_key,
                     message,
                 };
-            }
-            types::ENVELOPE => {
-                let size = reader.read_u32().await?;
-                let message =
-                    reader.read_bytes(size as usize).await?;
-                *self = ResponseMessage::Envelope(message);
             }
             _ => {
                 return Err(encoding_error(
