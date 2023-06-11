@@ -15,6 +15,23 @@ use crate::{
 /// Version for binary encoding.
 pub const VERSION: u16 = 1;
 
+async fn encode_buffer<W: AsyncWrite + AsyncSeek + Unpin + Send>(
+    writer: &mut BinaryWriter<W>,
+    buffer: &[u8],
+) -> Result<()> {
+    writer.write_u32(buffer.len() as u32).await?;
+    writer.write_bytes(buffer).await?;
+    Ok(())
+}
+
+async fn decode_buffer<R: AsyncRead + AsyncSeek + Unpin + Send>(
+    reader: &mut BinaryReader<R>,
+) -> Result<Vec<u8>> {
+    let size = reader.read_u32().await?;
+    let buf = reader.read_bytes(size as usize).await?;
+    Ok(buf)
+}
+
 #[cfg_attr(target_arch="wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl Encodable for HandshakeMessage {
@@ -27,13 +44,11 @@ impl Encodable for HandshakeMessage {
         match self {
             Self::Initiator(len, buf) => {
                 writer.write_usize(len).await?;
-                writer.write_u32(buf.len() as u32).await?;
-                writer.write_bytes(buf).await?;
+                encode_buffer(writer, buf).await?;
             }
             Self::Responder(len, buf) => {
                 writer.write_usize(len).await?;
-                writer.write_u32(buf.len() as u32).await?;
-                writer.write_bytes(buf).await?;
+                encode_buffer(writer, buf).await?;
             }
             Self::Noop => unreachable!(),
         }
@@ -52,14 +67,12 @@ impl Decodable for HandshakeMessage {
         match id {
             types::HANDSHAKE_INITIATOR => {
                 let len = reader.read_usize().await?;
-                let size = reader.read_u32().await?;
-                let buf = reader.read_bytes(size as usize).await?;
+                let buf = decode_buffer(reader).await?;
                 *self = HandshakeMessage::Initiator(len, buf);
             }
             types::HANDSHAKE_RESPONDER => {
                 let len = reader.read_usize().await?;
-                let size = reader.read_u32().await?;
-                let buf = reader.read_bytes(size as usize).await?;
+                let buf = decode_buffer(reader).await?;
                 *self = HandshakeMessage::Responder(len, buf);
             }
             _ => {
@@ -89,8 +102,7 @@ impl Encodable for TransparentMessage {
                 public_key,
                 message,
             } => {
-                writer.write_u32(public_key.len() as u32).await?;
-                writer.write_bytes(public_key).await?;
+                encode_buffer(writer, public_key).await?;
                 message.encode(writer).await?;
             }
             Self::Noop => unreachable!(),
@@ -115,9 +127,7 @@ impl Decodable for TransparentMessage {
                 *self = TransparentMessage::ServerHandshake(message);
             }
             types::HANDSHAKE_PEER => {
-                let size = reader.read_u32().await?;
-                let public_key =
-                    reader.read_bytes(size as usize).await?;
+                let public_key = decode_buffer(reader).await?;
                 let mut message: HandshakeMessage =
                     Default::default();
                 message.decode(reader).await?;
@@ -162,8 +172,7 @@ impl Encodable for ServerMessage {
                 peer_key,
             } => {
                 writer.write_bytes(session_id.as_bytes()).await?;
-                writer.write_u32(peer_key.len() as u32).await?;
-                writer.write_bytes(peer_key).await?;
+                encode_buffer(writer, peer_key).await?;
             }
             Self::SessionActiveNotify(session_id) => {
                 writer.write_bytes(session_id.as_bytes()).await?;
@@ -232,10 +241,7 @@ impl Decodable for ServerMessage {
                         .try_into()
                         .map_err(encoding_error)?,
                 );
-
-                let size = reader.read_u32().await?;
-                let peer_key =
-                    reader.read_bytes(size as usize).await?;
+                let peer_key = decode_buffer(reader).await?;
 
                 *self = ServerMessage::SessionConnection {
                     session_id,
@@ -319,8 +325,7 @@ impl Encodable for OpaqueMessage {
                 session_id,
                 envelope,
             } => {
-                writer.write_u32(public_key.len() as u32).await?;
-                writer.write_bytes(public_key).await?;
+                encode_buffer(writer, public_key).await?;
                 writer.write_bool(session_id.is_some()).await?;
                 if let Some(id) = session_id {
                     writer.write_bytes(id.as_bytes()).await?;
@@ -348,10 +353,7 @@ impl Decodable for OpaqueMessage {
                 *self = OpaqueMessage::ServerMessage(envelope);
             }
             types::OPAQUE_PEER => {
-                let size = reader.read_u32().await?;
-                let public_key =
-                    reader.read_bytes(size as usize).await?;
-
+                let public_key = decode_buffer(reader).await?;
                 let has_session_id = reader.read_bool().await?;
                 let session_id = if has_session_id {
                     let session_id = SessionId::from_bytes(
@@ -499,10 +501,9 @@ impl Encodable for SealedEnvelope {
     ) -> Result<()> {
         let id: u8 = self.encoding.into();
         writer.write_u8(id).await?;
-        writer.write_usize(self.length).await?;
-        writer.write_u32(self.payload.len() as u32).await?;
-        writer.write_bytes(&self.payload).await?;
         writer.write_bool(self.broadcast).await?;
+        writer.write_usize(self.length).await?;
+        encode_buffer(writer, &self.payload).await?;
         Ok(())
     }
 }
@@ -528,10 +529,9 @@ impl Decodable for SealedEnvelope {
                 ))
             }
         }
-        self.length = reader.read_usize().await?;
-        let size = reader.read_u32().await?;
-        self.payload = reader.read_bytes(size as usize).await?;
         self.broadcast = reader.read_bool().await?;
+        self.length = reader.read_usize().await?;
+        self.payload = decode_buffer(reader).await?;
         Ok(())
     }
 }
@@ -546,8 +546,7 @@ impl Encodable for SessionRequest {
         // TODO: handle too many participants
         writer.write_u32(self.participant_keys.len() as u32).await?;
         for key in self.participant_keys.iter() {
-            writer.write_u32(key.len() as u32).await?;
-            writer.write_bytes(key).await?;
+            encode_buffer(writer, key).await?;
         }
         Ok(())
     }
@@ -562,8 +561,7 @@ impl Decodable for SessionRequest {
     ) -> Result<()> {
         let size = reader.read_u32().await? as usize;
         for _ in 0..size {
-            let len = reader.read_u32().await? as usize;
-            let key = reader.read_bytes(len).await?;
+            let key = decode_buffer(reader).await?;
             self.participant_keys.push(key);
         }
         Ok(())
@@ -579,9 +577,8 @@ impl Encodable for SessionState {
     ) -> Result<()> {
         writer.write_bytes(self.session_id.as_bytes()).await?;
         writer.write_u32(self.all_participants.len() as u32).await?;
-        for conn in &self.all_participants {
-            writer.write_u32(conn.len() as u32).await?;
-            writer.write_bytes(conn).await?;
+        for key in &self.all_participants {
+            encode_buffer(writer, key).await?;
         }
         Ok(())
     }
@@ -604,9 +601,8 @@ impl Decodable for SessionState {
         );
         let size = reader.read_u32().await?;
         for _ in 0..size {
-            let len = reader.read_u32().await?;
-            self.all_participants
-                .push(reader.read_bytes(len as usize).await?);
+            let key = decode_buffer(reader).await?;
+            self.all_participants.push(key);
         }
         Ok(())
     }
