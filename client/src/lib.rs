@@ -12,7 +12,7 @@ mod native;
 #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
 pub use native::{EventLoop, NativeClient};
 
-use mpc_relay_protocol::{snow, SessionState};
+use mpc_relay_protocol::{snow, SessionId, SessionState};
 
 /// Events dispatched by the client.
 #[derive(Debug)]
@@ -59,6 +59,12 @@ pub enum Event {
     /// A session is active when all the participants
     /// have connected to each other.
     SessionActive(SessionState),
+
+    /// Event dispatched when a session has been finished.
+    ///
+    /// A session can only be finished when the session owner
+    /// explicitly closes the session.
+    SessionFinished(SessionId),
 }
 
 /// JSON message received from a peer.

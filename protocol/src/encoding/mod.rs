@@ -60,6 +60,8 @@ pub(crate) mod types {
     pub const SESSION_CONNECTION: u8 = 5;
     pub const SESSION_ACTIVE_NOTIFY: u8 = 6;
     pub const SESSION_ACTIVE: u8 = 7;
+    pub const SESSION_CLOSE: u8 = 8;
+    pub const SESSION_FINISHED: u8 = 9;
 
     pub const ENCODING_BLOB: u8 = 1;
     pub const ENCODING_JSON: u8 = 2;

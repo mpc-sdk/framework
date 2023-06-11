@@ -309,6 +309,15 @@ impl NativeClient {
         self.request(message).await
     }
 
+    /// Close a session.
+    pub async fn close_session(
+        &mut self,
+        session_id: SessionId,
+    ) -> Result<()> {
+        let message = ServerMessage::CloseSession(session_id);
+        self.request(message).await
+    }
+
     /// Encrypt a request message and send over the encrypted
     /// server channel.
     async fn request(
@@ -583,6 +592,9 @@ impl EventLoop {
             }
             ServerMessage::SessionActive(response) => {
                 Ok(Some(Event::SessionActive(response)))
+            }
+            ServerMessage::SessionFinished(session_id) => {
+                Ok(Some(Event::SessionFinished(session_id)))
             }
             _ => Ok(None),
         }

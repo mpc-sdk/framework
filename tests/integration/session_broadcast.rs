@@ -372,8 +372,17 @@ async fn initiator(
             state.received += 1;
 
             if state.received == 2 {
-                return Ok(true);
+                let session_id =
+                    state.session.as_ref().unwrap().session_id;
+                client.close_session(session_id).await?;
             }
+        }
+        Event::SessionFinished(session_id) => {
+            let state = session_state.lock().await;
+            let current_session_id =
+                state.session.as_ref().unwrap().session_id;
+            assert_eq!(current_session_id, session_id);
+            return Ok(true);
         }
         _ => {}
     }

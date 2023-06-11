@@ -108,6 +108,10 @@ pub enum ServerMessage {
     /// in a session when they have all established
     /// peer connections to each other.
     SessionActive(SessionState),
+    /// Request to close a session.
+    CloseSession(SessionId),
+    /// Message sent when a session was closed.
+    SessionFinished(SessionId),
 }
 
 impl From<&ServerMessage> for u8 {
@@ -130,6 +134,10 @@ impl From<&ServerMessage> for u8 {
             }
             ServerMessage::SessionReady(_) => types::SESSION_READY,
             ServerMessage::SessionActive(_) => types::SESSION_ACTIVE,
+            ServerMessage::CloseSession(_) => types::SESSION_CLOSE,
+            ServerMessage::SessionFinished(_) => {
+                types::SESSION_FINISHED
+            }
         }
     }
 }
@@ -278,6 +286,11 @@ pub struct Session {
 }
 
 impl Session {
+    /// Public key of the session owner.
+    pub fn owner_key(&self) -> &[u8] {
+        self.owner_key.as_slice()
+    }
+
     /// Get all participant's public keys
     pub fn public_keys(&self) -> Vec<&[u8]> {
         let mut keys = vec![self.owner_key.as_slice()];
@@ -366,6 +379,16 @@ impl SessionManager {
         };
         self.sessions.insert(session_id, session);
         session_id
+    }
+
+    /// Get the number of sessions.
+    pub fn len(&self) -> usize {
+        self.sessions.len()
+    }
+
+    /// Determine if the session manager is empty.
+    pub fn is_empty(&self) -> bool {
+        self.sessions.is_empty()
     }
 
     /// Get a session.
