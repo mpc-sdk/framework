@@ -14,7 +14,7 @@ pub use native::{EventLoop, NativeClient};
 
 use mpc_relay_protocol::{snow, SessionId, SessionState};
 
-/// Events dispatched by the client.
+/// Events dispatched by the event loop stream.
 #[derive(Debug)]
 pub enum Event {
     /// Event dispatched when a handshake with the server
