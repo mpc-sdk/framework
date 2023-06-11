@@ -15,19 +15,21 @@ use crate::{
 /// Version for binary encoding.
 pub const VERSION: u16 = 1;
 
+/// Encode a length-prefixed buffer.
 async fn encode_buffer<W: AsyncWrite + AsyncSeek + Unpin + Send>(
     writer: &mut BinaryWriter<W>,
     buffer: &[u8],
 ) -> Result<()> {
-    writer.write_u32(buffer.len() as u32).await?;
+    writer.write_u16(buffer.len() as u16).await?;
     writer.write_bytes(buffer).await?;
     Ok(())
 }
 
+/// Decode a length-prefixed buffer.
 async fn decode_buffer<R: AsyncRead + AsyncSeek + Unpin + Send>(
     reader: &mut BinaryReader<R>,
 ) -> Result<Vec<u8>> {
-    let size = reader.read_u32().await?;
+    let size = reader.read_u16().await?;
     let buf = reader.read_bytes(size as usize).await?;
     Ok(buf)
 }
