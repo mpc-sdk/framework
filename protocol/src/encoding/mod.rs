@@ -1,9 +1,14 @@
 //! Binary encoding implementation.
 
+mod v1;
+pub use v1::VERSION;
+
+use crate::Error;
 use binary_stream::{
-    futures::{Decodable, Encodable},
+    futures::{BinaryReader, BinaryWriter, Decodable, Encodable},
     Endian, Options,
 };
+use futures::io::{AsyncRead, AsyncSeek, AsyncWrite};
 use std::io::Result;
 
 pub(crate) fn encoding_error(
@@ -14,6 +19,37 @@ pub(crate) fn encoding_error(
 
 /// Maximum buffer size for encoding and decoding.
 pub(crate) const MAX_BUFFER_SIZE: usize = 1024 * 32;
+
+/// Identity bytes (MPCR)
+const IDENTITY: [u8; 4] = [0x4D, 0x50, 0x43, 0x52];
+
+/// Encode message preamble.
+async fn encode_preamble<W: AsyncWrite + AsyncSeek + Unpin + Send>(
+    writer: &mut BinaryWriter<W>,
+) -> Result<()> {
+    writer.write_bytes(&IDENTITY).await?;
+    writer.write_u16(&VERSION).await?;
+    Ok(())
+}
+
+/// Decode message preamble.
+async fn decode_preamble<R: AsyncRead + AsyncSeek + Unpin + Send>(
+    reader: &mut BinaryReader<R>,
+) -> Result<()> {
+    let identity = reader.read_bytes(IDENTITY.len()).await?;
+    if identity != IDENTITY {
+        return Err(encoding_error(Error::BadEncodingIdentity));
+    }
+
+    let version = reader.read_u16().await?;
+    if version != VERSION {
+        return Err(encoding_error(Error::EncodingVersion(
+            VERSION, version,
+        )));
+    }
+
+    Ok(())
+}
 
 /// Default binary encoding options.
 fn encoding_options() -> Options {
@@ -69,7 +105,3 @@ pub(crate) mod types {
     pub const ENCODING_BLOB: u8 = 1;
     pub const ENCODING_JSON: u8 = 2;
 }
-
-mod v1;
-
-pub use v1::VERSION;

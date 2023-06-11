@@ -6,7 +6,10 @@ use futures::io::{AsyncRead, AsyncSeek, AsyncWrite};
 use std::io::Result;
 
 use crate::{
-    encoding::{encoding_error, types, MAX_BUFFER_SIZE},
+    encoding::{
+        decode_preamble, encode_preamble, encoding_error, types,
+        MAX_BUFFER_SIZE,
+    },
     Encoding, Error, HandshakeMessage, OpaqueMessage, RequestMessage,
     ResponseMessage, SealedEnvelope, ServerMessage, SessionId,
     SessionRequest, SessionState, TransparentMessage,
@@ -439,6 +442,7 @@ impl Encodable for RequestMessage {
         &self,
         writer: &mut BinaryWriter<W>,
     ) -> Result<()> {
+        encode_preamble(writer).await?;
         let id: u8 = self.into();
         writer.write_u8(id).await?;
         match self {
@@ -461,6 +465,7 @@ impl Decodable for RequestMessage {
         &mut self,
         reader: &mut BinaryReader<R>,
     ) -> Result<()> {
+        decode_preamble(reader).await?;
         let id = reader.read_u8().await?;
         match id {
             types::TRANSPARENT => {
@@ -491,6 +496,7 @@ impl Encodable for ResponseMessage {
         &self,
         writer: &mut BinaryWriter<W>,
     ) -> Result<()> {
+        encode_preamble(writer).await?;
         let id: u8 = self.into();
         writer.write_u8(id).await?;
         match self {
@@ -513,6 +519,7 @@ impl Decodable for ResponseMessage {
         &mut self,
         reader: &mut BinaryReader<R>,
     ) -> Result<()> {
+        decode_preamble(reader).await?;
         let id = reader.read_u8().await?;
         match id {
             types::TRANSPARENT => {
