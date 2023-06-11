@@ -22,7 +22,7 @@ use mpc_relay_protocol::{
     decode, encode, hex,
     http::StatusCode,
     snow::Builder,
-    Encoding, HandshakeMessage, HandshakeType, PeerMessage,
+    Encoding, HandshakeMessage, PeerMessage,
     ProtocolState, RequestMessage, ResponseMessage, SealedEnvelope,
     SessionId, SessionRequest, TransparentMessage, PATTERN, TAGLEN,
 };

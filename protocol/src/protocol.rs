@@ -427,9 +427,6 @@ pub enum RequestMessage {
     /// Transparent message used for the handshake(s).
     Transparent(TransparentMessage),
 
-    /// Initiate a handshake.
-    HandshakeInitiator(HandshakeType, usize, Vec<u8>),
-
     /// Relay a message to a peer.
     RelayPeer {
         /// Determines if this message is part of the
@@ -466,9 +463,6 @@ impl From<&RequestMessage> for u8 {
         match value {
             RequestMessage::Noop => types::NOOP,
             RequestMessage::Transparent(_) => types::TRANSPARENT,
-            RequestMessage::HandshakeInitiator(_, _, _) => {
-                types::HANDSHAKE_INITIATOR
-            }
             RequestMessage::RelayPeer { .. } => types::RELAY_PEER,
             RequestMessage::Envelope(_) => types::ENVELOPE,
             RequestMessage::NewSession(_) => types::SESSION_NEW,
@@ -497,12 +491,6 @@ impl Encodable for RequestMessage {
         match self {
             Self::Transparent(message) => {
                 message.encode(writer).await?;
-            }
-            Self::HandshakeInitiator(kind, len, buf) => {
-                kind.encode(&mut *writer).await?;
-                writer.write_usize(len).await?;
-                writer.write_u32(buf.len() as u32).await?;
-                writer.write_bytes(buf).await?;
             }
             Self::RelayPeer {
                 handshake,
@@ -561,16 +549,6 @@ impl Decodable for RequestMessage {
                     Default::default();
                 message.decode(reader).await?;
                 *self = RequestMessage::Transparent(message);
-            }
-            types::HANDSHAKE_INITIATOR => {
-                let mut kind: HandshakeType = Default::default();
-                kind.decode(&mut *reader).await?;
-                let len = reader.read_usize().await?;
-                let size = reader.read_u32().await?;
-                let buf = reader.read_bytes(size as usize).await?;
-                *self = RequestMessage::HandshakeInitiator(
-                    kind, len, buf,
-                );
             }
             types::RELAY_PEER => {
                 let handshake = reader.read_bool().await?;
@@ -679,8 +657,6 @@ pub enum ResponseMessage {
     /// Transparent message used for the handshake(s).
     Transparent(TransparentMessage),
 
-    /// Respond to a handshake initiation.
-    HandshakeResponder(HandshakeType, usize, Vec<u8>),
     /// Message being relayed from another peer.
     RelayPeer {
         /// Determines if this message is part of the
@@ -711,9 +687,6 @@ impl From<&ResponseMessage> for u8 {
             ResponseMessage::Noop => types::NOOP,
             ResponseMessage::Error(_, _) => types::ERROR,
             ResponseMessage::Transparent(_) => types::TRANSPARENT,
-            ResponseMessage::HandshakeResponder(_, _, _) => {
-                types::HANDSHAKE_RESPONDER
-            }
             ResponseMessage::RelayPeer { .. } => types::RELAY_PEER,
             ResponseMessage::Envelope(_) => types::ENVELOPE,
             ResponseMessage::SessionCreated(_) => {
@@ -744,12 +717,6 @@ impl Encodable for ResponseMessage {
             }
             Self::Transparent(message) => {
                 message.encode(&mut *writer).await?;
-            }
-            Self::HandshakeResponder(kind, len, buf) => {
-                kind.encode(&mut *writer).await?;
-                writer.write_usize(len).await?;
-                writer.write_u32(buf.len() as u32).await?;
-                writer.write_bytes(buf).await?;
             }
             Self::RelayPeer {
                 handshake,
@@ -804,16 +771,6 @@ impl Decodable for ResponseMessage {
                     Default::default();
                 message.decode(reader).await?;
                 *self = ResponseMessage::Transparent(message);
-            }
-            types::HANDSHAKE_RESPONDER => {
-                let mut kind: HandshakeType = Default::default();
-                kind.decode(&mut *reader).await?;
-                let len = reader.read_usize().await?;
-                let size = reader.read_u32().await?;
-                let buf = reader.read_bytes(size as usize).await?;
-                *self = ResponseMessage::HandshakeResponder(
-                    kind, len, buf,
-                );
             }
             types::RELAY_PEER => {
                 let handshake = reader.read_bool().await?;
