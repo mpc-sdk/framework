@@ -259,13 +259,209 @@ impl Decodable for TransparentMessage {
     }
 }
 
+/// Message sent between the server and a client.
+#[derive(Default, Debug)]
+pub enum ServerMessage {
+    #[default]
+    #[doc(hidden)]
+    Noop,
+    /// Request a new session.
+    NewSession(SessionRequest),
+    /// Request to notify all participants when the
+    /// session is ready.
+    SessionReadyNotify(SessionId),
+    /// Register a peer connection in a session.
+    SessionConnection {
+        /// Session identifier.
+        session_id: SessionId,
+        /// Public key of the peer.
+        peer_key: Vec<u8>,
+    },
+    /// Request to notify all participants when the
+    /// session is active.
+    SessionActiveNotify(SessionId),
+    /// Response to a new session request.
+    SessionCreated(SessionState),
+    /// Notification dispatched to all participants
+    /// in a session when they have all completed
+    /// the server handshake.
+    SessionReady(SessionState),
+    /// Notification dispatched to all participants
+    /// in a session when they have all established
+    /// peer connections to each other.
+    SessionActive(SessionState),
+}
+
+impl From<&ServerMessage> for u8 {
+    fn from(value: &ServerMessage) -> Self {
+        match value {
+            ServerMessage::Noop => types::NOOP,
+            ServerMessage::NewSession(_) => types::SESSION_NEW,
+            ServerMessage::SessionReadyNotify(_) => {
+                types::SESSION_READY_NOTIFY
+            }
+            ServerMessage::SessionConnection { .. } => {
+                types::SESSION_CONNECTION
+            }
+            ServerMessage::SessionActiveNotify(_) => {
+                types::SESSION_ACTIVE_NOTIFY
+            }
+            ServerMessage::SessionCreated(_) => {
+                types::SESSION_CREATED
+            }
+            ServerMessage::SessionReady(_) => types::SESSION_READY,
+            ServerMessage::SessionActive(_) => {
+                types::SESSION_ACTIVE
+            }
+        }
+    }
+}
+
+#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl Encodable for ServerMessage {
+    async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
+        &self,
+        writer: &mut BinaryWriter<W>,
+    ) -> Result<()> {
+        let id: u8 = self.into();
+        writer.write_u8(id).await?;
+        match self {
+            Self::NewSession(request) => {
+                request.encode(writer).await?;
+            }
+            Self::SessionReadyNotify(session_id) => {
+                writer.write_bytes(session_id.as_bytes()).await?;
+            }
+            Self::SessionConnection {
+                session_id,
+                peer_key,
+            } => {
+                writer.write_bytes(session_id.as_bytes()).await?;
+                writer.write_u32(peer_key.len() as u32).await?;
+                writer.write_bytes(peer_key).await?;
+            }
+            Self::SessionActiveNotify(session_id) => {
+                writer.write_bytes(session_id.as_bytes()).await?;
+            }
+            Self::SessionCreated(response) => {
+                response.encode(writer).await?;
+            }
+            Self::SessionReady(response) => {
+                response.encode(writer).await?;
+            }
+            Self::SessionActive(response) => {
+                response.encode(writer).await?;
+            }
+            Self::Noop => unreachable!(),
+        }
+        Ok(())
+    }
+}
+
+#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl Decodable for ServerMessage {
+    async fn decode<R: AsyncRead + AsyncSeek + Unpin + Send>(
+        &mut self,
+        reader: &mut BinaryReader<R>,
+    ) -> Result<()> {
+        let id = reader.read_u8().await?;
+        match id {
+            types::SESSION_NEW => {
+                let mut session: SessionRequest = Default::default();
+                session.decode(reader).await?;
+                *self = ServerMessage::NewSession(session);
+            }
+            types::SESSION_READY_NOTIFY => {
+                let session_id = SessionId::from_bytes(
+                    reader
+                        .read_bytes(16)
+                        .await?
+                        .as_slice()
+                        .try_into()
+                        .map_err(encoding_error)?,
+                );
+                *self =
+                    ServerMessage::SessionReadyNotify(session_id);
+            }
+            types::SESSION_CONNECTION => {
+                let session_id = SessionId::from_bytes(
+                    reader
+                        .read_bytes(16)
+                        .await?
+                        .as_slice()
+                        .try_into()
+                        .map_err(encoding_error)?,
+                );
+
+                let size = reader.read_u32().await?;
+                let peer_key =
+                    reader.read_bytes(size as usize).await?;
+
+                *self = ServerMessage::SessionConnection {
+                    session_id,
+                    peer_key,
+                };
+            }
+            types::SESSION_ACTIVE_NOTIFY => {
+                let session_id = SessionId::from_bytes(
+                    reader
+                        .read_bytes(16)
+                        .await?
+                        .as_slice()
+                        .try_into()
+                        .map_err(encoding_error)?,
+                );
+                *self =
+                    ServerMessage::SessionActiveNotify(session_id);
+            }
+            types::SESSION_CREATED => {
+                let mut session: SessionState = Default::default();
+                session.decode(reader).await?;
+                *self = ServerMessage::SessionCreated(session);
+            }
+            types::SESSION_READY => {
+                let mut session: SessionState = Default::default();
+                session.decode(reader).await?;
+                *self = ServerMessage::SessionReady(session);
+            }
+            types::SESSION_ACTIVE => {
+                let mut session: SessionState = Default::default();
+                session.decode(reader).await?;
+                *self = ServerMessage::SessionActive(session);
+            }
+            _ => {
+                return Err(encoding_error(
+                    crate::Error::EncodingKind(id),
+                ))
+            }
+        }
+        Ok(())
+    }
+}
+
 /// Opaque messaages are encrypted.
 #[derive(Default, Debug)]
 pub enum Opaque {
     #[default]
     #[doc(hidden)]
     Noop,
-    // TODO
+
+    /// Encrypted message sent between the server and a client.
+    ///
+    /// After decrypting it can be decoded to a server message.
+    ServerMessage(usize, Vec<u8>),
+
+    /// Relay an encrypted message to a peer.
+    PeerMessage {
+        /// Public key of the receiver.
+        public_key: Vec<u8>,
+        /// Message payload.
+        message: Vec<u8>,
+        /// Session identifier.
+        session_id: Option<SessionId>,
+    },
 }
 
 /// Request message sent to the server or another peer.
