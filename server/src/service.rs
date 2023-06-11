@@ -4,9 +4,9 @@ use tokio::sync::mpsc;
 
 use mpc_relay_protocol::{
     channel::{decrypt_server_channel, encrypt_server_channel},
-    decode, encode, hex, Encoding, HandshakeMessage, ProtocolState,
-    RequestMessage, ResponseMessage, SessionState,
-    TransparentMessage,
+    decode, encode, hex, Encoding, HandshakeMessage, OpaqueMessage,
+    ProtocolState, RequestMessage, ResponseMessage, ServerMessage,
+    SessionState, TransparentMessage,
 };
 
 use crate::{server::State, websocket::Connection, Error, Result};
@@ -119,7 +119,7 @@ async fn handle_request(
             TransparentMessage::PeerHandshake {
                 public_key,
                 message,
-            }
+            },
         ) => {
             let from_public_key = {
                 let reader = conn.read().await;
@@ -144,7 +144,7 @@ async fn handle_request(
                     TransparentMessage::PeerHandshake {
                         public_key: from_public_key,
                         message,
-                    }
+                    },
                 );
 
                 let buffer = encode(&relayed).await?;
@@ -214,7 +214,9 @@ async fn handle_request(
                 )));
             }
         }
-        RequestMessage::Envelope(message) => {
+        RequestMessage::Opaque(OpaqueMessage::ServerMessage(
+            envelope,
+        )) => {
             let from_public_key = {
                 let reader = conn.read().await;
                 reader.public_key.clone()
@@ -229,12 +231,12 @@ async fn handle_request(
                 let (encoding, contents) = {
                     let mut writer = peer.write().await;
                     let peer_state = writer.state.as_mut().unwrap();
-                    decrypt_server_channel(peer_state, message)
+                    decrypt_server_channel(peer_state, envelope)
                         .await?
                 };
 
                 if let Encoding::Blob = encoding {
-                    let request: RequestMessage =
+                    let request: ServerMessage =
                         decode(&contents).await?;
 
                     if let Some(response) = service(
@@ -263,10 +265,10 @@ async fn service(
     state: State,
     conn: Connection,
     public_key: impl AsRef<[u8]>,
-    message: RequestMessage,
-) -> Result<Option<ResponseMessage>> {
+    message: ServerMessage,
+) -> Result<Option<ServerMessage>> {
     match message {
-        RequestMessage::NewSession(request) => {
+        ServerMessage::NewSession(request) => {
             let mut all_participants =
                 request.participant_keys.clone();
             all_participants.push(public_key.as_ref().to_vec());
@@ -285,9 +287,9 @@ async fn service(
                 all_participants,
             };
 
-            Ok(Some(ResponseMessage::SessionCreated(response)))
+            Ok(Some(ServerMessage::SessionCreated(response)))
         }
-        RequestMessage::SessionReadyNotify(session_id) => {
+        ServerMessage::SessionReadyNotify(session_id) => {
             let notification = {
                 let reader = state.read().await;
                 if let Some(session) =
@@ -309,7 +311,7 @@ async fn service(
                                 .collect(),
                         };
                         let message =
-                            ResponseMessage::SessionReady(session);
+                            ServerMessage::SessionReady(session);
                         let public_keys: Vec<Vec<u8>> =
                             all_participants
                                 .into_iter()
@@ -329,7 +331,7 @@ async fn service(
             }
             Ok(None)
         }
-        RequestMessage::SessionConnection {
+        ServerMessage::SessionConnection {
             session_id,
             peer_key,
         } => {
@@ -349,7 +351,7 @@ async fn service(
                 Err(Error::SessionNotFound(session_id))
             }
         }
-        RequestMessage::SessionActiveNotify(session_id) => {
+        ServerMessage::SessionActiveNotify(session_id) => {
             let notification = {
                 let reader = state.read().await;
                 if let Some(session) =
@@ -365,7 +367,7 @@ async fn service(
                                 .collect(),
                         };
                         let message =
-                            ResponseMessage::SessionActive(session);
+                            ServerMessage::SessionActive(session);
 
                         let public_keys: Vec<Vec<u8>> =
                             all_participants
@@ -394,7 +396,7 @@ async fn service(
 async fn notify_peers(
     state: State,
     public_keys: Vec<Vec<u8>>,
-    message: ResponseMessage,
+    message: ServerMessage,
 ) -> Result<()> {
     let reader = state.read().await;
     for key in &public_keys {
@@ -408,20 +410,22 @@ async fn notify_peers(
 /// Send a response message to a client over the server channel.
 async fn send_message(
     conn: Connection,
-    message: &ResponseMessage,
+    message: &ServerMessage,
     broadcast: bool,
 ) -> Result<()> {
     let mut writer = conn.write().await;
 
     let payload = encode(message).await?;
-    let inner = encrypt_server_channel(
+    let envelope = encrypt_server_channel(
         writer.state.as_mut().unwrap(),
         payload,
         broadcast,
     )
     .await?;
 
-    let response = ResponseMessage::Envelope(inner);
+    let response = ResponseMessage::Opaque(
+        OpaqueMessage::ServerMessage(envelope),
+    );
     let buffer = encode(&response).await?;
 
     writer.send(buffer).await?;

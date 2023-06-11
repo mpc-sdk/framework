@@ -313,9 +313,7 @@ impl From<&ServerMessage> for u8 {
                 types::SESSION_CREATED
             }
             ServerMessage::SessionReady(_) => types::SESSION_READY,
-            ServerMessage::SessionActive(_) => {
-                types::SESSION_ACTIVE
-            }
+            ServerMessage::SessionActive(_) => types::SESSION_ACTIVE,
         }
     }
 }
@@ -385,8 +383,7 @@ impl Decodable for ServerMessage {
                         .try_into()
                         .map_err(encoding_error)?,
                 );
-                *self =
-                    ServerMessage::SessionReadyNotify(session_id);
+                *self = ServerMessage::SessionReadyNotify(session_id);
             }
             types::SESSION_CONNECTION => {
                 let session_id = SessionId::from_bytes(
@@ -454,7 +451,7 @@ pub enum OpaqueMessage {
     /// Encrypted message sent between the server and a client.
     ///
     /// After decrypting it can be decoded to a server message.
-    ServerMessage(usize, Vec<u8>),
+    ServerMessage(SealedEnvelope),
 
     /// Relay an encrypted message to a peer.
     PeerMessage {
@@ -471,12 +468,8 @@ impl From<&OpaqueMessage> for u8 {
     fn from(value: &OpaqueMessage) -> Self {
         match value {
             OpaqueMessage::Noop => types::NOOP,
-            OpaqueMessage::ServerMessage(_, _) => {
-                types::OPAQUE_SERVER
-            }
-            OpaqueMessage::PeerMessage { .. } => {
-                types::OPAQUE_PEER
-            }
+            OpaqueMessage::ServerMessage(_) => types::OPAQUE_SERVER,
+            OpaqueMessage::PeerMessage { .. } => types::OPAQUE_PEER,
         }
     }
 }
@@ -491,10 +484,8 @@ impl Encodable for OpaqueMessage {
         let id: u8 = self.into();
         writer.write_u8(id).await?;
         match self {
-            Self::ServerMessage(len, buf) => {
-                writer.write_u32(*len as u32).await?;
-                writer.write_u32(buf.len() as u32).await?;
-                writer.write_bytes(buf).await?;
+            Self::ServerMessage(envelope) => {
+                envelope.encode(writer).await?;
             }
             Self::PeerMessage {
                 public_key,
@@ -525,11 +516,9 @@ impl Decodable for OpaqueMessage {
         let id = reader.read_u8().await?;
         match id {
             types::OPAQUE_SERVER => {
-                let len = reader.read_u32().await? as usize;
-                let size = reader.read_u32().await?;
-                let buf =
-                    reader.read_bytes(size as usize).await?;
-                *self = OpaqueMessage::ServerMessage(len, buf);
+                let mut envelope: SealedEnvelope = Default::default();
+                envelope.decode(reader).await?;
+                *self = OpaqueMessage::ServerMessage(envelope);
             }
             types::OPAQUE_PEER => {
                 let size = reader.read_u32().await?;
@@ -555,7 +544,10 @@ impl Decodable for OpaqueMessage {
                 envelope.decode(reader).await?;
 
                 *self = OpaqueMessage::PeerMessage {
-                    public_key, session_id, envelope };
+                    public_key,
+                    session_id,
+                    envelope,
+                };
             }
             _ => {
                 return Err(encoding_error(
@@ -704,8 +696,7 @@ impl Decodable for RequestMessage {
                 *self = RequestMessage::Transparent(message);
             }
             types::OPAQUE => {
-                let mut message: OpaqueMessage =
-                    Default::default();
+                let mut message: OpaqueMessage = Default::default();
                 message.decode(reader).await?;
                 *self = RequestMessage::Opaque(message);
             }
@@ -933,8 +924,7 @@ impl Decodable for ResponseMessage {
                 *self = ResponseMessage::Transparent(message);
             }
             types::OPAQUE => {
-                let mut message: OpaqueMessage =
-                    Default::default();
+                let mut message: OpaqueMessage = Default::default();
                 message.decode(reader).await?;
                 *self = ResponseMessage::Opaque(message);
             }

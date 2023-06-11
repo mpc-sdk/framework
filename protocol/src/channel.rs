@@ -3,8 +3,7 @@
 //! You should not use these functions directly, they are
 //! exposed so they can be shared between the client and server.
 use crate::{
-    decode, encode, Encoding, Error, ProtocolState, Result,
-    SealedEnvelope, TAGLEN,
+    Encoding, Error, ProtocolState, Result, SealedEnvelope, TAGLEN,
 };
 
 /// Encrypt a message to send to the server.
@@ -15,7 +14,7 @@ pub async fn encrypt_server_channel(
     server: &mut ProtocolState,
     payload: Vec<u8>,
     broadcast: bool,
-) -> Result<Vec<u8>> {
+) -> Result<SealedEnvelope> {
     match server {
         ProtocolState::Transport(transport) => {
             let mut contents = vec![0; payload.len() + TAGLEN];
@@ -27,7 +26,7 @@ pub async fn encrypt_server_channel(
                 payload: contents,
                 broadcast,
             };
-            Ok(encode(&envelope).await?)
+            Ok(envelope)
         }
         _ => Err(Error::NotTransportState),
     }
@@ -39,11 +38,10 @@ pub async fn encrypt_server_channel(
 #[doc(hidden)]
 pub async fn decrypt_server_channel(
     server: &mut ProtocolState,
-    payload: Vec<u8>,
+    envelope: SealedEnvelope,
 ) -> Result<(Encoding, Vec<u8>)> {
     match server {
         ProtocolState::Transport(transport) => {
-            let envelope: SealedEnvelope = decode(&payload).await?;
             let mut contents = vec![0; envelope.length];
             transport.read_message(
                 &envelope.payload[..envelope.length],
