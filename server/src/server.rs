@@ -15,7 +15,7 @@ use axum_server::{tls_rustls::RustlsConfig, Handle};
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use uuid::Uuid;
 
-use mpc_relay_protocol::{snow::Keypair, uuid, SessionManager};
+use mpc_relay_protocol::{snow::Keypair, uuid, SessionManager, hex};
 
 use crate::{
     config::{ServerConfig, TlsConfig},
@@ -118,7 +118,12 @@ impl RelayServer {
         let tls =
             RustlsConfig::from_pem_file(&tls.cert, &tls.key).await?;
         let app = self.router(Arc::clone(&self.state), origins)?;
+        let public_key = {
+            let reader = self.state.read().await;
+            reader.keypair.public.clone()
+        };
         tracing::info!("listening on {}", addr);
+        tracing::info!("public key {}", hex::encode(&public_key));
         axum_server::bind_rustls(addr, tls)
             .handle(handle)
             .serve(app.into_make_service())
@@ -134,7 +139,12 @@ impl RelayServer {
         origins: Vec<HeaderValue>,
     ) -> Result<()> {
         let app = self.router(Arc::clone(&self.state), origins)?;
+        let public_key = {
+            let reader = self.state.read().await;
+            reader.keypair.public.clone()
+        };
         tracing::info!("listening on {}", addr);
+        tracing::info!("public key {}", hex::encode(&public_key));
         axum_server::bind(addr)
             .handle(handle)
             .serve(app.into_make_service())

@@ -6,6 +6,11 @@ description = "Noise protocol websocket relay client for MPC/TSS applications"
 keywords = ["mpc", "tss", "relay", "crypto", "e2ee"]
 license = "MIT OR Apache-2.0"
 
+[features]
+default = ["native"]
+native = []
+web = []
+
 [dependencies]
 mpc-relay-protocol = { path = "../protocol" }
 thiserror = "1"
@@ -24,6 +29,22 @@ async-stream = "0.3"
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 tokio = { version = "1", features = ["sync", "macros"] }
 getrandom = {version = "0.2", features = ["js"]}
+wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
+js-sys = "0.3"
+log = "0.4"
+wasm-log = "0.3"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies.web-sys]
+version = "0.3"
+features = [
+  "BinaryType",
+  "Blob",
+  "ErrorEvent",
+  "FileReader",
+  "MessageEvent",
+  "ProgressEvent",
+  "WebSocket",
+]
 
 [dev-dependencies]
 anyhow = "1"

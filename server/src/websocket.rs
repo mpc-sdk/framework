@@ -73,7 +73,7 @@ pub async fn upgrade(
     tracing::debug!("websocket upgrade request");
 
     let mut writer = state.write().await;
-    
+
     // Check access lists
     if writer.config.allow.is_some() || writer.config.deny.is_some() {
         if !writer.config.is_allowed_access(&query.public_key) {

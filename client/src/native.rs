@@ -44,13 +44,13 @@ pub struct NativeClient {
 impl NativeClient {
     /// Create a new native client.
     pub async fn new<R>(
-        request: R,
+        server: R,
         options: ClientOptions,
     ) -> Result<(Self, EventLoop)>
     where
         R: IntoClientRequest + Unpin,
     {
-        let (stream, response) = connect_async(request).await?;
+        let (stream, response) = connect_async(server).await?;
 
         if response.status() != StatusCode::SWITCHING_PROTOCOLS {
             return Err(Error::ConnectError(

@@ -6,11 +6,29 @@
 
 mod error;
 
-#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
+#[cfg(all(
+    not(all(target_arch = "wasm32", target_os = "unknown")),
+    feature = "native"
+))]
 mod native;
 
-#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
+#[cfg(all(
+    not(all(target_arch = "wasm32", target_os = "unknown")),
+    feature = "native"
+))]
 pub use native::{EventLoop, NativeClient};
+
+#[cfg(all(
+    all(target_arch = "wasm32", target_os = "unknown"),
+    feature = "web"
+))]
+mod web;
+
+#[cfg(all(
+    all(target_arch = "wasm32", target_os = "unknown"),
+    feature = "web"
+))]
+pub use web::WebClient;
 
 use mpc_relay_protocol::{snow, SessionId, SessionState};
 

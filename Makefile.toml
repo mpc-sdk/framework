@@ -71,19 +71,28 @@ args = ["test", "--all", "--lib"]
 command = "cargo"
 args = ["test", "integration"]
 
-[tasks.test-wasm]
-command = "wasm-pack"
-args = ["test", "--firefox"]
-
 [tasks.test]
 dependencies = ["unit", "integration"]
 
 [tasks.dev]
 dependencies = ["check-wasm", "test", "format"]
 
+[tasks.test-wasm]
+command = "wasm-pack"
+args = ["test", "--firefox"]
+
 [tasks.check-wasm]
 command = "cargo"
-args = ["check", "--target", "wasm32-unknown-unknown", "-p", "mpc-relay-client"]
+args = [
+  "check",
+  "--target",
+  "wasm32-unknown-unknown",
+  "-p",
+  "mpc-relay-client",
+  "--no-default-features",
+  "--features",
+  "web"
+]
 
 [tasks.genhtml]
 script = '''
