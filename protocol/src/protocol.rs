@@ -532,7 +532,6 @@ impl Decodable for OpaqueMessage {
                 *self = OpaqueMessage::ServerMessage(len, buf);
             }
             types::OPAQUE_PEER => {
-
                 let size = reader.read_u32().await?;
                 let public_key =
                     reader.read_bytes(size as usize).await?;
@@ -578,6 +577,9 @@ pub enum RequestMessage {
     /// Transparent message used for the handshake(s).
     Transparent(TransparentMessage),
 
+    /// Opaque encrypted messages.
+    Opaque(OpaqueMessage),
+
     /// Relay a message to a peer.
     RelayPeer {
         /// Public key of the receiver.
@@ -611,6 +613,8 @@ impl From<&RequestMessage> for u8 {
         match value {
             RequestMessage::Noop => types::NOOP,
             RequestMessage::Transparent(_) => types::TRANSPARENT,
+            RequestMessage::Opaque(_) => types::OPAQUE,
+
             RequestMessage::RelayPeer { .. } => types::RELAY_PEER,
             RequestMessage::Envelope(_) => types::ENVELOPE,
             RequestMessage::NewSession(_) => types::SESSION_NEW,
@@ -638,6 +642,9 @@ impl Encodable for RequestMessage {
         writer.write_u8(id).await?;
         match self {
             Self::Transparent(message) => {
+                message.encode(writer).await?;
+            }
+            Self::Opaque(message) => {
                 message.encode(writer).await?;
             }
             Self::RelayPeer {
@@ -695,6 +702,12 @@ impl Decodable for RequestMessage {
                     Default::default();
                 message.decode(reader).await?;
                 *self = RequestMessage::Transparent(message);
+            }
+            types::OPAQUE => {
+                let mut message: OpaqueMessage =
+                    Default::default();
+                message.decode(reader).await?;
+                *self = RequestMessage::Opaque(message);
             }
             types::RELAY_PEER => {
                 let size = reader.read_u32().await?;
@@ -801,6 +814,9 @@ pub enum ResponseMessage {
     /// Transparent message used for the handshake(s).
     Transparent(TransparentMessage),
 
+    /// Opaque encrypted messages.
+    Opaque(OpaqueMessage),
+
     /// Message being relayed from another peer.
     RelayPeer {
         /// Public key of the sender.
@@ -828,6 +844,8 @@ impl From<&ResponseMessage> for u8 {
             ResponseMessage::Noop => types::NOOP,
             ResponseMessage::Error(_, _) => types::ERROR,
             ResponseMessage::Transparent(_) => types::TRANSPARENT,
+            ResponseMessage::Opaque(_) => types::OPAQUE,
+
             ResponseMessage::RelayPeer { .. } => types::RELAY_PEER,
             ResponseMessage::Envelope(_) => types::ENVELOPE,
             ResponseMessage::SessionCreated(_) => {
@@ -857,6 +875,9 @@ impl Encodable for ResponseMessage {
                 writer.write_string(message).await?;
             }
             Self::Transparent(message) => {
+                message.encode(&mut *writer).await?;
+            }
+            Self::Opaque(message) => {
                 message.encode(&mut *writer).await?;
             }
             Self::RelayPeer {
@@ -910,6 +931,12 @@ impl Decodable for ResponseMessage {
                     Default::default();
                 message.decode(reader).await?;
                 *self = ResponseMessage::Transparent(message);
+            }
+            types::OPAQUE => {
+                let mut message: OpaqueMessage =
+                    Default::default();
+                message.decode(reader).await?;
+                *self = ResponseMessage::Opaque(message);
             }
             types::RELAY_PEER => {
                 let size = reader.read_u32().await?;
