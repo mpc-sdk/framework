@@ -6,8 +6,8 @@ use futures::io::{AsyncRead, AsyncSeek, AsyncWrite};
 use std::io::Result;
 
 use crate::{
-    encoding::{encoding_error, types},
-    Encoding, HandshakeMessage, OpaqueMessage, RequestMessage,
+    encoding::{encoding_error, types, MAX_BUFFER_SIZE},
+    Encoding, Error, HandshakeMessage, OpaqueMessage, RequestMessage,
     ResponseMessage, SealedEnvelope, ServerMessage, SessionId,
     SessionRequest, SessionState, TransparentMessage,
 };
@@ -20,6 +20,11 @@ async fn encode_buffer<W: AsyncWrite + AsyncSeek + Unpin + Send>(
     writer: &mut BinaryWriter<W>,
     buffer: &[u8],
 ) -> Result<()> {
+    if buffer.len() > MAX_BUFFER_SIZE {
+        return Err(encoding_error(Error::MaxBufferSize(
+            MAX_BUFFER_SIZE,
+        )));
+    }
     writer.write_u16(buffer.len() as u16).await?;
     writer.write_bytes(buffer).await?;
     Ok(())
@@ -34,6 +39,33 @@ async fn decode_buffer<R: AsyncRead + AsyncSeek + Unpin + Send>(
     Ok(buf)
 }
 
+/// Encode an encrypted payload with an additional length prefix
+/// indicating the length of the encrypted buffer.
+async fn encode_payload<W: AsyncWrite + AsyncSeek + Unpin + Send>(
+    writer: &mut BinaryWriter<W>,
+    length: &usize,
+    buffer: &[u8],
+) -> Result<()> {
+    if *length > MAX_BUFFER_SIZE {
+        return Err(encoding_error(Error::MaxBufferSize(
+            MAX_BUFFER_SIZE,
+        )));
+    }
+    writer.write_u16(*length as u16).await?;
+    encode_buffer(writer, buffer).await?;
+    Ok(())
+}
+
+/// Decode an encrypted payload with an additional length prefix
+/// indicating the length of the encrypted buffer.
+async fn decode_payload<R: AsyncRead + AsyncSeek + Unpin + Send>(
+    reader: &mut BinaryReader<R>,
+) -> Result<(usize, Vec<u8>)> {
+    let length = reader.read_u16().await? as usize;
+    let buffer = decode_buffer(reader).await?;
+    Ok((length, buffer))
+}
+
 #[cfg_attr(target_arch="wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl Encodable for HandshakeMessage {
@@ -45,12 +77,10 @@ impl Encodable for HandshakeMessage {
         writer.write_u8(id).await?;
         match self {
             Self::Initiator(len, buf) => {
-                writer.write_usize(len).await?;
-                encode_buffer(writer, buf).await?;
+                encode_payload(writer, len, buf).await?;
             }
             Self::Responder(len, buf) => {
-                writer.write_usize(len).await?;
-                encode_buffer(writer, buf).await?;
+                encode_payload(writer, len, buf).await?;
             }
             Self::Noop => unreachable!(),
         }
@@ -68,13 +98,11 @@ impl Decodable for HandshakeMessage {
         let id = reader.read_u8().await?;
         match id {
             types::HANDSHAKE_INITIATOR => {
-                let len = reader.read_usize().await?;
-                let buf = decode_buffer(reader).await?;
+                let (len, buf) = decode_payload(reader).await?;
                 *self = HandshakeMessage::Initiator(len, buf);
             }
             types::HANDSHAKE_RESPONDER => {
-                let len = reader.read_usize().await?;
-                let buf = decode_buffer(reader).await?;
+                let (len, buf) = decode_payload(reader).await?;
                 *self = HandshakeMessage::Responder(len, buf);
             }
             _ => {
@@ -504,8 +532,9 @@ impl Encodable for SealedEnvelope {
         let id: u8 = self.encoding.into();
         writer.write_u8(id).await?;
         writer.write_bool(self.broadcast).await?;
-        writer.write_usize(self.length).await?;
-        encode_buffer(writer, &self.payload).await?;
+
+        encode_payload(writer, &self.length, &self.payload).await?;
+
         Ok(())
     }
 }
@@ -532,8 +561,9 @@ impl Decodable for SealedEnvelope {
             }
         }
         self.broadcast = reader.read_bool().await?;
-        self.length = reader.read_usize().await?;
-        self.payload = decode_buffer(reader).await?;
+        let (length, payload) = decode_payload(reader).await?;
+        self.length = length;
+        self.payload = payload;
         Ok(())
     }
 }

@@ -12,11 +12,14 @@ pub(crate) fn encoding_error(
     std::io::Error::new(std::io::ErrorKind::Other, e)
 }
 
+/// Maximum buffer size for encoding and decoding.
+pub(crate) const MAX_BUFFER_SIZE: usize = 1024 * 32;
+
 /// Default binary encoding options.
 fn encoding_options() -> Options {
     Options {
         endian: Endian::Little,
-        max_buffer_size: Some(1024 * 32),
+        max_buffer_size: Some(MAX_BUFFER_SIZE),
     }
 }
 
