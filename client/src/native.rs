@@ -53,7 +53,7 @@ impl NativeClient {
         let (stream, response) = connect_async(request).await?;
 
         if response.status() != StatusCode::SWITCHING_PROTOCOLS {
-            return Err(Error::HttpError(
+            return Err(Error::ConnectError(
                 response.status(),
                 response.status().to_string(),
             ));
@@ -509,11 +509,9 @@ impl EventLoop {
         incoming: ResponseMessage,
     ) -> Result<Option<Event>> {
         match incoming {
-            /*
-            ResponseMessage::Error(code, message) => {
-                Err(Error::HttpError(code, message))
-            }
-            */
+            ResponseMessage::Transparent(
+                TransparentMessage::Error(code, message),
+            ) => Err(Error::ServerError(code, message)),
             ResponseMessage::Transparent(
                 TransparentMessage::ServerHandshake(
                     HandshakeMessage::Responder(len, buf),

@@ -125,6 +125,11 @@ impl Encodable for TransparentMessage {
         let id: u8 = self.into();
         writer.write_u8(id).await?;
         match self {
+            Self::Error(code, message) => {
+                let code: u16 = (*code).into();
+                writer.write_u16(code).await?;
+                writer.write_string(message).await?;
+            }
             Self::ServerHandshake(message) => {
                 message.encode(writer).await?;
             }
@@ -150,6 +155,15 @@ impl Decodable for TransparentMessage {
     ) -> Result<()> {
         let id = reader.read_u8().await?;
         match id {
+            types::ERROR => {
+                let code = reader
+                    .read_u16()
+                    .await?
+                    .try_into()
+                    .map_err(encoding_error)?;
+                let message = reader.read_string().await?;
+                *self = TransparentMessage::Error(code, message);
+            }
             types::HANDSHAKE_SERVER => {
                 let mut message: HandshakeMessage =
                     Default::default();

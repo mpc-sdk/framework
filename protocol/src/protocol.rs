@@ -50,6 +50,8 @@ pub enum TransparentMessage {
     #[default]
     #[doc(hidden)]
     Noop,
+    /// Return an error message to the client.
+    Error(StatusCode, String),
     /// Handshake message.
     ServerHandshake(HandshakeMessage),
     /// Relayed peer handshake message.
@@ -65,6 +67,7 @@ impl From<&TransparentMessage> for u8 {
     fn from(value: &TransparentMessage) -> Self {
         match value {
             TransparentMessage::Noop => types::NOOP,
+            TransparentMessage::Error(_, _) => types::ERROR,
             TransparentMessage::ServerHandshake(_) => {
                 types::HANDSHAKE_SERVER
             }
