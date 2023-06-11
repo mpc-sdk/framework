@@ -540,53 +540,15 @@ impl EventLoop {
                 public_key,
                 message,
             } => {
-                if handshake {
-                    // Decode the inner message
-                    let relayed =
-                        decode::<PeerMessage>(message).await?;
-                    match relayed {
-                        PeerMessage::Request(
-                            RequestMessage::Transparent(
-                                TransparentMessage::PeerHandshake {
-                                    message:
-                                        HandshakeMessage::Initiator(
-                                            len,
-                                            buf,
-                                        ),
-                                    public_key,
-                                },
-                            ),
-                        ) => Ok(self
-                            .peer_handshake_responder(
-                                public_key, len, buf,
-                            )
-                            .await?),
-                        PeerMessage::Response(
-                            ResponseMessage::Transparent(
-                                TransparentMessage::PeerHandshake {
-                                    message:
-                                        HandshakeMessage::Responder(
-                                            len,
-                                            buf,
-                                        ),
-                                    public_key,
-                                },
-                            ),
-                        ) => Ok(Some(
-                            self.peer_handshake_ack(
-                                public_key, len, buf,
-                            )
-                            .await?,
-                        )),
-                        _ => Err(Error::InvalidPeerHandshakeMessage),
-                    }
-                } else {
+                if !handshake {
                     Ok(Some(
                         self.handle_relayed_message(
                             public_key, message,
                         )
                         .await?,
                     ))
+                } else {
+                    Ok(None)
                 }
             }
             ResponseMessage::Envelope(message) => {
