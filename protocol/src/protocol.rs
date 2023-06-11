@@ -22,6 +22,12 @@ mod types {
     pub const HANDSHAKE_TYPE_SERVER: u8 = 1;
     pub const HANDSHAKE_TYPE_PEER: u8 = 2;
 
+    pub const HANDSHAKE_MSG_INITIATOR: u8 = 1;
+    pub const HANDSHAKE_MSG_RESPONDER: u8 = 2;
+
+    pub const HANDSHAKE_SERVER: u8 = 1;
+    pub const HANDSHAKE_PEER: u8 = 2;
+
     pub const PEER_REQUEST: u8 = 1;
     pub const PEER_RESPONSE: u8 = 2;
 
@@ -219,6 +225,180 @@ impl Decodable for PeerMessage {
         }
         Ok(())
     }
+}
+
+/// Handshake messages.
+#[derive(Default, Debug)]
+pub enum HandshakeMessage {
+    #[default]
+    #[doc(hidden)]
+    Noop,
+    /// Handshake initiator.
+    Initiator(usize, Vec<u8>),
+    /// Handshake responder.
+    Responder(usize, Vec<u8>),
+}
+
+impl From<&HandshakeMessage> for u8 {
+    fn from(value: &HandshakeMessage) -> Self {
+        match value {
+            HandshakeMessage::Noop => types::NOOP,
+            HandshakeMessage::Initiator(_, _) => types::HANDSHAKE_MSG_INITIATOR,
+            HandshakeMessage::Responder(_, _) => types::HANDSHAKE_MSG_RESPONDER,
+        }
+    }
+}
+
+#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl Encodable for HandshakeMessage {
+    async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
+        &self,
+        writer: &mut BinaryWriter<W>,
+    ) -> Result<()> {
+        let id: u8 = self.into();
+        writer.write_u8(id).await?;
+        match self {
+            Self::Initiator(len, buf) => {
+                writer.write_usize(len).await?;
+                writer.write_u32(buf.len() as u32).await?;
+                writer.write_bytes(buf).await?;
+            }
+            Self::Responder(len, buf) => {
+                writer.write_usize(len).await?;
+                writer.write_u32(buf.len() as u32).await?;
+                writer.write_bytes(buf).await?;
+            }
+            Self::Noop => unreachable!(),
+        }
+        Ok(())
+    }
+}
+
+#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl Decodable for HandshakeMessage {
+    async fn decode<R: AsyncRead + AsyncSeek + Unpin + Send>(
+        &mut self,
+        reader: &mut BinaryReader<R>,
+    ) -> Result<()> {
+        let id = reader.read_u8().await?;
+        match id {
+            types::HANDSHAKE_INITIATOR => {
+                let len = reader.read_usize().await?;
+                let size = reader.read_u32().await?;
+                let buf = reader.read_bytes(size as usize).await?;
+                *self = HandshakeMessage::Initiator(
+                    len, buf,
+                );
+            }
+            types::HANDSHAKE_RESPONDER => {
+                let len = reader.read_usize().await?;
+                let size = reader.read_u32().await?;
+                let buf = reader.read_bytes(size as usize).await?;
+                *self = HandshakeMessage::Responder(
+                    len, buf,
+                );
+            }
+            _ => {
+                return Err(encoding_error(
+                    crate::Error::EncodingKind(id),
+                ))
+            }
+        }
+        Ok(())
+    }
+}
+
+/// Transparent messaages are not encrypted.
+#[derive(Default, Debug)]
+pub enum TransparentMessage {
+    #[default]
+    #[doc(hidden)]
+    Noop,
+    /// Handshake message.
+    ServerHandshake(HandshakeMessage),
+    /// Relayed peer handshake message.
+    PeerHandshake {
+        /// Public key of the receiver.
+        public_key: Vec<u8>,
+        /// Handshake message.
+        message: HandshakeMessage,
+    },
+}
+
+impl From<&TransparentMessage> for u8 {
+    fn from(value: &TransparentMessage) -> Self {
+        match value {
+            TransparentMessage::Noop => types::NOOP,
+            TransparentMessage::ServerHandshake(_) => types::HANDSHAKE_SERVER,
+            TransparentMessage::PeerHandshake { .. } => types::HANDSHAKE_PEER,
+        }
+    }
+}
+
+#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl Encodable for TransparentMessage {
+    async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
+        &self,
+        writer: &mut BinaryWriter<W>,
+    ) -> Result<()> {
+        let id: u8 = self.into();
+        writer.write_u8(id).await?;
+        match self {
+            Self::ServerHandshake(message) => {
+                message.encode(writer).await?;
+            }
+            Self::PeerHandshake { public_key, message } => {
+                writer.write_u32(public_key.len() as u32).await?;
+                writer.write_bytes(public_key).await?;
+                message.encode(writer).await?;
+            }
+            Self::Noop => unreachable!(),
+        }
+        Ok(())
+    }
+}
+
+#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl Decodable for TransparentMessage {
+    async fn decode<R: AsyncRead + AsyncSeek + Unpin + Send>(
+        &mut self,
+        reader: &mut BinaryReader<R>,
+    ) -> Result<()> {
+        let id = reader.read_u8().await?;
+        match id {
+            types::HANDSHAKE_SERVER => {
+                let mut message: HandshakeMessage = Default::default();
+                message.decode(reader).await?;
+                *self = TransparentMessage::ServerHandshake(message);
+            }
+            types::HANDSHAKE_PEER => {
+                let size = reader.read_u32().await?;
+                let public_key = reader.read_bytes(size as usize).await?;
+                let mut message: HandshakeMessage = Default::default();
+                message.decode(reader).await?;
+                *self = TransparentMessage::PeerHandshake { public_key, message };
+            }
+            _ => {
+                return Err(encoding_error(
+                    crate::Error::EncodingKind(id),
+                ))
+            }
+        }
+        Ok(())
+    }
+}
+
+/// Opaque messaages are encrypted.
+#[derive(Default, Debug)]
+pub enum Opaque {
+    #[default]
+    #[doc(hidden)]
+    Noop,
+    // TODO
 }
 
 /// Request message sent to the server or another peer.
