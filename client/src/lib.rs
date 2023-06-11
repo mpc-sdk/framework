@@ -35,6 +35,8 @@ pub enum Event {
         peer_key: Vec<u8>,
         /// Message buffer.
         message: Vec<u8>,
+        /// Session identifier.
+        session_id: Option<SessionId>,
     },
     /// JSON message received from a peer.
     JsonMessage {
@@ -42,6 +44,8 @@ pub enum Event {
         peer_key: Vec<u8>,
         /// JSON message.
         message: JsonMessage,
+        /// Session identifier.
+        session_id: Option<SessionId>,
     },
     /// Event dispatched when a session has been created.
     SessionCreated(SessionState),

@@ -363,13 +363,22 @@ async fn initiator(
                 )
                 .await?;
         }
-        Event::JsonMessage { message, .. } => {
+        Event::JsonMessage {
+            message,
+            session_id,
+            ..
+        } => {
             let message: u8 = message.deserialize()?;
             let mut result = session_result.lock().await;
             result.push(message);
 
             let mut state = session_state.lock().await;
             state.received += 1;
+
+            assert_eq!(
+                &state.session.as_ref().unwrap().session_id,
+                session_id.as_ref().unwrap()
+            );
 
             if state.received == 2 {
                 let session_id =
@@ -438,13 +447,22 @@ async fn participant(
                 )
                 .await?;
         }
-        Event::JsonMessage { message, .. } => {
+        Event::JsonMessage {
+            message,
+            session_id,
+            ..
+        } => {
             let message: u8 = message.deserialize()?;
             let mut result = session_result.lock().await;
             result.push(message);
 
             let mut state = session_state.lock().await;
             state.received += 1;
+
+            assert_eq!(
+                &state.session.as_ref().unwrap().session_id,
+                session_id.as_ref().unwrap()
+            );
 
             if state.received == 2 {
                 return Ok(true);
