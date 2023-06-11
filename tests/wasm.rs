@@ -9,14 +9,14 @@ mod wasm_tests {
     use mpc_relay_client::{WebClient, ClientOptions};
 
     const SERVER: &str = "ws://127.0.0.1:8008/";
-    const SERVER_KEY: &str = "7fa066392ae34ca5aeca907ff100a7d9e37e5a851dcaa7c5e7c4fef946ee3a25";
+    const SERVER_PUBLIC_KEY: &str = "7fa066392ae34ca5aeca907ff100a7d9e37e5a851dcaa7c5e7c4fef946ee3a25";
 
     #[wasm_bindgen_test]
     fn websocket_connection() -> Result<(), JsValue> {
         let _ = wasm_log::try_init(wasm_log::Config::default());
 
         let keypair = generate_keypair().unwrap();
-        let server_public_key = hex::decode(SERVER_KEY).unwrap();
+        let server_public_key = hex::decode(SERVER_PUBLIC_KEY).unwrap();
         let public_key = hex::encode(&keypair.public);
         let options = ClientOptions {
             server_public_key,
