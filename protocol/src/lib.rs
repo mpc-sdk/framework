@@ -11,7 +11,7 @@ mod keypair;
 mod protocol;
 
 pub use constants::*;
-pub use encoding::{decode, encode};
+pub use encoding::{decode, encode, VERSION};
 pub use error::Error;
 pub use keypair::*;
 pub use protocol::*;

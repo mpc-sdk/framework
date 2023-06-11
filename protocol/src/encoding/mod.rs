@@ -66,3 +66,5 @@ pub(crate) mod types {
 }
 
 mod v1;
+
+pub use v1::VERSION;

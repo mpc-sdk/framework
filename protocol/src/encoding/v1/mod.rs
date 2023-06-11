@@ -12,6 +12,9 @@ use crate::{
     SessionRequest, SessionState, TransparentMessage,
 };
 
+/// Version for binary encoding.
+pub const VERSION: u16 = 1;
+
 #[cfg_attr(target_arch="wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl Encodable for HandshakeMessage {
