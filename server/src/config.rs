@@ -1,5 +1,5 @@
 //! Server configuration.
-use mpc_relay_protocol::{decode_keypair, snow::Keypair};
+use mpc_relay_protocol::{decode_keypair, hex, snow::Keypair};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use tokio::fs;
@@ -22,6 +22,50 @@ pub struct ServerConfig {
 
     /// Configuration for CORS.
     pub cors: CorsConfig,
+
+    /// Allow access to clients with these
+    /// public keys.
+    pub allow: Option<Vec<AccessKey>>,
+
+    /// Deny access to clients with these
+    /// public keys.
+    pub deny: Option<Vec<AccessKey>>,
+}
+
+impl ServerConfig {
+    /// Determine if a public key is allowed access.
+    pub fn is_allowed_access(&self, key: impl AsRef<[u8]>) -> bool {
+        //let restricted = self.allow.is_some() || self.deny.is_some();
+
+        if let Some(deny) = &self.deny {
+            if deny
+                .iter()
+                .find(|k| &k.public_key == key.as_ref())
+                .is_some()
+            {
+                return false;
+            }
+        }
+
+        if let Some(allow) = &self.allow {
+            if allow
+                .iter()
+                .find(|k| &k.public_key == key.as_ref())
+                .is_some()
+            {
+                return true;
+            }
+            false
+        } else {
+            true
+        }
+    }
+}
+
+#[derive(Default, Serialize, Deserialize)]
+pub struct AccessKey {
+    #[serde(with = "hex::serde")]
+    public_key: Vec<u8>,
 }
 
 /// Certificate and key for TLS.

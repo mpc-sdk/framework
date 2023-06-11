@@ -71,7 +71,16 @@ pub async fn upgrade(
     ws: WebSocketUpgrade,
 ) -> std::result::Result<Response, StatusCode> {
     tracing::debug!("websocket upgrade request");
+
     let mut writer = state.write().await;
+    
+    // Check access lists
+    if writer.config.allow.is_some() || writer.config.deny.is_some() {
+        if !writer.config.is_allowed_access(&query.public_key) {
+            return Err(StatusCode::FORBIDDEN);
+        }
+    }
+
     let id = Uuid::new_v4();
     let (outgoing_tx, outgoing_rx) = mpsc::channel::<Vec<u8>>(32);
     let (incoming, service_reader) = mpsc::channel::<Vec<u8>>(32);
