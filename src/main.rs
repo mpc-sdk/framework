@@ -1,11 +1,7 @@
-#[cfg(
-    not(all(target_arch = "wasm32", target_os = "unknown")),
-)]
+#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
 mod commands;
 
-#[cfg(
-    not(all(target_arch = "wasm32", target_os = "unknown")),
-)]
+#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
 mod cli {
 
     use anyhow::Result;
@@ -78,9 +74,7 @@ mod cli {
     }
 }
 
-#[cfg(
-    not(all(target_arch = "wasm32", target_os = "unknown")),
-)]
+#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
 #[tokio::main]
 pub async fn main() -> anyhow::Result<()> {
     use tracing_subscriber::{
@@ -101,7 +95,5 @@ pub async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[cfg(
-    all(target_arch = "wasm32", target_os = "unknown"),
-)]
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 pub fn main() {}

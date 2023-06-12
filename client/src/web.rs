@@ -1,6 +1,6 @@
+use super::ClientOptions;
 use wasm_bindgen::prelude::*;
 use web_sys::{ErrorEvent, MessageEvent, WebSocket};
-use super::ClientOptions;
 //use crate::Result;
 
 /// Client for the web platform.
@@ -15,7 +15,7 @@ impl WebClient {
     /// Create a new web client.
     //#[wasm_bindgen(constructor)]
 
-    pub fn new(
+    pub async fn new(
         server: &str,
         options: ClientOptions,
     ) -> Result<WebClient, JsValue> {

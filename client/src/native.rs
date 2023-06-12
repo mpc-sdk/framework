@@ -2,7 +2,7 @@ use async_stream::stream;
 use futures::{
     select,
     sink::SinkExt,
-    stream::{BoxStream, SplitSink, SplitStream},
+    stream::{BoxStream, SplitSink, SplitStream, Stream},
     FutureExt, StreamExt,
 };
 use serde::Serialize;
@@ -27,10 +27,33 @@ use mpc_relay_protocol::{
     SessionId, SessionRequest, TransparentMessage, PATTERN, TAGLEN,
 };
 
+use super::{
+    encrypt_peer_channel,
+    event_loop::{EventLoop, MessageBuilder},
+    Peers, Server,
+};
 use crate::{ClientOptions, Error, Event, JsonMessage, Result};
 
-type Peers = Arc<RwLock<HashMap<Vec<u8>, ProtocolState>>>;
-type Server = Arc<RwLock<Option<ProtocolState>>>;
+//type Peers = Arc<RwLock<HashMap<Vec<u8>, ProtocolState>>>;
+//type Server = Arc<RwLock<Option<ProtocolState>>>;
+
+type WsMessage = Message;
+type WsError = tokio_tungstenite::tungstenite::Error;
+type WsReadStream =
+    SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>;
+type WsWriteStream =
+    SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, WsMessage>;
+
+/// Event loop for the native client.
+pub type NativeEventLoop =
+    EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream>;
+
+async fn message_builder(
+    message: RequestMessage,
+) -> Result<WsMessage> {
+    let message = Message::Binary(encode(&message).await?);
+    Ok(message)
+}
 
 /// Native websocket client using the tokio tungstenite library.
 #[derive(Clone)]
@@ -46,7 +69,7 @@ impl NativeClient {
     pub async fn new<R>(
         server: R,
         options: ClientOptions,
-    ) -> Result<(Self, EventLoop)>
+    ) -> Result<(Self, NativeEventLoop)>
     where
         R: IntoClientRequest + Unpin,
     {
@@ -100,6 +123,13 @@ impl NativeClient {
             outbound_rx,
             server,
             peers,
+            builder: Box::new(|message| {
+                Box::pin(async move {
+                    let message =
+                        Message::Binary(encode(&message).await?);
+                    Ok(message)
+                })
+            }),
         };
 
         Ok((client, event_loop))
@@ -404,24 +434,20 @@ impl NativeClient {
     }
 }
 
-/// Event loop for a websocket client.
-pub struct EventLoop {
-    options: Arc<ClientOptions>,
-    ws_reader:
-        SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>,
-    ws_writer: SplitSink<
-        WebSocketStream<MaybeTlsStream<TcpStream>>,
-        Message,
-    >,
-    message_tx: mpsc::Sender<ResponseMessage>,
-    message_rx: mpsc::Receiver<ResponseMessage>,
-    outbound_tx: mpsc::Sender<RequestMessage>,
-    outbound_rx: mpsc::Receiver<RequestMessage>,
-    server: Server,
-    peers: Peers,
-}
+impl EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream> {
+    /// Receive and decode socket messages then send to
+    /// the messages channel.
+    pub(crate) async fn read_message(
+        incoming: Message,
+        event_loop: &mut mpsc::Sender<ResponseMessage>,
+    ) -> Result<()> {
+        if let Message::Binary(buffer) = incoming {
+            let response: ResponseMessage = decode(buffer).await?;
+            event_loop.send(response).await?;
+        }
+        Ok(())
+    }
 
-impl EventLoop {
     /// Stream of events from the event loop.
     pub fn run<'a>(&'a mut self) -> BoxStream<'a, Result<Event>> {
         let s = stream! {
@@ -479,336 +505,5 @@ impl EventLoop {
             }
         };
         Box::pin(s)
-    }
-
-    /// Send a message to the socket and flush the stream.
-    async fn send_message(
-        &mut self,
-        message: RequestMessage,
-    ) -> Result<()> {
-        let message = Message::Binary(encode(&message).await?);
-        self.ws_writer.send(message).await?;
-        Ok(self.ws_writer.flush().await?)
-    }
-
-    /// Receive and decode socket messages then send to
-    /// the messages channel.
-    async fn read_message(
-        incoming: Message,
-        event_loop: &mut mpsc::Sender<ResponseMessage>,
-    ) -> Result<()> {
-        if let Message::Binary(buffer) = incoming {
-            let response: ResponseMessage = decode(buffer).await?;
-            event_loop.send(response).await?;
-        }
-        Ok(())
-    }
-
-    async fn handle_incoming_message(
-        &mut self,
-        incoming: ResponseMessage,
-    ) -> Result<Option<Event>> {
-        match incoming {
-            ResponseMessage::Transparent(
-                TransparentMessage::Error(code, message),
-            ) => Err(Error::ServerError(code, message)),
-            ResponseMessage::Transparent(
-                TransparentMessage::ServerHandshake(
-                    HandshakeMessage::Responder(len, buf),
-                ),
-            ) => Ok(Some(self.server_handshake(len, buf).await?)),
-            ResponseMessage::Transparent(
-                TransparentMessage::PeerHandshake {
-                    message: HandshakeMessage::Initiator(len, buf),
-                    public_key,
-                },
-            ) => Ok(self
-                .peer_handshake_responder(public_key, len, buf)
-                .await?),
-            ResponseMessage::Transparent(
-                TransparentMessage::PeerHandshake {
-                    message: HandshakeMessage::Responder(len, buf),
-                    public_key,
-                },
-            ) => Ok(Some(
-                self.peer_handshake_ack(public_key, len, buf).await?,
-            )),
-            ResponseMessage::Opaque(OpaqueMessage::PeerMessage {
-                public_key,
-                envelope,
-                session_id,
-            }) => Ok(Some(
-                self.handle_relayed_message(
-                    public_key, envelope, session_id,
-                )
-                .await?,
-            )),
-            ResponseMessage::Opaque(
-                OpaqueMessage::ServerMessage(envelope),
-            ) => {
-                let mut server = self.server.write().await;
-                if let Some(server) = server.as_mut() {
-                    let (encoding, contents) =
-                        decrypt_server_channel(server, envelope)
-                            .await?;
-                    let message = match encoding {
-                        Encoding::Blob => {
-                            let response: ServerMessage =
-                                decode(&contents).await?;
-                            response
-                        }
-                        _ => {
-                            panic!("unexpected encoding received from server")
-                        }
-                    };
-                    Ok(self
-                        .handle_server_channel_message(message)
-                        .await?)
-                } else {
-                    unreachable!()
-                }
-            }
-            _ => {
-                panic!("unhandled message");
-            }
-        }
-    }
-
-    /// Process an inner message from the server after
-    /// decrypting the envelope.
-    async fn handle_server_channel_message(
-        &self,
-        message: ServerMessage,
-    ) -> Result<Option<Event>> {
-        match message {
-            ServerMessage::Error(code, message) => {
-                Err(Error::ServerError(code, message))
-            }
-            ServerMessage::SessionCreated(response) => {
-                Ok(Some(Event::SessionCreated(response)))
-            }
-            ServerMessage::SessionReady(response) => {
-                Ok(Some(Event::SessionReady(response)))
-            }
-            ServerMessage::SessionActive(response) => {
-                Ok(Some(Event::SessionActive(response)))
-            }
-            ServerMessage::SessionFinished(session_id) => {
-                Ok(Some(Event::SessionFinished(session_id)))
-            }
-            _ => Ok(None),
-        }
-    }
-
-    async fn server_handshake(
-        &mut self,
-        len: usize,
-        buf: Vec<u8>,
-    ) -> Result<Event> {
-        let mut state = self.server.write().await;
-        let transport = match state.take() {
-            Some(ProtocolState::Handshake(mut initiator)) => {
-                let mut read_buf = vec![0u8; 1024];
-                initiator.read_message(&buf[..len], &mut read_buf)?;
-
-                initiator.into_transport_mode()?
-            }
-            _ => return Err(Error::NotHandshakeState),
-        };
-
-        *state = Some(ProtocolState::Transport(transport));
-
-        Ok(Event::ServerConnected {
-            server_key: self.options.server_public_key.clone(),
-        })
-    }
-
-    async fn peer_handshake_responder(
-        &self,
-        public_key: impl AsRef<[u8]>,
-        len: usize,
-        buf: Vec<u8>,
-    ) -> Result<Option<Event>> {
-        let mut peers = self.peers.write().await;
-
-        if peers.get(public_key.as_ref()).is_some() {
-            return Err(Error::PeerAlreadyExistsMaybeRace);
-        } else {
-            tracing::debug!(
-                from = ?hex::encode(public_key.as_ref()),
-                "peer handshake responder"
-            );
-
-            let builder = Builder::new(PATTERN.parse()?);
-            let mut responder = builder
-                .local_private_key(&self.options.keypair.private)
-                .remote_public_key(public_key.as_ref())
-                .build_responder()?;
-
-            let mut read_buf = vec![0u8; 1024];
-            responder.read_message(&buf[..len], &mut read_buf)?;
-
-            let mut payload = vec![0u8; 1024];
-            let len = responder.write_message(&[], &mut payload)?;
-
-            let transport = responder.into_transport_mode()?;
-            peers.insert(
-                public_key.as_ref().to_vec(),
-                ProtocolState::Transport(transport),
-            );
-
-            let request = RequestMessage::Transparent(
-                TransparentMessage::PeerHandshake {
-                    public_key: public_key.as_ref().to_vec(),
-                    message: HandshakeMessage::Responder(
-                        len, payload,
-                    ),
-                },
-            );
-
-            self.outbound_tx.send(request).await?;
-
-            Ok(Some(Event::PeerConnected {
-                peer_key: public_key.as_ref().to_vec(),
-            }))
-        }
-    }
-
-    async fn peer_handshake_ack(
-        &self,
-        public_key: impl AsRef<[u8]>,
-        len: usize,
-        buf: Vec<u8>,
-    ) -> Result<Event> {
-        let mut peers = self.peers.write().await;
-
-        let peer =
-            if let Some(peer) = peers.remove(public_key.as_ref()) {
-                peer
-            } else {
-                return Err(Error::PeerNotFound(hex::encode(
-                    public_key.as_ref().to_vec(),
-                )));
-            };
-
-        tracing::debug!(
-            from = ?hex::encode(public_key.as_ref()),
-            "peer handshake done"
-        );
-
-        let transport = match peer {
-            ProtocolState::Handshake(mut initiator) => {
-                let mut read_buf = vec![0u8; 1024];
-                initiator.read_message(&buf[..len], &mut read_buf)?;
-                initiator.into_transport_mode()?
-            }
-            _ => return Err(Error::NotHandshakeState),
-        };
-
-        peers.insert(
-            public_key.as_ref().to_vec(),
-            ProtocolState::Transport(transport),
-        );
-
-        Ok(Event::PeerConnected {
-            peer_key: public_key.as_ref().to_vec(),
-        })
-    }
-
-    async fn handle_relayed_message(
-        &mut self,
-        public_key: impl AsRef<[u8]>,
-        envelope: SealedEnvelope,
-        session_id: Option<SessionId>,
-    ) -> Result<Event> {
-        let mut peers = self.peers.write().await;
-        if let Some(peer) = peers.get_mut(public_key.as_ref()) {
-            let contents =
-                decrypt_peer_channel(peer, &envelope).await?;
-            match envelope.encoding {
-                Encoding::Noop => unreachable!(),
-                Encoding::Blob => Ok(Event::BinaryMessage {
-                    peer_key: public_key.as_ref().to_vec(),
-                    message: contents,
-                    session_id,
-                }),
-                Encoding::Json => Ok(Event::JsonMessage {
-                    peer_key: public_key.as_ref().to_vec(),
-                    message: JsonMessage { contents },
-                    session_id,
-                }),
-            }
-        } else {
-            Err(Error::PeerNotFound(hex::encode(
-                public_key.as_ref().to_vec(),
-            )))
-        }
-    }
-}
-
-/// Encrypt a message to send to a peer.
-///
-/// The protocol must be in transport mode.
-async fn encrypt_peer_channel(
-    public_key: impl AsRef<[u8]>,
-    peer: &mut ProtocolState,
-    payload: &[u8],
-    encoding: Encoding,
-    broadcast: bool,
-    session_id: Option<SessionId>,
-) -> Result<RequestMessage> {
-    match peer {
-        ProtocolState::Transport(transport) => {
-            let mut contents = vec![0; payload.len() + TAGLEN];
-            let length =
-                transport.write_message(payload, &mut contents)?;
-            let envelope = SealedEnvelope {
-                length,
-                encoding,
-                payload: contents,
-                broadcast,
-            };
-
-            let request =
-                RequestMessage::Opaque(OpaqueMessage::PeerMessage {
-                    public_key: public_key.as_ref().to_vec(),
-                    session_id,
-                    envelope,
-                });
-
-            /*
-            let message = encode(&envelope).await?;
-            let request = RequestMessage::RelayPeer {
-                public_key: public_key.as_ref().to_vec(),
-                message,
-                session_id,
-            };
-            */
-
-            Ok(request)
-        }
-        _ => Err(Error::NotTransportState),
-    }
-}
-
-/// Decrypt a message received from a peer.
-///
-/// The protocol must be in transport mode.
-async fn decrypt_peer_channel(
-    peer: &mut ProtocolState,
-    envelope: &SealedEnvelope,
-) -> Result<Vec<u8>> {
-    match peer {
-        ProtocolState::Transport(transport) => {
-            let mut contents = vec![0; envelope.length];
-            transport.read_message(
-                &envelope.payload[..envelope.length],
-                &mut contents,
-            )?;
-            let new_length = contents.len() - TAGLEN;
-            contents.truncate(new_length);
-            Ok(contents)
-        }
-        _ => Err(Error::NotTransportState),
     }
 }

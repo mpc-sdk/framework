@@ -8,7 +8,7 @@ use tokio::{
 };
 use tokio_stream::wrappers::IntervalStream;
 
-use mpc_relay_client::{Event, EventLoop, NativeClient};
+use mpc_relay_client::{Event, NativeClient, NativeEventLoop};
 use mpc_relay_protocol::{SessionId, SessionState};
 
 use crate::test_utils::{new_client, spawn_server};
@@ -87,7 +87,7 @@ async fn integration_session_broadcast() -> Result<()> {
 }
 
 async fn event_loop_1(
-    mut event_loop: EventLoop,
+    mut event_loop: NativeEventLoop,
     mut client: NativeClient,
     session_result: SessionResult,
     session_participants: Vec<Vec<u8>>,
@@ -140,7 +140,7 @@ async fn event_loop_1(
 }
 
 async fn event_loop_2(
-    mut event_loop: EventLoop,
+    mut event_loop: NativeEventLoop,
     mut client: NativeClient,
     session_result: SessionResult,
 ) -> Result<JoinHandle<Result<()>>> {
@@ -179,7 +179,7 @@ async fn event_loop_2(
 }
 
 async fn event_loop_3(
-    mut event_loop: EventLoop,
+    mut event_loop: NativeEventLoop,
     mut client: NativeClient,
     session_result: SessionResult,
 ) -> Result<JoinHandle<Result<()>>> {

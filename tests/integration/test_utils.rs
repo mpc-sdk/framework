@@ -8,7 +8,9 @@ use mpc_relay_protocol::{
     decode_keypair, generate_keypair, snow::Keypair,
 };
 
-use mpc_relay_client::{ClientOptions, EventLoop, NativeClient};
+use mpc_relay_client::{
+    ClientOptions, NativeClient, NativeEventLoop,
+};
 
 use mpc_relay_server::{RelayServer, ServerConfig};
 
@@ -37,8 +39,8 @@ pub fn init_tracing() {
 }
 
 /// Create new client connected to the mock server.
-pub async fn new_client() -> Result<(NativeClient, EventLoop, Keypair)>
-{
+pub async fn new_client(
+) -> Result<(NativeClient, NativeEventLoop, Keypair)> {
     let server_public_key = server_public_key().await?;
     let keypair = generate_keypair()?;
     let url = format!(

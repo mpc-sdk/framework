@@ -15,7 +15,7 @@ use axum_server::{tls_rustls::RustlsConfig, Handle};
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use uuid::Uuid;
 
-use mpc_relay_protocol::{snow::Keypair, uuid, SessionManager, hex};
+use mpc_relay_protocol::{hex, snow::Keypair, uuid, SessionManager};
 
 use crate::{
     config::{ServerConfig, TlsConfig},

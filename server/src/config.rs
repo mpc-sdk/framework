@@ -38,21 +38,13 @@ impl ServerConfig {
         //let restricted = self.allow.is_some() || self.deny.is_some();
 
         if let Some(deny) = &self.deny {
-            if deny
-                .iter()
-                .find(|k| &k.public_key == key.as_ref())
-                .is_some()
-            {
+            if deny.iter().any(|k| k.public_key == key.as_ref()) {
                 return false;
             }
         }
 
         if let Some(allow) = &self.allow {
-            if allow
-                .iter()
-                .find(|k| &k.public_key == key.as_ref())
-                .is_some()
-            {
+            if allow.iter().any(|k| k.public_key == key.as_ref()) {
                 return true;
             }
             false
