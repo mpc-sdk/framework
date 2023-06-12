@@ -34,8 +34,8 @@ mod web;
 pub use web::WebClient;
 
 use mpc_relay_protocol::{
-    snow, Encoding, OpaqueMessage, ProtocolState, RequestMessage,
-    SealedEnvelope, SessionId, TAGLEN, hex,
+    hex, snow, Encoding, OpaqueMessage, ProtocolState,
+    RequestMessage, SealedEnvelope, SessionId, TAGLEN,
 };
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
@@ -54,7 +54,7 @@ pub struct ClientOptions {
 impl ClientOptions {
     /// Build a connection URL for the given server.
     ///
-    /// This method appends the public key query string 
+    /// This method appends the public key query string
     /// parameter necessary for connecting to the server.
     pub fn url(&self, server: &str) -> String {
         let server = server.trim_end_matches('/');

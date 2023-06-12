@@ -18,7 +18,6 @@ mod wasm_tests {
         let keypair = generate_keypair().unwrap();
         let server_public_key =
             hex::decode(SERVER_PUBLIC_KEY).unwrap();
-        let public_key = hex::encode(&keypair.public);
         let options = ClientOptions {
             server_public_key,
             keypair,
