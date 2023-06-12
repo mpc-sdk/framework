@@ -378,3 +378,78 @@ where
         }
     }
 }
+
+#[doc(hidden)]
+macro_rules! event_loop_run_impl {
+    () => {
+        /// Stream of events from the event loop.
+        pub fn run<'a>(&'a mut self) -> BoxStream<'a, Result<Event>> {
+            let options = Arc::clone(&self.options);
+            let server = Arc::clone(&self.server);
+            let peers = Arc::clone(&self.peers);
+
+            let s = stream! {
+                loop {
+                    select!(
+                        message_in =
+                            self.ws_reader.next().fuse()
+                                => match message_in {
+                            Some(message) => {
+                                match message {
+                                    Ok(message) => {
+                                        if let Err(e) = Self::read_message(
+                                            message,
+                                            &mut self.message_tx,
+                                        ).await {
+                                            yield Err(e);
+                                        }
+                                    }
+                                    Err(e) => {
+                                        yield Err(e.into())
+                                    }
+                                }
+                            }
+                            _ => {}
+                        },
+                        message_out =
+                            self.outbound_rx.recv().fuse()
+                                => match message_out {
+                            Some(message) => {
+                                if let Err(e) = self.send_message(message).await {
+                                    yield Err(e)
+                                }
+                            }
+                            _ => {}
+                        },
+                        event_message =
+                            self.message_rx.recv().fuse()
+                                => match event_message {
+                            Some(event_message) => {
+                                match Self::handle_incoming_message(
+                                    Arc::clone(&options),
+                                    Arc::clone(&server),
+                                    Arc::clone(&peers),
+                                    event_message,
+                                    self.outbound_tx.clone(),
+                                ).await {
+
+                                    Ok(Some(event)) => {
+                                        yield Ok(event);
+                                    }
+                                    Err(e) => {
+                                        yield Err(e)
+                                    }
+                                    _ => {}
+                                }
+                            }
+                            _ => {}
+                        },
+                    );
+                }
+            };
+            Box::pin(s)
+        }
+    }
+}
+
+pub(crate) use event_loop_run_impl;
