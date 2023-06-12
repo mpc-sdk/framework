@@ -69,8 +69,9 @@ async fn decode_payload<R: AsyncRead + AsyncSeek + Unpin + Send>(
     Ok((length, buffer))
 }
 
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+#[async_trait]
 impl Encodable for HandshakeMessage {
     async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
         &self,
@@ -91,8 +92,10 @@ impl Encodable for HandshakeMessage {
     }
 }
 
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+
+#[async_trait]
 impl Decodable for HandshakeMessage {
     async fn decode<R: AsyncRead + AsyncSeek + Unpin + Send>(
         &mut self,
@@ -118,8 +121,10 @@ impl Decodable for HandshakeMessage {
     }
 }
 
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+
+#[async_trait]
 impl Encodable for TransparentMessage {
     async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
         &self,
@@ -149,8 +154,10 @@ impl Encodable for TransparentMessage {
     }
 }
 
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+
+#[async_trait]
 impl Decodable for TransparentMessage {
     async fn decode<R: AsyncRead + AsyncSeek + Unpin + Send>(
         &mut self,
@@ -193,8 +200,10 @@ impl Decodable for TransparentMessage {
     }
 }
 
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+
+#[async_trait]
 impl Encodable for ServerMessage {
     async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
         &self,
@@ -245,8 +254,10 @@ impl Encodable for ServerMessage {
     }
 }
 
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+
+#[async_trait]
 impl Decodable for ServerMessage {
     async fn decode<R: AsyncRead + AsyncSeek + Unpin + Send>(
         &mut self,
@@ -354,8 +365,10 @@ impl Decodable for ServerMessage {
     }
 }
 
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+
+#[async_trait]
 impl Encodable for OpaqueMessage {
     async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
         &self,
@@ -385,8 +398,10 @@ impl Encodable for OpaqueMessage {
     }
 }
 
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+
+#[async_trait]
 impl Decodable for OpaqueMessage {
     async fn decode<R: AsyncRead + AsyncSeek + Unpin + Send>(
         &mut self,
@@ -435,8 +450,10 @@ impl Decodable for OpaqueMessage {
     }
 }
 
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+
+#[async_trait]
 impl Encodable for RequestMessage {
     async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
         &self,
@@ -458,8 +475,10 @@ impl Encodable for RequestMessage {
     }
 }
 
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+
+#[async_trait]
 impl Decodable for RequestMessage {
     async fn decode<R: AsyncRead + AsyncSeek + Unpin + Send>(
         &mut self,
@@ -489,8 +508,10 @@ impl Decodable for RequestMessage {
     }
 }
 
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+
+#[async_trait]
 impl Encodable for ResponseMessage {
     async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
         &self,
@@ -512,8 +533,10 @@ impl Encodable for ResponseMessage {
     }
 }
 
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+
+#[async_trait]
 impl Decodable for ResponseMessage {
     async fn decode<R: AsyncRead + AsyncSeek + Unpin + Send>(
         &mut self,
@@ -543,8 +566,10 @@ impl Decodable for ResponseMessage {
     }
 }
 
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+
+#[async_trait]
 impl Encodable for SealedEnvelope {
     async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
         &self,
@@ -560,8 +585,10 @@ impl Encodable for SealedEnvelope {
     }
 }
 
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+
+#[async_trait]
 impl Decodable for SealedEnvelope {
     async fn decode<R: AsyncRead + AsyncSeek + Unpin + Send>(
         &mut self,
@@ -589,8 +616,10 @@ impl Decodable for SealedEnvelope {
     }
 }
 
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+
+#[async_trait]
 impl Encodable for SessionRequest {
     async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
         &self,
@@ -605,8 +634,10 @@ impl Encodable for SessionRequest {
     }
 }
 
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+
+#[async_trait]
 impl Decodable for SessionRequest {
     async fn decode<R: AsyncRead + AsyncSeek + Unpin + Send>(
         &mut self,
@@ -621,8 +652,10 @@ impl Decodable for SessionRequest {
     }
 }
 
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+
+#[async_trait]
 impl Encodable for SessionState {
     async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
         &self,
@@ -637,8 +670,10 @@ impl Encodable for SessionState {
     }
 }
 
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+
+#[async_trait]
 impl Decodable for SessionState {
     async fn decode<R: AsyncRead + AsyncSeek + Unpin + Send>(
         &mut self,

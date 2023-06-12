@@ -60,14 +60,16 @@ fn encoding_options() -> Options {
 }
 
 /// Encode to a binary buffer.
-pub async fn encode(encodable: &impl Encodable) -> Result<Vec<u8>> {
+pub async fn encode(
+    encodable: &(impl Encodable + Send + Sync),
+) -> Result<Vec<u8>> {
     binary_stream::futures::encode(encodable, encoding_options())
         .await
 }
 
 /// Decode from a binary buffer.
-pub async fn decode<T: Decodable + Default>(
-    buffer: impl AsRef<[u8]>,
+pub async fn decode<T: Decodable + Send + Sync + Default>(
+    buffer: impl AsRef<[u8]> + Send + Sync,
 ) -> Result<T> {
     binary_stream::futures::decode(
         buffer.as_ref(),

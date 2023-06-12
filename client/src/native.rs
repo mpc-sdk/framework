@@ -109,13 +109,6 @@ impl NativeClient {
             outbound_rx,
             server,
             peers,
-            builder: Box::new(|message| {
-                Box::pin(async move {
-                    let message =
-                        Message::Binary(encode(&message).await?);
-                    Ok(message)
-                })
-            }),
         };
 
         Ok((client, event_loop))
@@ -425,17 +418,39 @@ impl EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream> {
     /// the messages channel.
     pub(crate) async fn read_message(
         incoming: Message,
-        event_loop: &mut mpsc::Sender<ResponseMessage>,
+        event_proxy: &mut mpsc::Sender<ResponseMessage>,
     ) -> Result<()> {
         if let Message::Binary(buffer) = incoming {
             let response: ResponseMessage = decode(buffer).await?;
-            event_loop.send(response).await?;
+            event_proxy.send(response).await?;
         }
         Ok(())
     }
 
+    /// Send a message to the socket and flush the stream.
+    pub(crate) async fn send_message(
+        &mut self,
+        message: RequestMessage,
+    ) -> Result<()> {
+        let message = Message::Binary(encode(&message).await?);
+
+        self.ws_writer
+            .send(message)
+            .await
+            .map_err(|_| Error::WebSocketSend)?;
+        Ok(self
+            .ws_writer
+            .flush()
+            .await
+            .map_err(|_| Error::WebSocketSend)?)
+    }
+
     /// Stream of events from the event loop.
     pub fn run<'a>(&'a mut self) -> BoxStream<'a, Result<Event>> {
+        let options = Arc::clone(&self.options);
+        let server = Arc::clone(&self.server);
+        let peers = Arc::clone(&self.peers);
+
         let s = stream! {
             loop {
                 select!(
@@ -473,8 +488,13 @@ impl EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream> {
                         self.message_rx.recv().fuse()
                             => match event_message {
                         Some(event_message) => {
-                            match self.handle_incoming_message(
-                                event_message).await {
+                            match Self::handle_incoming_message(
+                                Arc::clone(&options),
+                                Arc::clone(&server),
+                                Arc::clone(&peers),
+                                event_message,
+                                self.outbound_tx.clone(),
+                            ).await {
 
                                 Ok(Some(event)) => {
                                     yield Ok(event);

@@ -3,23 +3,27 @@ use wasm_bindgen_futures::spawn_local;
 use web_sys::{ErrorEvent, MessageEvent, WebSocket};
 
 use async_stream::stream;
-use futures::pin_mut;
 use fastsink::Action;
+use futures::{
+    select, stream::BoxStream, FutureExt, SinkExt, StreamExt,
+};
 use std::sync::Arc;
 use tokio::sync::{mpsc, RwLock};
 
 use mpc_relay_protocol::{
-    snow::Builder, ProtocolState, RequestMessage, ResponseMessage,
-    PATTERN, encode, decode,
+    decode, encode, snow::Builder, ProtocolState, RequestMessage,
+    ResponseMessage, PATTERN,
 };
 
 use super::{ClientOptions, Peers, Server};
-use crate::{event_loop::EventLoop, Result};
+use crate::{event_loop::EventLoop, Error, Event, Result};
 
 type WsMessage = Vec<u8>;
-type WsError = crate::Error;
-type WsReadStream = WebSocket;
-type WsWriteStream = WebSocket;
+type WsError = Error;
+type WsReadStream = BoxStream<'static, Result<Vec<u8>>>;
+type WsWriteStream = Box<
+    dyn futures::Sink<Vec<u8>, Error = Error> + Send + Unpin,
+>;
 
 /// Client for the web platform.
 pub struct WebClient {
@@ -135,31 +139,28 @@ impl WebClient {
 
         // Decoded socket messages are sent over this channel
         let (msg_tx, msg_rx) = mpsc::channel::<ResponseMessage>(32);
-        
+
         // Proxy stream from the websocket message event closure
         // to the event loop
-        let ws_reader = stream! {
+        let ws_reader = Box::pin(stream! {
             while let Some(message) = ws_msg_rx.recv().await {
                 yield message;
             }
-        };
+        });
 
-        let ws_writer = fastsink::make_sink(
+        let ws_writer = Box::pin(fastsink::make_sink(
             ws.clone(),
-            |mut ws, action: Action<Vec<u8>>| async move {
+            |ws, action: Action<Vec<u8>>| async move {
                 match action {
                     Action::Send(x) => {
                         ws.send_with_u8_array(&x)?;
-                    },
+                    }
                     Action::Flush => todo!(),
                     Action::Close => ws.close()?,
                 }
                 Ok::<_, crate::Error>(ws)
             },
-        );
-
-        pin_mut!(ws_reader);
-        pin_mut!(ws_writer);
+        ));
 
         let event_loop = EventLoop {
             options,
@@ -171,14 +172,107 @@ impl WebClient {
             outbound_rx,
             server,
             peers,
-            builder: Box::new(|message| {
-                Box::pin(async move {
-                    todo!();
-                    //Ok(encode(&message).await?)
-                })
-            }),
         };
 
         Ok(client)
+    }
+}
+
+impl EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream> {
+    /// Receive and decode socket messages then send to
+    /// the messages channel.
+    pub(crate) async fn read_message(
+        incoming: WsMessage,
+        event_proxy: &mut mpsc::Sender<ResponseMessage>,
+    ) -> Result<()> {
+        let response: ResponseMessage = decode(&incoming).await?;
+        event_proxy.send(response).await?;
+        Ok(())
+    }
+
+    /// Send a message to the socket and flush the stream.
+    pub(crate) async fn send_message(
+        &mut self,
+        message: RequestMessage,
+    ) -> Result<()> {
+        let message = encode(&message).await?;
+        self.ws_writer
+            .send(message)
+            .await
+            .map_err(|_| Error::WebSocketSend)?;
+        Ok(self
+            .ws_writer
+            .flush()
+            .await
+            .map_err(|_| Error::WebSocketSend)?)
+    }
+
+    /// Stream of events from the event loop.
+    pub fn run<'a>(&'a mut self) -> BoxStream<'a, Result<Event>> {
+        let options = Arc::clone(&self.options);
+        let server = Arc::clone(&self.server);
+        let peers = Arc::clone(&self.peers);
+
+        let s = stream! {
+            loop {
+                select!(
+                    message_in =
+                        self.ws_reader.next().fuse()
+                            => match message_in {
+                        Some(message) => {
+                            match message {
+                                Ok(message) => {
+                                    if let Err(e) = Self::read_message(
+                                        message,
+                                        &mut self.message_tx,
+                                    ).await {
+                                        yield Err(e);
+                                    }
+                                }
+                                Err(e) => {
+                                    yield Err(e.into())
+                                }
+                            }
+                        }
+                        _ => {}
+                    },
+                    message_out =
+                        self.outbound_rx.recv().fuse()
+                            => match message_out {
+                        Some(message) => {
+                            if let Err(e) = self.send_message(message).await {
+                                yield Err(e)
+                            }
+                        }
+                        _ => {}
+                    },
+                    event_message =
+                        self.message_rx.recv().fuse()
+                            => match event_message {
+                        Some(event_message) => {
+                            match Self::handle_incoming_message(
+                                Arc::clone(&options),
+                                Arc::clone(&server),
+                                Arc::clone(&peers),
+                                event_message,
+                                self.outbound_tx.clone(),
+                            ).await {
+
+                                Ok(Some(event)) => {
+                                    yield Ok(event);
+                                }
+                                Err(e) => {
+                                    yield Err(e)
+                                }
+                                _ => {}
+                            }
+                        }
+                        _ => {}
+                    },
+                );
+            }
+        };
+        
+        Box::pin(s)
     }
 }

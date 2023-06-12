@@ -1,6 +1,5 @@
-use futures::{sink::SinkExt, stream::Stream, Future, StreamExt};
-
-use std::{pin::Pin, sync::Arc};
+use futures::{sink::SinkExt, stream::Stream};
+use std::sync::Arc;
 use tokio::sync::mpsc;
 
 use mpc_relay_protocol::{
@@ -12,17 +11,6 @@ use mpc_relay_protocol::{
 
 use super::{decrypt_peer_channel, Peers, Server};
 use crate::{ClientOptions, Error, Result};
-
-/// Message builder converts request messages to be
-/// send into the type expected by the websocket write
-/// stream.
-pub type MessageBuilder<T> = Box<
-    dyn Fn(
-            RequestMessage,
-        ) -> Pin<Box<dyn Future<Output = Result<T>> + Send>>
-        + Send
-        + Sync,
->;
 
 /// Events dispatched by the event loop stream.
 #[derive(Debug)]
@@ -113,7 +101,6 @@ where
     pub(crate) outbound_rx: mpsc::Receiver<RequestMessage>,
     pub(crate) server: Server,
     pub(crate) peers: Peers,
-    pub(crate) builder: MessageBuilder<M>,
 }
 
 impl<M, E, R, W> EventLoop<M, E, R, W>
@@ -123,26 +110,12 @@ where
     R: Stream<Item = std::result::Result<M, E>> + Unpin,
     W: SinkExt<M> + Unpin,
 {
-    /// Send a message to the socket and flush the stream.
-    pub(crate) async fn send_message(
-        &mut self,
-        message: RequestMessage,
-    ) -> Result<()> {
-        let message = (self.builder)(message).await?;
-        self.ws_writer
-            .send(message)
-            .await
-            .map_err(|_| Error::WebSocketSend)?;
-        Ok(self
-            .ws_writer
-            .flush()
-            .await
-            .map_err(|_| Error::WebSocketSend)?)
-    }
-
     pub(crate) async fn handle_incoming_message(
-        &mut self,
+        options: Arc<ClientOptions>,
+        server: Server,
+        peers: Peers,
         incoming: ResponseMessage,
+        outbound_tx: mpsc::Sender<RequestMessage>,
     ) -> Result<Option<Event>> {
         match incoming {
             ResponseMessage::Transparent(
@@ -152,37 +125,60 @@ where
                 TransparentMessage::ServerHandshake(
                     HandshakeMessage::Responder(len, buf),
                 ),
-            ) => Ok(Some(self.server_handshake(len, buf).await?)),
+            ) => Ok(Some(
+                Self::server_handshake(
+                    options,
+                    server,
+                    len,
+                    buf,
+                )
+                .await?,
+            )),
             ResponseMessage::Transparent(
                 TransparentMessage::PeerHandshake {
                     message: HandshakeMessage::Initiator(len, buf),
                     public_key,
                 },
-            ) => Ok(self
-                .peer_handshake_responder(public_key, len, buf)
-                .await?),
+            ) => Ok(Self::peer_handshake_responder(
+                options,
+                peers,
+                outbound_tx,
+                public_key,
+                len,
+                buf,
+            )
+            .await?),
             ResponseMessage::Transparent(
                 TransparentMessage::PeerHandshake {
                     message: HandshakeMessage::Responder(len, buf),
                     public_key,
                 },
             ) => Ok(Some(
-                self.peer_handshake_ack(public_key, len, buf).await?,
+                Self::peer_handshake_ack(
+                    peers,
+                    public_key,
+                    len,
+                    buf,
+                )
+                .await?,
             )),
             ResponseMessage::Opaque(OpaqueMessage::PeerMessage {
                 public_key,
                 envelope,
                 session_id,
             }) => Ok(Some(
-                self.handle_relayed_message(
-                    public_key, envelope, session_id,
+                Self::handle_relayed_message(
+                    peers,
+                    public_key,
+                    envelope,
+                    session_id,
                 )
                 .await?,
             )),
             ResponseMessage::Opaque(
                 OpaqueMessage::ServerMessage(envelope),
             ) => {
-                let mut server = self.server.write().await;
+                let mut server = server.write().await;
                 if let Some(server) = server.as_mut() {
                     let (encoding, contents) =
                         decrypt_server_channel(server, envelope)
@@ -197,8 +193,7 @@ where
                             panic!("unexpected encoding received from server")
                         }
                     };
-                    Ok(self
-                        .handle_server_channel_message(message)
+                    Ok(Self::handle_server_channel_message(message)
                         .await?)
                 } else {
                     unreachable!()
@@ -212,8 +207,7 @@ where
 
     /// Process an inner message from the server after
     /// decrypting the envelope.
-    async fn handle_server_channel_message(
-        &self,
+    pub(crate) async fn handle_server_channel_message(
         message: ServerMessage,
     ) -> Result<Option<Event>> {
         match message {
@@ -237,11 +231,12 @@ where
     }
 
     async fn server_handshake(
-        &mut self,
+        options: Arc<ClientOptions>,
+        server: Server,
         len: usize,
         buf: Vec<u8>,
     ) -> Result<Event> {
-        let mut state = self.server.write().await;
+        let mut state = server.write().await;
         let transport = match state.take() {
             Some(ProtocolState::Handshake(mut initiator)) => {
                 let mut read_buf = vec![0u8; 1024];
@@ -255,17 +250,19 @@ where
         *state = Some(ProtocolState::Transport(transport));
 
         Ok(Event::ServerConnected {
-            server_key: self.options.server_public_key.clone(),
+            server_key: options.server_public_key.clone(),
         })
     }
 
     async fn peer_handshake_responder(
-        &self,
+        options: Arc<ClientOptions>,
+        peers: Peers,
+        outbound_tx: mpsc::Sender<RequestMessage>,
         public_key: impl AsRef<[u8]>,
         len: usize,
         buf: Vec<u8>,
     ) -> Result<Option<Event>> {
-        let mut peers = self.peers.write().await;
+        let mut peers = peers.write().await;
 
         if peers.get(public_key.as_ref()).is_some() {
             return Err(Error::PeerAlreadyExistsMaybeRace);
@@ -277,7 +274,7 @@ where
 
             let builder = Builder::new(PATTERN.parse()?);
             let mut responder = builder
-                .local_private_key(&self.options.keypair.private)
+                .local_private_key(&options.keypair.private)
                 .remote_public_key(public_key.as_ref())
                 .build_responder()?;
 
@@ -302,7 +299,7 @@ where
                 },
             );
 
-            self.outbound_tx.send(request).await?;
+            outbound_tx.send(request).await?;
 
             Ok(Some(Event::PeerConnected {
                 peer_key: public_key.as_ref().to_vec(),
@@ -311,12 +308,12 @@ where
     }
 
     async fn peer_handshake_ack(
-        &self,
+        peers: Peers,
         public_key: impl AsRef<[u8]>,
         len: usize,
         buf: Vec<u8>,
     ) -> Result<Event> {
-        let mut peers = self.peers.write().await;
+        let mut peers = peers.write().await;
 
         let peer =
             if let Some(peer) = peers.remove(public_key.as_ref()) {
@@ -352,12 +349,12 @@ where
     }
 
     async fn handle_relayed_message(
-        &mut self,
+        peers: Peers,
         public_key: impl AsRef<[u8]>,
         envelope: SealedEnvelope,
         session_id: Option<SessionId>,
     ) -> Result<Event> {
-        let mut peers = self.peers.write().await;
+        let mut peers = peers.write().await;
         if let Some(peer) = peers.get_mut(public_key.as_ref()) {
             let contents =
                 decrypt_peer_channel(peer, &envelope).await?;
