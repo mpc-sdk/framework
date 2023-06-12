@@ -7,28 +7,37 @@ use fastsink::Action;
 use futures::{
     select, stream::BoxStream, FutureExt, SinkExt, StreamExt,
 };
+use serde::Serialize;
 use std::sync::Arc;
 use tokio::sync::{mpsc, RwLock};
 
 use mpc_relay_protocol::{
-    decode, encode, snow::Builder, ProtocolState, RequestMessage,
-    ResponseMessage, PATTERN,
+    channel::encrypt_server_channel, decode, encode, hex,
+    snow::Builder, Encoding, HandshakeMessage, OpaqueMessage,
+    ProtocolState, RequestMessage, ResponseMessage, ServerMessage,
+    SessionId, SessionRequest, TransparentMessage, PATTERN,
 };
 
-use super::{ClientOptions, Peers, Server};
-use crate::{event_loop::{EventLoop, event_loop_run_impl}, Error, Event, Result};
+use crate::{
+    client_impl, encrypt_peer_channel,
+    event_loop::{event_loop_run_impl, EventLoop},
+    ClientOptions, Error, Event, Peers, Result, Server,
+};
 
 type WsMessage = Vec<u8>;
 type WsError = Error;
 type WsReadStream = BoxStream<'static, Result<Vec<u8>>>;
-type WsWriteStream = Box<
-    dyn futures::Sink<Vec<u8>, Error = Error> + Send + Unpin,
->;
+type WsWriteStream =
+    Box<dyn futures::Sink<Vec<u8>, Error = Error> + Send + Unpin>;
+
+/// Event loop for the web client.
+pub type WebEventLoop =
+    EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream>;
 
 /// Client for the web platform.
 pub struct WebClient {
     options: Arc<ClientOptions>,
-    ws: WebSocket,
+    outbound_tx: mpsc::Sender<RequestMessage>,
     server: Server,
     peers: Peers,
 }
@@ -85,7 +94,6 @@ impl WebClient {
 
         let (open_tx, mut open_rx) = mpsc::channel(1);
 
-        let cloned_ws = ws.clone();
         let onopen_callback = Closure::once(move || {
             log::info!("websocket open event");
             spawn_local(async move {
@@ -132,13 +140,14 @@ impl WebClient {
 
         let client = WebClient {
             options: Arc::clone(&options),
-            ws: ws.clone(),
+            outbound_tx: outbound_tx.clone(),
             server: Arc::clone(&server),
             peers: Arc::clone(&peers),
         };
 
         // Decoded socket messages are sent over this channel
-        let (msg_tx, msg_rx) = mpsc::channel::<ResponseMessage>(32);
+        let (message_tx, message_rx) =
+            mpsc::channel::<ResponseMessage>(32);
 
         // Proxy stream from the websocket message event closure
         // to the event loop
@@ -166,8 +175,8 @@ impl WebClient {
             options,
             ws_reader,
             ws_writer,
-            message_tx: msg_tx,
-            message_rx: msg_rx,
+            message_tx,
+            message_rx,
             outbound_tx,
             outbound_rx,
             server,
@@ -176,6 +185,8 @@ impl WebClient {
 
         Ok(client)
     }
+
+    client_impl!();
 }
 
 impl EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream> {

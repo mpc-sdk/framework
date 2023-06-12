@@ -110,7 +110,9 @@ impl From<wasm_bindgen::JsValue> for Error {
         if let Some(s) = value.as_string() {
             Error::JsString(s)
         } else {
-            match serde_wasm_bindgen::from_value::<serde_json::Value>(value) {
+            match serde_wasm_bindgen::from_value::<serde_json::Value>(
+                value,
+            ) {
                 Ok(val) => Error::JsValue(val),
                 Err(_) => Error::JsError,
             }

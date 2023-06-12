@@ -4,9 +4,11 @@
 #![deny(missing_docs)]
 #![cfg_attr(all(doc, CHANNEL_NIGHTLY), feature(doc_auto_cfg))]
 
+mod client;
 mod error;
 mod event_loop;
 
+pub(crate) use client::client_impl;
 pub use event_loop::{Event, JsonMessage};
 
 #[cfg(all(

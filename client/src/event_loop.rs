@@ -87,8 +87,8 @@ impl JsonMessage {
 /// Event loop for a websocket client.
 pub struct EventLoop<M, E, R, W>
 where
-    M: Send + Sync,
-    E: Send + Sync,
+    M: Send,
+    E: Send,
     R: Stream<Item = std::result::Result<M, E>> + Unpin,
     W: SinkExt<M> + Unpin,
 {
@@ -105,8 +105,8 @@ where
 
 impl<M, E, R, W> EventLoop<M, E, R, W>
 where
-    M: Send + Sync,
-    E: Send + Sync,
+    M: Send,
+    E: Send,
     R: Stream<Item = std::result::Result<M, E>> + Unpin,
     W: SinkExt<M> + Unpin,
 {
@@ -126,13 +126,8 @@ where
                     HandshakeMessage::Responder(len, buf),
                 ),
             ) => Ok(Some(
-                Self::server_handshake(
-                    options,
-                    server,
-                    len,
-                    buf,
-                )
-                .await?,
+                Self::server_handshake(options, server, len, buf)
+                    .await?,
             )),
             ResponseMessage::Transparent(
                 TransparentMessage::PeerHandshake {
@@ -154,13 +149,8 @@ where
                     public_key,
                 },
             ) => Ok(Some(
-                Self::peer_handshake_ack(
-                    peers,
-                    public_key,
-                    len,
-                    buf,
-                )
-                .await?,
+                Self::peer_handshake_ack(peers, public_key, len, buf)
+                    .await?,
             )),
             ResponseMessage::Opaque(OpaqueMessage::PeerMessage {
                 public_key,
@@ -168,10 +158,7 @@ where
                 session_id,
             }) => Ok(Some(
                 Self::handle_relayed_message(
-                    peers,
-                    public_key,
-                    envelope,
-                    session_id,
+                    peers, public_key, envelope, session_id,
                 )
                 .await?,
             )),
