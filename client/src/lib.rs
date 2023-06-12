@@ -33,7 +33,7 @@ mod web;
     all(target_arch = "wasm32", target_os = "unknown"),
     feature = "web"
 ))]
-pub use web::WebClient;
+pub use web::{WebClient, WebEventLoop};
 
 use mpc_relay_protocol::{
     hex, snow, Encoding, OpaqueMessage, ProtocolState,

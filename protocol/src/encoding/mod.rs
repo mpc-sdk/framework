@@ -60,9 +60,7 @@ fn encoding_options() -> Options {
 }
 
 /// Encode to a binary buffer.
-pub async fn encode(
-    encodable: &impl Encodable,
-) -> Result<Vec<u8>> {
+pub async fn encode(encodable: &impl Encodable) -> Result<Vec<u8>> {
     binary_stream::futures::encode(encodable, encoding_options())
         .await
 }

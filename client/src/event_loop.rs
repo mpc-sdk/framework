@@ -370,7 +370,7 @@ where
 macro_rules! event_loop_run_impl {
     () => {
         /// Stream of events from the event loop.
-        pub fn run<'a>(&'a mut self) -> BoxStream<'a, Result<Event>> {
+        pub fn run(mut self) -> BoxStream<'static, Result<Event>> {
             let options = Arc::clone(&self.options);
             let server = Arc::clone(&self.server);
             let peers = Arc::clone(&self.peers);

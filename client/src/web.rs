@@ -3,12 +3,11 @@ use wasm_bindgen_futures::spawn_local;
 use web_sys::{ErrorEvent, MessageEvent, WebSocket};
 
 use async_stream::stream;
-use fastsink::Action;
 use futures::{
-    select, stream::BoxStream, FutureExt, SinkExt, StreamExt,
+    select, stream::BoxStream, FutureExt, Sink, SinkExt, StreamExt,
 };
 use serde::Serialize;
-use std::sync::Arc;
+use std::{pin::Pin, sync::Arc};
 use tokio::sync::{mpsc, RwLock};
 
 use mpc_relay_protocol::{
@@ -27,14 +26,16 @@ use crate::{
 type WsMessage = Vec<u8>;
 type WsError = Error;
 type WsReadStream = BoxStream<'static, Result<Vec<u8>>>;
-type WsWriteStream =
-    Box<dyn futures::Sink<Vec<u8>, Error = Error> + Send + Unpin>;
+type WsWriteStream = Pin<
+    Box<dyn futures::Sink<Vec<u8>, Error = Error> + Send + Unpin>,
+>;
 
 /// Event loop for the web client.
 pub type WebEventLoop =
     EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream>;
 
 /// Client for the web platform.
+#[derive(Clone)]
 pub struct WebClient {
     options: Arc<ClientOptions>,
     outbound_tx: mpsc::Sender<RequestMessage>,
@@ -42,13 +43,12 @@ pub struct WebClient {
     peers: Peers,
 }
 
-//#[wasm_bindgen]
 impl WebClient {
     /// Create a new web client.
     pub async fn new(
         server: &str,
         options: ClientOptions,
-    ) -> Result<WebClient> {
+    ) -> Result<(WebClient, WebEventLoop)> {
         let ws = WebSocket::new(server)?;
         ws.set_binary_type(web_sys::BinaryType::Arraybuffer);
 
@@ -60,13 +60,12 @@ impl WebClient {
         let onmessage_callback = Closure::<dyn FnMut(_)>::new(
             move |e: MessageEvent| {
                 spawn_local(async move {
-                    if let Ok(abuf) =
+                    if let Ok(buf) =
                         e.data().dyn_into::<js_sys::ArrayBuffer>()
                     {
                         log::info!(
-                        "message event, received array buffer: {:?}", abuf);
-                        let array = js_sys::Uint8Array::new(&abuf);
-                        let len = array.byte_length() as usize;
+                        "message event, received array buffer: {:?}", buf);
+                        let array = js_sys::Uint8Array::new(&buf);
                         let buffer = array.to_vec();
                         msg_tx_ref.send(Ok(buffer)).await.unwrap();
                     } else {
@@ -157,21 +156,8 @@ impl WebClient {
             }
         });
 
-        let ws_writer = Box::pin(fastsink::make_sink(
-            ws.clone(),
-            |ws, action: Action<Vec<u8>>| async move {
-                match action {
-                    Action::Send(x) => {
-                        ws.send_with_u8_array(&x)?;
-                    }
-                    Action::Flush => todo!(),
-                    Action::Close => ws.close()?,
-                }
-                Ok::<_, crate::Error>(ws)
-            },
-        ));
-
-        let event_loop = EventLoop {
+        let ws_writer = Box::pin(WebSocketSink { ws });
+        let event_loop: WebEventLoop = EventLoop {
             options,
             ws_reader,
             ws_writer,
@@ -183,7 +169,7 @@ impl WebClient {
             peers,
         };
 
-        Ok(client)
+        Ok((client, event_loop))
     }
 
     client_impl!();
@@ -220,3 +206,43 @@ impl EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream> {
 
     event_loop_run_impl!();
 }
+
+use core::task::{Context, Poll};
+
+struct WebSocketSink {
+    ws: WebSocket,
+}
+
+impl Sink<Vec<u8>> for WebSocketSink {
+    type Error = Error;
+
+    fn poll_ready(
+        self: Pin<&mut Self>,
+        _: &mut Context<'_>,
+    ) -> Poll<Result<()>> {
+        Poll::Ready(Ok(()))
+    }
+
+    fn start_send(self: Pin<&mut Self>, item: Vec<u8>) -> Result<()> {
+        unsafe { self.get_unchecked_mut() }
+            .ws
+            .send_with_u8_array(&item)?;
+        Ok(())
+    }
+
+    fn poll_flush(
+        self: Pin<&mut Self>,
+        _: &mut Context<'_>,
+    ) -> Poll<Result<()>> {
+        Poll::Ready(Ok(()))
+    }
+
+    fn poll_close(
+        self: Pin<&mut Self>,
+        _: &mut Context<'_>,
+    ) -> Poll<Result<()>> {
+        Poll::Ready(Ok(()))
+    }
+}
+
+unsafe impl Send for WebSocketSink {}

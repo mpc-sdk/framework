@@ -19,9 +19,9 @@ async fn integration_peer_channel() -> Result<()> {
     let _ = rx.await?;
 
     // Create new clients
-    let (mut initiator, mut event_loop_i, initiator_key) =
+    let (mut initiator, event_loop_i, initiator_key) =
         new_client().await?;
-    let (mut participant, mut event_loop_p, _participant_key) =
+    let (mut participant, event_loop_p, _participant_key) =
         new_client().await?;
 
     // Copy clients to move into the event loops

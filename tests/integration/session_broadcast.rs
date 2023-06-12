@@ -87,7 +87,7 @@ async fn integration_session_broadcast() -> Result<()> {
 }
 
 async fn event_loop_1(
-    mut event_loop: NativeEventLoop,
+    event_loop: NativeEventLoop,
     mut client: NativeClient,
     session_result: SessionResult,
     session_participants: Vec<Vec<u8>>,
@@ -140,7 +140,7 @@ async fn event_loop_1(
 }
 
 async fn event_loop_2(
-    mut event_loop: NativeEventLoop,
+    event_loop: NativeEventLoop,
     mut client: NativeClient,
     session_result: SessionResult,
 ) -> Result<JoinHandle<Result<()>>> {
@@ -179,7 +179,7 @@ async fn event_loop_2(
 }
 
 async fn event_loop_3(
-    mut event_loop: NativeEventLoop,
+    event_loop: NativeEventLoop,
     mut client: NativeClient,
     session_result: SessionResult,
 ) -> Result<JoinHandle<Result<()>>> {
