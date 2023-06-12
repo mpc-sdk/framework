@@ -43,11 +43,6 @@ pub async fn new_client(
 ) -> Result<(NativeClient, NativeEventLoop, Keypair)> {
     let server_public_key = server_public_key().await?;
     let keypair = generate_keypair()?;
-    let url = format!(
-        "{}/?public_key={}",
-        SERVER,
-        hex::encode(&keypair.public)
-    );
     let copy = Keypair {
         public: keypair.public.clone(),
         private: keypair.public.clone(),
@@ -56,6 +51,7 @@ pub async fn new_client(
         keypair,
         server_public_key,
     };
+    let url = options.url(SERVER);
     let (client, event_loop) =
         NativeClient::new(url, options).await?;
     Ok((client, event_loop, copy))

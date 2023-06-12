@@ -35,7 +35,7 @@ pub use web::WebClient;
 
 use mpc_relay_protocol::{
     snow, Encoding, OpaqueMessage, ProtocolState, RequestMessage,
-    SealedEnvelope, SessionId, TAGLEN,
+    SealedEnvelope, SessionId, TAGLEN, hex,
 };
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
@@ -49,6 +49,21 @@ pub struct ClientOptions {
     pub keypair: snow::Keypair,
     /// Public key for the server to connect to.
     pub server_public_key: Vec<u8>,
+}
+
+impl ClientOptions {
+    /// Build a connection URL for the given server.
+    ///
+    /// This method appends the public key query string 
+    /// parameter necessary for connecting to the server.
+    pub fn url(&self, server: &str) -> String {
+        let server = server.trim_end_matches('/');
+        format!(
+            "{}/?public_key={}",
+            server,
+            hex::encode(&self.keypair.public)
+        )
+    }
 }
 
 pub use error::Error;

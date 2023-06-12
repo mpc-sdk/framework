@@ -1,7 +1,10 @@
-use super::ClientOptions;
 use wasm_bindgen::prelude::*;
 use web_sys::{ErrorEvent, MessageEvent, WebSocket};
-//use crate::Result;
+use wasm_bindgen_futures::spawn_local;
+use std::sync::Arc;
+use tokio::sync::mpsc;
+
+use super::ClientOptions;
 
 /// Client for the web platform.
 //#[wasm_bindgen]
@@ -23,7 +26,9 @@ impl WebClient {
         ws.set_binary_type(web_sys::BinaryType::Arraybuffer);
 
         let onmessage_callback =
-            Closure::<dyn FnMut(_)>::new(move |e: MessageEvent| {});
+            Closure::<dyn FnMut(_)>::new(move |e: MessageEvent| {
+
+        });
 
         // set message event handler on WebSocket
         ws.set_onmessage(Some(
@@ -41,9 +46,16 @@ impl WebClient {
         ));
         onerror_callback.forget();
 
+        let (open_tx, mut open_rx) = mpsc::channel(1);
+
         let cloned_ws = ws.clone();
         let onopen_callback =
-            Closure::<dyn FnMut()>::new(move || {
+            Closure::once(move || {
+                log::info!("websocket got open event");
+                spawn_local(async move {
+                    open_tx.send(()).await.unwrap();
+                });
+                /*
                 log::info!("socket opened");
                 // send off binary message
                 match cloned_ws.send_with_u8_array(&[0, 1, 2, 3]) {
@@ -54,12 +66,17 @@ impl WebClient {
                         log::info!("error sending message: {:?}", err)
                     }
                 }
+                */
             });
         ws.set_onopen(Some(onopen_callback.as_ref().unchecked_ref()));
         onopen_callback.forget();
 
-        let client = WebClient { options, ws };
+        let _ = open_rx.recv().await;
+        drop(open_rx);
 
+        log::info!("socket opened, returning the client");
+
+        let client = WebClient { options, ws };
         Ok(client)
     }
 }
