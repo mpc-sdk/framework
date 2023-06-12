@@ -2,11 +2,11 @@ use async_stream::stream;
 use futures::{
     select,
     sink::SinkExt,
-    stream::{BoxStream, SplitSink, SplitStream, Stream},
+    stream::{BoxStream, SplitSink, SplitStream},
     FutureExt, StreamExt,
 };
 use serde::Serialize;
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 use tokio::{
     net::TcpStream,
     sync::{mpsc, RwLock},
@@ -18,24 +18,17 @@ use tokio_tungstenite::{
 };
 
 use mpc_relay_protocol::{
-    channel::{decrypt_server_channel, encrypt_server_channel},
-    decode, encode, hex,
-    http::StatusCode,
-    snow::Builder,
-    Encoding, HandshakeMessage, OpaqueMessage, ProtocolState,
-    RequestMessage, ResponseMessage, SealedEnvelope, ServerMessage,
-    SessionId, SessionRequest, TransparentMessage, PATTERN, TAGLEN,
+    channel::encrypt_server_channel, decode, encode, hex,
+    http::StatusCode, snow::Builder, Encoding, HandshakeMessage,
+    OpaqueMessage, ProtocolState, RequestMessage, ResponseMessage,
+    ServerMessage, SessionId, SessionRequest, TransparentMessage,
+    PATTERN,
 };
 
 use super::{
-    encrypt_peer_channel,
-    event_loop::{EventLoop, MessageBuilder},
-    Peers, Server,
+    encrypt_peer_channel, event_loop::EventLoop, Peers, Server,
 };
-use crate::{ClientOptions, Error, Event, JsonMessage, Result};
-
-//type Peers = Arc<RwLock<HashMap<Vec<u8>, ProtocolState>>>;
-//type Server = Arc<RwLock<Option<ProtocolState>>>;
+use crate::{ClientOptions, Error, Event, Result};
 
 type WsMessage = Message;
 type WsError = tokio_tungstenite::tungstenite::Error;
@@ -47,13 +40,6 @@ type WsWriteStream =
 /// Event loop for the native client.
 pub type NativeEventLoop =
     EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream>;
-
-async fn message_builder(
-    message: RequestMessage,
-) -> Result<WsMessage> {
-    let message = Message::Binary(encode(&message).await?);
-    Ok(message)
-}
 
 /// Native websocket client using the tokio tungstenite library.
 #[derive(Clone)]
