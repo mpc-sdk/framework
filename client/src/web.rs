@@ -57,14 +57,16 @@ impl WebClient {
         let msg_tx_ref: &'static mpsc::Sender<Result<Vec<u8>>> =
             Box::leak(msg_tx);
 
-        let onmessage_callback = Closure::<dyn FnMut(_)>::new(
-            move |e: MessageEvent| {
+        let onmessage_callback =
+            Closure::<dyn FnMut(_)>::new(move |e: MessageEvent| {
                 spawn_local(async move {
                     if let Ok(buf) =
                         e.data().dyn_into::<js_sys::ArrayBuffer>()
                     {
+                        /*
                         log::info!(
                         "message event, received array buffer: {:?}", buf);
+                        */
                         let array = js_sys::Uint8Array::new(&buf);
                         let buffer = array.to_vec();
                         msg_tx_ref.send(Ok(buffer)).await.unwrap();
@@ -75,8 +77,7 @@ impl WebClient {
                         );
                     }
                 });
-            },
-        );
+            });
         ws.set_onmessage(Some(
             onmessage_callback.as_ref().unchecked_ref(),
         ));
@@ -94,29 +95,14 @@ impl WebClient {
         let (open_tx, mut open_rx) = mpsc::channel(1);
 
         let onopen_callback = Closure::once(move || {
-            log::info!("websocket open event");
             spawn_local(async move {
                 open_tx.send(()).await.unwrap();
             });
-            /*
-            log::info!("socket opened");
-            // send off binary message
-            match cloned_ws.send_with_u8_array(&[0, 1, 2, 3]) {
-                Ok(_) => {
-                    log::info!("binary message successfully sent")
-                }
-                Err(err) => {
-                    log::info!("error sending message: {:?}", err)
-                }
-            }
-            */
         });
         ws.set_onopen(Some(onopen_callback.as_ref().unchecked_ref()));
 
         let _ = open_rx.recv().await;
         drop(open_rx);
-
-        log::info!("socket opened, returning the client");
 
         // Channel for writing outbound messages to send
         // to the server
