@@ -13,7 +13,11 @@ pub async fn initiator_client<E: From<mpc_relay_client::Error>>(
     let mut s = event_loop.run();
     while let Some(event) = s.next().await {
         let event = event?;
-        //log::info!("initiator {:#?}", event);
+        if cfg!(all(target_arch = "wasm32", target_os = "unknown")) {
+            log::trace!("initiator {:#?}", event);
+        } else {
+            tracing::trace!("initiator {:#?}", event);
+        }
         match &event {
             // Once the peer connection is established we can
             // start sending messages over the encrypted channel
@@ -50,7 +54,11 @@ pub async fn participant_client<E: From<mpc_relay_client::Error>>(
                 match event {
                     Some(event) => {
                         let event = event?;
-                        //log::info!("participant {:#?}", event);
+                        if cfg!(all(target_arch = "wasm32", target_os = "unknown")) {
+                            log::trace!("participant {:#?}", event);
+                        } else {
+                            tracing::trace!("participant {:#?}", event);
+                        }
                         match &event {
                             Event::ServerConnected { .. } => {
                                 // Now we can connect to a peer
