@@ -4,18 +4,12 @@ use axum_server::Handle;
 use std::{net::SocketAddr, thread};
 use tokio::{fs, sync::oneshot};
 
-use mpc_relay_protocol::{
-    decode_keypair, generate_keypair, snow::Keypair,
-};
-
-use mpc_relay_client::{
-    ClientOptions, Client, EventLoop,
-};
+use mpc_relay_protocol::decode_keypair;
 
 use mpc_relay_server::{RelayServer, ServerConfig};
 
 const ADDR: &str = "127.0.0.1:7337";
-const SERVER: &str = "ws://localhost:7337";
+pub(crate) const SERVER: &str = "ws://localhost:7337";
 
 /// Get the public key for the test server.
 pub async fn server_public_key() -> Result<Vec<u8>> {
@@ -36,24 +30,6 @@ pub fn init_tracing() {
         ))
         .with(tracing_subscriber::fmt::layer().without_time())
         .try_init();
-}
-
-/// Create new client connected to the mock server.
-pub async fn new_client(
-) -> Result<(Client, EventLoop, Keypair)> {
-    let server_public_key = server_public_key().await?;
-    let keypair = generate_keypair()?;
-    let copy = Keypair {
-        public: keypair.public.clone(),
-        private: keypair.public.clone(),
-    };
-    let options = ClientOptions {
-        keypair,
-        server_public_key,
-    };
-    let url = options.url(SERVER);
-    let (client, event_loop) = Client::new(url, options).await?;
-    Ok((client, event_loop, copy))
 }
 
 struct MockServer {

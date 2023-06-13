@@ -1,9 +1,7 @@
 use futures::{select, FutureExt, StreamExt};
+use mpc_relay_client::{Client, Event, EventLoop};
+
 use tokio::sync::mpsc;
-use mpc_relay_client::{
-    Event, Client, EventLoop,
-};
-use std::error::Error;
 
 pub async fn initiator_client<E: From<mpc_relay_client::Error>>(
     mut client: Client,

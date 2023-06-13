@@ -8,10 +8,12 @@ use tokio::{
 };
 use tokio_stream::wrappers::IntervalStream;
 
-use mpc_relay_client::{Event, Client, EventLoop};
+use mpc_relay_client::{Client, Event, EventLoop};
 use mpc_relay_protocol::{SessionId, SessionState};
 
-use crate::test_utils::{new_client, spawn_server};
+use crate::test_utils::{
+    new_client, server_public_key, spawn_server, SERVER,
+};
 
 type SessionResult = Arc<Mutex<Vec<u8>>>;
 
@@ -36,12 +38,26 @@ async fn integration_session_broadcast() -> Result<()> {
     let (rx, _handle) = spawn_server()?;
     let _ = rx.await?;
 
+    let server_public_key = server_public_key().await?;
+
     // Create new clients
-    let (initiator, event_loop_i, _) = new_client().await?;
+    let (initiator, event_loop_i, _) = new_client::<anyhow::Error>(
+        SERVER,
+        server_public_key.clone(),
+    )
+    .await?;
     let (participant_1, event_loop_p_1, participant_key_1) =
-        new_client().await?;
+        new_client::<anyhow::Error>(
+            SERVER,
+            server_public_key.clone(),
+        )
+        .await?;
     let (participant_2, event_loop_p_2, participant_key_2) =
-        new_client().await?;
+        new_client::<anyhow::Error>(
+            SERVER,
+            server_public_key.clone(),
+        )
+        .await?;
 
     let session_participants = vec![
         participant_key_1.public.clone(),

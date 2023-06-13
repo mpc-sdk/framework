@@ -8,17 +8,16 @@ mod wasm_tests {
     use wasm_bindgen_test::*;
 
     use futures::{select, stream::StreamExt, FutureExt};
-    use mpc_relay_client::{
-        ClientOptions, Event, Client, EventLoop,
-    };
+    use mpc_relay_client::{Client, ClientOptions, Event, EventLoop};
     use mpc_relay_protocol::{generate_keypair, hex, snow::Keypair};
     use tokio::sync::mpsc;
 
-    use super::integration::test_utils::peer_channel;
+    use super::integration::test_utils::{new_client, peer_channel};
 
     const SERVER: &str = "ws://127.0.0.1:8008";
     const SERVER_PUBLIC_KEY: &str = "7fa066392ae34ca5aeca907ff100a7d9e37e5a851dcaa7c5e7c4fef946ee3a25";
 
+    /*
     async fn new_client(
     ) -> Result<(Client, EventLoop, Keypair), JsValue> {
         let keypair = generate_keypair().unwrap();
@@ -33,33 +32,37 @@ mod wasm_tests {
             keypair,
         };
         let url = options.url(SERVER);
-        let (client, event_loop) =
-            Client::new(&url, options).await?;
+        let (client, event_loop) = Client::new(&url, options).await?;
         Ok((client, event_loop, copy))
     }
+    */
 
     #[wasm_bindgen_test]
     async fn peer_channel() -> Result<(), JsValue> {
         let _ = wasm_log::try_init(wasm_log::Config::default());
 
         let (mut initiator, event_loop_i, initiator_key) =
-            new_client().await?;
+            new_client::<JsValue>(
+                SERVER,
+                hex::decode(SERVER_PUBLIC_KEY).unwrap(),
+            )
+            .await?;
         let (mut participant, event_loop_p, participant_key) =
-            new_client().await?;
-
-        // Copy clients to move into the event loops
-        let init_client = initiator.clone();
-        let part_client = participant.clone();
+            new_client::<JsValue>(
+                SERVER,
+                hex::decode(SERVER_PUBLIC_KEY).unwrap(),
+            )
+            .await?;
 
         let (shutdown_tx, mut shutdown_rx) = mpsc::channel::<()>(1);
 
         let ev_i = peer_channel::initiator_client::<JsValue>(
-            init_client,
+            initiator,
             event_loop_i,
             shutdown_tx,
         );
         let ev_p = peer_channel::participant_client::<JsValue>(
-            part_client,
+            participant,
             event_loop_p,
             &initiator_key.public,
             shutdown_rx,
@@ -73,5 +76,4 @@ mod wasm_tests {
 
         Ok(())
     }
-
 }

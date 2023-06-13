@@ -11,24 +11,18 @@ mod event_loop;
 pub(crate) use client::client_impl;
 pub use event_loop::{Event, JsonMessage};
 
-#[cfg(
-    not(all(target_arch = "wasm32", target_os = "unknown")),
-)]
+#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
 mod native;
 
-#[cfg(
-    not(all(target_arch = "wasm32", target_os = "unknown")),
-)]
-pub use native::{NativeClient as Client, NativeEventLoop as EventLoop};
+#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
+pub use native::{
+    NativeClient as Client, NativeEventLoop as EventLoop,
+};
 
-#[cfg(
-    all(target_arch = "wasm32", target_os = "unknown"),
-)]
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 mod web;
 
-#[cfg(
-    all(target_arch = "wasm32", target_os = "unknown"),
-)]
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 pub use web::{WebClient as Client, WebEventLoop as EventLoop};
 
 use mpc_relay_protocol::{
