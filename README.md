@@ -25,6 +25,12 @@ Then start the server:
 cargo run -- server config.toml
 ```
 
+## Documentation
+
+```
+cargo make doc
+```
+
 ## Tests
 
 Generate a server key for the test specs:
