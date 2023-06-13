@@ -1,11 +1,10 @@
 use anyhow::Result;
-use futures::{select, Future, FutureExt, StreamExt};
-use std::{sync::Arc, time::Duration};
-use tokio::sync::{mpsc, Mutex};
-use tokio_stream::wrappers::IntervalStream;
+use futures::{select, FutureExt, StreamExt};
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
-use mpc_relay_client::{Client, Event, EventLoop};
-use mpc_relay_protocol::{SessionId, SessionState};
+use mpc_relay_client::{Client, Event};
+use mpc_relay_protocol::SessionState;
 
 use super::new_client;
 
@@ -193,7 +192,7 @@ async fn initiator(
             let own_key = client.public_key();
             recipients.retain(|k| k != own_key);
             client
-                .broadcast(
+                .broadcast_json(
                     &session_id,
                     recipients.as_slice(),
                     &message,
@@ -277,7 +276,7 @@ async fn participant(
             let own_key = client.public_key();
             recipients.retain(|k| k != own_key);
             client
-                .broadcast(
+                .broadcast_json(
                     &session_id,
                     recipients.as_slice(),
                     &message,

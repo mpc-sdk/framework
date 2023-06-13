@@ -88,7 +88,7 @@ macro_rules! client_impl {
         }
 
         /// Send a JSON message to a peer via the relay service.
-        pub async fn send<S>(
+        pub async fn send_json<S>(
             &mut self,
             public_key: impl AsRef<[u8]>,
             payload: &S,
@@ -215,7 +215,7 @@ macro_rules! client_impl {
         }
 
         /// Broadcast a JSON message in the context of a session.
-        pub async fn broadcast<S>(
+        pub async fn broadcast_json<S>(
             &mut self,
             session_id: &SessionId,
             recipient_public_keys: &[Vec<u8>],

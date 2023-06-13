@@ -3,7 +3,6 @@ use crate::test_utils::{
 };
 use anyhow::Result;
 use serial_test::serial;
-use tokio::sync::mpsc;
 
 /// Creates two clients that handshake with the server
 /// and then each other. Once the peer handshakes are

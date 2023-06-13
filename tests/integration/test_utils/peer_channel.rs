@@ -66,7 +66,7 @@ pub async fn initiator_client<E: From<mpc_relay_client::Error>>(
             // start sending messages over the encrypted channel
             Event::PeerConnected { peer_key } => {
                 // Send the ping
-                client.send(&peer_key, "ping", None).await?;
+                client.send_json(&peer_key, "ping", None).await?;
             }
             Event::JsonMessage { message, .. } => {
                 let message: &str = message.deserialize()?;
@@ -113,7 +113,7 @@ pub async fn participant_client<E: From<mpc_relay_client::Error>>(
                             Event::JsonMessage { peer_key, message, .. } => {
                                 let message: &str = message.deserialize()?;
                                 if message == "ping" {
-                                    client.send(&peer_key, "pong", None).await?;
+                                    client.send_json(&peer_key, "pong", None).await?;
                                 }
                             }
                             _ => {}

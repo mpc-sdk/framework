@@ -265,7 +265,7 @@ async fn handle_request(
 async fn wait_for_session_ready(
     state: State,
     owner: Connection,
-    start_time: SystemTime,
+    _start_time: SystemTime,
     session: SessionState,
 ) {
     let interval_secs = 1;
@@ -318,8 +318,8 @@ async fn notify_session_ready(
 
 async fn wait_for_session_active(
     state: State,
-    owner: Connection,
-    start_time: SystemTime,
+    _owner: Connection,
+    _start_time: SystemTime,
     session: SessionState,
 ) {
     let interval_secs = 1;
