@@ -89,9 +89,6 @@ args = [
   "wasm32-unknown-unknown",
   "-p",
   "mpc-relay-client",
-  "--no-default-features",
-  "--features",
-  "web"
 ]
 
 [tasks.genhtml]

@@ -6,11 +6,6 @@ description = "Noise protocol websocket relay client for MPC/TSS applications"
 keywords = ["mpc", "tss", "relay", "crypto", "e2ee"]
 license = "MIT OR Apache-2.0"
 
-[features]
-default = ["native"]
-native = []
-web = []
-
 [dependencies]
 mpc-relay-protocol = { path = "../protocol" }
 thiserror = "1"

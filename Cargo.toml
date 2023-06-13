@@ -35,7 +35,7 @@ serial_test = "2"
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 tokio = { version = "1", features = ["sync"] }
-mpc-relay-client= { path = "client", default-features = false, features = ["web"] }
+mpc-relay-client= { path = "client" }
 wasm-bindgen-test = "0.3"
 wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
 wasm-log = "0.3"

@@ -13,25 +13,21 @@ pub use event_loop::{Event, JsonMessage};
 
 #[cfg(all(
     not(all(target_arch = "wasm32", target_os = "unknown")),
-    feature = "native"
 ))]
 mod native;
 
 #[cfg(all(
     not(all(target_arch = "wasm32", target_os = "unknown")),
-    feature = "native"
 ))]
 pub use native::{NativeClient, NativeEventLoop};
 
 #[cfg(all(
     all(target_arch = "wasm32", target_os = "unknown"),
-    feature = "web"
 ))]
 mod web;
 
 #[cfg(all(
     all(target_arch = "wasm32", target_os = "unknown"),
-    feature = "web"
 ))]
 pub use web::{WebClient, WebEventLoop};
 
