@@ -7,9 +7,7 @@ mod wasm_tests {
     use wasm_bindgen::prelude::*;
     use wasm_bindgen_test::*;
 
-    use futures::{select, stream::StreamExt, FutureExt};
-    use mpc_relay_client::{Client, ClientOptions, Event, EventLoop};
-    use mpc_relay_protocol::{generate_keypair, hex, snow::Keypair};
+    use mpc_relay_protocol::hex;
     use tokio::sync::mpsc;
 
     use super::integration::test_utils::{new_client, peer_channel};
@@ -17,44 +15,26 @@ mod wasm_tests {
     const SERVER: &str = "ws://127.0.0.1:8008";
     const SERVER_PUBLIC_KEY: &str = "7fa066392ae34ca5aeca907ff100a7d9e37e5a851dcaa7c5e7c4fef946ee3a25";
 
-    /*
-    async fn new_client(
-    ) -> Result<(Client, EventLoop, Keypair), JsValue> {
-        let keypair = generate_keypair().unwrap();
-        let server_public_key =
-            hex::decode(SERVER_PUBLIC_KEY).unwrap();
-        let copy = Keypair {
-            public: keypair.public.clone(),
-            private: keypair.public.clone(),
-        };
-        let options = ClientOptions {
-            server_public_key,
-            keypair,
-        };
-        let url = options.url(SERVER);
-        let (client, event_loop) = Client::new(&url, options).await?;
-        Ok((client, event_loop, copy))
-    }
-    */
-
     #[wasm_bindgen_test]
     async fn peer_channel() -> Result<(), JsValue> {
         let _ = wasm_log::try_init(wasm_log::Config::default());
 
-        let (mut initiator, event_loop_i, initiator_key) =
+        let server_public_key = hex::decode(SERVER_PUBLIC_KEY).unwrap();
+
+        let (initiator, event_loop_i, initiator_key) =
             new_client::<JsValue>(
                 SERVER,
-                hex::decode(SERVER_PUBLIC_KEY).unwrap(),
+                server_public_key.clone(),
             )
             .await?;
-        let (mut participant, event_loop_p, participant_key) =
+        let (participant, event_loop_p, _participant_key) =
             new_client::<JsValue>(
                 SERVER,
-                hex::decode(SERVER_PUBLIC_KEY).unwrap(),
+                server_public_key.clone(),
             )
             .await?;
 
-        let (shutdown_tx, mut shutdown_rx) = mpsc::channel::<()>(1);
+        let (shutdown_tx, shutdown_rx) = mpsc::channel::<()>(1);
 
         let ev_i = peer_channel::initiator_client::<JsValue>(
             initiator,

@@ -1,108 +1,23 @@
 use anyhow::Result;
 use futures::{select, FutureExt, StreamExt, Future};
-use serial_test::serial;
 use std::{sync::Arc, time::Duration};
 use tokio::{
     sync::{mpsc, Mutex},
-    task::JoinHandle,
 };
 use tokio_stream::wrappers::IntervalStream;
 
 use mpc_relay_client::{Client, Event, EventLoop};
 use mpc_relay_protocol::{SessionId, SessionState};
 
-use crate::test_utils::{
-    new_client, server_public_key, spawn_server, SERVER, session_broadcast,
-};
-
 type SessionResult = Arc<Mutex<Vec<u8>>>;
 
 #[derive(Default)]
-struct ClientState {
+pub struct ClientState {
     session: Option<SessionState>,
     received: u8,
 }
 
-/// Creates three clients that handshake with the server
-/// and then each other.
-///
-/// Once the handshakes are complete a session is created
-/// and each node broadcasts a message to all the other
-/// participants in the session.
-#[tokio::test]
-#[serial]
-async fn integration_session_broadcast() -> Result<()> {
-    //crate::test_utils::init_tracing();
-
-    // Wait for the server to start
-    let (rx, _handle) = spawn_server()?;
-    let _ = rx.await?;
-
-    let server_public_key = server_public_key().await?;
-
-    // Create new clients
-    let (initiator, event_loop_i, _) = new_client::<anyhow::Error>(
-        SERVER,
-        server_public_key.clone(),
-    )
-    .await?;
-    let (participant_1, event_loop_p_1, participant_key_1) =
-        new_client::<anyhow::Error>(
-            SERVER,
-            server_public_key.clone(),
-        )
-        .await?;
-    let (participant_2, event_loop_p_2, participant_key_2) =
-        new_client::<anyhow::Error>(
-            SERVER,
-            server_public_key.clone(),
-        )
-        .await?;
-
-    let session_participants = vec![
-        participant_key_1.public.clone(),
-        participant_key_2.public.clone(),
-    ];
-
-    let expected_result = vec![1u8, 1u8, 2u8, 2u8, 3u8, 3u8];
-    let session_result = Arc::new(Mutex::new(vec![]));
-
-    let ev_i = client_1(
-        event_loop_i,
-        initiator,
-        Arc::clone(&session_result),
-        session_participants,
-    )
-    .await?;
-    let ev_p_1 = client_2(
-        event_loop_p_1,
-        participant_1,
-        Arc::clone(&session_result),
-    )
-    .await?;
-    let ev_p_2 = client_3(
-        event_loop_p_2,
-        participant_2,
-        Arc::clone(&session_result),
-    )
-    .await?;
-
-    // Must drive the event loop futures
-    let (res_i, res_p_1, res_p_2) =
-        futures::join!(ev_i, ev_p_1, ev_p_2);
-
-    assert!(res_i.is_ok());
-    assert!(res_p_1.is_ok());
-    assert!(res_p_2.is_ok());
-
-    let mut result = session_result.lock().await;
-    result.sort();
-    assert_eq!(expected_result, result.clone());
-
-    Ok(())
-}
-
-async fn client_1(
+pub async fn client_1(
     event_loop: EventLoop,
     mut client: Client,
     session_result: SessionResult,
@@ -156,7 +71,7 @@ async fn client_1(
     })
 }
 
-async fn client_2(
+pub async fn client_2(
     event_loop: EventLoop,
     mut client: Client,
     session_result: SessionResult,
@@ -195,7 +110,7 @@ async fn client_2(
     })
 }
 
-async fn client_3(
+pub async fn client_3(
     event_loop: EventLoop,
     mut client: Client,
     session_result: SessionResult,
@@ -241,8 +156,8 @@ fn poll_session_ready(
     mut client: Client,
     session_id: SessionId,
     ready_rx: Arc<Mutex<mpsc::Receiver<()>>>,
-) -> JoinHandle<Result<()>> {
-    tokio::spawn(async move {
+) -> impl Future<Output = Result<()>> {
+    async move {
         let interval_secs = 1;
         let interval =
             tokio::time::interval(Duration::from_secs(interval_secs));
@@ -261,7 +176,7 @@ fn poll_session_ready(
             }
         }
         Ok(())
-    })
+    }
 }
 
 /// Poll the server to trigger a notification when
@@ -271,8 +186,8 @@ fn poll_session_active(
     mut client: Client,
     session_id: SessionId,
     active_rx: Arc<Mutex<mpsc::Receiver<()>>>,
-) -> JoinHandle<Result<()>> {
-    tokio::spawn(async move {
+) -> impl Future<Output = Result<()>> {
+    async move {
         let interval_secs = 1;
         let interval =
             tokio::time::interval(Duration::from_secs(interval_secs));
@@ -291,7 +206,7 @@ fn poll_session_active(
             }
         }
         Ok(())
-    })
+    }
 }
 
 /// Event handler for the session initiator.
@@ -325,7 +240,7 @@ async fn initiator(
                 client.clone(),
                 session.session_id,
                 ready_rx,
-            );
+            ).await?;
         }
         Event::SessionReady(session) => {
             // Stop polling
@@ -343,7 +258,7 @@ async fn initiator(
                 client.clone(),
                 session.session_id,
                 active_rx,
-            );
+            ).await?;
 
             for key in session.connections(client.public_key()) {
                 client.connect_peer(key).await?;
