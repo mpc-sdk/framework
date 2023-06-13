@@ -1,4 +1,4 @@
-//! Relay server protocol types, encoding and helper functions.
+//! Relay service protocol types, encoding and helper functions.
 //!
 //! # Size Limitations
 //!

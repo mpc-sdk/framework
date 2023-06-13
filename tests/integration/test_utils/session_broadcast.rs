@@ -178,7 +178,7 @@ async fn initiator(
                 session.connections(client.public_key());
             if connections.contains(&peer_key) {
                 client
-                    .register_session_connection(
+                    .register_connection(
                         &session.session_id,
                         peer_key.as_slice(),
                     )
@@ -262,7 +262,7 @@ async fn participant(
                 session.connections(client.public_key());
             if connections.contains(&peer_key) {
                 client
-                    .register_session_connection(
+                    .register_connection(
                         &session.session_id,
                         peer_key.as_slice(),
                     )

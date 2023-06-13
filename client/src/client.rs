@@ -163,7 +163,7 @@ macro_rules! client_impl {
         }
 
         /// Register a peer connection in a session.
-        pub async fn register_session_connection(
+        pub async fn register_connection(
             &mut self,
             session_id: &SessionId,
             peer_key: &[u8],

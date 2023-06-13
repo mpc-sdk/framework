@@ -7,10 +7,10 @@ mod wasm_tests {
     use wasm_bindgen::prelude::*;
     use wasm_bindgen_test::*;
 
-    use mpc_relay_protocol::hex;
     use super::integration::test_utils::{
         peer_channel, session_broadcast,
     };
+    use mpc_relay_protocol::hex;
 
     const SERVER: &str = "ws://127.0.0.1:8008";
     const SERVER_PUBLIC_KEY: &str = "7fa066392ae34ca5aeca907ff100a7d9e37e5a851dcaa7c5e7c4fef946ee3a25";

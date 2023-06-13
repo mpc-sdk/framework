@@ -1,5 +1,5 @@
-//! Relay server using the noise protocol for E2EE designed
-//! for MPC/TSS applications.
+//! Relay websocket server using the [noise](https://noiseprotocol.org/) 
+//! protocol for E2EE designed for MPC/TSS applications.
 
 #![deny(missing_docs)]
 
