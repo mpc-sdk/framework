@@ -227,9 +227,6 @@ impl Encodable for ServerMessage {
                 writer.write_bytes(session_id.as_bytes()).await?;
                 encode_buffer(writer, peer_key).await?;
             }
-            Self::SessionActiveNotify(session_id) => {
-                writer.write_bytes(session_id.as_bytes()).await?;
-            }
             Self::SessionCreated(response) => {
                 response.encode(writer).await?;
             }
@@ -291,18 +288,6 @@ impl Decodable for ServerMessage {
                     session_id,
                     peer_key,
                 };
-            }
-            types::SESSION_ACTIVE_NOTIFY => {
-                let session_id = SessionId::from_bytes(
-                    reader
-                        .read_bytes(16)
-                        .await?
-                        .as_slice()
-                        .try_into()
-                        .map_err(encoding_error)?,
-                );
-                *self =
-                    ServerMessage::SessionActiveNotify(session_id);
             }
             types::SESSION_CREATED => {
                 let mut session: SessionState = Default::default();

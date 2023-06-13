@@ -162,18 +162,6 @@ macro_rules! client_impl {
             self.request(message).await
         }
 
-        /// Request to be notified when a session is active.
-        ///
-        /// A session is active when all of the participants in a session
-        /// have established peer connections.
-        pub async fn session_active_notify(
-            &mut self,
-            session_id: &SessionId,
-        ) -> Result<()> {
-            self.request(ServerMessage::SessionActiveNotify(*session_id))
-                .await
-        }
-
         /// Register a peer connection in a session.
         pub async fn register_session_connection(
             &mut self,

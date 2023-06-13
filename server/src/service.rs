@@ -283,7 +283,65 @@ async fn wait_for_session_ready(
         // FIXME: handle timeout
 
         if ready {
-            if let Err(e) = notify_session_ready(state, session).await {
+            if let Err(e) = notify_session_ready(
+                Arc::clone(&state),
+                session.clone(),
+            )
+            .await
+            {
+                tracing::error!("{:#?}", e);
+            }
+            tokio::task::spawn(wait_for_session_active(
+                state,
+                owner,
+                SystemTime::now(),
+                session,
+            ));
+            break;
+        }
+    }
+}
+
+async fn notify_session_ready(
+    state: State,
+    session: SessionState,
+) -> Result<()> {
+    let public_keys: Vec<Vec<u8>> = session
+        .all_participants
+        .iter()
+        .map(|key| key.to_vec())
+        .collect();
+    let message = ServerMessage::SessionReady(session);
+    notify_peers(state, public_keys, message).await?;
+    Ok(())
+}
+
+async fn wait_for_session_active(
+    state: State,
+    owner: Connection,
+    start_time: SystemTime,
+    session: SessionState,
+) {
+    let interval_secs = 1;
+    let interval =
+        tokio::time::interval(Duration::from_secs(interval_secs));
+    let mut stream = IntervalStream::new(interval);
+    while stream.next().await.is_some() {
+        let active = {
+            let reader = state.read().await;
+            if let Some(session) =
+                reader.sessions.get_session(&session.session_id)
+            {
+                session.is_active()
+            } else {
+                break;
+            }
+        };
+
+        // FIXME: handle timeout
+
+        if active {
+            if let Err(e) = notify_session_active(state, session).await {
                 tracing::error!("{:#?}", e);
             }
             break;
@@ -291,15 +349,16 @@ async fn wait_for_session_ready(
     }
 }
 
-async fn notify_session_ready(
-    state: State, session: SessionState) -> Result<()> {
-    let public_keys: Vec<Vec<u8>> =
-        session.all_participants
-            .iter()
-            .map(|key| key.to_vec())
-            .collect();
-    let message =
-        ServerMessage::SessionReady(session);
+async fn notify_session_active(
+    state: State,
+    session: SessionState,
+) -> Result<()> {
+    let public_keys: Vec<Vec<u8>> = session
+        .all_participants
+        .iter()
+        .map(|key| key.to_vec())
+        .collect();
+    let message = ServerMessage::SessionActive(session);
     notify_peers(state, public_keys, message).await?;
     Ok(())
 }
@@ -358,43 +417,6 @@ async fn service(
             } else {
                 Err(Error::SessionNotFound(session_id))
             }
-        }
-        ServerMessage::SessionActiveNotify(session_id) => {
-            let notification = {
-                let reader = state.read().await;
-                if let Some(session) =
-                    reader.sessions.get_session(&session_id)
-                {
-                    if session.is_active() {
-                        let all_participants = session.public_keys();
-                        let session = SessionState {
-                            session_id,
-                            all_participants: all_participants
-                                .iter()
-                                .map(|k| k.to_vec())
-                                .collect(),
-                        };
-                        let message =
-                            ServerMessage::SessionActive(session);
-
-                        let public_keys: Vec<Vec<u8>> =
-                            all_participants
-                                .into_iter()
-                                .map(|key| key.to_vec())
-                                .collect();
-                        Some((message, public_keys))
-                    } else {
-                        None
-                    }
-                } else {
-                    return Err(Error::SessionNotFound(session_id));
-                }
-            };
-
-            if let Some((message, public_keys)) = notification {
-                notify_peers(state, public_keys, message).await?;
-            }
-            Ok(None)
         }
         ServerMessage::CloseSession(session_id) => {
             {

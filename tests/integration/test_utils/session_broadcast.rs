@@ -26,10 +26,6 @@ pub async fn client_1(
 ) -> Result<impl Future<Output = Result<()>>> {
     let session_state = Arc::new(Mutex::new(Default::default()));
 
-    // Channel used to shutdown polling for session active
-    let (mut active_tx, active_rx) = mpsc::channel::<()>(32);
-    let active_rx = Arc::new(Mutex::new(active_rx));
-
     // Server handshake
     client.connect().await?;
 
@@ -46,8 +42,6 @@ pub async fn client_1(
                                 &mut client,
                                 event,
                                 session_participants.clone(),
-                                &mut active_tx,
-                                Arc::clone(&active_rx),
                                 Arc::clone(&session_state),
                                 Arc::clone(&session_result),
                             ).await?;
@@ -144,118 +138,12 @@ pub async fn client_3(
     })
 }
 
-/*
-/// Poll the server to trigger a notification when
-/// all the session participants have established
-/// a connection to the server.
-#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
-fn poll_session_ready(
-    mut client: Client,
-    session_id: SessionId,
-    ready_rx: Arc<Mutex<mpsc::Receiver<()>>>,
-) -> JoinHandle<Result<()>> {
-    tokio::spawn(async move {
-        let interval_secs = 1;
-        let interval =
-            tokio::time::interval(Duration::from_secs(interval_secs));
-        let mut stream = IntervalStream::new(interval);
-        let mut stop_polling = ready_rx.lock().await;
-        loop {
-            select! {
-                tick = stream.next().fuse() => {
-                    if tick.is_some() {
-                        client.session_ready_notify(&session_id).await?;
-                    }
-                }
-                _ = stop_polling.recv().fuse() => {
-                    break;
-                }
-            }
-        }
-        Ok(())
-    })
-}
-
-#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
-fn poll_session_ready(
-    mut client: Client,
-    session_id: SessionId,
-    ready_rx: Arc<Mutex<mpsc::Receiver<()>>>,
-) {
-    wasm_bindgen_futures::spawn_local(async move {
-        let interval_secs = 1;
-        let mut stop_polling = ready_rx.lock().await;
-        loop {
-            client.session_ready_notify(&session_id).await.unwrap();
-            let done = stop_polling.recv().await;
-            if done.is_some() {
-                break;
-            }
-        }
-    })
-}
-*/
-
-/// Poll the server to trigger a notification when
-/// all the session participants have established
-/// connections to each other.
-#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
-fn poll_session_active(
-    mut client: Client,
-    session_id: SessionId,
-    active_rx: Arc<Mutex<mpsc::Receiver<()>>>,
-) -> JoinHandle<Result<()>> {
-    tokio::spawn(async move {
-        let interval_secs = 1;
-        let interval =
-            tokio::time::interval(Duration::from_secs(interval_secs));
-        let mut stream = IntervalStream::new(interval);
-        let mut stop_polling = active_rx.lock().await;
-        loop {
-            select! {
-                tick = stream.next().fuse() => {
-                    if tick.is_some() {
-                        client.session_active_notify(&session_id).await?;
-                    }
-                }
-                _ = stop_polling.recv().fuse() => {
-                    break;
-                }
-            }
-        }
-        Ok(())
-    })
-}
-
-#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
-fn poll_session_active(
-    mut client: Client,
-    session_id: SessionId,
-    active_rx: Arc<Mutex<mpsc::Receiver<()>>>,
-) {
-    wasm_bindgen_futures::spawn_local(async move {
-        let interval_secs = 1;
-        let mut stop_polling = active_rx.lock().await;
-        loop {
-            log::info!("polling for active..");
-            //std::thread::sleep(Duration::from_secs(interval_secs));
-            client.session_active_notify(&session_id).await.unwrap();
-            let done = stop_polling.recv().await;
-            if done.is_some() {
-                break;
-            }
-        }
-    })
-}
-
 /// Event handler for the session initiator.
 async fn initiator(
     number: u8,
     client: &mut Client,
     event: Event,
     session_participants: Vec<Vec<u8>>,
-    active_tx: &mut mpsc::Sender<()>,
-    active_rx: Arc<Mutex<mpsc::Receiver<()>>>,
     session_state: Arc<Mutex<ClientState>>,
     session_result: SessionResult,
 ) -> Result<bool> {
@@ -278,13 +166,6 @@ async fn initiator(
                 id = ?session.session_id.to_string(),
                 "initiator session ready");
 
-            // Start polling for the session active notification
-            poll_session_active(
-                client.clone(),
-                session.session_id,
-                active_rx,
-            );
-
             for key in session.connections(client.public_key()) {
                 client.connect_peer(key).await?;
             }
@@ -304,9 +185,6 @@ async fn initiator(
             }
         }
         Event::SessionActive(session) => {
-            // Stop polling
-            active_tx.send(()).await?;
-
             let message = number;
             let session_id = session.session_id.clone();
             let mut recipients = session.all_participants;

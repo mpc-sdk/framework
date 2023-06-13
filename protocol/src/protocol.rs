@@ -95,9 +95,6 @@ pub enum ServerMessage {
         /// Public key of the peer.
         peer_key: Vec<u8>,
     },
-    /// Request to notify all participants when the
-    /// session is active.
-    SessionActiveNotify(SessionId),
     /// Response to a new session request.
     SessionCreated(SessionState),
     /// Notification dispatched to all participants
@@ -122,9 +119,6 @@ impl From<&ServerMessage> for u8 {
             ServerMessage::NewSession(_) => types::SESSION_NEW,
             ServerMessage::SessionConnection { .. } => {
                 types::SESSION_CONNECTION
-            }
-            ServerMessage::SessionActiveNotify(_) => {
-                types::SESSION_ACTIVE_NOTIFY
             }
             ServerMessage::SessionCreated(_) => {
                 types::SESSION_CREATED
