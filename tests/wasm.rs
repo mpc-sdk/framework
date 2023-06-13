@@ -1,3 +1,5 @@
+mod integration;
+
 #[cfg(all(test, all(target_arch = "wasm32", target_os = "unknown")))]
 mod wasm_tests {
     wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_browser);
@@ -7,16 +9,18 @@ mod wasm_tests {
 
     use futures::{select, stream::StreamExt, FutureExt};
     use mpc_relay_client::{
-        ClientOptions, Event, WebClient, WebEventLoop,
+        ClientOptions, Event, Client, EventLoop,
     };
     use mpc_relay_protocol::{generate_keypair, hex, snow::Keypair};
     use tokio::sync::mpsc;
+
+    use super::integration::test_utils::peer_channel;
 
     const SERVER: &str = "ws://127.0.0.1:8008";
     const SERVER_PUBLIC_KEY: &str = "7fa066392ae34ca5aeca907ff100a7d9e37e5a851dcaa7c5e7c4fef946ee3a25";
 
     async fn new_client(
-    ) -> Result<(WebClient, WebEventLoop, Keypair), JsValue> {
+    ) -> Result<(Client, EventLoop, Keypair), JsValue> {
         let keypair = generate_keypair().unwrap();
         let server_public_key =
             hex::decode(SERVER_PUBLIC_KEY).unwrap();
@@ -30,7 +34,7 @@ mod wasm_tests {
         };
         let url = options.url(SERVER);
         let (client, event_loop) =
-            WebClient::new(&url, options).await?;
+            Client::new(&url, options).await?;
         Ok((client, event_loop, copy))
     }
 
@@ -47,17 +51,14 @@ mod wasm_tests {
         let init_client = initiator.clone();
         let part_client = participant.clone();
 
-        initiator.connect().await?;
-        participant.connect().await?;
-
         let (shutdown_tx, mut shutdown_rx) = mpsc::channel::<()>(1);
 
-        let ev_i = peer_channel_initiator_client(
+        let ev_i = peer_channel::initiator_client::<JsValue>(
             init_client,
             event_loop_i,
             shutdown_tx,
         );
-        let ev_p = peer_channel_participant_client(
+        let ev_p = peer_channel::participant_client::<JsValue>(
             part_client,
             event_loop_p,
             &initiator_key.public,
@@ -73,77 +74,4 @@ mod wasm_tests {
         Ok(())
     }
 
-    async fn peer_channel_initiator_client(
-        mut client: WebClient,
-        event_loop: WebEventLoop,
-        shutdown_tx: mpsc::Sender<()>,
-    ) -> Result<(), JsValue> {
-        let mut s = event_loop.run();
-        while let Some(event) = s.next().await {
-            let event = event?;
-            //log::info!("initiator {:#?}", event);
-            match &event {
-                // Once the peer connection is established we can
-                // start sending messages over the encrypted channel
-                Event::PeerConnected { peer_key } => {
-                    // Send the ping
-                    client.send(&peer_key, "ping", None).await?;
-                }
-                Event::JsonMessage { message, .. } => {
-                    let message: &str = message.deserialize()?;
-                    if message == "pong" {
-                        // Got a pong so break out of the event loop
-                        let _ = shutdown_tx.send(()).await;
-                        break;
-                    }
-                }
-                _ => {}
-            }
-        }
-        Ok(())
-    }
-
-    async fn peer_channel_participant_client(
-        mut client: WebClient,
-        event_loop: WebEventLoop,
-        initiator_public_key: &[u8],
-        mut shutdown_rx: mpsc::Receiver<()>,
-    ) -> Result<(), JsValue> {
-        let mut s = event_loop.run();
-        loop {
-            select! {
-                event = s.next().fuse() => {
-                    match event {
-                        Some(event) => {
-                            let event = event?;
-                            //log::info!("participant {:#?}", event);
-                            match &event {
-                                Event::ServerConnected { .. } => {
-                                    // Now we can connect to a peer
-                                    client.connect_peer(initiator_public_key).await?;
-                                }
-                                // Once the peer connection is established
-                                // we can start sending messages over
-                                // the encrypted channel
-                                Event::JsonMessage { peer_key, message, .. } => {
-                                    let message: &str = message.deserialize()?;
-                                    if message == "ping" {
-                                        client.send(&peer_key, "pong", None).await?;
-                                    }
-                                }
-                                _ => {}
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-                shutdown = shutdown_rx.recv().fuse() => {
-                    if shutdown.is_some() {
-                        break;
-                    }
-                }
-            }
-        }
-        Ok(())
-    }
 }
