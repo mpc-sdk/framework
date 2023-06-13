@@ -19,7 +19,7 @@ mod native;
 #[cfg(all(
     not(all(target_arch = "wasm32", target_os = "unknown")),
 ))]
-pub use native::{NativeClient, NativeEventLoop};
+pub use native::{NativeClient as Client, NativeEventLoop as EventLoop};
 
 #[cfg(all(
     all(target_arch = "wasm32", target_os = "unknown"),

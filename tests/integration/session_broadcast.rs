@@ -8,7 +8,7 @@ use tokio::{
 };
 use tokio_stream::wrappers::IntervalStream;
 
-use mpc_relay_client::{Event, NativeClient, NativeEventLoop};
+use mpc_relay_client::{Event, Client, EventLoop};
 use mpc_relay_protocol::{SessionId, SessionState};
 
 use crate::test_utils::{new_client, spawn_server};
@@ -87,8 +87,8 @@ async fn integration_session_broadcast() -> Result<()> {
 }
 
 async fn event_loop_1(
-    event_loop: NativeEventLoop,
-    mut client: NativeClient,
+    event_loop: EventLoop,
+    mut client: Client,
     session_result: SessionResult,
     session_participants: Vec<Vec<u8>>,
 ) -> Result<JoinHandle<Result<()>>> {
@@ -140,8 +140,8 @@ async fn event_loop_1(
 }
 
 async fn event_loop_2(
-    event_loop: NativeEventLoop,
-    mut client: NativeClient,
+    event_loop: EventLoop,
+    mut client: Client,
     session_result: SessionResult,
 ) -> Result<JoinHandle<Result<()>>> {
     let session_state = Arc::new(Mutex::new(Default::default()));
@@ -179,8 +179,8 @@ async fn event_loop_2(
 }
 
 async fn event_loop_3(
-    event_loop: NativeEventLoop,
-    mut client: NativeClient,
+    event_loop: EventLoop,
+    mut client: Client,
     session_result: SessionResult,
 ) -> Result<JoinHandle<Result<()>>> {
     let session_state = Arc::new(Mutex::new(Default::default()));
@@ -221,7 +221,7 @@ async fn event_loop_3(
 /// all the session participants have established
 /// a connection to the server.
 fn poll_session_ready(
-    mut client: NativeClient,
+    mut client: Client,
     session_id: SessionId,
     ready_rx: Arc<Mutex<mpsc::Receiver<()>>>,
 ) -> JoinHandle<Result<()>> {
@@ -251,7 +251,7 @@ fn poll_session_ready(
 /// all the session participants have established
 /// connections to each other.
 fn poll_session_active(
-    mut client: NativeClient,
+    mut client: Client,
     session_id: SessionId,
     active_rx: Arc<Mutex<mpsc::Receiver<()>>>,
 ) -> JoinHandle<Result<()>> {
@@ -280,7 +280,7 @@ fn poll_session_active(
 /// Event handler for the session initiator.
 async fn initiator(
     number: u8,
-    client: &mut NativeClient,
+    client: &mut Client,
     event: Event,
     session_participants: Vec<Vec<u8>>,
     ready_tx: &mut mpsc::Sender<()>,
@@ -401,7 +401,7 @@ async fn initiator(
 /// Event handler for a participant.
 async fn participant(
     number: u8,
-    client: &mut NativeClient,
+    client: &mut Client,
     event: Event,
     session_state: Arc<Mutex<ClientState>>,
     session_result: SessionResult,
