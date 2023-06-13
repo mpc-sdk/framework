@@ -41,6 +41,7 @@ pub struct WebClient {
     outbound_tx: mpsc::Sender<RequestMessage>,
     server: Server,
     peers: Peers,
+    ptr: *mut mpsc::Sender<Result<Vec<u8>>>,
 }
 
 impl WebClient {
@@ -54,34 +55,34 @@ impl WebClient {
 
         let (ws_msg_tx, mut ws_msg_rx) = mpsc::channel(32);
         let msg_tx = Box::new(ws_msg_tx);
-        let msg_tx_ref: &'static mpsc::Sender<Result<Vec<u8>>> =
-            Box::leak(msg_tx);
 
-        let onmessage_callback =
-            Closure::<dyn FnMut(_)>::new(move |e: MessageEvent| {
-                spawn_local(async move {
-                    if let Ok(buf) =
-                        e.data().dyn_into::<js_sys::ArrayBuffer>()
-                    {
-                        /*
-                        log::info!(
-                        "message event, received array buffer: {:?}", buf);
-                        */
-                        let array = js_sys::Uint8Array::new(&buf);
-                        let buffer = array.to_vec();
-                        msg_tx_ref.send(Ok(buffer)).await.unwrap();
-                    } else {
-                        log::warn!(
-                            "unknown message event: {:?}",
-                            e.data()
-                        );
-                    }
-                });
-            });
-        ws.set_onmessage(Some(
-            onmessage_callback.as_ref().unchecked_ref(),
-        ));
-        onmessage_callback.forget();
+        let ptr = Box::into_raw(msg_tx);
+        unsafe {
+            let msg_proxy = &*(ptr as *const _)
+                as &'static mpsc::Sender<Result<Vec<u8>>>;
+            let onmessage_callback = Closure::<dyn FnMut(_)>::new(
+                move |e: MessageEvent| {
+                    spawn_local(async move {
+                        if let Ok(buf) =
+                            e.data().dyn_into::<js_sys::ArrayBuffer>()
+                        {
+                            let array = js_sys::Uint8Array::new(&buf);
+                            let buffer = array.to_vec();
+                            msg_proxy.send(Ok(buffer)).await.unwrap();
+                        } else {
+                            log::warn!(
+                                "unknown message event: {:?}",
+                                e.data()
+                            );
+                        }
+                    });
+                },
+            );
+            ws.set_onmessage(Some(
+                onmessage_callback.as_ref().unchecked_ref(),
+            ));
+            onmessage_callback.forget();
+        }
 
         let onerror_callback =
             Closure::<dyn FnMut(_)>::new(move |e: ErrorEvent| {
@@ -128,6 +129,7 @@ impl WebClient {
             outbound_tx: outbound_tx.clone(),
             server: Arc::clone(&server),
             peers: Arc::clone(&peers),
+            ptr,
         };
 
         // Decoded socket messages are sent over this channel
@@ -159,6 +161,14 @@ impl WebClient {
     }
 
     client_impl!();
+}
+
+impl Drop for WebClient {
+    fn drop(&mut self) {
+        unsafe {
+            std::ptr::drop_in_place(self.ptr);
+        }
+    }
 }
 
 impl EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream> {

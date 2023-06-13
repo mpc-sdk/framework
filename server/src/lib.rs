@@ -1,5 +1,5 @@
-//! Relay websocket server using the [noise](https://noiseprotocol.org/) 
-//! protocol for end-to-end encryption intended for multi-party computation 
+//! Relay websocket server using the [noise](https://noiseprotocol.org/)
+//! protocol for end-to-end encryption intended for multi-party computation
 //! and threshold signature applications.
 
 #![deny(missing_docs)]
