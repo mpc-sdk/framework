@@ -22,7 +22,13 @@ cargo run -- generate-keypair server.pem
 Then start the server:
 
 ```
-cargo run -- start -c config.toml
+cargo run -- server config.toml
+```
+
+## Documentation
+
+```
+cargo make doc
 ```
 
 ## Tests
@@ -42,7 +48,7 @@ cargo make test
 To test the web client using webassembly, first start a test server:
 
 ```
-cargo run -- start -b 127.0.0.1:8008 -c tests/config.toml
+cargo run -- server -b 127.0.0.1:8008 tests/config.toml
 ```
 
 Copy the server public key and update the `tests/wasm.rs` file with the server public key.

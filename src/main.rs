@@ -1,6 +1,42 @@
+//! Command line tool for the websocket relay service that uses the 
+//! [noise](https://noiseprotocol.org/) protocol for end-to-end 
+//! encryption intended for multi-party computation and threshold 
+//! signature applications.
+//!
+//! # Installation
+//!
+//! ```no_run
+//! cargo install mpc-relay
+//! ```
+//! # Generate keypair
+//!
+//! First generate a keypair for the server:
+//!
+//! ```no_run
+//! mpc-relay generate-keypair server.pem
+//! ```
+//!
+//! # Configuration
+//!
+//! Then create a configuration file for the server (`config.toml`):
+//!
+//! ```no_run
+//! key = "server.pem"
+//! ```
+//!
+//! # Server
+//!
+//! Start the relay websocket service:
+//!
+//! ```no_run
+//! mpc-relay server config.toml
+//! ```
+
+#[doc(hidden)]
 #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
 mod commands;
 
+#[doc(hidden)]
 #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
 mod cli {
 
@@ -29,8 +65,8 @@ mod cli {
             file: PathBuf,
         },
 
-        /// Start the websocket server.
-        Start {
+        /// Start a relay websocket service.
+        Server {
             /// Override the reap interval for expired sessions in seconds.
             #[clap(long)]
             reap_interval: Option<u64>,
@@ -44,7 +80,6 @@ mod cli {
             bind: String,
 
             /// Config file to load.
-            #[clap(short, long)]
             config: PathBuf,
         },
     }
@@ -55,7 +90,7 @@ mod cli {
             Command::GenerateKeypair { file, force } => {
                 commands::generate_keypair::run(file, force).await?
             }
-            Command::Start {
+            Command::Server {
                 reap_interval,
                 session_timeout,
                 bind,
@@ -74,6 +109,7 @@ mod cli {
     }
 }
 
+#[doc(hidden)]
 #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
 #[tokio::main]
 pub async fn main() -> anyhow::Result<()> {
@@ -95,5 +131,6 @@ pub async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[doc(hidden)]
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 pub fn main() {}

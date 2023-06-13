@@ -231,12 +231,12 @@ impl Sink<Vec<u8>> for WebSocketSink {
     }
 }
 
-// The `WebSocket` type stores a `JsValue` 
+// The `WebSocket` type stores a `JsValue`
 // which contains a raw pointer which is not `Send`
-// but we need `Send` for the event loop when running 
+// but we need `Send` for the event loop when running
 // in native code (multi-threaded context).
 //
-// We know that the webassembly client should only 
-// ever run in a single threaded context so we can 
+// We know that the webassembly client should only
+// ever run in a single threaded context so we can
 // implement `Send` to appease the compiler.
 unsafe impl Send for WebSocketSink {}
