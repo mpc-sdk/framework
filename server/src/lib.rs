@@ -1,5 +1,6 @@
 //! Relay websocket server using the [noise](https://noiseprotocol.org/) 
-//! protocol for E2EE designed for MPC/TSS applications.
+//! protocol for end-to-end encryption intended for multi-party computation 
+//! and threshold signature applications.
 
 #![deny(missing_docs)]
 

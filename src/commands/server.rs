@@ -1,3 +1,4 @@
+//! Start the websocket relay server.
 use anyhow::Result;
 use axum_server::Handle;
 use mpc_relay_server::{RelayServer, ServerConfig};

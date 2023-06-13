@@ -1,5 +1,6 @@
 //! Relay service websocket client using the [noise](https://noiseprotocol.org/)
-//! protocol for E2EE designed for MPC/TSS applications.
+//! protocol for end-to-end encryption intended for multi-party computation 
+//! and threshold signature applications.
 //!
 //! To support the web platform this client library uses
 //! [web-sys](https://docs.rs/web-sys/latest/web_sys/) when
