@@ -9,7 +9,7 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 thiserror = "1"
 snow = "0.9.2"
-binary-stream = { version = "8", features = ["async"] }
+binary-stream = { version = "8.1", features = ["async"] }
 async-trait = "0.1"
 futures = "0.3"
 pem = "2"
@@ -17,9 +17,11 @@ uuid = { version = "1", features = ["v4"] }
 http = "0.2"
 hex = { version = "0.4", features = ["serde"] }
 
+#[dependencies.binary-stream]
+#version = "8"
+#path = "../../binary-stream"
+#features = ["async"]
+
 [dev-dependencies]
 anyhow = "1"
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros" ] }
-
-[build-dependencies]
-rustc_version = "0.4.0"

@@ -88,9 +88,6 @@ pub enum ServerMessage {
     Error(StatusCode, String),
     /// Request a new session.
     NewSession(SessionRequest),
-    /// Request to notify all participants when the
-    /// session is ready.
-    SessionReadyNotify(SessionId),
     /// Register a peer connection in a session.
     SessionConnection {
         /// Session identifier.
@@ -98,9 +95,6 @@ pub enum ServerMessage {
         /// Public key of the peer.
         peer_key: Vec<u8>,
     },
-    /// Request to notify all participants when the
-    /// session is active.
-    SessionActiveNotify(SessionId),
     /// Response to a new session request.
     SessionCreated(SessionState),
     /// Notification dispatched to all participants
@@ -123,14 +117,8 @@ impl From<&ServerMessage> for u8 {
             ServerMessage::Noop => types::NOOP,
             ServerMessage::Error(_, _) => types::ERROR,
             ServerMessage::NewSession(_) => types::SESSION_NEW,
-            ServerMessage::SessionReadyNotify(_) => {
-                types::SESSION_READY_NOTIFY
-            }
             ServerMessage::SessionConnection { .. } => {
                 types::SESSION_CONNECTION
-            }
-            ServerMessage::SessionActiveNotify(_) => {
-                types::SESSION_ACTIVE_NOTIFY
             }
             ServerMessage::SessionCreated(_) => {
                 types::SESSION_CREATED

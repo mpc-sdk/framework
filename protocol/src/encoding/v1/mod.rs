@@ -69,8 +69,9 @@ async fn decode_payload<R: AsyncRead + AsyncSeek + Unpin + Send>(
     Ok((length, buffer))
 }
 
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+#[async_trait]
 impl Encodable for HandshakeMessage {
     async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
         &self,
@@ -91,8 +92,10 @@ impl Encodable for HandshakeMessage {
     }
 }
 
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+
+#[async_trait]
 impl Decodable for HandshakeMessage {
     async fn decode<R: AsyncRead + AsyncSeek + Unpin + Send>(
         &mut self,
@@ -118,8 +121,10 @@ impl Decodable for HandshakeMessage {
     }
 }
 
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+
+#[async_trait]
 impl Encodable for TransparentMessage {
     async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
         &self,
@@ -149,8 +154,10 @@ impl Encodable for TransparentMessage {
     }
 }
 
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+
+#[async_trait]
 impl Decodable for TransparentMessage {
     async fn decode<R: AsyncRead + AsyncSeek + Unpin + Send>(
         &mut self,
@@ -193,8 +200,10 @@ impl Decodable for TransparentMessage {
     }
 }
 
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+
+#[async_trait]
 impl Encodable for ServerMessage {
     async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
         &self,
@@ -211,18 +220,12 @@ impl Encodable for ServerMessage {
             Self::NewSession(request) => {
                 request.encode(writer).await?;
             }
-            Self::SessionReadyNotify(session_id) => {
-                writer.write_bytes(session_id.as_bytes()).await?;
-            }
             Self::SessionConnection {
                 session_id,
                 peer_key,
             } => {
                 writer.write_bytes(session_id.as_bytes()).await?;
                 encode_buffer(writer, peer_key).await?;
-            }
-            Self::SessionActiveNotify(session_id) => {
-                writer.write_bytes(session_id.as_bytes()).await?;
             }
             Self::SessionCreated(response) => {
                 response.encode(writer).await?;
@@ -245,8 +248,10 @@ impl Encodable for ServerMessage {
     }
 }
 
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+
+#[async_trait]
 impl Decodable for ServerMessage {
     async fn decode<R: AsyncRead + AsyncSeek + Unpin + Send>(
         &mut self,
@@ -268,17 +273,6 @@ impl Decodable for ServerMessage {
                 session.decode(reader).await?;
                 *self = ServerMessage::NewSession(session);
             }
-            types::SESSION_READY_NOTIFY => {
-                let session_id = SessionId::from_bytes(
-                    reader
-                        .read_bytes(16)
-                        .await?
-                        .as_slice()
-                        .try_into()
-                        .map_err(encoding_error)?,
-                );
-                *self = ServerMessage::SessionReadyNotify(session_id);
-            }
             types::SESSION_CONNECTION => {
                 let session_id = SessionId::from_bytes(
                     reader
@@ -294,18 +288,6 @@ impl Decodable for ServerMessage {
                     session_id,
                     peer_key,
                 };
-            }
-            types::SESSION_ACTIVE_NOTIFY => {
-                let session_id = SessionId::from_bytes(
-                    reader
-                        .read_bytes(16)
-                        .await?
-                        .as_slice()
-                        .try_into()
-                        .map_err(encoding_error)?,
-                );
-                *self =
-                    ServerMessage::SessionActiveNotify(session_id);
             }
             types::SESSION_CREATED => {
                 let mut session: SessionState = Default::default();
@@ -354,8 +336,10 @@ impl Decodable for ServerMessage {
     }
 }
 
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+
+#[async_trait]
 impl Encodable for OpaqueMessage {
     async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
         &self,
@@ -385,8 +369,10 @@ impl Encodable for OpaqueMessage {
     }
 }
 
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+
+#[async_trait]
 impl Decodable for OpaqueMessage {
     async fn decode<R: AsyncRead + AsyncSeek + Unpin + Send>(
         &mut self,
@@ -435,8 +421,10 @@ impl Decodable for OpaqueMessage {
     }
 }
 
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+
+#[async_trait]
 impl Encodable for RequestMessage {
     async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
         &self,
@@ -458,8 +446,10 @@ impl Encodable for RequestMessage {
     }
 }
 
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+
+#[async_trait]
 impl Decodable for RequestMessage {
     async fn decode<R: AsyncRead + AsyncSeek + Unpin + Send>(
         &mut self,
@@ -489,8 +479,10 @@ impl Decodable for RequestMessage {
     }
 }
 
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+
+#[async_trait]
 impl Encodable for ResponseMessage {
     async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
         &self,
@@ -512,8 +504,10 @@ impl Encodable for ResponseMessage {
     }
 }
 
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+
+#[async_trait]
 impl Decodable for ResponseMessage {
     async fn decode<R: AsyncRead + AsyncSeek + Unpin + Send>(
         &mut self,
@@ -543,8 +537,10 @@ impl Decodable for ResponseMessage {
     }
 }
 
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+
+#[async_trait]
 impl Encodable for SealedEnvelope {
     async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
         &self,
@@ -560,8 +556,10 @@ impl Encodable for SealedEnvelope {
     }
 }
 
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+
+#[async_trait]
 impl Decodable for SealedEnvelope {
     async fn decode<R: AsyncRead + AsyncSeek + Unpin + Send>(
         &mut self,
@@ -589,8 +587,10 @@ impl Decodable for SealedEnvelope {
     }
 }
 
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+
+#[async_trait]
 impl Encodable for SessionRequest {
     async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
         &self,
@@ -605,8 +605,10 @@ impl Encodable for SessionRequest {
     }
 }
 
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+
+#[async_trait]
 impl Decodable for SessionRequest {
     async fn decode<R: AsyncRead + AsyncSeek + Unpin + Send>(
         &mut self,
@@ -621,8 +623,10 @@ impl Decodable for SessionRequest {
     }
 }
 
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+
+#[async_trait]
 impl Encodable for SessionState {
     async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
         &self,
@@ -637,8 +641,10 @@ impl Encodable for SessionState {
     }
 }
 
-#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
+//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+
+#[async_trait]
 impl Decodable for SessionState {
     async fn decode<R: AsyncRead + AsyncSeek + Unpin + Send>(
         &mut self,

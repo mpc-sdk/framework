@@ -73,12 +73,18 @@ pub async fn upgrade(
     tracing::debug!("websocket upgrade request");
 
     let mut writer = state.write().await;
-    
+
     // Check access lists
     if writer.config.allow.is_some() || writer.config.deny.is_some() {
         if !writer.config.is_allowed_access(&query.public_key) {
             return Err(StatusCode::FORBIDDEN);
         }
+    }
+
+    if (writer.config.allow.is_some() || writer.config.deny.is_some())
+        && !writer.config.is_allowed_access(&query.public_key)
+    {
+        return Err(StatusCode::FORBIDDEN);
     }
 
     let id = Uuid::new_v4();
