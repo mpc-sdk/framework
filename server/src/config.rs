@@ -3,7 +3,6 @@ use mpc_relay_protocol::{decode_keypair, hex, snow::Keypair};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use tokio::fs;
-use url::Url;
 
 use crate::{Error, Result};
 
@@ -19,9 +18,6 @@ pub struct ServerConfig {
 
     /// Configuration for TLS encryption.
     pub tls: Option<TlsConfig>,
-
-    /// Configuration for CORS.
-    pub cors: CorsConfig,
 
     /// Allow access to clients with these
     /// public keys.
@@ -67,13 +63,6 @@ pub struct TlsConfig {
     pub cert: PathBuf,
     /// Path to the certificate key file.
     pub key: PathBuf,
-}
-
-/// Configuration for CORS.
-#[derive(Debug, Default, Serialize, Deserialize)]
-pub struct CorsConfig {
-    /// List of additional CORS origins for the server.
-    pub origins: Vec<Url>,
 }
 
 /// Configuration for server sessions.

@@ -7,12 +7,11 @@ use tokio_stream::wrappers::IntervalStream;
 
 use axum::{
     extract::Extension,
-    http::{HeaderValue, Method},
     routing::get,
     Router,
 };
 use axum_server::{tls_rustls::RustlsConfig, Handle};
-use tower_http::{cors::CorsLayer, trace::TraceLayer};
+use tower_http::trace::TraceLayer;
 use uuid::Uuid;
 
 use mpc_relay_protocol::{hex, snow::Keypair, uuid, SessionManager};
@@ -88,7 +87,6 @@ impl RelayServer {
         addr: SocketAddr,
         handle: Handle,
     ) -> Result<()> {
-        let origins = self.read_origins().await?;
         let reader = self.state.read().await;
         let reap_interval = reader.config.session.reap_interval;
         let tls = reader.config.tls.as_ref().cloned();
@@ -101,9 +99,9 @@ impl RelayServer {
         ));
 
         if let Some(tls) = tls {
-            self.run_tls(addr, handle, origins, tls).await
+            self.run_tls(addr, handle, tls).await
         } else {
-            self.run(addr, handle, origins).await
+            self.run(addr, handle).await
         }
     }
 
@@ -112,12 +110,11 @@ impl RelayServer {
         &self,
         addr: SocketAddr,
         handle: Handle,
-        origins: Vec<HeaderValue>,
         tls: TlsConfig,
     ) -> Result<()> {
         let tls =
             RustlsConfig::from_pem_file(&tls.cert, &tls.key).await?;
-        let app = self.router(Arc::clone(&self.state), origins)?;
+        let app = self.router(Arc::clone(&self.state))?;
         let public_key = {
             let reader = self.state.read().await;
             reader.keypair.public.clone()
@@ -136,9 +133,8 @@ impl RelayServer {
         &self,
         addr: SocketAddr,
         handle: Handle,
-        origins: Vec<HeaderValue>,
     ) -> Result<()> {
-        let app = self.router(Arc::clone(&self.state), origins)?;
+        let app = self.router(Arc::clone(&self.state))?;
         let public_key = {
             let reader = self.state.read().await;
             reader.keypair.public.clone()
@@ -155,35 +151,14 @@ impl RelayServer {
     fn router(
         &self,
         state: State,
-        origins: Vec<HeaderValue>,
     ) -> Result<Router> {
-        let cors = CorsLayer::new()
-            .allow_methods(vec![Method::GET, Method::POST])
-            .allow_credentials(true)
-            .allow_headers(vec![])
-            .expose_headers(vec![])
-            .allow_origin(origins);
-
         let service = Arc::new(RelayService::new(Arc::clone(&state)));
-
         let mut app =
             Router::new().route("/", get(crate::websocket::upgrade));
         app = app
-            .layer(cors)
             .layer(TraceLayer::new_for_http())
             .layer(Extension(service))
             .layer(Extension(state));
         Ok(app)
-    }
-
-    async fn read_origins(&self) -> Result<Vec<HeaderValue>> {
-        let reader = self.state.read().await;
-        let mut origins = Vec::new();
-        for url in reader.config.cors.origins.iter() {
-            origins.push(HeaderValue::from_str(
-                url.as_str().trim_end_matches('/'),
-            )?);
-        }
-        Ok(origins)
     }
 }

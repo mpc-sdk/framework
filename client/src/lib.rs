@@ -1,5 +1,10 @@
-//! Relay client using the noise protocol for E2EE designed
-//! for MPC/TSS applications.
+//! Relay service websocket client using the [noise](https://noiseprotocol.org/) 
+//! protocol for E2EE designed for MPC/TSS applications.
+//!
+//! To support the web platform this client library uses 
+//! [web-sys](https://docs.rs/web-sys/latest/web_sys/) when 
+//! compiling for webassembly otherwise 
+//! [tokio-tunsgtenite](https://docs.rs/tokio-tungstenite/latest/tokio_tungstenite/).
 
 #![deny(missing_docs)]
 

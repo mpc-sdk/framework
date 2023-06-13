@@ -13,7 +13,6 @@ binary-stream = { version = "8", features = ["async"] }
 serde = {version = "1", features = ["derive"]}
 serde_json = "1"
 toml = "0.7"
-url = { version = "2", features = ["serde"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 async-trait = "0.1"
@@ -21,7 +20,7 @@ futures = "0.3"
 axum = { version = "0.6", features = ["headers", "ws"] }
 axum-macros = "0.3"
 axum-server = { version = "0.5", features = ["tls-rustls"] }
-tower-http = { version = "0.4", features = ["cors", "trace"] }
+tower-http = { version = "0.4", features = ["trace"] }
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "sync", "macros", "time", "net"] }
 tokio-stream = "0.1"
 tokio-tungstenite = "0.18"
