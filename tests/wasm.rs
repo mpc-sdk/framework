@@ -8,9 +8,6 @@ mod wasm_tests {
     use wasm_bindgen_test::*;
 
     use mpc_relay_protocol::hex;
-    use std::sync::Arc;
-    use tokio::sync::{mpsc, Mutex};
-
     use super::integration::test_utils::{
         peer_channel, session_broadcast,
     };
