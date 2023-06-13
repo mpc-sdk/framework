@@ -153,6 +153,7 @@ pub async fn client_3(
 /// Poll the server to trigger a notification when
 /// all the session participants have established
 /// a connection to the server.
+#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
 fn poll_session_ready(
     mut client: Client,
     session_id: SessionId,
@@ -180,9 +181,27 @@ fn poll_session_ready(
     })
 }
 
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+fn poll_session_ready(
+    mut client: Client,
+    session_id: SessionId,
+    ready_rx: Arc<Mutex<mpsc::Receiver<()>>>,
+) {
+    wasm_bindgen_futures::spawn_local(async move {
+        let interval_secs = 1;
+        let mut stop_polling = ready_rx.lock().await;
+        loop {
+            log::info!("polling for ready..");
+            std::thread::sleep(Duration::from_secs(interval_secs));
+            client.session_ready_notify(&session_id).await.unwrap();
+        }
+    })
+}
+
 /// Poll the server to trigger a notification when
 /// all the session participants have established
 /// connections to each other.
+#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
 fn poll_session_active(
     mut client: Client,
     session_id: SessionId,
@@ -207,6 +226,23 @@ fn poll_session_active(
             }
         }
         Ok(())
+    })
+}
+
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+fn poll_session_active(
+    mut client: Client,
+    session_id: SessionId,
+    active_rx: Arc<Mutex<mpsc::Receiver<()>>>,
+) {
+    wasm_bindgen_futures::spawn_local(async move {
+        let interval_secs = 1;
+        let mut stop_polling = active_rx.lock().await;
+        loop {
+            log::info!("polling for active..");
+            std::thread::sleep(Duration::from_secs(interval_secs));
+            client.session_active_notify(&session_id).await.unwrap();
+        }
     })
 }
 
