@@ -88,9 +88,6 @@ pub enum ServerMessage {
     Error(StatusCode, String),
     /// Request a new session.
     NewSession(SessionRequest),
-    /// Request to notify all participants when the
-    /// session is ready.
-    SessionReadyNotify(SessionId),
     /// Register a peer connection in a session.
     SessionConnection {
         /// Session identifier.
@@ -123,9 +120,6 @@ impl From<&ServerMessage> for u8 {
             ServerMessage::Noop => types::NOOP,
             ServerMessage::Error(_, _) => types::ERROR,
             ServerMessage::NewSession(_) => types::SESSION_NEW,
-            ServerMessage::SessionReadyNotify(_) => {
-                types::SESSION_READY_NOTIFY
-            }
             ServerMessage::SessionConnection { .. } => {
                 types::SESSION_CONNECTION
             }

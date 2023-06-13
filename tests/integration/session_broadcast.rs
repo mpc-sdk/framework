@@ -1,12 +1,11 @@
 use anyhow::Result;
 use serial_test::serial;
 use std::sync::Arc;
-use tokio::{
-    sync::Mutex,
-};
+use tokio::sync::Mutex;
 
 use crate::test_utils::{
-    new_client, server_public_key, spawn_server, SERVER, session_broadcast,
+    new_client, server_public_key, session_broadcast, spawn_server,
+    SERVER,
 };
 
 /// Creates three clients that handshake with the server

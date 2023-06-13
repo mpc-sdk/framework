@@ -162,24 +162,6 @@ macro_rules! client_impl {
             self.request(message).await
         }
 
-        /// Request to be notified when all session participants are ready.
-        ///
-        /// Sends a request to the server to check whether all participants
-        /// have completed their server handshake.
-        ///
-        /// When the server detects all participants are connected a session
-        /// ready notification is sent to all the peers.
-        ///
-        /// Once peers receive the session ready notification they can
-        /// connect to each other.
-        pub async fn session_ready_notify(
-            &mut self,
-            session_id: &SessionId,
-        ) -> Result<()> {
-            self.request(ServerMessage::SessionReadyNotify(*session_id))
-                .await
-        }
-
         /// Request to be notified when a session is active.
         ///
         /// A session is active when all of the participants in a session

@@ -220,9 +220,6 @@ impl Encodable for ServerMessage {
             Self::NewSession(request) => {
                 request.encode(writer).await?;
             }
-            Self::SessionReadyNotify(session_id) => {
-                writer.write_bytes(session_id.as_bytes()).await?;
-            }
             Self::SessionConnection {
                 session_id,
                 peer_key,
@@ -278,17 +275,6 @@ impl Decodable for ServerMessage {
                 let mut session: SessionRequest = Default::default();
                 session.decode(reader).await?;
                 *self = ServerMessage::NewSession(session);
-            }
-            types::SESSION_READY_NOTIFY => {
-                let session_id = SessionId::from_bytes(
-                    reader
-                        .read_bytes(16)
-                        .await?
-                        .as_slice()
-                        .try_into()
-                        .map_err(encoding_error)?,
-                );
-                *self = ServerMessage::SessionReadyNotify(session_id);
             }
             types::SESSION_CONNECTION => {
                 let session_id = SessionId::from_bytes(

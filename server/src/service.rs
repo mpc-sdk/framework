@@ -1,6 +1,11 @@
 use axum::http::StatusCode;
-use std::sync::Arc;
+use futures::StreamExt;
+use std::{
+    sync::Arc,
+    time::{Duration, SystemTime},
+};
 use tokio::sync::mpsc;
+use tokio_stream::wrappers::IntervalStream;
 
 use mpc_relay_protocol::{
     channel::{decrypt_server_channel, encrypt_server_channel},
@@ -257,6 +262,48 @@ async fn handle_request(
     Ok(())
 }
 
+async fn wait_for_session_ready(
+    state: State,
+    owner: Connection,
+    start_time: SystemTime,
+    session: SessionState,
+) {
+    let interval_secs = 1;
+    let interval =
+        tokio::time::interval(Duration::from_secs(interval_secs));
+    let mut stream = IntervalStream::new(interval);
+    while stream.next().await.is_some() {
+        let ready = {
+            let reader = state.read().await;
+            session.all_participants.iter().all(|public_key| {
+                reader.active.get(public_key).is_some()
+            })
+        };
+
+        // FIXME: handle timeout
+
+        if ready {
+            if let Err(e) = notify_session_ready(state, session).await {
+                tracing::error!("{:#?}", e);
+            }
+            break;
+        }
+    }
+}
+
+async fn notify_session_ready(
+    state: State, session: SessionState) -> Result<()> {
+    let public_keys: Vec<Vec<u8>> =
+        session.all_participants
+            .iter()
+            .map(|key| key.to_vec())
+            .collect();
+    let message =
+        ServerMessage::SessionReady(session);
+    notify_peers(state, public_keys, message).await?;
+    Ok(())
+}
+
 async fn service(
     state: State,
     conn: Connection,
@@ -283,49 +330,14 @@ async fn service(
                 all_participants,
             };
 
+            tokio::task::spawn(wait_for_session_ready(
+                Arc::clone(&state),
+                Arc::clone(&conn),
+                SystemTime::now(),
+                response.clone(),
+            ));
+
             Ok(Some(ServerMessage::SessionCreated(response)))
-        }
-        ServerMessage::SessionReadyNotify(session_id) => {
-            let notification = {
-                let reader = state.read().await;
-                if let Some(session) =
-                    reader.sessions.get_session(&session_id)
-                {
-                    let all_participants = session.public_keys();
-                    let total_participants = all_participants.len();
-                    let connected: Vec<_> = all_participants
-                        .iter()
-                        .map(|&key| reader.active.get(key).is_some())
-                        .collect();
-
-                    if connected.len() == total_participants {
-                        let session = SessionState {
-                            session_id,
-                            all_participants: all_participants
-                                .iter()
-                                .map(|k| k.to_vec())
-                                .collect(),
-                        };
-                        let message =
-                            ServerMessage::SessionReady(session);
-                        let public_keys: Vec<Vec<u8>> =
-                            all_participants
-                                .into_iter()
-                                .map(|key| key.to_vec())
-                                .collect();
-                        Some((message, public_keys))
-                    } else {
-                        None
-                    }
-                } else {
-                    return Err(Error::SessionNotFound(session_id));
-                }
-            };
-
-            if let Some((message, public_keys)) = notification {
-                notify_peers(state, public_keys, message).await?;
-            }
-            Ok(None)
         }
         ServerMessage::SessionConnection {
             session_id,

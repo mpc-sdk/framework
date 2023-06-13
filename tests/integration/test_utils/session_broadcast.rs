@@ -1,5 +1,5 @@
 use anyhow::Result;
-use futures::{select, FutureExt, StreamExt, Future};
+use futures::{select, Future, FutureExt, StreamExt};
 use std::{sync::Arc, time::Duration};
 use tokio::{
     sync::{mpsc, Mutex},
@@ -26,17 +26,13 @@ pub async fn client_1(
 ) -> Result<impl Future<Output = Result<()>>> {
     let session_state = Arc::new(Mutex::new(Default::default()));
 
-    // Channel used to shutdown polling for session ready
-    let (mut ready_tx, ready_rx) = mpsc::channel::<()>(32);
-    let ready_rx = Arc::new(Mutex::new(ready_rx));
-
     // Channel used to shutdown polling for session active
     let (mut active_tx, active_rx) = mpsc::channel::<()>(32);
     let active_rx = Arc::new(Mutex::new(active_rx));
 
     // Server handshake
     client.connect().await?;
-    
+
     Ok(async move {
         let mut s = event_loop.run();
         loop {
@@ -50,8 +46,6 @@ pub async fn client_1(
                                 &mut client,
                                 event,
                                 session_participants.clone(),
-                                &mut ready_tx,
-                                Arc::clone(&ready_rx),
                                 &mut active_tx,
                                 Arc::clone(&active_rx),
                                 Arc::clone(&session_state),
@@ -150,6 +144,7 @@ pub async fn client_3(
     })
 }
 
+/*
 /// Poll the server to trigger a notification when
 /// all the session participants have established
 /// a connection to the server.
@@ -191,12 +186,15 @@ fn poll_session_ready(
         let interval_secs = 1;
         let mut stop_polling = ready_rx.lock().await;
         loop {
-            log::info!("polling for ready..");
-            std::thread::sleep(Duration::from_secs(interval_secs));
             client.session_ready_notify(&session_id).await.unwrap();
+            let done = stop_polling.recv().await;
+            if done.is_some() {
+                break;
+            }
         }
     })
 }
+*/
 
 /// Poll the server to trigger a notification when
 /// all the session participants have established
@@ -240,8 +238,12 @@ fn poll_session_active(
         let mut stop_polling = active_rx.lock().await;
         loop {
             log::info!("polling for active..");
-            std::thread::sleep(Duration::from_secs(interval_secs));
+            //std::thread::sleep(Duration::from_secs(interval_secs));
             client.session_active_notify(&session_id).await.unwrap();
+            let done = stop_polling.recv().await;
+            if done.is_some() {
+                break;
+            }
         }
     })
 }
@@ -252,8 +254,6 @@ async fn initiator(
     client: &mut Client,
     event: Event,
     session_participants: Vec<Vec<u8>>,
-    ready_tx: &mut mpsc::Sender<()>,
-    ready_rx: Arc<Mutex<mpsc::Receiver<()>>>,
     active_tx: &mut mpsc::Sender<()>,
     active_rx: Arc<Mutex<mpsc::Receiver<()>>>,
     session_state: Arc<Mutex<ClientState>>,
@@ -269,20 +269,8 @@ async fn initiator(
             tracing::info!(
                 id = ?session.session_id.to_string(),
                 "session created");
-            // Spawn a task to poll the session
-            // so that we receive a notification
-            // whan all participants have connected
-            // to the server
-            poll_session_ready(
-                client.clone(),
-                session.session_id,
-                ready_rx,
-            );
         }
         Event::SessionReady(session) => {
-            // Stop polling
-            ready_tx.send(()).await?;
-
             let mut state = session_state.lock().await;
             state.session = Some(session.clone());
 
