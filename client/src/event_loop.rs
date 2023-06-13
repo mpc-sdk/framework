@@ -95,8 +95,8 @@ where
     pub(crate) options: Arc<ClientOptions>,
     pub(crate) ws_reader: R,
     pub(crate) ws_writer: W,
-    pub(crate) message_tx: mpsc::Sender<ResponseMessage>,
-    pub(crate) message_rx: mpsc::Receiver<ResponseMessage>,
+    pub(crate) inbound_tx: mpsc::Sender<ResponseMessage>,
+    pub(crate) inbound_rx: mpsc::Receiver<ResponseMessage>,
     pub(crate) outbound_tx: mpsc::Sender<RequestMessage>,
     pub(crate) outbound_rx: mpsc::Receiver<RequestMessage>,
     pub(crate) server: Server,
@@ -386,7 +386,7 @@ macro_rules! event_loop_run_impl {
                                     Ok(message) => {
                                         if let Err(e) = Self::read_message(
                                             message,
-                                            &mut self.message_tx,
+                                            &mut self.inbound_tx,
                                         ).await {
                                             yield Err(e);
                                         }
@@ -409,7 +409,7 @@ macro_rules! event_loop_run_impl {
                             _ => {}
                         },
                         event_message =
-                            self.message_rx.recv().fuse()
+                            self.inbound_rx.recv().fuse()
                                 => match event_message {
                             Some(event_message) => {
                                 match Self::handle_incoming_message(

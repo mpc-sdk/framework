@@ -1,5 +1,5 @@
 //! Relay service websocket client using the [noise](https://noiseprotocol.org/)
-//! protocol for end-to-end encryption intended for multi-party computation 
+//! protocol for end-to-end encryption intended for multi-party computation
 //! and threshold signature applications.
 //!
 //! To support the web platform this client library uses
