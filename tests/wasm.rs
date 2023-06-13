@@ -20,7 +20,6 @@ mod wasm_tests {
         let _ = wasm_log::try_init(wasm_log::Config::default());
 
         let server_public_key = hex::decode(SERVER_PUBLIC_KEY).unwrap();
-
         let (initiator, event_loop_i, initiator_key) =
             new_client::<JsValue>(
                 SERVER,
@@ -53,6 +52,22 @@ mod wasm_tests {
 
         assert!(res_i.is_ok());
         assert!(res_p.is_ok());
+
+        Ok(())
+    }
+
+    #[wasm_bindgen_test]
+    async fn session_broadcast() -> Result<(), JsValue> {
+        let _ = wasm_log::try_init(wasm_log::Config::default());
+
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .build().unwrap();
+
+        let handle = rt.spawn(async move {
+            Ok::<_, ()>(())
+        });
+
+        handle.await.unwrap();
 
         Ok(())
     }

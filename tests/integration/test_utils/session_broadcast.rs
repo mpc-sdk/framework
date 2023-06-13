@@ -3,6 +3,7 @@ use futures::{select, FutureExt, StreamExt, Future};
 use std::{sync::Arc, time::Duration};
 use tokio::{
     sync::{mpsc, Mutex},
+    task::JoinHandle,
 };
 use tokio_stream::wrappers::IntervalStream;
 
@@ -156,8 +157,8 @@ fn poll_session_ready(
     mut client: Client,
     session_id: SessionId,
     ready_rx: Arc<Mutex<mpsc::Receiver<()>>>,
-) -> impl Future<Output = Result<()>> {
-    async move {
+) -> JoinHandle<Result<()>> {
+    tokio::spawn(async move {
         let interval_secs = 1;
         let interval =
             tokio::time::interval(Duration::from_secs(interval_secs));
@@ -176,7 +177,7 @@ fn poll_session_ready(
             }
         }
         Ok(())
-    }
+    })
 }
 
 /// Poll the server to trigger a notification when
@@ -186,8 +187,8 @@ fn poll_session_active(
     mut client: Client,
     session_id: SessionId,
     active_rx: Arc<Mutex<mpsc::Receiver<()>>>,
-) -> impl Future<Output = Result<()>> {
-    async move {
+) -> JoinHandle<Result<()>> {
+    tokio::spawn(async move {
         let interval_secs = 1;
         let interval =
             tokio::time::interval(Duration::from_secs(interval_secs));
@@ -206,7 +207,7 @@ fn poll_session_active(
             }
         }
         Ok(())
-    }
+    })
 }
 
 /// Event handler for the session initiator.
@@ -240,7 +241,7 @@ async fn initiator(
                 client.clone(),
                 session.session_id,
                 ready_rx,
-            ).await?;
+            );
         }
         Event::SessionReady(session) => {
             // Stop polling
@@ -258,7 +259,7 @@ async fn initiator(
                 client.clone(),
                 session.session_id,
                 active_rx,
-            ).await?;
+            );
 
             for key in session.connections(client.public_key()) {
                 client.connect_peer(key).await?;
