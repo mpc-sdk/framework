@@ -132,10 +132,6 @@ impl WebClient {
             ptr,
         };
 
-        // Decoded socket messages are sent over this channel
-        let (message_tx, message_rx) =
-            mpsc::channel::<ResponseMessage>(32);
-
         // Proxy stream from the websocket message event closure
         // to the event loop
         let ws_reader = Box::pin(stream! {
@@ -145,12 +141,17 @@ impl WebClient {
         });
 
         let ws_writer = Box::pin(WebSocketSink { ws });
+
+        // Decoded socket messages are sent over this channel
+        let (inbound_tx, inbound_rx) =
+            mpsc::channel::<ResponseMessage>(32);
+
         let event_loop: WebEventLoop = EventLoop {
             options,
             ws_reader,
             ws_writer,
-            message_tx,
-            message_rx,
+            inbound_tx,
+            inbound_rx,
             outbound_tx,
             outbound_rx,
             server,

@@ -98,15 +98,15 @@ impl NativeClient {
         };
 
         // Decoded socket messages are sent over this channel
-        let (message_tx, message_rx) =
+        let (inbound_tx, inbound_rx) =
             mpsc::channel::<ResponseMessage>(32);
 
         let event_loop = EventLoop {
             options,
             ws_reader,
             ws_writer,
-            message_tx,
-            message_rx,
+            inbound_tx,
+            inbound_rx,
             outbound_tx,
             outbound_rx,
             server,
