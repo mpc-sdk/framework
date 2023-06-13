@@ -35,7 +35,7 @@ axum-server = { version = "0.5", features = ["tls-rustls"] }
 mpc-relay-client= { path = "client" }
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
-tokio = { version = "1", features = ["rt", "sync", "time"] }
+tokio = { version = "1", features = ["sync", "time"] }
 mpc-relay-client= { path = "client" }
 wasm-bindgen-test = "0.3"
 wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }

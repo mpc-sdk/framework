@@ -341,7 +341,9 @@ async fn wait_for_session_active(
         // FIXME: handle timeout
 
         if active {
-            if let Err(e) = notify_session_active(state, session).await {
+            if let Err(e) =
+                notify_session_active(state, session).await
+            {
                 tracing::error!("{:#?}", e);
             }
             break;

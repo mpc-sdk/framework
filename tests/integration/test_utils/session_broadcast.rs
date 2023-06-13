@@ -1,14 +1,13 @@
 use anyhow::Result;
 use futures::{select, Future, FutureExt, StreamExt};
 use std::{sync::Arc, time::Duration};
-use tokio::{
-    sync::{mpsc, Mutex},
-    task::JoinHandle,
-};
+use tokio::sync::{mpsc, Mutex};
 use tokio_stream::wrappers::IntervalStream;
 
 use mpc_relay_client::{Client, Event, EventLoop};
 use mpc_relay_protocol::{SessionId, SessionState};
+
+use super::new_client;
 
 type SessionResult = Arc<Mutex<Vec<u8>>>;
 
@@ -18,124 +17,127 @@ pub struct ClientState {
     received: u8,
 }
 
-pub async fn client_1(
-    event_loop: EventLoop,
-    mut client: Client,
-    session_result: SessionResult,
-    session_participants: Vec<Vec<u8>>,
-) -> Result<impl Future<Output = Result<()>>> {
-    let session_state = Arc::new(Mutex::new(Default::default()));
+pub async fn run(
+    server: &str,
+    server_public_key: Vec<u8>,
+) -> Result<SessionResult> {
+    let mut completed: Vec<u8> = Vec::new();
+    let session_result = Arc::new(Mutex::new(vec![]));
 
-    // Server handshake
-    client.connect().await?;
+    let state_1 = Arc::new(Mutex::new(Default::default()));
+    let state_2 = Arc::new(Mutex::new(Default::default()));
+    let state_3 = Arc::new(Mutex::new(Default::default()));
 
-    Ok(async move {
-        let mut s = event_loop.run();
-        loop {
-            select! {
-                event = s.next().fuse() => {
-                    match event {
-                        Some(event) => {
-                            let event = event?;
+    // Create new clients
+    let (mut client_i, event_loop_i, _) =
+        new_client::<anyhow::Error>(
+            server,
+            server_public_key.clone(),
+        )
+        .await?;
+    let (mut client_p_1, event_loop_p_1, participant_key_1) =
+        new_client::<anyhow::Error>(
+            server,
+            server_public_key.clone(),
+        )
+        .await?;
+    let (mut client_p_2, event_loop_p_2, participant_key_2) =
+        new_client::<anyhow::Error>(
+            server,
+            server_public_key.clone(),
+        )
+        .await?;
+
+    let session_participants = vec![
+        participant_key_1.public.clone(),
+        participant_key_2.public.clone(),
+    ];
+
+    // Each client handshakes with the server
+    client_i.connect().await?;
+    client_p_1.connect().await?;
+    client_p_2.connect().await?;
+
+    let mut s_i = event_loop_i.run();
+    let mut s_p_1 = event_loop_p_1.run();
+    let mut s_p_2 = event_loop_p_2.run();
+
+    loop {
+        completed.sort();
+
+        if completed == vec![1u8, 2u8, 3u8] {
+            break;
+        }
+
+        select! {
+            event = s_i.next().fuse() => {
+                match event {
+                    Some(event) => {
+                        let event = event?;
+                        if !completed.contains(&1u8) {
                             let done = initiator(
                                 1u8,
-                                &mut client,
+                                &mut client_i,
                                 event,
                                 session_participants.clone(),
-                                Arc::clone(&session_state),
+                                Arc::clone(&state_1),
                                 Arc::clone(&session_result),
                             ).await?;
 
                             if done {
-                                break;
+                                completed.push(1u8);
                             }
                         }
-                        _ => {}
                     }
+                    _ => {}
                 }
-            }
-        }
-
-        Ok::<(), anyhow::Error>(())
-    })
-}
-
-pub async fn client_2(
-    event_loop: EventLoop,
-    mut client: Client,
-    session_result: SessionResult,
-) -> Result<impl Future<Output = Result<()>>> {
-    let session_state = Arc::new(Mutex::new(Default::default()));
-
-    // Server handshake
-    client.connect().await?;
-
-    Ok(async move {
-        let mut s = event_loop.run();
-        loop {
-            select! {
-                event = s.next().fuse() => {
-                    match event {
-                        Some(event) => {
-                            let event = event?;
+            },
+            event = s_p_1.next().fuse() => {
+                match event {
+                    Some(event) => {
+                        let event = event?;
+                        if !completed.contains(&2u8) {
                             let done = participant(
                                 2u8,
-                                &mut client,
+                                &mut client_p_1,
                                 event,
-                                Arc::clone(&session_state),
+                                Arc::clone(&state_2),
                                 Arc::clone(&session_result),
                             ).await?;
 
                             if done {
-                                break;
+                                completed.push(2u8);
                             }
                         }
-                        _ => {}
                     }
+                    _ => {}
                 }
-            }
-        }
-        Ok::<(), anyhow::Error>(())
-    })
-}
-
-pub async fn client_3(
-    event_loop: EventLoop,
-    mut client: Client,
-    session_result: SessionResult,
-) -> Result<impl Future<Output = Result<()>>> {
-    let session_state = Arc::new(Mutex::new(Default::default()));
-
-    // Server handshake
-    client.connect().await?;
-
-    Ok(async move {
-        let mut s = event_loop.run();
-        loop {
-            select! {
-                event = s.next().fuse() => {
-                    match event {
-                        Some(event) => {
-                            let event = event?;
+            },
+            event = s_p_2.next().fuse() => {
+                match event {
+                    Some(event) => {
+                        let event = event?;
+                        if !completed.contains(&3u8) {
                             let done = participant(
                                 3u8,
-                                &mut client,
+                                &mut client_p_2,
                                 event,
-                                Arc::clone(&session_state),
+                                Arc::clone(&state_3),
                                 Arc::clone(&session_result),
                             ).await?;
 
                             if done {
-                                break;
+                                completed.push(3u8);
                             }
                         }
-                        _ => {}
                     }
+                    _ => {}
                 }
             }
         }
-        Ok::<(), anyhow::Error>(())
-    })
+    }
+
+    Ok(session_result)
 }
 
 /// Event handler for the session initiator.
