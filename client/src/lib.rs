@@ -2,7 +2,6 @@
 //! for MPC/TSS applications.
 
 #![deny(missing_docs)]
-#![cfg_attr(all(doc, CHANNEL_NIGHTLY), feature(doc_auto_cfg))]
 
 mod client;
 mod error;

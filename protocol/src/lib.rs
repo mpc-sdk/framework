@@ -6,7 +6,6 @@
 //! message is 65535 and we further limit the size of buffers
 //! for encoding to 32KB.
 #![deny(missing_docs)]
-#![cfg_attr(all(doc, CHANNEL_NIGHTLY), feature(doc_auto_cfg))]
 
 #[doc(hidden)]
 pub mod channel;

@@ -39,11 +39,11 @@ type WsReadStream =
 type WsWriteStream =
     SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, WsMessage>;
 
-/// Event loop for the native client.
+/// Event loop for the websocket client.
 pub type NativeEventLoop =
     EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream>;
 
-/// Native websocket client using the tokio tungstenite library.
+/// Relay service websocket client.
 #[derive(Clone)]
 pub struct NativeClient {
     options: Arc<ClientOptions>,
