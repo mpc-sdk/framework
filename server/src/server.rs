@@ -84,14 +84,14 @@ impl RelayServer {
         handle: Handle,
     ) -> Result<()> {
         let reader = self.state.read().await;
-        let reap_interval = reader.config.session.reap_interval;
+        let interval = reader.config.session.interval;
         let tls = reader.config.tls.as_ref().cloned();
         drop(reader);
 
         // Spawn task to reap expired sessions
         tokio::task::spawn(session_reaper(
             Arc::clone(&self.state),
-            reap_interval,
+            interval,
         ));
 
         if let Some(tls) = tls {

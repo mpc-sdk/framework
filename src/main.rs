@@ -67,9 +67,9 @@ mod cli {
 
         /// Start a relay websocket service.
         Server {
-            /// Override the reap interval for expired sessions in seconds.
+            /// Override the interval to poll for expired sessions in seconds.
             #[clap(long)]
-            reap_interval: Option<u64>,
+            session_interval: Option<u64>,
 
             /// Override the default session timeout in seconds.
             #[clap(long)]
@@ -91,16 +91,16 @@ mod cli {
                 commands::generate_keypair::run(file, force).await?
             }
             Command::Server {
-                reap_interval,
+                session_interval,
                 session_timeout,
                 bind,
                 config,
             } => {
                 commands::server::run(
-                    reap_interval,
-                    session_timeout,
                     bind,
                     config,
+                    session_interval,
+                    session_timeout,
                 )
                 .await?
             }

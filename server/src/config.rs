@@ -80,7 +80,7 @@ pub struct SessionConfig {
     /// Interval in seconds to reap expired sessions.
     ///
     /// Default is every 15 minutes.
-    pub reap_interval: u64,
+    pub interval: u64,
 
     /// The interval used to poll a session for the ready
     /// and active states.
@@ -103,7 +103,7 @@ impl Default for SessionConfig {
     fn default() -> Self {
         Self {
             timeout: 300,
-            reap_interval: 900,
+            interval: 900,
             wait_interval: 15,
             wait_timeout: 300,
         }
@@ -121,6 +121,14 @@ impl ServerConfig {
 
         let contents = fs::read_to_string(path.as_ref()).await?;
         let mut config: ServerConfig = toml::from_str(&contents)?;
+
+        if config.session.interval <= config.session.timeout {
+            return Err(Error::SessionTimeoutConfig);
+        }
+
+        if config.session.wait_timeout <= config.session.wait_interval {
+            return Err(Error::SessionWaitConfig);
+        }
 
         if config.key == PathBuf::default() {
             return Err(Error::KeyFileRequired);
