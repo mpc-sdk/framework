@@ -67,6 +67,7 @@ pub struct TlsConfig {
 
 /// Configuration for server sessions.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct SessionConfig {
     /// Timeout for sessions in seconds.
     ///
@@ -87,6 +88,8 @@ pub struct SessionConfig {
     /// A session is ready when all participants have completed
     /// the server handshake and is active when all participants
     /// have established their peer connections.
+    ///
+    /// Default is 15 seconds.
     pub wait_interval: u64,
 
     /// Wait timeout controls the timeout when waiting
