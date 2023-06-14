@@ -21,7 +21,7 @@ cargo install mpc-relay
 * [client][] Websocket client library
 * [cli][] Command line interface for the server
 
-The client implementation uses [web-sys][] for webassembly and [tokio-tunsgtentite][] for other platforms.
+The client implementation uses [web-sys][] for webassembly and [tokio-tungstenite][] for other platforms.
 
 ## Getting Started
 
