@@ -69,19 +69,40 @@ pub struct TlsConfig {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SessionConfig {
     /// Timeout for sessions in seconds.
+    ///
+    /// Sessions that have not seen any message activity
+    /// for this amount of time are marked for deletion.
+    ///
+    /// Default is 5 minutes.
     pub timeout: u64,
 
     /// Interval in seconds to reap expired sessions.
     ///
-    /// Default is every 30 minutes.
+    /// Default is every 15 minutes.
     pub reap_interval: u64,
+
+    /// The interval used to poll a session for the ready
+    /// and active states.
+    ///
+    /// A session is ready when all participants have completed
+    /// the server handshake and is active when all participants
+    /// have established their peer connections.
+    pub wait_interval: u64,
+
+    /// Wait timeout controls the timeout when waiting
+    /// for all clients in a session to become active.
+    ///
+    /// Default is 5 minutes.
+    pub wait_timeout: u64,
 }
 
 impl Default for SessionConfig {
     fn default() -> Self {
         Self {
             timeout: 300,
-            reap_interval: 1800,
+            reap_interval: 900,
+            wait_interval: 15,
+            wait_timeout: 300,
         }
     }
 }
