@@ -4,7 +4,7 @@ use anyhow::{bail, Result};
 use std::path::PathBuf;
 use tokio::{fs, io::AsyncWriteExt};
 
-use mpc_relay_protocol::{encode_keypair, generate_keypair};
+use mpc_relay_protocol::{encode_keypair, generate_keypair, hex};
 
 /// Generate keypair and write to file.
 pub async fn run(path: PathBuf, force: bool) -> Result<()> {
@@ -21,6 +21,8 @@ pub async fn run(path: PathBuf, force: bool) -> Result<()> {
     let mut file = fs::File::create(&path).await?;
     file.write_all(pem.as_bytes()).await?;
     file.flush().await?;
+
+    println!("{}", hex::encode(keypair.public));
 
     Ok(())
 }
