@@ -1,14 +1,14 @@
 [package]
 name = "mpc-relay-client"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "Noise protocol websocket relay client for MPC/TSS applications"
 keywords = ["mpc", "tss", "relay", "crypto", "e2ee"]
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-#mpc-relay-protocol = { path = "../protocol" }
-mpc-relay-protocol = "0.1"
+mpc-relay-protocol = { path = "../protocol" }
+#mpc-relay-protocol = "0.2"
 thiserror = "1"
 serde = {version = "1", features = ["derive"]}
 serde_json = "1"

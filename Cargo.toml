@@ -14,8 +14,8 @@ members = [
 ]
 
 [dependencies]
-#mpc-relay-protocol = { path = "protocol" }
-mpc-relay-protocol = "0.1"
+mpc-relay-protocol = { path = "protocol" }
+#mpc-relay-protocol = "0.2"
 anyhow = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
@@ -27,8 +27,8 @@ log = "0.4"
 serial_test = "2"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-#mpc-relay-server = { path = "server" }
-mpc-relay-server = "0.1"
+mpc-relay-server = { path = "server" }
+#mpc-relay-server = "0.2"
 clap = { version = "4", features = ["derive", "wrap_help", "env"] }
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "fs", "io-util" ] }
 axum-server = { version = "0.5", features = ["tls-rustls"] }

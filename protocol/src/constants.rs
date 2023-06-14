@@ -3,6 +3,9 @@
 /// Noise protocol pattern.
 pub const PATTERN: &str = "Noise_NN_25519_ChaChaPoly_BLAKE2s";
 
+/// Tag for PEM encoding of noise pattern.
+pub const PEM_PATTERN: &str = "NOISE PATTERN";
+
 /// Tag for PEM encoding of private key.
 pub const PEM_PRIVATE: &str = "NOISE PRIVATE KEY";
 

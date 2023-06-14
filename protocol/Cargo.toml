@@ -1,6 +1,6 @@
 [package]
 name = "mpc-relay-protocol"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "Protocol layer for the MPC/TSS relay using the noise framework"
 keywords = ["mpc", "tss", "relay", "crypto", "e2ee"]
@@ -24,4 +24,4 @@ hex = { version = "0.4", features = ["serde"] }
 
 [dev-dependencies]
 anyhow = "1"
-tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros" ] }
+#tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros" ] }
