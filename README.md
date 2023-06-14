@@ -8,6 +8,19 @@ For clients to use the relay service they must know the public key of the server
 
 Creating a meeting point that shares the session identifier between participants to execute an MPC/TSS protocol is left up to the application. Typcially, this can be achieved by encoding the session identifier in a URL and sharing the URL with all the participants.
 
+## Server Installation
+
+```
+cargo install mpc-relay
+```
+
+## Documentation
+
+* [protocol][] Message types and encoding
+* [server][] Websocket server library
+* [client][] Websocket client library
+* [cli][] Command line interface for the server
+
 The client implementation uses [web-sys][] for webassembly and [tokio-tunsgtentite][] for other platforms.
 
 ## Getting Started
@@ -19,7 +32,9 @@ cargo install cargo-make
 cargo install wasm-pack
 ```
 
-## Server
+## Development
+
+### Server
 
 First generate a keypair:
 
@@ -33,13 +48,13 @@ Then start the server:
 cargo run -- server config.toml
 ```
 
-## Documentation
+### Documentation
 
 ```
 cargo make doc
 ```
 
-## Tests
+### Tests
 
 Generate a server key for the test specs:
 
@@ -73,5 +88,9 @@ MIT or Apache-2.0
 
 [noise protocol]: https://noiseprotocol.org/
 [rust]: https://www.rust-lang.org/
-[web-sys]: https://docs.rs/web-sys/latest/web_sys/
-[tokio-tungstenite]: https://docs.rs/tokio-tungstenite/latest/tokio_tungstenite/
+[web-sys]: https://docs.rs/web-sys
+[tokio-tungstenite]: https://docs.rs/tokio-tungstenite
+[protocol]: https://docs.rs/mpc-relay-protocol
+[server]: https://docs.rs/mpc-relay-server
+[client]: https://docs.rs/mpc-relay-client
+[cli]: https://docs.rs/mpc-relay
