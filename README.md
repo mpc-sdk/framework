@@ -8,6 +8,8 @@ For clients to use the relay service they must know the public key of the server
 
 Creating a meeting point that shares the session identifier between participants to execute an MPC/TSS protocol is left up to the application. Typcially, this can be achieved by encoding the session identifier in a URL and sharing the URL with all the participants.
 
+The client implementation uses [web-sys][] for webassembly and [tokio-tunsgtentite][] for other platforms.
+
 ## Getting Started
 
 You will need the [rust][] toolchain and a few other tools:
@@ -71,3 +73,5 @@ MIT or Apache-2.0
 
 [noise protocol]: https://noiseprotocol.org/
 [rust]: https://www.rust-lang.org/
+[web-sys]: https://docs.rs/web-sys/latest/web_sys/
+[tokio-tungstenite]: https://docs.rs/tokio-tungstenite/latest/tokio_tungstenite/
