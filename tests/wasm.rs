@@ -23,7 +23,7 @@ mod wasm_tests {
     async fn peer_channel() -> Result<(), JsValue> {
         let _ = wasm_log::try_init(wasm_log::Config::default());
         let server_public_key =
-            hex::decode(SERVER_PUBLIC_KEY).unwrap();
+            hex::decode(SERVER_PUBLIC_KEY.trim()).unwrap();
         peer_channel::run(SERVER, server_public_key).await.unwrap();
         Ok(())
     }
@@ -39,7 +39,7 @@ mod wasm_tests {
         let _ = wasm_log::try_init(wasm_log::Config::default());
 
         let server_public_key =
-            hex::decode(SERVER_PUBLIC_KEY).unwrap();
+            hex::decode(SERVER_PUBLIC_KEY.trim()).unwrap();
 
         let expected_result = vec![1u8, 1u8, 2u8, 2u8, 3u8, 3u8];
         let session_result =
@@ -61,7 +61,7 @@ mod wasm_tests {
     async fn session_timeout() -> Result<(), JsValue> {
         let _ = wasm_log::try_init(wasm_log::Config::default());
         let server_public_key =
-            hex::decode(SERVER_PUBLIC_KEY).unwrap();
+            hex::decode(SERVER_PUBLIC_KEY.trim()).unwrap();
         session_timeout::run(SERVER, server_public_key).await.unwrap();
         Ok(())
     }
