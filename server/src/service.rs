@@ -285,12 +285,6 @@ async fn wait_for_session_ready(
             )
         };
 
-        let duration = start_time.elapsed().unwrap();
-        if duration > wait_timeout {
-            // TODO: send SessionTimeout
-            break;
-        }
-
         if ready {
             if let Err(e) = notify_session_ready(
                 Arc::clone(&state),
@@ -308,6 +302,19 @@ async fn wait_for_session_ready(
                 session,
             ));
             break;
+        } else {
+            let duration = start_time.elapsed().unwrap();
+            if duration > wait_timeout {
+                if let Err(e) = notify_session_timeout(
+                    state,
+                    session,
+                )
+                .await
+                {
+                    tracing::error!("{:#?}", e);
+                }
+                break;
+            }
         }
     }
 }
@@ -316,7 +323,7 @@ async fn notify_session_ready(
     state: State,
     session: SessionState,
 ) -> Result<()> {
-    let public_keys: Vec<Vec<u8>> = session
+    let public_keys: Vec<_> = session
         .all_participants
         .iter()
         .map(|key| key.to_vec())
@@ -353,12 +360,6 @@ async fn wait_for_session_active(
             }
         };
 
-        let duration = start_time.elapsed().unwrap();
-        if duration > wait_timeout {
-            // TODO: send SessionTimeout
-            break;
-        }
-
         if active {
             if let Err(e) =
                 notify_session_active(state, session).await
@@ -366,6 +367,19 @@ async fn wait_for_session_active(
                 tracing::error!("{:#?}", e);
             }
             break;
+        } else {
+            let duration = start_time.elapsed().unwrap();
+            if duration > wait_timeout {
+                if let Err(e) = notify_session_timeout(
+                    state,
+                    session,
+                )
+                .await
+                {
+                    tracing::error!("{:#?}", e);
+                }
+                break;
+            }
         }
     }
 }
@@ -374,12 +388,26 @@ async fn notify_session_active(
     state: State,
     session: SessionState,
 ) -> Result<()> {
-    let public_keys: Vec<Vec<u8>> = session
+    let public_keys: Vec<_> = session
         .all_participants
         .iter()
         .map(|key| key.to_vec())
         .collect();
     let message = ServerMessage::SessionActive(session);
+    notify_peers(state, public_keys, message).await?;
+    Ok(())
+}
+
+async fn notify_session_timeout(
+    state: State,
+    session: SessionState,
+) -> Result<()> {
+    let public_keys: Vec<_> = session
+        .all_participants
+        .iter()
+        .map(|key| key.to_vec())
+        .collect();
+    let message = ServerMessage::SessionTimeout(session.session_id);
     notify_peers(state, public_keys, message).await?;
     Ok(())
 }

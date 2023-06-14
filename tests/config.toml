@@ -5,4 +5,4 @@ key = "test.pem"
 timeout = 300
 reap_interval = 900
 wait_interval = 1 
-wait_timeout = 300
+wait_timeout = 5
