@@ -1,10 +1,11 @@
 [package]
 name = "mpc-relay-protocol"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "Protocol layer for the MPC/TSS relay using the noise framework"
 keywords = ["mpc", "tss", "relay", "crypto", "e2ee"]
 license = "MIT OR Apache-2.0"
+repository = "https://github.com/tmpfs/mpc-relay"
 
 [dependencies]
 thiserror = "1"
@@ -17,11 +18,6 @@ uuid = { version = "1", features = ["v4"] }
 http = "0.2"
 hex = { version = "0.4", features = ["serde"] }
 
-#[dependencies.binary-stream]
-#version = "8"
-#path = "../../binary-stream"
-#features = ["async"]
-
 [dev-dependencies]
 anyhow = "1"
-tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros" ] }
+#tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros" ] }

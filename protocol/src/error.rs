@@ -19,6 +19,11 @@ pub enum Error {
     #[error("invalid encoding kind identifier {0}")]
     EncodingKind(u8),
 
+    /// Error generated when the noise pattern in a PEM does not 
+    /// match the pattern in use by the protocol.
+    #[error(r#"noise protocol pattern mismatch, expecting "{0}""#)]
+    PatternMismatch(String),
+
     /// Error generated when the PEM encoding does not match
     /// the expected format.
     #[error("encoding in PEM is invalid")]
