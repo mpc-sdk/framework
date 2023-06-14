@@ -5,6 +5,7 @@ edition = "2021"
 description = "Protocol layer for the MPC/TSS relay using the noise framework"
 keywords = ["mpc", "tss", "relay", "crypto", "e2ee"]
 license = "MIT OR Apache-2.0"
+repository = "https://github.com/tmpfs/mpc-relay"
 
 [dependencies]
 thiserror = "1"
@@ -16,11 +17,6 @@ pem = "2"
 uuid = { version = "1", features = ["v4"] }
 http = "0.2"
 hex = { version = "0.4", features = ["serde"] }
-
-#[dependencies.binary-stream]
-#version = "8"
-#path = "../../binary-stream"
-#features = ["async"]
 
 [dev-dependencies]
 anyhow = "1"
