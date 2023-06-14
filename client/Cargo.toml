@@ -8,8 +8,8 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/tmpfs/mpc-relay"
 
 [dependencies]
-#mpc-relay-protocol = { path = "../protocol" }
-mpc-relay-protocol = "0.2"
+mpc-relay-protocol = { path = "../protocol" }
+#mpc-relay-protocol = "0.2"
 thiserror = "1"
 serde = {version = "1", features = ["derive"]}
 serde_json = "1"
