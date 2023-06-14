@@ -6,15 +6,15 @@ use std::{net::SocketAddr, path::PathBuf, str::FromStr};
 
 /// Run a web server.
 pub async fn run(
-    reap_interval: Option<u64>,
-    session_timeout: Option<u64>,
     bind: String,
     config: PathBuf,
+    interval: Option<u64>,
+    session_timeout: Option<u64>,
 ) -> Result<()> {
     let (mut config, keypair) = ServerConfig::load(&config).await?;
 
-    if let Some(reap_interval) = reap_interval {
-        config.session.reap_interval = reap_interval;
+    if let Some(interval) = interval {
+        config.session.interval = interval;
     }
 
     if let Some(session_timeout) = session_timeout {

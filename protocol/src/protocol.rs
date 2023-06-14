@@ -105,6 +105,10 @@ pub enum ServerMessage {
     /// in a session when they have all established
     /// peer connections to each other.
     SessionActive(SessionState),
+    /// Notification dispatched to all participants
+    /// in a session when the participants did not 
+    /// all connect within the expected timeframe.
+    SessionTimeout(SessionId),
     /// Request to close a session.
     CloseSession(SessionId),
     /// Message sent when a session was closed.
@@ -125,6 +129,7 @@ impl From<&ServerMessage> for u8 {
             }
             ServerMessage::SessionReady(_) => types::SESSION_READY,
             ServerMessage::SessionActive(_) => types::SESSION_ACTIVE,
+            ServerMessage::SessionTimeout(_) => types::SESSION_TIMEOUT,
             ServerMessage::CloseSession(_) => types::SESSION_CLOSE,
             ServerMessage::SessionFinished(_) => {
                 types::SESSION_FINISHED

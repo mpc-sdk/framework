@@ -8,7 +8,7 @@ mod wasm_tests {
     use wasm_bindgen_test::*;
 
     use super::integration::test_utils::{
-        peer_channel, session_broadcast,
+        peer_channel, session_broadcast, session_timeout,
     };
     use mpc_relay_protocol::hex;
 
@@ -50,6 +50,19 @@ mod wasm_tests {
         result.sort();
         assert_eq!(expected_result, result.clone());
 
+        Ok(())
+    }
+
+    /// Creates two clients that handshake with the server.
+    ///
+    /// The first client creates a session but the second 
+    /// client never joins the session so we get a timeout event.
+    #[wasm_bindgen_test]
+    async fn session_timeout() -> Result<(), JsValue> {
+        let _ = wasm_log::try_init(wasm_log::Config::default());
+        let server_public_key =
+            hex::decode(SERVER_PUBLIC_KEY).unwrap();
+        session_timeout::run(SERVER, server_public_key).await.unwrap();
         Ok(())
     }
 }

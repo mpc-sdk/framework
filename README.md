@@ -2,6 +2,12 @@
 
 End-to-end encrypted relay service designed for MPC/TSS applications built using the [noise protocol][] and websockets for the transport layer.
 
+The service facilitates secure communication between peers but it does not handle public key exchange nor meeting points.
+
+For clients to use the relay service they must know the public key of the server and the public keys of all the participants for a session.
+
+Creating a meeting point that shares the session identifier between participants to execute an MPC/TSS protocol is left up to the application. Typcially, this can be achieved by encoding the session identifier in a URL and sharing the URL with all the participants.
+
 ## Getting Started
 
 You will need the [rust][] toolchain and a few other tools:

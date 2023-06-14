@@ -1,6 +1,6 @@
 [package]
 name = "mpc-relay-protocol"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 description = "Protocol layer for the MPC/TSS relay using the noise framework"
 keywords = ["mpc", "tss", "relay", "crypto", "e2ee"]

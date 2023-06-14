@@ -62,6 +62,10 @@ pub enum Event {
     /// have connected to each other.
     SessionActive(SessionState),
 
+    /// Event dispatched when a session timed out waiting 
+    /// for all the participants.
+    SessionTimeout(SessionId),
+
     /// Event dispatched when a session has been finished.
     ///
     /// A session can only be finished when the session owner
@@ -209,6 +213,9 @@ where
             }
             ServerMessage::SessionActive(response) => {
                 Ok(Some(Event::SessionActive(response)))
+            }
+            ServerMessage::SessionTimeout(session_id) => {
+                Ok(Some(Event::SessionTimeout(session_id)))
             }
             ServerMessage::SessionFinished(session_id) => {
                 Ok(Some(Event::SessionFinished(session_id)))

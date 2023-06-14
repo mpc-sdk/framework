@@ -263,24 +263,27 @@ async fn handle_request(
 }
 
 async fn wait_for_session_ready(
+    interval_secs: u64,
     state: State,
     owner: Connection,
-    _start_time: SystemTime,
+    start_time: SystemTime,
     session: SessionState,
 ) {
-    let interval_secs = 1;
     let interval =
         tokio::time::interval(Duration::from_secs(interval_secs));
     let mut stream = IntervalStream::new(interval);
     while stream.next().await.is_some() {
-        let ready = {
+        let (ready, wait_timeout) = {
             let reader = state.read().await;
-            session.all_participants.iter().all(|public_key| {
-                reader.active.get(public_key).is_some()
-            })
+            (
+                session.all_participants.iter().all(|public_key| {
+                    reader.active.get(public_key).is_some()
+                }),
+                Duration::from_secs(
+                    reader.config.session.wait_timeout,
+                ),
+            )
         };
-
-        // FIXME: handle timeout
 
         if ready {
             if let Err(e) = notify_session_ready(
@@ -292,12 +295,26 @@ async fn wait_for_session_ready(
                 tracing::error!("{:#?}", e);
             }
             tokio::task::spawn(wait_for_session_active(
+                interval_secs,
                 state,
                 owner,
                 SystemTime::now(),
                 session,
             ));
             break;
+        } else {
+            let duration = start_time.elapsed().unwrap();
+            if duration > wait_timeout {
+                if let Err(e) = notify_session_timeout(
+                    state,
+                    session,
+                )
+                .await
+                {
+                    tracing::error!("{:#?}", e);
+                }
+                break;
+            }
         }
     }
 }
@@ -306,7 +323,7 @@ async fn notify_session_ready(
     state: State,
     session: SessionState,
 ) -> Result<()> {
-    let public_keys: Vec<Vec<u8>> = session
+    let public_keys: Vec<_> = session
         .all_participants
         .iter()
         .map(|key| key.to_vec())
@@ -317,28 +334,31 @@ async fn notify_session_ready(
 }
 
 async fn wait_for_session_active(
+    interval_secs: u64,
     state: State,
     _owner: Connection,
-    _start_time: SystemTime,
+    start_time: SystemTime,
     session: SessionState,
 ) {
-    let interval_secs = 1;
     let interval =
         tokio::time::interval(Duration::from_secs(interval_secs));
     let mut stream = IntervalStream::new(interval);
     while stream.next().await.is_some() {
-        let active = {
+        let (active, wait_timeout) = {
             let reader = state.read().await;
             if let Some(session) =
                 reader.sessions.get_session(&session.session_id)
             {
-                session.is_active()
+                (
+                    session.is_active(),
+                    Duration::from_secs(
+                        reader.config.session.wait_timeout,
+                    ),
+                )
             } else {
                 break;
             }
         };
-
-        // FIXME: handle timeout
 
         if active {
             if let Err(e) =
@@ -347,6 +367,19 @@ async fn wait_for_session_active(
                 tracing::error!("{:#?}", e);
             }
             break;
+        } else {
+            let duration = start_time.elapsed().unwrap();
+            if duration > wait_timeout {
+                if let Err(e) = notify_session_timeout(
+                    state,
+                    session,
+                )
+                .await
+                {
+                    tracing::error!("{:#?}", e);
+                }
+                break;
+            }
         }
     }
 }
@@ -355,12 +388,26 @@ async fn notify_session_active(
     state: State,
     session: SessionState,
 ) -> Result<()> {
-    let public_keys: Vec<Vec<u8>> = session
+    let public_keys: Vec<_> = session
         .all_participants
         .iter()
         .map(|key| key.to_vec())
         .collect();
     let message = ServerMessage::SessionActive(session);
+    notify_peers(state, public_keys, message).await?;
+    Ok(())
+}
+
+async fn notify_session_timeout(
+    state: State,
+    session: SessionState,
+) -> Result<()> {
+    let public_keys: Vec<_> = session
+        .all_participants
+        .iter()
+        .map(|key| key.to_vec())
+        .collect();
+    let message = ServerMessage::SessionTimeout(session.session_id);
     notify_peers(state, public_keys, message).await?;
     Ok(())
 }
@@ -377,13 +424,13 @@ async fn service(
                 request.participant_keys.clone();
             all_participants.push(public_key.as_ref().to_vec());
 
-            let session_id = {
+            let (session_id, wait_interval) = {
                 let mut writer = state.write().await;
                 let session_id = writer.sessions.new_session(
                     public_key.as_ref().to_vec(),
                     request.participant_keys,
                 );
-                session_id
+                (session_id, writer.config.session.wait_interval)
             };
 
             let response = SessionState {
@@ -392,6 +439,7 @@ async fn service(
             };
 
             tokio::task::spawn(wait_for_session_ready(
+                wait_interval,
                 Arc::clone(&state),
                 Arc::clone(&conn),
                 SystemTime::now(),

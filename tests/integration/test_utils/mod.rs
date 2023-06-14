@@ -1,5 +1,6 @@
 pub(crate) mod peer_channel;
 pub(crate) mod session_broadcast;
+pub(crate) mod session_timeout;
 
 #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
 pub(crate) mod native;
