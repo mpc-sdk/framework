@@ -13,7 +13,7 @@ mod wasm_tests {
     use mpc_relay_protocol::hex;
 
     const SERVER: &str = "ws://127.0.0.1:8008";
-    const SERVER_PUBLIC_KEY: &str = "7fa066392ae34ca5aeca907ff100a7d9e37e5a851dcaa7c5e7c4fef946ee3a25";
+    const SERVER_PUBLIC_KEY: &str = include_str!("./server_public_key.txt");
 
     /// Creates two clients that handshake with the server
     /// and then each other. Once the peer handshakes are

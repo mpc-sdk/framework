@@ -1,5 +1,4 @@
 //! Generate a new keypair.
-
 use anyhow::{bail, Result};
 use std::path::PathBuf;
 use tokio::{fs, io::AsyncWriteExt};

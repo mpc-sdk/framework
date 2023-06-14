@@ -23,7 +23,9 @@ cargo install mpc-relay
 
 The client implementation uses [web-sys][] for webassembly and [tokio-tungstenite][] for other platforms.
 
-## Getting Started
+## Development
+
+### Getting Started
 
 You will need the [rust][] toolchain and a few other tools:
 
@@ -32,7 +34,7 @@ cargo install cargo-make
 cargo install wasm-pack
 ```
 
-## Development
+Minimum supported rust version (MSRV) is 1.68.1.
 
 ### Server
 
@@ -56,25 +58,31 @@ cargo make doc
 
 ### Tests
 
-Generate a server key for the test specs:
+#### Server Key
+
+Generate a server key for the test specs and print the public key:
 
 ```
 cargo run -- generate-keypair tests/test.pem
 ```
 
-Afterwards you should be able to run the tests using the native client:
+Copy the hex-encoded public key into the file `tests/server_public_key.txt`.
+
+#### Native Client
+
+To run the tests using the native client:
 
 ```
 cargo make test
 ```
+
+#### Web Client
 
 To test the web client using webassembly, first start a test server:
 
 ```
 cargo run -- server -b 127.0.0.1:8008 tests/config.toml
 ```
-
-Copy the server public key and update the `tests/wasm.rs` file with the server public key.
 
 Now you can run the webassembly tests:
 
