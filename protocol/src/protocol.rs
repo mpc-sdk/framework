@@ -460,6 +460,12 @@ pub struct SessionState {
 }
 
 impl SessionState {
+    
+    /// Get the party index from a public key.
+    pub fn party_index(&self, public_key: impl AsRef<[u8]>) -> Option<usize> {
+        self.all_participants.iter().position(|k| k == public_key.as_ref())
+    }
+
     /// Get the connections a peer should make.
     pub fn connections(&self, own_key: &[u8]) -> &[Vec<u8>] {
         if self.all_participants.is_empty() {
