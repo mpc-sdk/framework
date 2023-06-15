@@ -56,7 +56,7 @@ impl ProtocolDriver for KeyGenerator {
         Ok((round, messages))
     }
 
-    fn create(&mut self) -> Result<Self::Output> {
+    fn finish(&mut self) -> Result<Self::Output> {
         Ok(self.inner.pick_output().unwrap()?)
     }
 }

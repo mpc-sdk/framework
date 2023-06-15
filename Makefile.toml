@@ -6,7 +6,6 @@ default_to_workspace = false
 
 [env]
 RUST_BACKTRACE = 0
-BUILD_TARGET = "${CARGO_MAKE_RUST_TARGET_TRIPLE}"
 
 [tasks.fix-all]
 workspace = true
@@ -82,6 +81,7 @@ args = ["test", "--firefox"]
 command = "cargo"
 args = [
   "check",
+  "--all-features",
   "--target",
   "wasm32-unknown-unknown",
   "-p",

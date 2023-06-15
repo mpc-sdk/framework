@@ -1,5 +1,6 @@
 //! Drive MPC protocols to completion.
 #![deny(missing_docs)]
+#![cfg_attr(all(doc, CHANNEL_NIGHTLY), feature(doc_auto_cfg))]
 
 #[cfg(feature = "gg20")]
 pub mod gg20;
@@ -57,6 +58,6 @@ pub trait ProtocolDriver {
     /// Proceed to the next round.
     fn proceed(&mut self) -> Result<(u16, Vec<Self::Outgoing>), Self::Error>;
 
-    /// Create the output.
-    fn create(&mut self) -> Result<Self::Output, Self::Error>;
+    /// Complete the protocol and get the output.
+    fn finish(&mut self) -> Result<Self::Output, Self::Error>;
 }
