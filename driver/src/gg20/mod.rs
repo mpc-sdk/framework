@@ -7,4 +7,3 @@ pub use error::Error;
 
 /// Result type for the GG2020 protocol.
 pub type Result<T> = std::result::Result<T, Error>;
-

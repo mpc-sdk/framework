@@ -9,7 +9,8 @@ pub use round::RoundMsg;
 #[cfg(feature = "gg20")]
 pub mod gg20;
 
-use serde::{Serialize, Deserialize};
+use mpc_relay_protocol::SessionState;
+use serde::{Deserialize, Serialize};
 
 /// Parameters used during key generation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -32,16 +33,16 @@ impl Default for Parameters {
     }
 }
 
-/// Session information for a single party.
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+/// Session information for a participant.
+#[derive(Clone, Debug)]
 pub struct Participant {
-    /// Unique index for the party.
-    pub number: u16,
-    /// Participant public key.
+    /// Public key of this participant.
     pub public_key: Vec<u8>,
+    /// Session state.
+    pub session: SessionState,
 }
 
-/// Trait for implementations that drive 
+/// Trait for implementations that drive
 /// protocol to completion.
 pub trait ProtocolDriver {
     /// Error type for results.
@@ -60,7 +61,9 @@ pub trait ProtocolDriver {
     ) -> Result<(), Self::Error>;
 
     /// Proceed to the next round.
-    fn proceed(&mut self) -> Result<(u16, Vec<Self::Outgoing>), Self::Error>;
+    fn proceed(
+        &mut self,
+    ) -> Result<(u16, Vec<Self::Outgoing>), Self::Error>;
 
     /// Complete the protocol and get the output.
     fn finish(&mut self) -> Result<Self::Output, Self::Error>;

@@ -1,10 +1,10 @@
-use serde::Serialize;
 use round_based::Msg;
+use serde::Serialize;
 
 /// Wrapper for a round `Msg` that includes the round
 /// number.
 ///
-/// Used to ensure round messages are grouped together and 
+/// Used to ensure round messages are grouped together and
 /// out of order messages can thus be handled correctly.
 #[derive(Serialize)]
 pub struct RoundMsg<O> {

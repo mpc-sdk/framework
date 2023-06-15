@@ -462,7 +462,7 @@ pub struct SessionState {
 impl SessionState {
     
     /// Get the party index from a public key.
-    pub fn party_index(&self, public_key: impl AsRef<[u8]>) -> Option<usize> {
+    pub fn party_number(&self, public_key: impl AsRef<[u8]>) -> Option<usize> {
         self.all_participants.iter().position(|k| k == public_key.as_ref())
     }
 

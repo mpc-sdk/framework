@@ -4,8 +4,10 @@ use multi_party_ecdsa::protocols::multi_party_ecdsa::gg_2020::state_machine::key
 };
 
 use curv::elliptic::curves::secp256_k1::Secp256k1;
+use mpc_relay_protocol::hex;
 use round_based::{Msg, StateMachine};
-use super::{Result, Error};
+
+use super::{Error, Result};
 use crate::{Parameters, Participant, ProtocolDriver, RoundMsg};
 
 type Message = Msg<<Keygen as StateMachine>::MessageBody>;
@@ -13,23 +15,30 @@ type Message = Msg<<Keygen as StateMachine>::MessageBody>;
 /// GG20 keygen driver.
 pub struct KeyGenerator {
     inner: Keygen,
-    //public_key: Vec<u8>,
+    participant: Participant,
 }
 
 impl KeyGenerator {
     /// Create a key generator.
     pub fn new(
         parameters: Parameters,
-        party_signup: Participant,
+        participant: Participant,
     ) -> Result<KeyGenerator> {
-        let Participant { number, .. } = party_signup;
+        let party_number = participant
+            .session
+            .party_number(&participant.public_key)
+            .ok_or_else(|| {
+                Error::NotSessionParticipant(hex::encode(
+                    &participant.public_key,
+                ))
+            })? as u16;
         Ok(Self {
             inner: Keygen::new(
-                number,
+                party_number,
                 parameters.threshold,
                 parameters.parties,
             )?,
-            //public_key,
+            participant,
         })
     }
 }
