@@ -34,7 +34,7 @@ impl Default for Parameters {
 
 /// Session information for a single party.
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
-pub struct PartySignup {
+pub struct Participant {
     /// Unique index for the party.
     pub number: u16,
     /// Participant public key.

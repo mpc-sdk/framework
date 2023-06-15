@@ -6,7 +6,7 @@ use multi_party_ecdsa::protocols::multi_party_ecdsa::gg_2020::state_machine::key
 use curv::elliptic::curves::secp256_k1::Secp256k1;
 use round_based::{Msg, StateMachine};
 use super::{Result, Error};
-use crate::{Parameters, PartySignup, ProtocolDriver, RoundMsg};
+use crate::{Parameters, Participant, ProtocolDriver, RoundMsg};
 
 type Message = Msg<<Keygen as StateMachine>::MessageBody>;
 
@@ -20,9 +20,9 @@ impl KeyGenerator {
     /// Create a key generator.
     pub fn new(
         parameters: Parameters,
-        party_signup: PartySignup,
+        party_signup: Participant,
     ) -> Result<KeyGenerator> {
-        let PartySignup { number, .. } = party_signup;
+        let Participant { number, .. } = party_signup;
         Ok(Self {
             inner: Keygen::new(
                 number,
