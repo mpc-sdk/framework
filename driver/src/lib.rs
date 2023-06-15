@@ -2,6 +2,10 @@
 #![deny(missing_docs)]
 #![cfg_attr(all(doc, CHANNEL_NIGHTLY), feature(doc_auto_cfg))]
 
+mod round;
+
+pub use round::RoundMsg;
+
 #[cfg(feature = "gg20")]
 pub mod gg20;
 

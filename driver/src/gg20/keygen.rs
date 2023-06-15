@@ -5,8 +5,8 @@ use multi_party_ecdsa::protocols::multi_party_ecdsa::gg_2020::state_machine::key
 
 use curv::elliptic::curves::secp256_k1::Secp256k1;
 use round_based::{Msg, StateMachine};
-use super::{Result, Error, RoundMsg};
-use crate::{Parameters, PartySignup, ProtocolDriver};
+use super::{Result, Error};
+use crate::{Parameters, PartySignup, ProtocolDriver, RoundMsg};
 
 type Message = Msg<<Keygen as StateMachine>::MessageBody>;
 
