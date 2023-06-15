@@ -16,6 +16,7 @@ mpc-relay-protocol = { path = "../protocol" }
 thiserror = "1"
 #round-based = "0.1"
 serde = { version = "1", features = ["derive"] }
+sha3 = "0.10"
 
 [dependencies.round-based]
 git = "https://github.com/webb-tools/round-based-protocol"

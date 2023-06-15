@@ -2,6 +2,7 @@
 
 mod error;
 pub mod keygen;
+pub mod sign;
 
 pub use error::Error;
 
