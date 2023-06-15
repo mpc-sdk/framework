@@ -1,0 +1,59 @@
+[package]
+name = "mpc-driver"
+version = "0.1.0"
+edition = "2021"
+description = "Driver for round-based MPC protocols"
+keywords = ["mpc", "tss", "relay", "crypto", "e2ee"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/tmpfs/mpc-relay"
+
+[features]
+gg20 = ["dep:curv-kzen", "dep:paillier", "dep:multi-party-ecdsa"]
+
+[dependencies]
+mpc-relay-protocol = { path = "../protocol" }
+#mpc-relay-protocol = "0.3"
+thiserror = "1"
+#round-based = "0.1"
+serde = { version = "1", features = ["derive"] }
+
+[dependencies.round-based]
+git = "https://github.com/webb-tools/round-based-protocol"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies.curv-kzen]
+optional = true
+version = "0.10"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies.paillier]
+optional = true
+version = "0.4.3"
+package = "kzen-paillier"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies.multi-party-ecdsa]
+optional = true
+git = "https://github.com/webb-tools/multi-party-ecdsa"
+version = "*"
+
+# WASM
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+mpc-ecdsa-getrandom-hack = {version = "*"}
+getrandom = {version = "0.1.16", features = ["wasm-bindgen"]}
+
+[target.'cfg(target_arch = "wasm32")'.dependencies.curv-kzen]
+optional = true
+version = "0.10"
+features = ["num-bigint"]
+default-features = false
+
+[target.'cfg(target_arch = "wasm32")'.dependencies.paillier]
+optional = true
+version = "0.4.3"
+package = "kzen-paillier"
+default-features = false
+
+[target.'cfg(target_arch = "wasm32")'.dependencies.multi-party-ecdsa]
+optional = true
+git = "https://github.com/webb-tools/multi-party-ecdsa"
+default-features = false
+version = "*"

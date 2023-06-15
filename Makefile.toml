@@ -7,9 +7,6 @@ default_to_workspace = false
 [env]
 RUST_BACKTRACE = 0
 BUILD_TARGET = "${CARGO_MAKE_RUST_TARGET_TRIPLE}"
-# Increase time for integration tests as the CLI
-# tests take a while due to so many exec calls
-RUST_TEST_TIME_INTEGRATION = "120000,240000"
 
 [tasks.fix-all]
 workspace = true
@@ -89,6 +86,8 @@ args = [
   "wasm32-unknown-unknown",
   "-p",
   "mpc-relay-client",
+  "-p",
+  "mpc-driver",
 ]
 
 [tasks.genhtml]
