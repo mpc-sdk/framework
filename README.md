@@ -92,7 +92,7 @@ cargo make test-wasm
 
 ## License
 
-MIT or Apache-2.0
+The driver crate is GPLv3 all other code is either MIT or Apache-2.0.
 
 [noise protocol]: https://noiseprotocol.org/
 [rust]: https://www.rust-lang.org/
