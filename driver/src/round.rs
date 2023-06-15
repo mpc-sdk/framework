@@ -2,8 +2,10 @@ use serde::Serialize;
 use round_based::Msg;
 
 /// Wrapper for a round `Msg` that includes the round
-/// number so that we can ensure round messages are grouped
-/// together and out of order messages can thus be handled correctly.
+/// number.
+///
+/// Used to ensure round messages are grouped together and 
+/// out of order messages can thus be handled correctly.
 #[derive(Serialize)]
 pub struct RoundMsg<O> {
     round: u16,
@@ -29,4 +31,3 @@ impl<O> RoundMsg<O> {
             .collect::<Vec<_>>()
     }
 }
-
