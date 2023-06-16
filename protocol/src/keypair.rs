@@ -31,7 +31,9 @@ pub fn decode_keypair(keypair: impl AsRef<[u8]>) -> Result<Keypair> {
             == (first.tag(), second.tag(), third.tag())
         {
             if &first.into_contents() != PATTERN.as_bytes() {
-                return Err(Error::PatternMismatch(PATTERN.to_string()));
+                return Err(Error::PatternMismatch(
+                    PATTERN.to_string(),
+                ));
             }
             Ok(Keypair {
                 public: second.into_contents(),
@@ -48,7 +50,9 @@ pub fn decode_keypair(keypair: impl AsRef<[u8]>) -> Result<Keypair> {
 #[cfg(test)]
 mod tests {
     use super::{decode_keypair, encode_keypair, generate_keypair};
-    use crate::{PATTERN, TAGLEN, Error, PEM_PATTERN, PEM_PUBLIC, PEM_PRIVATE};
+    use crate::{
+        Error, PATTERN, PEM_PATTERN, PEM_PRIVATE, PEM_PUBLIC, TAGLEN,
+    };
     use anyhow::Result;
     use pem::Pem;
 
@@ -76,7 +80,8 @@ mod tests {
         let pattern_pem = Pem::new(PEM_PATTERN, vec![0; 32]);
         let public_pem = Pem::new(PEM_PUBLIC, vec![0; 32]);
         let private_pem = Pem::new(PEM_PRIVATE, vec![0; 32]);
-        let pem = pem::encode_many(&[pattern_pem, private_pem, public_pem]);
+        let pem =
+            pem::encode_many(&[pattern_pem, private_pem, public_pem]);
         let result = decode_keypair(&pem);
         assert!(matches!(result, Err(Error::BadKeypairPem)));
         Ok(())
@@ -87,7 +92,8 @@ mod tests {
         let pattern_pem = Pem::new(PEM_PATTERN, vec![0; 32]);
         let public_pem = Pem::new(PEM_PUBLIC, vec![0; 32]);
         let private_pem = Pem::new(PEM_PRIVATE, vec![0; 32]);
-        let pem = pem::encode_many(&[pattern_pem, public_pem, private_pem]);
+        let pem =
+            pem::encode_many(&[pattern_pem, public_pem, private_pem]);
         let result = decode_keypair(&pem);
         assert!(matches!(result, Err(Error::PatternMismatch(_))));
         Ok(())

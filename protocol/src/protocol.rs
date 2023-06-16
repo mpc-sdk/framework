@@ -106,7 +106,7 @@ pub enum ServerMessage {
     /// peer connections to each other.
     SessionActive(SessionState),
     /// Notification dispatched to all participants
-    /// in a session when the participants did not 
+    /// in a session when the participants did not
     /// all connect within the expected timeframe.
     SessionTimeout(SessionId),
     /// Request to close a session.
@@ -129,7 +129,9 @@ impl From<&ServerMessage> for u8 {
             }
             ServerMessage::SessionReady(_) => types::SESSION_READY,
             ServerMessage::SessionActive(_) => types::SESSION_ACTIVE,
-            ServerMessage::SessionTimeout(_) => types::SESSION_TIMEOUT,
+            ServerMessage::SessionTimeout(_) => {
+                types::SESSION_TIMEOUT
+            }
             ServerMessage::CloseSession(_) => types::SESSION_CLOSE,
             ServerMessage::SessionFinished(_) => {
                 types::SESSION_FINISHED
@@ -460,10 +462,14 @@ pub struct SessionState {
 }
 
 impl SessionState {
-    
     /// Get the party index from a public key.
-    pub fn party_number(&self, public_key: impl AsRef<[u8]>) -> Option<usize> {
-        self.all_participants.iter().position(|k| k == public_key.as_ref())
+    pub fn party_number(
+        &self,
+        public_key: impl AsRef<[u8]>,
+    ) -> Option<usize> {
+        self.all_participants
+            .iter()
+            .position(|k| k == public_key.as_ref())
     }
 
     /// Get the connections a peer should make.

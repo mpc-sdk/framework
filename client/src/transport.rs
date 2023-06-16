@@ -1,7 +1,7 @@
+use crate::Result;
 use async_trait::async_trait;
 use mpc_relay_protocol::SessionId;
 use serde::Serialize;
-use crate::Result;
 
 /// Trait for network clients.
 #[async_trait]
@@ -16,10 +16,8 @@ pub trait NetworkTransport {
     ///
     /// Peer already exists error is returned if this
     /// client is already connecting to the peer.
-    async fn connect_peer(
-        &mut self,
-        public_key: &[u8],
-    ) -> Result<()>;
+    async fn connect_peer(&mut self, public_key: &[u8])
+        -> Result<()>;
 
     /// Send a JSON message to a peer.
     async fn send_json<S>(
@@ -57,7 +55,7 @@ pub trait NetworkTransport {
         &mut self,
         session_id: SessionId,
     ) -> Result<()>;
-    
+
     /// Broadcast a JSON message in the context of a session.
     async fn broadcast_json<S>(
         &mut self,
@@ -75,4 +73,7 @@ pub trait NetworkTransport {
         recipient_public_keys: &[Vec<u8>],
         payload: Vec<u8>,
     ) -> Result<()>;
+
+    /// Close the socket connection.
+    async fn close(&self) -> Result<()>;
 }

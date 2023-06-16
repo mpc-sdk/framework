@@ -27,10 +27,13 @@ use mpc_relay_protocol::{
 
 use super::{
     encrypt_peer_channel,
-    event_loop::{event_loop_run_impl, EventLoop},
+    event_loop::{event_loop_run_impl, EventLoop, InternalMessage},
     Peers, Server,
 };
-use crate::{client_impl, client_transport_impl, ClientOptions, Error, Event, Result};
+use crate::{
+    client_impl, client_transport_impl, ClientOptions, Error, Event,
+    Result,
+};
 
 type WsMessage = Message;
 type WsError = tokio_tungstenite::tungstenite::Error;
@@ -47,7 +50,7 @@ pub type NativeEventLoop =
 #[derive(Clone)]
 pub struct NativeClient {
     options: Arc<ClientOptions>,
-    outbound_tx: mpsc::Sender<RequestMessage>,
+    outbound_tx: mpsc::Sender<InternalMessage>,
     server: Server,
     peers: Peers,
 }
@@ -81,7 +84,7 @@ impl NativeClient {
         // Channel for writing outbound messages to send
         // to the server
         let (outbound_tx, outbound_rx) =
-            mpsc::channel::<RequestMessage>(32);
+            mpsc::channel::<InternalMessage>(32);
 
         // State for the server transport
         let server = Arc::new(RwLock::new(Some(
@@ -151,6 +154,19 @@ impl EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream> {
             .flush()
             .await
             .map_err(|_| Error::WebSocketSend)?)
+    }
+
+    async fn handle_close_message(self) -> Result<()> {
+        println!("handling close message...");
+        let mut websocket: WebSocketStream<
+            MaybeTlsStream<TcpStream>,
+        > = self
+            .ws_reader
+            .reunite(self.ws_writer)
+            .map_err(|_| Error::StreamReunite)?;
+        println!("calling close on websocket...");
+        websocket.close(None).await?;
+        Ok(())
     }
 
     event_loop_run_impl!();

@@ -62,7 +62,7 @@ pub enum Event {
     /// have connected to each other.
     SessionActive(SessionState),
 
-    /// Event dispatched when a session timed out waiting 
+    /// Event dispatched when a session timed out waiting
     /// for all the participants.
     SessionTimeout(SessionId),
 
@@ -88,6 +88,17 @@ impl JsonMessage {
     }
 }
 
+/// Internal message used to communicate between
+/// the client and event loop.
+#[doc(hidden)]
+#[derive(Debug)]
+pub enum InternalMessage {
+    /// Send a request.
+    Request(RequestMessage),
+    /// Close the connection.
+    Close,
+}
+
 /// Event loop for a websocket client.
 pub struct EventLoop<M, E, R, W>
 where
@@ -101,8 +112,8 @@ where
     pub(crate) ws_writer: W,
     pub(crate) inbound_tx: mpsc::Sender<ResponseMessage>,
     pub(crate) inbound_rx: mpsc::Receiver<ResponseMessage>,
-    pub(crate) outbound_tx: mpsc::Sender<RequestMessage>,
-    pub(crate) outbound_rx: mpsc::Receiver<RequestMessage>,
+    pub(crate) outbound_tx: mpsc::Sender<InternalMessage>,
+    pub(crate) outbound_rx: mpsc::Receiver<InternalMessage>,
     pub(crate) server: Server,
     pub(crate) peers: Peers,
 }
@@ -119,7 +130,7 @@ where
         server: Server,
         peers: Peers,
         incoming: ResponseMessage,
-        outbound_tx: mpsc::Sender<RequestMessage>,
+        outbound_tx: mpsc::Sender<InternalMessage>,
     ) -> Result<Option<Event>> {
         match incoming {
             ResponseMessage::Transparent(
@@ -251,7 +262,7 @@ where
     async fn peer_handshake_responder(
         options: Arc<ClientOptions>,
         peers: Peers,
-        outbound_tx: mpsc::Sender<RequestMessage>,
+        outbound_tx: mpsc::Sender<InternalMessage>,
         public_key: impl AsRef<[u8]>,
         len: usize,
         buf: Vec<u8>,
@@ -293,7 +304,9 @@ where
                 },
             );
 
-            outbound_tx.send(request).await?;
+            outbound_tx
+                .send(InternalMessage::Request(request))
+                .await?;
 
             Ok(Some(Event::PeerConnected {
                 peer_key: public_key.as_ref().to_vec(),
@@ -409,9 +422,21 @@ macro_rules! event_loop_run_impl {
                             self.outbound_rx.recv().fuse()
                                 => match message_out {
                             Some(message) => {
-                                if let Err(e) = self.send_message(message).await {
-                                    yield Err(e)
+
+                                match message {
+                                    InternalMessage::Request(request) => {
+                                        if let Err(e) = self.send_message(request).await {
+                                            yield Err(e)
+                                        }
+                                    }
+                                    InternalMessage::Close => {
+                                        if let Err(e) = self.handle_close_message().await {
+                                            yield Err(e)
+                                        }
+                                        break;
+                                    }
                                 }
+
                             }
                             _ => {}
                         },

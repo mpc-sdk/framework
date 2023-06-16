@@ -20,7 +20,9 @@ macro_rules! client_impl {
                     session_id,
                 )
                 .await?;
-                self.outbound_tx.send(request).await?;
+                self.outbound_tx
+                    .send(InternalMessage::Request(request))
+                    .await?;
                 Ok(())
             } else {
                 Err(Error::PeerNotFound(hex::encode(
@@ -39,9 +41,10 @@ macro_rules! client_impl {
                 let mut server = self.server.write().await;
                 if let Some(server) = server.as_mut() {
                     let payload = encode(&message).await?;
-                    let inner =
-                        encrypt_server_channel(server, payload, false)
-                            .await?;
+                    let inner = encrypt_server_channel(
+                        server, payload, false,
+                    )
+                    .await?;
                     Some(inner)
                 } else {
                     None
@@ -52,7 +55,9 @@ macro_rules! client_impl {
                 let request = RequestMessage::Opaque(
                     OpaqueMessage::ServerMessage(envelope),
                 );
-                self.outbound_tx.send(request).await?;
+                self.outbound_tx
+                    .send(InternalMessage::Request(request))
+                    .await?;
                 Ok(())
             } else {
                 unreachable!()
@@ -78,14 +83,13 @@ macro_rules! client_impl {
             }
             Ok(())
         }
-    }
+    };
 }
-
 
 #[doc(hidden)]
 macro_rules! client_transport_impl {
     ($kind:ty) => {
-        
+
         #[async_trait::async_trait]
         impl crate::NetworkTransport for $kind {
 
@@ -116,7 +120,7 @@ macro_rules! client_transport_impl {
                     )
                 };
 
-                self.outbound_tx.send(request).await?;
+                self.outbound_tx.send(InternalMessage::Request(request)).await?;
 
                 Ok(())
             }
@@ -170,7 +174,7 @@ macro_rules! client_transport_impl {
                     },
                 );
 
-                self.outbound_tx.send(request).await?;
+                self.outbound_tx.send(InternalMessage::Request(request)).await?;
 
                 Ok(())
             }
@@ -277,6 +281,10 @@ macro_rules! client_transport_impl {
                     Encoding::Blob,
                 )
                 .await
+            }
+
+            async fn close(&self) -> Result<()> {
+                Ok(self.outbound_tx.send(InternalMessage::Close).await?)
             }
         }
     }

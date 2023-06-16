@@ -22,9 +22,7 @@ pub async fn run(
         )
         .await?;
 
-    let session_participants = vec![
-        participant_key.public.clone(),
-    ];
+    let session_participants = vec![participant_key.public.clone()];
 
     initiator.connect().await?;
     participant.connect().await?;
@@ -39,7 +37,9 @@ pub async fn run(
         }
         match &event {
             Event::ServerConnected { .. } => {
-                initiator.new_session(session_participants.clone()).await?;
+                initiator
+                    .new_session(session_participants.clone())
+                    .await?;
             }
             Event::SessionTimeout(_) => {
                 break;

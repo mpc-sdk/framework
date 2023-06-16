@@ -305,11 +305,8 @@ async fn wait_for_session_ready(
         } else {
             let duration = start_time.elapsed().unwrap();
             if duration > wait_timeout {
-                if let Err(e) = notify_session_timeout(
-                    state,
-                    session,
-                )
-                .await
+                if let Err(e) =
+                    notify_session_timeout(state, session).await
                 {
                     tracing::error!("{:#?}", e);
                 }
@@ -370,11 +367,8 @@ async fn wait_for_session_active(
         } else {
             let duration = start_time.elapsed().unwrap();
             if duration > wait_timeout {
-                if let Err(e) = notify_session_timeout(
-                    state,
-                    session,
-                )
-                .await
+                if let Err(e) =
+                    notify_session_timeout(state, session).await
                 {
                     tracing::error!("{:#?}", e);
                 }

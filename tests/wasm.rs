@@ -9,11 +9,13 @@ mod wasm_tests {
 
     use super::integration::test_utils::{
         peer_channel, session_broadcast, session_timeout,
+        socket_close,
     };
     use mpc_relay_protocol::hex;
 
     const SERVER: &str = "ws://127.0.0.1:8008";
-    const SERVER_PUBLIC_KEY: &str = include_str!("./server_public_key.txt");
+    const SERVER_PUBLIC_KEY: &str =
+        include_str!("./server_public_key.txt");
 
     /// Creates two clients that handshake with the server
     /// and then each other. Once the peer handshakes are
@@ -55,14 +57,27 @@ mod wasm_tests {
 
     /// Creates two clients that handshake with the server.
     ///
-    /// The first client creates a session but the second 
+    /// The first client creates a session but the second
     /// client never joins the session so we get a timeout event.
     #[wasm_bindgen_test]
     async fn session_timeout() -> Result<(), JsValue> {
         let _ = wasm_log::try_init(wasm_log::Config::default());
         let server_public_key =
             hex::decode(SERVER_PUBLIC_KEY.trim()).unwrap();
-        session_timeout::run(SERVER, server_public_key).await.unwrap();
+        session_timeout::run(SERVER, server_public_key)
+            .await
+            .unwrap();
+        Ok(())
+    }
+
+    /// Creates a client that handshakes with the server and
+    /// then explicitly closes the connection.
+    #[wasm_bindgen_test]
+    async fn socket_close() -> Result<(), JsValue> {
+        let _ = wasm_log::try_init(wasm_log::Config::default());
+        let server_public_key =
+            hex::decode(SERVER_PUBLIC_KEY.trim()).unwrap();
+        socket_close::run(SERVER, server_public_key).await.unwrap();
         Ok(())
     }
 }

@@ -142,7 +142,8 @@ impl ProtocolDriver for SignOnline {
         )?;
 
         let signature = sign.complete(&self.partials)?;
-        verify(&signature, &pk, &data).map_err(|_| Error::VerifySignature)?;
+        verify(&signature, &pk, &data)
+            .map_err(|_| Error::VerifySignature)?;
 
         let public_key = pk.to_bytes(false).to_vec();
         let result = Signature {

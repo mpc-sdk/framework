@@ -126,7 +126,8 @@ impl ServerConfig {
             return Err(Error::SessionTimeoutConfig);
         }
 
-        if config.session.wait_timeout <= config.session.wait_interval {
+        if config.session.wait_timeout <= config.session.wait_interval
+        {
             return Err(Error::SessionWaitConfig);
         }
 

@@ -9,3 +9,6 @@ mod session_broadcast;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod session_timeout;
+
+#[cfg(not(target_arch = "wasm32"))]
+mod socket_close;
