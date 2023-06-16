@@ -38,6 +38,9 @@ pub trait NetworkTransport {
     ) -> Result<()>;
 
     /// Create a new session.
+    ///
+    /// Do not include the public key of the initiator for the new 
+    /// session; it is automatically included as the session owner.
     async fn new_session(
         &mut self,
         participant_keys: Vec<Vec<u8>>,
