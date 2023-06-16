@@ -1,6 +1,6 @@
 use anyhow::Result;
 use futures::{select, FutureExt, StreamExt};
-use mpc_relay_client::{Client, Event, EventLoop};
+use mpc_relay_client::{Client, Event, EventLoop, NetworkTransport};
 use tokio::sync::mpsc;
 
 use super::new_client;

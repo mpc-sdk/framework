@@ -30,7 +30,7 @@ use super::{
     event_loop::{event_loop_run_impl, EventLoop},
     Peers, Server,
 };
-use crate::{client_impl, ClientOptions, Error, Event, Result};
+use crate::{client_impl, client_transport_impl, ClientOptions, Error, Event, Result};
 
 type WsMessage = Message;
 type WsError = tokio_tungstenite::tungstenite::Error;
@@ -118,6 +118,8 @@ impl NativeClient {
 
     client_impl!();
 }
+
+client_transport_impl!(NativeClient);
 
 impl EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream> {
     /// Receive and decode socket messages then send to

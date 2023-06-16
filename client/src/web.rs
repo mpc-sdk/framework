@@ -18,7 +18,7 @@ use mpc_relay_protocol::{
 };
 
 use crate::{
-    client_impl, encrypt_peer_channel,
+    client_impl, client_transport_impl, encrypt_peer_channel,
     event_loop::{event_loop_run_impl, EventLoop},
     ClientOptions, Error, Event, Peers, Result, Server,
 };
@@ -164,6 +164,8 @@ impl WebClient {
     client_impl!();
 }
 
+client_transport_impl!(WebClient);
+
 impl Drop for WebClient {
     fn drop(&mut self) {
         unsafe {
@@ -171,6 +173,8 @@ impl Drop for WebClient {
         }
     }
 }
+
+unsafe impl Send for WebClient {}
 
 impl EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream> {
     /// Receive and decode socket messages then send to

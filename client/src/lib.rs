@@ -14,7 +14,7 @@ mod error;
 mod event_loop;
 mod transport;
 
-pub(crate) use client::client_impl;
+pub(crate) use client::{client_impl, client_transport_impl};
 pub use event_loop::{Event, JsonMessage};
 pub use transport::NetworkTransport;
 

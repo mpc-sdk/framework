@@ -29,7 +29,7 @@ pub trait NetworkTransport {
         session_id: Option<SessionId>,
     ) -> Result<()>
     where
-        S: Serialize + ?Sized;
+        S: Serialize + Send + Sync + ?Sized;
 
     /// Send a binary message to a peer via the relay service.
     async fn send_blob(
@@ -64,7 +64,9 @@ pub trait NetworkTransport {
         session_id: &SessionId,
         recipient_public_keys: &[Vec<u8>],
         payload: &S,
-    ) -> Result<()>;
+    ) -> Result<()>
+    where
+        S: Serialize + Send + Sync + ?Sized;
 
     /// Broadcast a binary message in the context of a session.
     async fn broadcast_blob(
