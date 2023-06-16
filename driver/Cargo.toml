@@ -13,6 +13,8 @@ gg20 = ["dep:curv-kzen", "dep:paillier", "dep:multi-party-ecdsa"]
 [dependencies]
 mpc-relay-protocol = { path = "../protocol" }
 #mpc-relay-protocol = "0.3"
+mpc-relay-client = { path = "../client" }
+#mpc-relay-client = "0.3"
 thiserror = "1"
 #round-based = "0.1"
 serde = { version = "1", features = ["derive"] }

@@ -16,7 +16,7 @@ mod transport;
 
 pub(crate) use client::{client_impl, client_transport_impl};
 pub use event_loop::{Event, JsonMessage};
-pub use transport::NetworkTransport;
+pub use transport::{NetworkTransport, Transport};
 
 #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
 mod native;
