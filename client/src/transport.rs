@@ -6,7 +6,7 @@ use crate::Result;
 /// Trait for network clients.
 #[async_trait]
 pub trait NetworkTransport {
-    /// The public key for this client.
+    /// Public key for this client.
     fn public_key(&self) -> &[u8];
 
     /// Perform initial handshake with the server.
@@ -21,7 +21,7 @@ pub trait NetworkTransport {
         public_key: &[u8],
     ) -> Result<()>;
 
-    /// Send a JSON message to a peer via the relay service.
+    /// Send a JSON message to a peer.
     async fn send_json<S>(
         &mut self,
         public_key: &[u8],
@@ -31,7 +31,7 @@ pub trait NetworkTransport {
     where
         S: Serialize + Send + Sync + ?Sized;
 
-    /// Send a binary message to a peer via the relay service.
+    /// Send a binary message to a peer.
     async fn send_blob(
         &mut self,
         public_key: &[u8],
