@@ -4,13 +4,68 @@ use multi_party_ecdsa::protocols::multi_party_ecdsa::gg_2020::state_machine::key
 };
 
 use curv::elliptic::curves::secp256_k1::Secp256k1;
-use mpc_relay_protocol::hex;
 use round_based::{Msg, StateMachine};
 
 use super::{Error, Result};
-use crate::{Parameters, Participant, ProtocolDriver, RoundMsg};
+use crate::{
+    Bridge, BridgePhase, Parameters, Participant, ProtocolDriver,
+    RoundBuffer, RoundMsg,
+};
+use mpc_relay_client::{EventLoop, Transport, NetworkTransport};
+use mpc_relay_protocol::hex;
 
 type Message = Msg<<Keygen as StateMachine>::MessageBody>;
+
+/// GG20 key generation.
+pub struct KeyGenerator {
+    parameters: Parameters,
+    bridge: Bridge<Message, KeygenDriver>,
+}
+
+impl KeyGenerator {
+    /// Create a new GG20 key generator.
+    pub fn new(
+        transport: Transport,
+        event_loop: EventLoop,
+        parameters: Parameters,
+        //participant: Participant,
+    ) -> Result<Self> {
+        let buffer = RoundBuffer::new_fixed(5, parameters.parties);
+        Ok(Self {
+            parameters,
+            bridge: Bridge {
+                transport,
+                event_loop,
+                phase: BridgePhase::Prepare,
+                buffer,
+            },
+        })
+    }
+
+    /// Run the key generation protocol.
+    pub async fn run(
+        &mut self,
+        session_participants: Vec<Vec<u8>>,
+    ) -> Result<()> {
+        let session = self
+            .bridge
+            .create_session(session_participants)
+            .await
+            .map_err(Box::from)?;
+
+        let participant = Participant {
+            public_key: self.bridge.transport.public_key().to_vec(),
+            session,
+        };
+
+        let driver = KeygenDriver::new(
+            self.parameters.clone(), participant)?;
+
+        self.bridge.drive(driver).await.map_err(Box::from)?;
+
+        Ok(())
+    }
+}
 
 /// GG20 keygen driver.
 pub struct KeygenDriver {

@@ -26,4 +26,8 @@ pub enum Error {
     /// Signature verification failed.
     #[error("failed to verify generated signature")]
     VerifySignature,
+
+    /// Driver library error.
+    #[error(transparent)]
+    Driver(#[from] Box<crate::Error>),
 }

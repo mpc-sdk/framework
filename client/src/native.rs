@@ -12,9 +12,8 @@ use tokio::{
     sync::{mpsc, RwLock},
 };
 use tokio_tungstenite::{
-    connect_async,
-    tungstenite::{client::IntoClientRequest, protocol::Message},
-    MaybeTlsStream, WebSocketStream,
+    connect_async, tungstenite::protocol::Message, MaybeTlsStream,
+    WebSocketStream,
 };
 
 use mpc_relay_protocol::{
@@ -57,13 +56,10 @@ pub struct NativeClient {
 
 impl NativeClient {
     /// Create a new native client.
-    pub async fn new<R>(
-        server: R,
+    pub async fn new(
+        server: &str,
         options: ClientOptions,
-    ) -> Result<(Self, NativeEventLoop)>
-    where
-        R: IntoClientRequest + Unpin,
-    {
+    ) -> Result<(Self, NativeEventLoop)> {
         let (stream, response) = connect_async(server).await?;
 
         if response.status() != StatusCode::SWITCHING_PROTOCOLS {

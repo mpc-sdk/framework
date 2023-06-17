@@ -1,14 +1,15 @@
-use crate::Result;
 use async_trait::async_trait;
 use mpc_relay_protocol::SessionId;
 use serde::Serialize;
 
+use crate::{Client, ClientOptions, EventLoop, Result};
+
 /// Enumeration of available transports.
 pub enum Transport {
     /// Relay websocket client.
-    Relay(crate::Client),
+    Relay(Client),
     // NOTE: later we will add a Peer variant using
-    // NOTE: as WebRTC data channel for communication
+    // NOTE: a WebRTC data channel for communication
 }
 
 #[async_trait]
@@ -148,6 +149,18 @@ impl NetworkTransport for Transport {
         match self {
             Transport::Relay(client) => client.close().await,
         }
+    }
+}
+
+impl Transport {
+    /// Create a new relay client.
+    pub async fn new_relay(
+        server: &str,
+        options: ClientOptions,
+    ) -> Result<(Self, EventLoop)> {
+        let (client, event_loop) =
+            Client::new(server, options).await?;
+        Ok((Self::Relay(client), event_loop))
     }
 }
 

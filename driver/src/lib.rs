@@ -3,10 +3,15 @@
 #![cfg_attr(all(doc, CHANNEL_NIGHTLY), feature(doc_auto_cfg))]
 
 mod bridge;
+mod error;
 mod round;
 
-pub use bridge::Bridge;
+pub use bridge::{Bridge, BridgePhase};
+pub use error::Error;
 pub use round::{RoundBuffer, RoundMsg};
+
+/// Result type for the driver library.
+pub type Result<T> = std::result::Result<T, Error>;
 
 #[cfg(feature = "gg20")]
 pub mod gg20;
@@ -61,15 +66,17 @@ pub trait ProtocolDriver {
     fn handle_incoming(
         &mut self,
         message: Self::Incoming,
-    ) -> Result<(), Self::Error>;
+    ) -> std::result::Result<(), Self::Error>;
 
     /// Proceed to the next round.
     fn proceed(
         &mut self,
-    ) -> Result<(u16, Vec<Self::Outgoing>), Self::Error>;
+    ) -> std::result::Result<(u16, Vec<Self::Outgoing>), Self::Error>;
 
     /// Complete the protocol and get the output.
-    fn finish(&mut self) -> Result<Self::Output, Self::Error>;
+    fn finish(
+        &mut self,
+    ) -> std::result::Result<Self::Output, Self::Error>;
 }
 
 /// Compute the address of an uncompressed public key (65 bytes).
