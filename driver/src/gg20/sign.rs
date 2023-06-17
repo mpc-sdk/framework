@@ -40,19 +40,19 @@ pub struct OfflineResult {
 }
 
 /// Drive the offline signing stage.
-pub struct SignOffline {
+pub struct SignOfflineDriver {
     inner: OfflineStage,
     message: [u8; 32],
 }
 
-impl SignOffline {
-    /// Create a signer.
+impl SignOfflineDriver {
+    /// Create a sign offline driver.
     pub fn new(
         index: u16,
         participants: Vec<u16>,
         local_key: LocalKey<Secp256k1>,
         message: [u8; 32],
-    ) -> Result<SignOffline> {
+    ) -> Result<SignOfflineDriver> {
         Ok(SignOffline {
             inner: OfflineStage::new(index, participants, local_key)?,
             message,
@@ -60,7 +60,7 @@ impl SignOffline {
     }
 }
 
-impl ProtocolDriver for SignOffline {
+impl ProtocolDriver for SignOfflineDriver {
     type Error = Error;
     type Incoming = Message;
     type Outgoing = RoundMsg<OfflineProtocolMessage>;
@@ -99,22 +99,22 @@ impl ProtocolDriver for SignOffline {
 }
 
 /// Drive the online signing stage.
-pub struct SignOnline {
+pub struct SignOnlineDriver {
     offline: OfflineResult,
     partials: Vec<PartialSignature>,
 }
 
-impl SignOnline {
-    /// Create a signer.
+impl SignOnlineDriver {
+    /// Create a sign online driver.
     pub fn new(
         offline: OfflineResult,
         partials: Vec<PartialSignature>,
-    ) -> Result<SignOnline> {
+    ) -> Result<Self> {
         Ok(Self { offline, partials })
     }
 }
 
-impl ProtocolDriver for SignOnline {
+impl ProtocolDriver for SignOnlineDriver {
     type Error = Error;
     type Incoming = Message;
     type Outgoing = RoundMsg<OfflineProtocolMessage>;

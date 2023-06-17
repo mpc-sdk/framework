@@ -13,17 +13,17 @@ use crate::{Parameters, Participant, ProtocolDriver, RoundMsg};
 type Message = Msg<<Keygen as StateMachine>::MessageBody>;
 
 /// GG20 keygen driver.
-pub struct KeyGenerator {
+pub struct KeygenDriver {
     inner: Keygen,
     participant: Participant,
 }
 
-impl KeyGenerator {
+impl KeygenDriver {
     /// Create a key generator.
     pub fn new(
         parameters: Parameters,
         participant: Participant,
-    ) -> Result<KeyGenerator> {
+    ) -> Result<KeygenDriver> {
         let party_number = participant
             .session
             .party_number(&participant.public_key)
@@ -43,7 +43,7 @@ impl KeyGenerator {
     }
 }
 
-impl ProtocolDriver for KeyGenerator {
+impl ProtocolDriver for KeygenDriver {
     type Error = Error;
     type Incoming = Message;
     type Outgoing = RoundMsg<ProtocolMessage>;
