@@ -53,7 +53,7 @@ impl SignOfflineDriver {
         local_key: LocalKey<Secp256k1>,
         message: [u8; 32],
     ) -> Result<SignOfflineDriver> {
-        Ok(SignOffline {
+        Ok(SignOfflineDriver {
             inner: OfflineStage::new(index, participants, local_key)?,
             message,
         })
