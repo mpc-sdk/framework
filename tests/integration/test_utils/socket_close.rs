@@ -23,6 +23,8 @@ pub async fn run(
         match &event {
             Event::ServerConnected { .. } => {
                 initiator.close().await?;
+            }
+            Event::Close => {
                 break;
             }
             _ => {}

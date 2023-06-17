@@ -71,6 +71,9 @@ pub enum Event {
     /// A session can only be finished when the session owner
     /// explicitly closes the session.
     SessionFinished(SessionId),
+    
+    /// Event dispatched when the socket is closed.
+    Close,
 }
 
 /// JSON message received from a peer.
@@ -433,6 +436,7 @@ macro_rules! event_loop_run_impl {
                                         if let Err(e) = self.handle_close_message().await {
                                             yield Err(e)
                                         }
+                                        yield Ok(Event::Close);
                                         break;
                                     }
                                 }
