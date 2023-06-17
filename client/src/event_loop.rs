@@ -1,4 +1,4 @@
-use futures::{sink::SinkExt, stream::Stream};
+use futures::{sink::SinkExt, stream::{Stream, BoxStream}};
 use std::sync::Arc;
 use tokio::sync::mpsc;
 
@@ -11,6 +11,9 @@ use mpc_relay_protocol::{
 
 use super::{decrypt_peer_channel, Peers, Server};
 use crate::{ClientOptions, Error, Result};
+
+/// Stream of events emitted by an event loop.
+pub type EventStream = BoxStream<'static, Result<Event>>;
 
 /// Events dispatched by the event loop stream.
 #[derive(Debug)]
@@ -391,7 +394,7 @@ where
 macro_rules! event_loop_run_impl {
     () => {
         /// Stream of events from the event loop.
-        pub fn run(mut self) -> BoxStream<'static, Result<Event>> {
+        pub fn run(mut self) -> EventStream {
             let options = Arc::clone(&self.options);
             let server = Arc::clone(&self.server);
             let peers = Arc::clone(&self.peers);

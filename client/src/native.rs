@@ -2,7 +2,7 @@ use async_stream::stream;
 use futures::{
     select,
     sink::SinkExt,
-    stream::{BoxStream, SplitSink, SplitStream},
+    stream::{SplitSink, SplitStream},
     FutureExt, StreamExt,
 };
 use serde::Serialize;
@@ -26,7 +26,7 @@ use mpc_relay_protocol::{
 
 use super::{
     encrypt_peer_channel,
-    event_loop::{event_loop_run_impl, EventLoop, InternalMessage},
+    event_loop::{event_loop_run_impl, EventLoop, InternalMessage, EventStream},
     Peers, Server,
 };
 use crate::{

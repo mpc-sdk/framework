@@ -4,7 +4,8 @@ use web_sys::{ErrorEvent, MessageEvent, WebSocket};
 
 use async_stream::stream;
 use futures::{
-    select, stream::BoxStream, FutureExt, Sink, SinkExt, StreamExt,
+    select, FutureExt, Sink, SinkExt, StreamExt,
+    stream::BoxStream,
 };
 use serde::Serialize;
 use std::{pin::Pin, sync::Arc};
@@ -19,7 +20,7 @@ use mpc_relay_protocol::{
 
 use crate::{
     client_impl, client_transport_impl, encrypt_peer_channel,
-    event_loop::{event_loop_run_impl, EventLoop, InternalMessage},
+    event_loop::{event_loop_run_impl, EventLoop, InternalMessage, EventStream},
     ClientOptions, Error, Event, Peers, Result, Server,
 };
 
