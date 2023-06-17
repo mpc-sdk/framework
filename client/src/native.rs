@@ -153,14 +153,12 @@ impl EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream> {
     }
 
     async fn handle_close_message(self) -> Result<()> {
-        println!("handling close message...");
         let mut websocket: WebSocketStream<
             MaybeTlsStream<TcpStream>,
         > = self
             .ws_reader
             .reunite(self.ws_writer)
             .map_err(|_| Error::StreamReunite)?;
-        println!("calling close on websocket...");
         websocket.close(None).await?;
         Ok(())
     }
