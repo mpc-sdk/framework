@@ -1,3 +1,5 @@
+pub(crate) mod gg20;
+
 pub(crate) mod peer_channel;
 pub(crate) mod session_broadcast;
 pub(crate) mod session_handshake;

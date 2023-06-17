@@ -1,9 +1,9 @@
 use mpc_relay_client::{
-    Event, EventStream, NetworkTransport, Transport,
+    Event, NetworkTransport, Transport,
 };
 use mpc_relay_protocol::SessionState;
 
-use crate::{ProtocolDriver, Result, RoundBuffer};
+use crate::{Error, ProtocolDriver, Result, Round, RoundBuffer};
 use tokio::sync::Mutex;
 
 /// Initiate a session.
@@ -80,6 +80,12 @@ impl SessionInitiator {
     }
 }
 
+impl From<SessionInitiator> for Transport {
+    fn from(value: SessionInitiator) -> Self {
+        value.transport
+    }
+}
+
 /// Participate in a session.
 pub struct SessionParticipant {
     transport: Transport,
@@ -139,18 +145,116 @@ impl SessionParticipant {
     }
 }
 
-/// Connects a network transport with a protocol driver.
-pub struct Bridge<I, D: ProtocolDriver> {
-    pub(crate) transport: Transport,
-    pub(crate) event_stream: EventStream,
-    pub(crate) buffer: RoundBuffer<I>,
-    pub(crate) driver: D,
+impl From<SessionParticipant> for Transport {
+    fn from(value: SessionParticipant) -> Self {
+        value.transport
+    }
 }
 
-impl<I, D: ProtocolDriver> Bridge<I, D> {
-    /// Run the protocol to completion.
-    pub async fn execute(&mut self) -> Result<D::Output> {
-        //self.phase = BridgePhase::Driver(driver);
-        todo!("drive protocol driver to completion");
+/// Connects a network transport with a protocol driver.
+pub struct Bridge<D: ProtocolDriver> {
+    pub(crate) transport: Transport,
+    //pub(crate) event_stream: EventStream,
+    pub(crate) buffer: RoundBuffer<D::Incoming>,
+    pub(crate) driver: D,
+    pub(crate) session: SessionState,
+}
+
+impl<D: ProtocolDriver> Bridge<D> {
+    /// Handle event from the client event loop stream.
+    pub async fn handle_event(
+        &mut self,
+        event: Event,
+    ) -> Result<Option<D::Output>> {
+        match event {
+            Event::JsonMessage {
+                message,
+                session_id,
+                ..
+            } => {
+                if let Some(session_id) = &session_id {
+                    if session_id != &self.session.session_id {
+                        return Err(Error::SessionIdMismatch);
+                    }
+                } else {
+                    return Err(Error::SessionIdRequired);
+                }
+
+                let message: D::Outgoing = message.deserialize()?;
+                let round_number = message.round_number();
+
+                let incoming: D::Incoming = message.into();
+                self.buffer.add_message(round_number, incoming);
+
+                if self.buffer.is_ready(round_number) {
+                    let messages = self.buffer.take(round_number);
+                    for message in messages {
+                        // FIXME: do error conversion
+                        self.driver.handle_incoming(message).unwrap();
+                    }
+
+                    // FIXME: do error conversion
+                    let (round, mut messages) =
+                        self.driver.proceed().unwrap();
+                    self.dispatch_round_messages(round, messages)
+                        .await?;
+
+                    if round_number as usize == self.buffer.len() {
+                        // FIXME: do error conversion
+                        let result = self.driver.finish().unwrap();
+                        return Ok(Some(result));
+                    }
+                }
+            }
+            _ => {}
+        }
+
+        Ok(None)
+    }
+
+    /// Start running the protocol.
+    pub async fn execute(&mut self) -> Result<()> {
+        // FIXME: do error conversion
+        let (round, mut messages) = self.driver.proceed().unwrap();
+        self.dispatch_round_messages(round, messages).await?;
+        Ok(())
+    }
+
+    async fn dispatch_round_messages(
+        &mut self,
+        round_number: u16,
+        mut messages: Vec<D::Outgoing>,
+    ) -> Result<()> {
+        let is_broadcast = messages.len() == 1
+            && messages.get(0).as_ref().unwrap().is_broadcast();
+
+        if is_broadcast {
+            let message = messages.remove(0);
+            let recipients =
+                self.session.recipients(self.transport.public_key());
+            self.transport
+                .broadcast_json(
+                    &self.session.session_id,
+                    recipients.as_slice(),
+                    &message,
+                )
+                .await?;
+        } else {
+            for message in messages {
+                let party_number = message.receiver().unwrap();
+                let peer_key =
+                    self.session.peer_key(*party_number).unwrap();
+
+                self.transport
+                    .send_json(
+                        peer_key,
+                        &message,
+                        Some(self.session.session_id),
+                    )
+                    .await?;
+            }
+        }
+
+        Ok(())
     }
 }

@@ -8,13 +8,25 @@ mod round;
 
 pub use bridge::{Bridge, SessionInitiator, SessionParticipant};
 pub use error::Error;
-pub use round::{RoundBuffer, RoundMsg};
+pub use round::{Round, RoundBuffer, RoundMsg};
+
+/// Round number.
+pub type RoundNumber = u16;
+
+/// Party number.
+pub type PartyNumber = u16;
 
 /// Result type for the driver library.
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[cfg(feature = "gg20")]
 pub mod gg20;
+
+#[cfg(feature = "gg20")]
+pub use multi_party_ecdsa::protocols::multi_party_ecdsa::gg_2020;
+
+#[cfg(feature = "gg20")]
+pub use curv;
 
 use mpc_relay_protocol::SessionState;
 use serde::{Deserialize, Serialize};
@@ -53,11 +65,11 @@ pub struct Participant {
 /// protocol to completion.
 pub trait ProtocolDriver {
     /// Error type for results.
-    type Error;
+    type Error: std::fmt::Debug;
     /// Incoming message type.
-    type Incoming;
+    type Incoming: From<Self::Outgoing>;
     /// Outgoing message type.
-    type Outgoing;
+    type Outgoing: std::fmt::Debug + round::Round;
     /// Output when the protocol is completed.
     type Output;
 
@@ -66,6 +78,9 @@ pub trait ProtocolDriver {
         &mut self,
         message: Self::Incoming,
     ) -> std::result::Result<(), Self::Error>;
+
+    /// Determine if the protocol wants to proceed.
+    fn wants_to_proceed(&self) -> bool;
 
     /// Proceed to the next round.
     fn proceed(

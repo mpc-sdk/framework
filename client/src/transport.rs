@@ -5,6 +5,7 @@ use serde::Serialize;
 use crate::{Client, ClientOptions, EventLoop, Result};
 
 /// Enumeration of available transports.
+#[derive(Clone)]
 pub enum Transport {
     /// Relay websocket client.
     Relay(Client),

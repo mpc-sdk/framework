@@ -8,15 +8,16 @@ mod wasm_tests {
     use wasm_bindgen_test::*;
 
     use super::integration::test_utils::{
-        peer_channel, session_broadcast, session_handshake, session_timeout,
-        socket_close,
+        gg20, peer_channel, session_broadcast, session_handshake,
+        session_timeout, socket_close,
     };
     use mpc_relay_protocol::hex;
 
     const SERVER: &str = "ws://127.0.0.1:8008";
     const SERVER_PUBLIC_KEY: &str =
         include_str!("./server_public_key.txt");
-
+    
+    /*
     /// Creates two clients that handshake with the server
     /// and then each other. Once the peer handshakes are
     /// complete they send "ping" and "pong" messages over
@@ -55,6 +56,8 @@ mod wasm_tests {
         Ok(())
     }
 
+    /// Uses the session helpers from the driver library to determine
+    /// when both participants in a session are active.
     #[wasm_bindgen_test]
     async fn session_handshake() -> Result<(), JsValue> {
         let _ = wasm_log::try_init(wasm_log::Config::default());
@@ -63,11 +66,25 @@ mod wasm_tests {
 
         let expected_participants = 2;
         let connected_participants =
-            session_handshake::run(SERVER, server_public_key).await.unwrap();
+            session_handshake::run(SERVER, server_public_key)
+                .await
+                .unwrap();
         assert_eq!(expected_participants, connected_participants);
         Ok(())
     }
+    */
 
+    /// GG20 keygen and signing.
+    #[wasm_bindgen_test]
+    async fn gg20() -> Result<(), JsValue> {
+        let _ = wasm_log::try_init(wasm_log::Config::default());
+        let server_public_key =
+            hex::decode(SERVER_PUBLIC_KEY.trim()).unwrap();
+        gg20::run(SERVER, server_public_key).await.unwrap();
+        Ok(())
+    }
+    
+    /*
     /// Creates two clients that handshake with the server.
     ///
     /// The first client creates a session but the second
@@ -93,4 +110,5 @@ mod wasm_tests {
         socket_close::run(SERVER, server_public_key).await.unwrap();
         Ok(())
     }
+    */
 }

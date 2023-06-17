@@ -1,10 +1,11 @@
 //! Driver for the GG2020 protocol.
 
 mod error;
-pub mod keygen;
-pub mod sign;
+mod keygen;
+//mod sign;
 
 pub use error::Error;
+pub use keygen::KeyGenerator;
 
 /// Result type for the GG2020 protocol.
 pub type Result<T> = std::result::Result<T, Error>;

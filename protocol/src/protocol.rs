@@ -470,6 +470,17 @@ impl SessionState {
         self.all_participants
             .iter()
             .position(|k| k == public_key.as_ref())
+            .map(|pos| pos + 1)
+    }
+
+    /// Get the public key for a party number.
+    pub fn peer_key(&self, party_number: u16) -> Option<&[u8]> {
+        for (index, key) in self.all_participants.iter().enumerate() {
+            if index + 1 == party_number as usize {
+                return Some(key.as_slice());
+            }
+        }
+        None
     }
 
     /// Get the connections a peer should make.
@@ -489,5 +500,14 @@ impl SessionState {
         } else {
             &[]
         }
+    }
+
+    /// Get the recipients for a broadcast message.
+    pub fn recipients(&self, own_key: &[u8]) -> Vec<Vec<u8>> {
+        self.all_participants
+            .iter()
+            .filter(|&k| k != own_key)
+            .map(|k| k.to_vec())
+            .collect()
     }
 }

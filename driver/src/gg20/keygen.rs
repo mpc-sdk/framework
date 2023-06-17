@@ -1,51 +1,68 @@
 //! Key generation for GG20.
-use multi_party_ecdsa::protocols::multi_party_ecdsa::gg_2020::state_machine::keygen::{
-    Keygen, ProtocolMessage, LocalKey,
-};
-
-use curv::elliptic::curves::secp256_k1::Secp256k1;
 use round_based::{Msg, StateMachine};
+
+use mpc_relay_client::{
+    Event, NetworkTransport, Transport,
+};
+use mpc_relay_protocol::{hex, SessionState};
 
 use super::{Error, Result};
 use crate::{
-    Bridge, Parameters, Participant, ProtocolDriver, RoundBuffer,
+    Bridge, Parameters, ProtocolDriver, RoundBuffer,
     RoundMsg,
+    gg_2020::state_machine::keygen::{
+        Keygen, ProtocolMessage, LocalKey,
+    },
+    curv::elliptic::curves::secp256_k1::Secp256k1,
 };
-use mpc_relay_client::{EventStream, NetworkTransport, Transport};
-use mpc_relay_protocol::{hex, SessionState};
-
-type Message = Msg<<Keygen as StateMachine>::MessageBody>;
 
 /// GG20 key generation.
 pub struct KeyGenerator {
-    bridge: Bridge<Message, KeygenDriver>,
+    bridge: Bridge<KeygenDriver>,
 }
 
 impl KeyGenerator {
     /// Create a new GG20 key generator.
     pub fn new(
         transport: Transport,
-        event_stream: EventStream,
         parameters: Parameters,
         session: SessionState,
     ) -> Result<Self> {
-        let buffer = RoundBuffer::new_fixed(5, parameters.parties);
-        let participant = Participant {
-            public_key: transport.public_key().to_vec(),
-            session,
-        };
-        let driver = KeygenDriver::new(parameters, participant)?;
+        let buffer =
+            RoundBuffer::new_fixed(4, parameters.parties - 1);
+
+        let party_number = session
+            .party_number(transport.public_key())
+            .ok_or_else(|| {
+                Error::NotSessionParticipant(hex::encode(
+                    transport.public_key(),
+                ))
+            })? as u16;
+
+        let driver = KeygenDriver::new(parameters, party_number)?;
         let bridge = Bridge {
             transport,
-            event_stream,
             driver,
             buffer,
+            session,
         };
         Ok(Self { bridge })
     }
 
-    /// Run the key generation protocol.
-    pub async fn execute(&mut self) -> Result<LocalKey<Secp256k1>> {
+    /// Handle an incoming event.
+    pub async fn handle_event(
+        &mut self,
+        event: Event,
+    ) -> Result<Option<LocalKey<Secp256k1>>> {
+        Ok(self
+            .bridge
+            .handle_event(event)
+            .await
+            .map_err(Box::from)?)
+    }
+
+    /// Start running the protocol.
+    pub async fn execute(&mut self) -> Result<()> {
         Ok(self.bridge.execute().await.map_err(Box::from)?)
     }
 }
@@ -53,37 +70,27 @@ impl KeyGenerator {
 /// GG20 keygen driver.
 pub struct KeygenDriver {
     inner: Keygen,
-    participant: Participant,
 }
 
 impl KeygenDriver {
     /// Create a key generator.
     pub fn new(
         parameters: Parameters,
-        participant: Participant,
+        party_number: u16,
     ) -> Result<KeygenDriver> {
-        let party_number = participant
-            .session
-            .party_number(&participant.public_key)
-            .ok_or_else(|| {
-                Error::NotSessionParticipant(hex::encode(
-                    &participant.public_key,
-                ))
-            })? as u16;
         Ok(Self {
             inner: Keygen::new(
                 party_number,
                 parameters.threshold,
                 parameters.parties,
             )?,
-            participant,
         })
     }
 }
 
 impl ProtocolDriver for KeygenDriver {
     type Error = Error;
-    type Incoming = Message;
+    type Incoming = Msg<ProtocolMessage>;
     type Outgoing = RoundMsg<ProtocolMessage>;
     type Output = LocalKey<Secp256k1>;
 
@@ -93,6 +100,10 @@ impl ProtocolDriver for KeygenDriver {
     ) -> Result<()> {
         self.inner.handle_incoming(message)?;
         Ok(())
+    }
+
+    fn wants_to_proceed(&self) -> bool {
+        self.inner.wants_to_proceed()
     }
 
     fn proceed(&mut self) -> Result<(u16, Vec<Self::Outgoing>)> {

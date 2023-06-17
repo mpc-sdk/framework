@@ -1,24 +1,68 @@
+use crate::{PartyNumber, RoundNumber};
 use round_based::Msg;
-use serde::Serialize;
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::collections::HashMap;
 
-/// Round number.
-pub type RoundNumber = u16;
+/// Trait for round messages.
+pub trait Round: Serialize + DeserializeOwned + Send + Sync {
+    /// Determine if this round is a broadcast message.
+    fn is_broadcast(&self) -> bool;
+    /// Round number.
+    fn round_number(&self) -> RoundNumber;
+    /// Receiver for a peer to peer message.
+    fn receiver(&self) -> Option<&PartyNumber>;
+}
 
 /// Wrapper for a round `Msg` that includes the round
 /// number.
 ///
 /// Used to ensure round messages are grouped together and
 /// out of order messages can thus be handled correctly.
-#[derive(Serialize)]
-pub struct RoundMsg<O> {
-    round: u16,
-    sender: u16,
-    receiver: Option<u16>,
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RoundMsg<O>
+where
+    O: Send + Sync,
+{
+    round: RoundNumber,
+    sender: PartyNumber,
+    receiver: Option<PartyNumber>,
     body: O,
 }
 
-impl<O> RoundMsg<O> {
+impl<O> Round for RoundMsg<O>
+where
+    O: Serialize + Send + Sync + DeserializeOwned,
+{
+    fn is_broadcast(&self) -> bool {
+        self.receiver.is_none()
+    }
+
+    fn round_number(&self) -> RoundNumber {
+        self.round
+    }
+
+    fn receiver(&self) -> Option<&PartyNumber> {
+        self.receiver.as_ref()
+    }
+}
+
+impl<O> From<RoundMsg<O>> for Msg<O>
+where
+    O: Send + Sync,
+{
+    fn from(value: RoundMsg<O>) -> Self {
+        Msg {
+            sender: value.sender,
+            receiver: value.receiver,
+            body: value.body,
+        }
+    }
+}
+
+impl<O> RoundMsg<O>
+where
+    O: Send + Sync,
+{
     /// Convert a collection of round messages.
     pub fn from_round(
         round: u16,
@@ -58,6 +102,16 @@ impl<I> RoundBuffer<I> {
             expected,
             messages: Default::default(),
         }
+    }
+
+    /// Number of rounds configured.
+    pub fn len(&self) -> usize {
+        self.expected.len()
+    }
+
+    /// Determine if this buffer has rounds configured.
+    pub fn is_empty(&self) -> bool {
+        self.expected.is_empty()
     }
 
     /// Add a message to the buffer.

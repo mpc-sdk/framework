@@ -65,7 +65,7 @@ args = ["test", "--all", "--lib"]
 
 [tasks.integration]
 command = "cargo"
-args = ["test", "integration"]
+args = ["test", "integration", "--all-features"]
 
 [tasks.test]
 dependencies = ["unit", "integration"]
@@ -75,7 +75,7 @@ dependencies = ["check-wasm", "test", "format"]
 
 [tasks.test-wasm]
 command = "wasm-pack"
-args = ["test", "--firefox"]
+args = ["test", "--firefox", "--all-features"]
 
 [tasks.check-wasm]
 command = "cargo"
