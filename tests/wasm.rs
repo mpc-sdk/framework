@@ -8,7 +8,7 @@ mod wasm_tests {
     use wasm_bindgen_test::*;
 
     use super::integration::test_utils::{
-        peer_channel, session_broadcast, session_timeout,
+        peer_channel, session_broadcast, session_handshake, session_timeout,
         socket_close,
     };
     use mpc_relay_protocol::hex;
@@ -52,6 +52,19 @@ mod wasm_tests {
         result.sort();
         assert_eq!(expected_result, result.clone());
 
+        Ok(())
+    }
+
+    #[wasm_bindgen_test]
+    async fn session_handshake() -> Result<(), JsValue> {
+        let _ = wasm_log::try_init(wasm_log::Config::default());
+        let server_public_key =
+            hex::decode(SERVER_PUBLIC_KEY.trim()).unwrap();
+
+        let expected_participants = 2;
+        let connected_participants =
+            session_handshake::run(SERVER, server_public_key).await.unwrap();
+        assert_eq!(expected_participants, connected_participants);
         Ok(())
     }
 
