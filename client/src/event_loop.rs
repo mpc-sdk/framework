@@ -71,7 +71,7 @@ pub enum Event {
     /// A session can only be finished when the session owner
     /// explicitly closes the session.
     SessionFinished(SessionId),
-    
+
     /// Event dispatched when the socket is closed.
     Close,
 }
@@ -273,7 +273,7 @@ where
         let mut peers = peers.write().await;
 
         if peers.get(public_key.as_ref()).is_some() {
-            return Err(Error::PeerAlreadyExistsMaybeRace);
+            Err(Error::PeerAlreadyExistsMaybeRace)
         } else {
             tracing::debug!(
                 from = ?hex::encode(public_key.as_ref()),
@@ -330,7 +330,7 @@ where
                 peer
             } else {
                 return Err(Error::PeerNotFound(hex::encode(
-                    public_key.as_ref().to_vec(),
+                    public_key.as_ref(),
                 )));
             };
 
@@ -382,9 +382,7 @@ where
                 }),
             }
         } else {
-            Err(Error::PeerNotFound(hex::encode(
-                public_key.as_ref().to_vec(),
-            )))
+            Err(Error::PeerNotFound(hex::encode(public_key.as_ref())))
         }
     }
 }

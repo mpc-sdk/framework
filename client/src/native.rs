@@ -145,11 +145,10 @@ impl EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream> {
             .send(message)
             .await
             .map_err(|_| Error::WebSocketSend)?;
-        Ok(self
-            .ws_writer
+        self.ws_writer
             .flush()
             .await
-            .map_err(|_| Error::WebSocketSend)?)
+            .map_err(|_| Error::WebSocketSend)
     }
 
     async fn handle_close_message(self) -> Result<()> {

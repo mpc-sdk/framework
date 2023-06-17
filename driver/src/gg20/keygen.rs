@@ -11,7 +11,7 @@ use crate::{
     Bridge, BridgePhase, Parameters, Participant, ProtocolDriver,
     RoundBuffer, RoundMsg,
 };
-use mpc_relay_client::{EventLoop, Transport, NetworkTransport};
+use mpc_relay_client::{EventLoop, NetworkTransport, Transport};
 use mpc_relay_protocol::hex;
 
 type Message = Msg<<Keygen as StateMachine>::MessageBody>;
@@ -58,8 +58,8 @@ impl KeyGenerator {
             session,
         };
 
-        let driver = KeygenDriver::new(
-            self.parameters.clone(), participant)?;
+        let driver =
+            KeygenDriver::new(self.parameters.clone(), participant)?;
 
         self.bridge.drive(driver).await.map_err(Box::from)?;
 

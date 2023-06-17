@@ -30,7 +30,7 @@ impl<I, D> Bridge<I, D> {
     ) -> Result<SessionState> {
         todo!("create session for protocol driver");
     }
-    
+
     /// Drive the protocol to completion.
     pub async fn drive(&mut self, driver: D) -> Result<()> {
         self.phase = BridgePhase::Driver(driver);

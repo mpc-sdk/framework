@@ -30,7 +30,7 @@ pub fn decode_keypair(keypair: impl AsRef<[u8]>) -> Result<Keypair> {
         if (PEM_PATTERN, PEM_PUBLIC, PEM_PRIVATE)
             == (first.tag(), second.tag(), third.tag())
         {
-            if &first.into_contents() != PATTERN.as_bytes() {
+            if first.into_contents() != PATTERN.as_bytes() {
                 return Err(Error::PatternMismatch(
                     PATTERN.to_string(),
                 ));
