@@ -6,7 +6,7 @@ mod bridge;
 mod round;
 
 pub use bridge::Bridge;
-pub use round::RoundMsg;
+pub use round::{RoundBuffer, RoundMsg};
 
 #[cfg(feature = "gg20")]
 pub mod gg20;
