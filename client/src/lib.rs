@@ -15,7 +15,7 @@ mod event_loop;
 mod transport;
 
 pub(crate) use client::{client_impl, client_transport_impl};
-pub use event_loop::{Event, JsonMessage, EventStream};
+pub use event_loop::{Event, EventStream, JsonMessage};
 pub use transport::{NetworkTransport, Transport};
 
 #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]

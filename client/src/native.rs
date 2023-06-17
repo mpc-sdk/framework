@@ -26,7 +26,9 @@ use mpc_relay_protocol::{
 
 use super::{
     encrypt_peer_channel,
-    event_loop::{event_loop_run_impl, EventLoop, InternalMessage, EventStream},
+    event_loop::{
+        event_loop_run_impl, EventLoop, EventStream, InternalMessage,
+    },
     Peers, Server,
 };
 use crate::{

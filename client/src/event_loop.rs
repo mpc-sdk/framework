@@ -1,4 +1,7 @@
-use futures::{sink::SinkExt, stream::{Stream, BoxStream}};
+use futures::{
+    sink::SinkExt,
+    stream::{BoxStream, Stream},
+};
 use std::sync::Arc;
 use tokio::sync::mpsc;
 

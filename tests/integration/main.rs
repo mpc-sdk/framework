@@ -8,6 +8,9 @@ mod peer_channel;
 mod session_broadcast;
 
 #[cfg(not(target_arch = "wasm32"))]
+mod session_handshake;
+
+#[cfg(not(target_arch = "wasm32"))]
 mod session_timeout;
 
 #[cfg(not(target_arch = "wasm32"))]

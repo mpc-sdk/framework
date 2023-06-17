@@ -6,7 +6,7 @@ mod bridge;
 mod error;
 mod round;
 
-pub use bridge::{Bridge, BridgePhase};
+pub use bridge::{Bridge, SessionInitiator, SessionParticipant};
 pub use error::Error;
 pub use round::{RoundBuffer, RoundMsg};
 

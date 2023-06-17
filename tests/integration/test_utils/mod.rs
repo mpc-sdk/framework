@@ -1,5 +1,6 @@
 pub(crate) mod peer_channel;
 pub(crate) mod session_broadcast;
+pub(crate) mod session_handshake;
 pub(crate) mod session_timeout;
 pub(crate) mod socket_close;
 

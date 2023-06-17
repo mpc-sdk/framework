@@ -12,6 +12,12 @@ pub enum Transport {
     // NOTE: a WebRTC data channel for communication
 }
 
+impl From<Client> for Transport {
+    fn from(value: Client) -> Self {
+        Self::Relay(value)
+    }
+}
+
 #[async_trait]
 impl NetworkTransport for Transport {
     fn public_key(&self) -> &[u8] {

@@ -7,4 +7,8 @@ pub enum Error {
     /// GG20 driver errors.
     #[error(transparent)]
     GG20(#[from] crate::gg20::Error),
+
+    /// Client library errors.
+    #[error(transparent)]
+    Client(#[from] mpc_relay_client::Error),
 }
