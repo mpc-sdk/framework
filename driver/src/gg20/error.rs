@@ -11,7 +11,7 @@ pub enum Error {
     #[error("public key {0} is not a session participant")]
     NotSessionParticipant(String),
 
-    /// Error generated the local key used for signing does not 
+    /// Error generated the local key used for signing does not
     /// exist in the list of participants.
     #[error("local key index not found in list of participants")]
     LocalKeyNotParticipant,

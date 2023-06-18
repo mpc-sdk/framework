@@ -150,7 +150,7 @@ impl From<SessionParticipant> for Transport {
 }
 
 /// Connects a network transport with a protocol driver.
-pub struct Bridge<D: ProtocolDriver> {
+pub(crate) struct Bridge<D: ProtocolDriver> {
     pub(crate) transport: Transport,
     //pub(crate) event_stream: EventStream,
     pub(crate) buffer: RoundBuffer<D::Incoming>,
@@ -164,49 +164,47 @@ impl<D: ProtocolDriver> Bridge<D> {
         &mut self,
         event: Event,
     ) -> Result<Option<D::Output>> {
-        match event {
-            Event::JsonMessage {
+        if let Event::JsonMessage {
                 message,
                 session_id,
                 ..
-            } => {
-                if let Some(session_id) = &session_id {
-                    if session_id != &self.session.session_id {
-                        return Err(Error::SessionIdMismatch);
-                    }
-                } else {
-                    return Err(Error::SessionIdRequired);
+            } = event {
+
+            if let Some(session_id) = &session_id {
+                if session_id != &self.session.session_id {
+                    return Err(Error::SessionIdMismatch);
+                }
+            } else {
+                return Err(Error::SessionIdRequired);
+            }
+
+            let message: D::Outgoing = message.deserialize()?;
+            let round_number = message.round_number();
+
+            let incoming: D::Incoming = message.into();
+            self.buffer.add_message(round_number, incoming);
+
+            if self.buffer.is_ready(round_number) {
+                let messages = self.buffer.take(round_number);
+                for message in messages {
+                    // FIXME: do error conversion
+                    self.driver.handle_incoming(message).unwrap();
                 }
 
-                let message: D::Outgoing = message.deserialize()?;
-                let round_number = message.round_number();
+                // FIXME: do error conversion
+                let messages = self.driver.proceed().unwrap();
+                self.dispatch_round_messages(messages).await?;
 
-                let incoming: D::Incoming = message.into();
-                self.buffer.add_message(round_number, incoming);
+                //println!("is ready... {}", round_number.get());
 
-                if self.buffer.is_ready(round_number) {
-                    let messages = self.buffer.take(round_number);
-                    for message in messages {
-                        // FIXME: do error conversion
-                        self.driver.handle_incoming(message).unwrap();
-                    }
-
+                if round_number.get() as usize
+                    == self.buffer.len()
+                {
                     // FIXME: do error conversion
-                    let messages =
-                        self.driver.proceed().unwrap();
-                    self.dispatch_round_messages(messages)
-                        .await?;
-
-                    //println!("is ready... {}", round_number.get());
-
-                    if round_number.get() as usize == self.buffer.len() {
-                        // FIXME: do error conversion
-                        let result = self.driver.finish().unwrap();
-                        return Ok(Some(result));
-                    }
+                    let result = self.driver.finish().unwrap();
+                    return Ok(Some(result));
                 }
             }
-            _ => {}
         }
 
         Ok(None)

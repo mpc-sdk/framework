@@ -1,10 +1,10 @@
+use mpc_relay_protocol::{PartyNumber, RoundNumber};
 use round_based::Msg;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::collections::HashMap;
-use mpc_relay_protocol::{PartyNumber, RoundNumber};
 
 /// Trait for round messages.
-pub trait Round: Serialize + DeserializeOwned + Send + Sync {
+pub(crate) trait Round: Serialize + DeserializeOwned + Send + Sync {
     /// Determine if this round is a broadcast message.
     fn is_broadcast(&self) -> bool;
     /// Round number.
@@ -19,7 +19,7 @@ pub trait Round: Serialize + DeserializeOwned + Send + Sync {
 /// Used to ensure round messages are grouped together and
 /// out of order messages can thus be handled correctly.
 #[derive(Debug, Serialize, Deserialize)]
-pub struct RoundMsg<O>
+pub(crate) struct RoundMsg<O>
 where
     O: Send + Sync,
 {
@@ -73,7 +73,9 @@ where
             .map(|m| RoundMsg {
                 round: RoundNumber::new(round).unwrap(),
                 sender: PartyNumber::new(m.sender).unwrap(),
-                receiver: m.receiver.map(|v| PartyNumber::new(v).unwrap()),
+                receiver: m
+                    .receiver
+                    .map(|v| PartyNumber::new(v).unwrap()),
                 body: m.body,
             })
             .collect::<Vec<_>>()
@@ -81,7 +83,7 @@ where
 }
 
 /// Buffers incoming messages.
-pub struct RoundBuffer<I> {
+pub(crate) struct RoundBuffer<I> {
     /// Determines the number of messages expected
     /// for each round.
     expected: HashMap<RoundNumber, u16>,
@@ -96,7 +98,10 @@ impl<I> RoundBuffer<I> {
     pub fn new_fixed(rounds: u16, messages_per_round: u16) -> Self {
         let mut expected = HashMap::new();
         for i in 0..rounds {
-            expected.insert(RoundNumber::new(i + 1).unwrap(), messages_per_round);
+            expected.insert(
+                RoundNumber::new(i + 1).unwrap(),
+                messages_per_round,
+            );
         }
         Self {
             expected,
@@ -107,11 +112,6 @@ impl<I> RoundBuffer<I> {
     /// Number of rounds configured.
     pub fn len(&self) -> usize {
         self.expected.len()
-    }
-
-    /// Determine if this buffer has rounds configured.
-    pub fn is_empty(&self) -> bool {
-        self.expected.is_empty()
     }
 
     /// Add a message to the buffer.

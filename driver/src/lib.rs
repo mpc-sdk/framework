@@ -6,9 +6,10 @@ mod bridge;
 mod error;
 mod round;
 
-pub use bridge::{Bridge, SessionInitiator, SessionParticipant};
+pub use bridge::{SessionInitiator, SessionParticipant};
 pub use error::Error;
-pub use round::{Round, RoundBuffer, RoundMsg};
+pub(crate) use bridge::Bridge;
+pub(crate) use round::{Round, RoundBuffer, RoundMsg};
 
 /// Result type for the driver library.
 pub type Result<T> = std::result::Result<T, Error>;
@@ -17,9 +18,11 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub mod gg20;
 
 #[cfg(feature = "gg20")]
+#[doc(hidden)]
 pub use multi_party_ecdsa::protocols::multi_party_ecdsa::gg_2020;
 
 #[cfg(feature = "gg20")]
+#[doc(hidden)]
 pub use curv;
 
 use serde::{Deserialize, Serialize};
@@ -47,7 +50,7 @@ impl Default for Parameters {
 
 /// Trait for implementations that drive
 /// protocol to completion.
-pub trait ProtocolDriver {
+pub(crate) trait ProtocolDriver {
     /// Error type for results.
     type Error: std::fmt::Debug;
     /// Incoming message type.

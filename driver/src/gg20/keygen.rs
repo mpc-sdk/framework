@@ -36,7 +36,8 @@ impl KeyGenerator {
                 ))
             })?;
 
-        let driver = KeygenDriver::new(parameters, party_number.into())?;
+        let driver =
+            KeygenDriver::new(parameters, party_number.into())?;
         let bridge = Bridge {
             transport,
             driver,

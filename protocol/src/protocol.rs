@@ -474,7 +474,10 @@ impl SessionState {
     }
 
     /// Get the public key for a party number.
-    pub fn peer_key(&self, party_number: PartyNumber) -> Option<&[u8]> {
+    pub fn peer_key(
+        &self,
+        party_number: PartyNumber,
+    ) -> Option<&[u8]> {
         for (index, key) in self.all_participants.iter().enumerate() {
             if index + 1 == party_number.get() as usize {
                 return Some(key.as_slice());
@@ -482,7 +485,7 @@ impl SessionState {
         }
         None
     }
-    
+
     /*
     /// Get the party numbers for all session participants.
     pub fn participants(&self) -> Vec<u16> {

@@ -40,12 +40,15 @@ pub async fn new_client<E: From<mpc_relay_client::Error>>(
         err
     })?;
     let copy = clone_keypair(&keypair);
-    let (client, event_loop) = new_client_with_keypair(
-        server, server_public_key, keypair).await?;
+    let (client, event_loop) =
+        new_client_with_keypair(server, server_public_key, keypair)
+            .await?;
     Ok((client, event_loop, copy))
 }
 
-pub async fn new_client_with_keypair<E: From<mpc_relay_client::Error>>(
+pub async fn new_client_with_keypair<
+    E: From<mpc_relay_client::Error>,
+>(
     server: &str,
     server_public_key: Vec<u8>,
     keypair: Keypair,

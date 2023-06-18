@@ -416,7 +416,8 @@ async fn service(
         ServerMessage::NewSession(request) => {
             let mut all_participants =
                 vec![public_key.as_ref().to_vec()];
-            all_participants.append(&mut request.participant_keys.clone());
+            all_participants
+                .append(&mut request.participant_keys.clone());
 
             let (session_id, wait_interval) = {
                 let mut writer = state.write().await;
