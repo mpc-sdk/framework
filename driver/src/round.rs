@@ -1,7 +1,7 @@
-use crate::{PartyNumber, RoundNumber};
 use round_based::Msg;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::collections::HashMap;
+use mpc_relay_protocol::{PartyNumber, RoundNumber};
 
 /// Trait for round messages.
 pub trait Round: Serialize + DeserializeOwned + Send + Sync {
@@ -52,8 +52,8 @@ where
 {
     fn from(value: RoundMsg<O>) -> Self {
         Msg {
-            sender: value.sender,
-            receiver: value.receiver,
+            sender: value.sender.get(),
+            receiver: value.receiver.map(|v| v.get()),
             body: value.body,
         }
     }
@@ -71,9 +71,9 @@ where
         messages
             .into_iter()
             .map(|m| RoundMsg {
-                round,
-                sender: m.sender,
-                receiver: m.receiver,
+                round: RoundNumber::new(round).unwrap(),
+                sender: PartyNumber::new(m.sender).unwrap(),
+                receiver: m.receiver.map(|v| PartyNumber::new(v).unwrap()),
                 body: m.body,
             })
             .collect::<Vec<_>>()
@@ -96,7 +96,7 @@ impl<I> RoundBuffer<I> {
     pub fn new_fixed(rounds: u16, messages_per_round: u16) -> Self {
         let mut expected = HashMap::new();
         for i in 0..rounds {
-            expected.insert(i + 1, messages_per_round);
+            expected.insert(RoundNumber::new(i + 1).unwrap(), messages_per_round);
         }
         Self {
             expected,

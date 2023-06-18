@@ -1,6 +1,4 @@
-use mpc_relay_client::{
-    Event, NetworkTransport, Transport,
-};
+use mpc_relay_client::{Event, NetworkTransport, Transport};
 use mpc_relay_protocol::SessionState;
 
 use crate::{Error, ProtocolDriver, Result, Round, RoundBuffer};
@@ -194,12 +192,12 @@ impl<D: ProtocolDriver> Bridge<D> {
                     }
 
                     // FIXME: do error conversion
-                    let (round, mut messages) =
+                    let messages =
                         self.driver.proceed().unwrap();
-                    self.dispatch_round_messages(round, messages)
+                    self.dispatch_round_messages(messages)
                         .await?;
 
-                    if round_number as usize == self.buffer.len() {
+                    if round_number.get() as usize == self.buffer.len() {
                         // FIXME: do error conversion
                         let result = self.driver.finish().unwrap();
                         return Ok(Some(result));
@@ -215,14 +213,13 @@ impl<D: ProtocolDriver> Bridge<D> {
     /// Start running the protocol.
     pub async fn execute(&mut self) -> Result<()> {
         // FIXME: do error conversion
-        let (round, mut messages) = self.driver.proceed().unwrap();
-        self.dispatch_round_messages(round, messages).await?;
+        let messages = self.driver.proceed().unwrap();
+        self.dispatch_round_messages(messages).await?;
         Ok(())
     }
 
     async fn dispatch_round_messages(
         &mut self,
-        round_number: u16,
         mut messages: Vec<D::Outgoing>,
     ) -> Result<()> {
         let is_broadcast = messages.len() == 1

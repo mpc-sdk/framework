@@ -5,7 +5,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use crate::encoding::types;
+use crate::{encoding::types, PartyNumber};
 
 /// Identifier for sessions.
 pub type SessionId = uuid::Uuid;
@@ -466,21 +466,31 @@ impl SessionState {
     pub fn party_number(
         &self,
         public_key: impl AsRef<[u8]>,
-    ) -> Option<usize> {
+    ) -> Option<PartyNumber> {
         self.all_participants
             .iter()
             .position(|k| k == public_key.as_ref())
-            .map(|pos| pos + 1)
+            .map(|pos| PartyNumber::new((pos + 1) as u16).unwrap())
     }
 
     /// Get the public key for a party number.
-    pub fn peer_key(&self, party_number: u16) -> Option<&[u8]> {
+    pub fn peer_key(&self, party_number: PartyNumber) -> Option<&[u8]> {
         for (index, key) in self.all_participants.iter().enumerate() {
-            if index + 1 == party_number as usize {
+            if index + 1 == party_number.get() as usize {
                 return Some(key.as_slice());
             }
         }
         None
+    }
+    
+    /// Get the party numbers for all session participants.
+    pub fn participants(&self) -> Vec<u16> {
+        self.all_participants
+            .iter()
+            .map(|key| self.party_number(key))
+            .filter(|num| num.is_some())
+            .map(|num| num.unwrap().get())
+            .collect()
     }
 
     /// Get the connections a peer should make.

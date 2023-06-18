@@ -10,12 +10,6 @@ pub use bridge::{Bridge, SessionInitiator, SessionParticipant};
 pub use error::Error;
 pub use round::{Round, RoundBuffer, RoundMsg};
 
-/// Round number.
-pub type RoundNumber = u16;
-
-/// Party number.
-pub type PartyNumber = u16;
-
 /// Result type for the driver library.
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -28,7 +22,6 @@ pub use multi_party_ecdsa::protocols::multi_party_ecdsa::gg_2020;
 #[cfg(feature = "gg20")]
 pub use curv;
 
-use mpc_relay_protocol::SessionState;
 use serde::{Deserialize, Serialize};
 
 /// Parameters used during key generation.
@@ -52,15 +45,6 @@ impl Default for Parameters {
     }
 }
 
-/// Session information for a participant.
-#[derive(Clone, Debug)]
-pub struct Participant {
-    /// Public key of this participant.
-    pub public_key: Vec<u8>,
-    /// Session state.
-    pub session: SessionState,
-}
-
 /// Trait for implementations that drive
 /// protocol to completion.
 pub trait ProtocolDriver {
@@ -79,13 +63,15 @@ pub trait ProtocolDriver {
         message: Self::Incoming,
     ) -> std::result::Result<(), Self::Error>;
 
+    /*
     /// Determine if the protocol wants to proceed.
     fn wants_to_proceed(&self) -> bool;
+    */
 
     /// Proceed to the next round.
     fn proceed(
         &mut self,
-    ) -> std::result::Result<(u16, Vec<Self::Outgoing>), Self::Error>;
+    ) -> std::result::Result<Vec<Self::Outgoing>, Self::Error>;
 
     /// Complete the protocol and get the output.
     fn finish(

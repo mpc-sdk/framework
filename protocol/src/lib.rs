@@ -27,5 +27,11 @@ pub use pem;
 pub use snow;
 pub use uuid;
 
+/// Round number.
+pub type RoundNumber = std::num::NonZeroU16;
+
+/// Party number.
+pub type PartyNumber = std::num::NonZeroU16;
+
 /// Result type for the relay protocol.
 pub type Result<T> = std::result::Result<T, Error>;

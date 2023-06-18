@@ -1,22 +1,28 @@
 //! GG20 message signing.
-use curv::{
-    arithmetic::Converter, elliptic::curves::Secp256k1, BigInt,
-};
-use multi_party_ecdsa::protocols::multi_party_ecdsa::gg_2020::{
-    party_i::{verify, SignatureRecid},
-    state_machine::{
-        keygen::LocalKey,
-        sign::{
-            CompletedOfflineStage, OfflineProtocolMessage,
-            OfflineStage, PartialSignature, SignManual,
-        },
-    },
-};
-
-use super::{Error, Result};
-use crate::{ProtocolDriver, RoundMsg};
+use mpc_relay_client::{Event, NetworkTransport, Transport};
+use mpc_relay_protocol::{hex, SessionState};
 use round_based::{Msg, StateMachine};
 use serde::{Deserialize, Serialize};
+
+use super::{Error, Result};
+use crate::{
+    curv::{
+        arithmetic::Converter,
+        elliptic::curves::{Point, Secp256k1},
+        BigInt,
+    },
+    gg_2020::{
+        party_i::{verify, SignatureRecid},
+        state_machine::{
+            keygen::LocalKey,
+            sign::{
+                CompletedOfflineStage, OfflineProtocolMessage,
+                OfflineStage, PartialSignature, SignManual,
+            },
+        },
+    },
+    Bridge, Parameters, ProtocolDriver, RoundBuffer, RoundMsg,
+};
 
 type Message = Msg<<OfflineStage as StateMachine>::MessageBody>;
 
@@ -32,17 +38,66 @@ pub struct Signature {
     pub address: String,
 }
 
-/// Result from driving the offline signing stage.
-pub struct OfflineResult {
-    data: BigInt,
-    partial: PartialSignature,
-    completed_offline_stage: CompletedOfflineStage,
+/// GG20 presign generator.
+pub struct PreSignGenerator {
+    bridge: Bridge<SignOfflineDriver>,
+}
+
+impl PreSignGenerator {
+    /// Create a new GG20 key generator.
+    pub fn new(
+        transport: Transport,
+        parameters: Parameters,
+        session: SessionState,
+        local_key: LocalKey<Secp256k1>,
+    ) -> Result<Self> {
+        let buffer = RoundBuffer::new_fixed(7, parameters.threshold);
+
+        let party_number = session
+            .party_number(transport.public_key())
+            .ok_or_else(|| {
+                Error::NotSessionParticipant(hex::encode(
+                    transport.public_key(),
+                ))
+            })?;
+
+        let participants = session.participants();
+
+        let driver = SignOfflineDriver::new(
+            party_number.into(),
+            participants,
+            local_key,
+        )?;
+        let bridge = Bridge {
+            transport,
+            driver,
+            buffer,
+            session,
+        };
+        Ok(Self { bridge })
+    }
+
+    /// Handle an incoming event.
+    pub async fn handle_event(
+        &mut self,
+        event: Event,
+    ) -> Result<Option<CompletedOfflineStage>> {
+        Ok(self
+            .bridge
+            .handle_event(event)
+            .await
+            .map_err(Box::from)?)
+    }
+
+    /// Start running the protocol.
+    pub async fn execute(&mut self) -> Result<()> {
+        Ok(self.bridge.execute().await.map_err(Box::from)?)
+    }
 }
 
 /// Drive the offline signing stage.
 pub struct SignOfflineDriver {
     inner: OfflineStage,
-    message: [u8; 32],
 }
 
 impl SignOfflineDriver {
@@ -51,11 +106,9 @@ impl SignOfflineDriver {
         index: u16,
         participants: Vec<u16>,
         local_key: LocalKey<Secp256k1>,
-        message: [u8; 32],
     ) -> Result<SignOfflineDriver> {
         Ok(SignOfflineDriver {
             inner: OfflineStage::new(index, participants, local_key)?,
-            message,
         })
     }
 }
@@ -64,7 +117,7 @@ impl ProtocolDriver for SignOfflineDriver {
     type Error = Error;
     type Incoming = Message;
     type Outgoing = RoundMsg<OfflineProtocolMessage>;
-    type Output = OfflineResult;
+    type Output = CompletedOfflineStage;
 
     fn handle_incoming(
         &mut self,
@@ -74,17 +127,17 @@ impl ProtocolDriver for SignOfflineDriver {
         Ok(())
     }
 
-    fn proceed(&mut self) -> Result<(u16, Vec<Self::Outgoing>)> {
+    fn proceed(&mut self) -> Result<Vec<Self::Outgoing>> {
         self.inner.proceed()?;
         let messages = self.inner.message_queue().drain(..).collect();
         let round = self.inner.current_round();
-        let messages = RoundMsg::from_round(round, messages);
-        Ok((round, messages))
+        Ok(RoundMsg::from_round(round, messages))
     }
 
     fn finish(&mut self) -> Result<Self::Output> {
-        let completed_offline_stage =
-            self.inner.pick_output().unwrap()?;
+        Ok(self.inner.pick_output().unwrap()?)
+
+        /*
         let data = BigInt::from_bytes(&self.message);
         let (_sign, partial) = SignManual::new(
             data.clone(),
@@ -95,57 +148,73 @@ impl ProtocolDriver for SignOfflineDriver {
             partial,
             completed_offline_stage,
         })
+        */
     }
 }
 
 /// Drive the online signing stage.
 pub struct SignOnlineDriver {
-    offline: OfflineResult,
+    data: BigInt,
+    public_key: Point<Secp256k1>,
+    partial: PartialSignature,
+    sign: SignManual,
     partials: Vec<PartialSignature>,
 }
 
 impl SignOnlineDriver {
     /// Create a sign online driver.
     pub fn new(
-        offline: OfflineResult,
-        partials: Vec<PartialSignature>,
+        completed_offline_stage: CompletedOfflineStage,
+        message: [u8; 32],
     ) -> Result<Self> {
-        Ok(Self { offline, partials })
+        let data = BigInt::from_bytes(&message);
+        let public_key = completed_offline_stage.public_key().clone();
+        let (sign, partial) =
+            SignManual::new(data.clone(), completed_offline_stage)?;
+        Ok(Self {
+            public_key,
+            sign,
+            partial,
+            data,
+            partials: vec![],
+        })
     }
 }
 
 impl ProtocolDriver for SignOnlineDriver {
     type Error = Error;
-    type Incoming = Message;
-    type Outgoing = RoundMsg<OfflineProtocolMessage>;
+    type Incoming = Msg<PartialSignature>;
+    type Outgoing = RoundMsg<PartialSignature>;
     type Output = Signature;
 
     fn handle_incoming(
         &mut self,
-        _message: Self::Incoming,
+        message: Self::Incoming,
     ) -> Result<()> {
-        panic!("online signing does not require incoming messages");
+        self.partials.push(message.body);
+        Ok(())
     }
 
-    fn proceed(&mut self) -> Result<(u16, Vec<Self::Outgoing>)> {
-        panic!("online signing does not send outgoing messages");
+    fn proceed(&mut self) -> Result<Vec<Self::Outgoing>> {
+        todo!("broadcast partial to other participants");
     }
 
     fn finish(&mut self) -> Result<Self::Output> {
-        let data = self.offline.data.clone();
-        let pk =
-            self.offline.completed_offline_stage.public_key().clone();
+        //let pk =
+        //self.completed_offline_stage.public_key().clone();
 
+        /*
         let (sign, _partial) = SignManual::new(
             data.clone(),
             self.offline.completed_offline_stage.clone(),
         )?;
+        */
 
-        let signature = sign.complete(&self.partials)?;
-        verify(&signature, &pk, &data)
+        let signature = self.sign.clone().complete(&self.partials)?;
+        verify(&signature, &self.public_key, &self.data)
             .map_err(|_| Error::VerifySignature)?;
 
-        let public_key = pk.to_bytes(false).to_vec();
+        let public_key = self.public_key.to_bytes(false).to_vec();
         let result = Signature {
             signature,
             address: crate::address(&public_key),

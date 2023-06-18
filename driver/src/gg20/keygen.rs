@@ -1,19 +1,16 @@
 //! Key generation for GG20.
 use round_based::{Msg, StateMachine};
 
-use mpc_relay_client::{
-    Event, NetworkTransport, Transport,
-};
+use mpc_relay_client::{Event, NetworkTransport, Transport};
 use mpc_relay_protocol::{hex, SessionState};
 
 use super::{Error, Result};
 use crate::{
-    Bridge, Parameters, ProtocolDriver, RoundBuffer,
-    RoundMsg,
-    gg_2020::state_machine::keygen::{
-        Keygen, ProtocolMessage, LocalKey,
-    },
     curv::elliptic::curves::secp256_k1::Secp256k1,
+    gg_2020::state_machine::keygen::{
+        Keygen, LocalKey, ProtocolMessage,
+    },
+    Bridge, Parameters, ProtocolDriver, RoundBuffer, RoundMsg,
 };
 
 /// GG20 key generation.
@@ -37,9 +34,9 @@ impl KeyGenerator {
                 Error::NotSessionParticipant(hex::encode(
                     transport.public_key(),
                 ))
-            })? as u16;
+            })?;
 
-        let driver = KeygenDriver::new(parameters, party_number)?;
+        let driver = KeygenDriver::new(parameters, party_number.into())?;
         let bridge = Bridge {
             transport,
             driver,
@@ -102,16 +99,11 @@ impl ProtocolDriver for KeygenDriver {
         Ok(())
     }
 
-    fn wants_to_proceed(&self) -> bool {
-        self.inner.wants_to_proceed()
-    }
-
-    fn proceed(&mut self) -> Result<(u16, Vec<Self::Outgoing>)> {
+    fn proceed(&mut self) -> Result<Vec<Self::Outgoing>> {
         self.inner.proceed()?;
         let messages = self.inner.message_queue().drain(..).collect();
         let round = self.inner.current_round();
-        let messages = RoundMsg::from_round(round, messages);
-        Ok((round, messages))
+        Ok(RoundMsg::from_round(round, messages))
     }
 
     fn finish(&mut self) -> Result<Self::Output> {

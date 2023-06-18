@@ -16,7 +16,7 @@ mod wasm_tests {
     const SERVER: &str = "ws://127.0.0.1:8008";
     const SERVER_PUBLIC_KEY: &str =
         include_str!("./server_public_key.txt");
-    
+
     /// Creates two clients that handshake with the server
     /// and then each other. Once the peer handshakes are
     /// complete they send "ping" and "pong" messages over
@@ -71,7 +71,7 @@ mod wasm_tests {
         assert_eq!(expected_participants, connected_participants);
         Ok(())
     }
-    
+
     /*
     /// GG20 keygen and signing.
     #[wasm_bindgen_test]
@@ -83,7 +83,7 @@ mod wasm_tests {
         Ok(())
     }
     */
-    
+
     /// Creates two clients that handshake with the server.
     ///
     /// The first client creates a session but the second
