@@ -33,7 +33,7 @@ pub async fn run(
     let ev_p = participant_client::<anyhow::Error>(
         participant,
         event_loop_p,
-        &initiator_key.public,
+        initiator_key.public_key(),
         shutdown_rx,
     );
 

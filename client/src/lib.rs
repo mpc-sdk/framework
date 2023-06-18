@@ -33,7 +33,7 @@ mod web;
 pub use web::{WebClient as Client, WebEventLoop as EventLoop};
 
 use mpc_relay_protocol::{
-    hex, snow, Encoding, OpaqueMessage, ProtocolState,
+    hex, Encoding, Keypair, OpaqueMessage, ProtocolState,
     RequestMessage, SealedEnvelope, SessionId, TAGLEN,
 };
 use std::{collections::HashMap, sync::Arc};
@@ -45,7 +45,7 @@ pub(crate) type Server = Arc<RwLock<Option<ProtocolState>>>;
 /// Options used to create a new websocket client.
 pub struct ClientOptions {
     /// Client static keypair.
-    pub keypair: snow::Keypair,
+    pub keypair: Keypair,
     /// Public key for the server to connect to.
     pub server_public_key: Vec<u8>,
 }
@@ -60,7 +60,7 @@ impl ClientOptions {
         format!(
             "{}/?public_key={}",
             server,
-            hex::encode(&self.keypair.public)
+            hex::encode(self.keypair.public_key())
         )
     }
 }

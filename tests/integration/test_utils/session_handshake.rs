@@ -29,7 +29,8 @@ pub async fn run(
     let mut client_i_transport: Transport = client_i.into();
     let mut client_p_transport: Transport = client_p.into();
 
-    let session_participants = vec![participant_key.public.clone()];
+    let session_participants =
+        vec![participant_key.public_key().to_vec()];
 
     // Each client handshakes with the server
     client_i_transport.connect().await?;

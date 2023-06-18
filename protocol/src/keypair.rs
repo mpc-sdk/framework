@@ -1,23 +1,60 @@
 //! Helper functions for working with static keys.
 use crate::{
     constants::{PATTERN, PEM_PATTERN, PEM_PRIVATE, PEM_PUBLIC},
-    snow::Keypair,
+    snow::params::NoiseParams,
     Error, Result,
 };
 use pem::Pem;
 
+/// Key pair used by the noise protocol.
+pub struct Keypair {
+    inner: snow::Keypair,
+}
+
+impl Keypair {
+    /// Generate a new keypair.
+    pub fn new(params: NoiseParams) -> Result<Self> {
+        let builder = snow::Builder::new(params);
+        Ok(Self {
+            inner: builder.generate_keypair()?,
+        })
+    }
+
+    /// Public key.
+    pub fn public_key(&self) -> &[u8] {
+        &self.inner.public
+    }
+
+    /// Private key.
+    pub fn private_key(&self) -> &[u8] {
+        &self.inner.private
+    }
+}
+
+impl Clone for Keypair {
+    fn clone(&self) -> Self {
+        Keypair {
+            inner: snow::Keypair {
+                public: self.inner.public.clone(),
+                private: self.inner.private.clone(),
+            },
+        }
+    }
+}
+
 /// Generate a keypair for the noise protocol using the
 /// standard pattern.
 pub fn generate_keypair() -> Result<Keypair> {
-    let builder = snow::Builder::new(PATTERN.parse()?);
-    Ok(builder.generate_keypair()?)
+    Keypair::new(PATTERN.parse()?)
 }
 
 /// Encode a keypair into a PEM-encoded string.
 pub fn encode_keypair(keypair: &Keypair) -> String {
     let pattern_pem = Pem::new(PEM_PATTERN, PATTERN.as_bytes());
-    let public_pem = Pem::new(PEM_PUBLIC, keypair.public.clone());
-    let private_pem = Pem::new(PEM_PRIVATE, keypair.private.clone());
+    let public_pem =
+        Pem::new(PEM_PUBLIC, keypair.public_key().to_vec());
+    let private_pem =
+        Pem::new(PEM_PRIVATE, keypair.private_key().to_vec());
     pem::encode_many(&[pattern_pem, public_pem, private_pem])
 }
 
@@ -35,9 +72,12 @@ pub fn decode_keypair(keypair: impl AsRef<[u8]>) -> Result<Keypair> {
                     PATTERN.to_string(),
                 ));
             }
+
             Ok(Keypair {
-                public: second.into_contents(),
-                private: third.into_contents(),
+                inner: snow::Keypair {
+                    public: second.into_contents(),
+                    private: third.into_contents(),
+                },
             })
         } else {
             Err(Error::BadKeypairPem)
@@ -61,8 +101,8 @@ mod tests {
         let keypair = generate_keypair()?;
         let pem = encode_keypair(&keypair);
         let decoded = decode_keypair(&pem)?;
-        assert_eq!(keypair.public, decoded.public);
-        assert_eq!(keypair.private, decoded.private);
+        assert_eq!(keypair.public_key(), decoded.public_key());
+        assert_eq!(keypair.private_key(), decoded.private_key());
         Ok(())
     }
 

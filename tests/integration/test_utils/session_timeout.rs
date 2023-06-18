@@ -22,7 +22,8 @@ pub async fn run(
         )
         .await?;
 
-    let session_participants = vec![participant_key.public.clone()];
+    let session_participants =
+        vec![participant_key.public_key().to_vec()];
 
     initiator.connect().await?;
     participant.connect().await?;

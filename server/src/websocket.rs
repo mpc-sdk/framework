@@ -92,7 +92,7 @@ pub async fn upgrade(
     );
 
     let responder = builder
-        .local_private_key(&writer.keypair.private)
+        .local_private_key(writer.keypair.private_key())
         .remote_public_key(&query.public_key)
         .build_responder()
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;

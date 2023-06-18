@@ -21,7 +21,7 @@ pub async fn run(path: PathBuf, force: bool) -> Result<()> {
     file.write_all(pem.as_bytes()).await?;
     file.flush().await?;
 
-    println!("{}", hex::encode(keypair.public));
+    println!("{}", hex::encode(keypair.public_key()));
 
     Ok(())
 }

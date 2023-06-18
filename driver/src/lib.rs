@@ -6,9 +6,9 @@ mod bridge;
 mod error;
 mod round;
 
+pub(crate) use bridge::Bridge;
 pub use bridge::{SessionInitiator, SessionParticipant};
 pub use error::Error;
-pub(crate) use bridge::Bridge;
 pub(crate) use round::{Round, RoundBuffer, RoundMsg};
 
 /// Result type for the driver library.

@@ -10,7 +10,7 @@ use axum_server::{tls_rustls::RustlsConfig, Handle};
 use tower_http::trace::TraceLayer;
 use uuid::Uuid;
 
-use mpc_relay_protocol::{hex, snow::Keypair, uuid, SessionManager};
+use mpc_relay_protocol::{hex, uuid, Keypair, SessionManager};
 
 use crate::{
     config::{ServerConfig, TlsConfig},
@@ -113,7 +113,7 @@ impl RelayServer {
         let app = self.router(Arc::clone(&self.state))?;
         let public_key = {
             let reader = self.state.read().await;
-            reader.keypair.public.clone()
+            reader.keypair.public_key().to_vec()
         };
         tracing::info!("listening on {}", addr);
         tracing::info!("public key {}", hex::encode(&public_key));
@@ -133,7 +133,7 @@ impl RelayServer {
         let app = self.router(Arc::clone(&self.state))?;
         let public_key = {
             let reader = self.state.read().await;
-            reader.keypair.public.clone()
+            reader.keypair.public_key().to_vec()
         };
         tracing::info!("listening on {}", addr);
         tracing::info!("public key {}", hex::encode(&public_key));

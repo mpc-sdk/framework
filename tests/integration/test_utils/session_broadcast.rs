@@ -48,8 +48,8 @@ pub async fn run(
         .await?;
 
     let session_participants = vec![
-        participant_key_1.public.clone(),
-        participant_key_2.public.clone(),
+        participant_key_1.public_key().to_vec(),
+        participant_key_2.public_key().to_vec(),
     ];
 
     // Each client handshakes with the server

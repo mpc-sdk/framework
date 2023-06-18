@@ -288,7 +288,7 @@ where
 
             let builder = Builder::new(PATTERN.parse()?);
             let mut responder = builder
-                .local_private_key(&options.keypair.private)
+                .local_private_key(options.keypair.private_key())
                 .remote_public_key(public_key.as_ref())
                 .build_responder()?;
 

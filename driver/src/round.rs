@@ -4,7 +4,9 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// Trait for round messages.
-pub(crate) trait Round: Serialize + DeserializeOwned + Send + Sync {
+pub(crate) trait Round:
+    Serialize + DeserializeOwned + Send + Sync
+{
     /// Determine if this round is a broadcast message.
     fn is_broadcast(&self) -> bool;
     /// Round number.

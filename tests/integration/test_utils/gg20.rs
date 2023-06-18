@@ -4,7 +4,9 @@ use std::collections::HashMap;
 
 use mpc_driver::{
     curv::elliptic::curves::secp256_k1::Secp256k1,
-    gg20::{KeyGenerator, PreSignGenerator, SignatureGenerator, Signature},
+    gg20::{
+        KeyGenerator, PreSignGenerator, Signature, SignatureGenerator,
+    },
     gg_2020::state_machine::{
         keygen::LocalKey, sign::CompletedOfflineStage,
     },
@@ -12,11 +14,11 @@ use mpc_driver::{
 };
 
 use mpc_relay_client::{NetworkTransport, Transport};
-use mpc_relay_protocol::{snow::Keypair, SessionState};
+use mpc_relay_protocol::{Keypair, SessionState};
 
-use sha3::{Keccak256, Digest};
+use sha3::{Digest, Keccak256};
 
-use super::{clone_keypair, new_client, new_client_with_keypair};
+use super::{new_client, new_client_with_keypair};
 
 pub async fn run(
     server: &str,
@@ -35,8 +37,7 @@ pub async fn run(
     )
     .await?;
 
-    let sign_keypairs =
-        keypairs.iter().map(|k| clone_keypair(k)).collect();
+    let sign_keypairs = keypairs.iter().map(|k| k.clone()).collect();
 
     let pre_signatures = gg20_sign_offline(
         server,
@@ -48,8 +49,9 @@ pub async fn run(
     .await?;
 
     let message = "this is the message that is sent out";
-    let message: [u8; 32] = Keccak256::digest(
-        message.as_bytes()).as_slice().try_into()?;
+    let message: [u8; 32] = Keccak256::digest(message.as_bytes())
+        .as_slice()
+        .try_into()?;
 
     let signatures = gg20_sign_online(
         server,
@@ -97,9 +99,9 @@ async fn gg20_keygen(
         .await?;
 
     let keypairs = vec![
-        clone_keypair(&initiator_key),
-        clone_keypair(&participant_key_1),
-        clone_keypair(&participant_key_2),
+        initiator_key.clone(),
+        participant_key_1.clone(),
+        participant_key_2.clone(),
     ];
 
     let mut client_i_transport: Transport = client_i.into();
@@ -117,8 +119,8 @@ async fn gg20_keygen(
     let mut s_p_2 = event_loop_p_2.run();
 
     let session_participants = vec![
-        participant_key_1.public.clone(),
-        participant_key_2.public.clone(),
+        participant_key_1.public_key().to_vec(),
+        participant_key_2.public_key().to_vec(),
     ];
 
     let mut client_i_session = SessionInitiator::new(
@@ -276,7 +278,8 @@ async fn gg20_sign_offline(
     let initiator_key = keypairs.remove(0);
     let participant_key_2 = keypairs.pop().unwrap();
 
-    let sign_participants = vec![participant_key_2.public.clone()];
+    let sign_participants =
+        vec![participant_key_2.public_key().to_vec()];
 
     // Create new clients for signing
     let (client_i, event_loop_i) =
@@ -434,7 +437,8 @@ async fn gg20_sign_online(
 ) -> Result<HashMap<Vec<u8>, Signature>> {
     let initiator_key = keypairs.remove(0);
     let participant_key_2 = keypairs.pop().unwrap();
-    let sign_participants = vec![participant_key_2.public.clone()];
+    let sign_participants =
+        vec![participant_key_2.public_key().to_vec()];
 
     // Create new clients for signature generation
     let (client_i, event_loop_i) =
@@ -537,8 +541,7 @@ async fn gg20_sign_online(
     sign_i.execute().await?;
     sign_p_2.execute().await?;
 
-    let mut signatures: HashMap<Vec<u8>, Signature> =
-        HashMap::new();
+    let mut signatures: HashMap<Vec<u8>, Signature> = HashMap::new();
 
     loop {
         if signatures.len() == 2 {

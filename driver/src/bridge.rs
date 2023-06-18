@@ -165,11 +165,11 @@ impl<D: ProtocolDriver> Bridge<D> {
         event: Event,
     ) -> Result<Option<D::Output>> {
         if let Event::JsonMessage {
-                message,
-                session_id,
-                ..
-            } = event {
-
+            message,
+            session_id,
+            ..
+        } = event
+        {
             if let Some(session_id) = &session_id {
                 if session_id != &self.session.session_id {
                     return Err(Error::SessionIdMismatch);
@@ -197,9 +197,7 @@ impl<D: ProtocolDriver> Bridge<D> {
 
                 //println!("is ready... {}", round_number.get());
 
-                if round_number.get() as usize
-                    == self.buffer.len()
-                {
+                if round_number.get() as usize == self.buffer.len() {
                     // FIXME: do error conversion
                     let result = self.driver.finish().unwrap();
                     return Ok(Some(result));

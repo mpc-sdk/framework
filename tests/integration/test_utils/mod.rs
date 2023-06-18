@@ -18,17 +18,9 @@ pub use native::*;
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 pub use web::*;
 
-use mpc_relay_protocol::{generate_keypair, snow::Keypair};
+use mpc_relay_protocol::{generate_keypair, Keypair};
 
 use mpc_relay_client::{Client, ClientOptions, EventLoop};
-
-/// Clone a keypair.
-pub fn clone_keypair(keypair: &Keypair) -> Keypair {
-    Keypair {
-        public: keypair.public.clone(),
-        private: keypair.private.clone(),
-    }
-}
 
 /// Create a new client connected to the mock server.
 pub async fn new_client<E: From<mpc_relay_client::Error>>(
@@ -39,7 +31,7 @@ pub async fn new_client<E: From<mpc_relay_client::Error>>(
         let err = mpc_relay_client::Error::from(e);
         err
     })?;
-    let copy = clone_keypair(&keypair);
+    let copy = keypair.clone();
     let (client, event_loop) =
         new_client_with_keypair(server, server_public_key, keypair)
             .await?;
