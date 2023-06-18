@@ -1,6 +1,6 @@
 //! GG20 message signing.
 use mpc_relay_client::{Event, NetworkTransport, Transport};
-use mpc_relay_protocol::{hex, SessionState, PartyNumber};
+use mpc_relay_protocol::{hex, PartyNumber, SessionState};
 use round_based::{Msg, StateMachine};
 use serde::{Deserialize, Serialize};
 
@@ -47,10 +47,11 @@ impl ParticipantGenerator {
     /// Create a new GG20 participant generator.
     pub fn new(
         transport: Transport,
+        parameters: Parameters,
         session: SessionState,
         local_key_index: PartyNumber,
     ) -> Result<Self> {
-        let buffer = RoundBuffer::new_fixed(1, (session.len() - 1) as u16);
+        let buffer = RoundBuffer::new_fixed(1, parameters.threshold);
 
         let party_number = session
             .party_number(transport.public_key())
@@ -203,10 +204,10 @@ impl SignatureGenerator {
 
 /// GG20 local key participant number exchange.
 ///
-/// Broadcasts the party number index for a previously generated 
+/// Broadcasts the party number index for a previously generated
 /// key share to other participants in a session.
 ///
-/// This is required to determine the participants for a sign offline 
+/// This is required to determine the participants for a sign offline
 /// protocol.
 struct ParticipantDriver {
     party_number: u16,
@@ -216,10 +217,7 @@ struct ParticipantDriver {
 
 impl ParticipantDriver {
     /// Create a key participant driver.
-    pub fn new(
-        party_number: u16,
-        local_key_index: u16,
-    ) -> Self {
+    pub fn new(party_number: u16, local_key_index: u16) -> Self {
         Self {
             party_number,
             participants: vec![local_key_index],
@@ -297,19 +295,6 @@ impl ProtocolDriver for SignOfflineDriver {
 
     fn finish(&mut self) -> Result<Self::Output> {
         Ok(self.inner.pick_output().unwrap()?)
-
-        /*
-        let data = BigInt::from_bytes(&self.message);
-        let (_sign, partial) = SignManual::new(
-            data.clone(),
-            completed_offline_stage.clone(),
-        )?;
-        Ok(OfflineResult {
-            data,
-            partial,
-            completed_offline_stage,
-        })
-        */
     }
 }
 
@@ -369,16 +354,6 @@ impl ProtocolDriver for SignOnlineDriver {
     }
 
     fn finish(&mut self) -> Result<Self::Output> {
-        //let pk =
-        //self.completed_offline_stage.public_key().clone();
-
-        /*
-        let (sign, _partial) = SignManual::new(
-            data.clone(),
-            self.offline.completed_offline_stage.clone(),
-        )?;
-        */
-
         let signature = self.sign.clone().complete(&self.partials)?;
         verify(&signature, &self.public_key, &self.data)
             .map_err(|_| Error::VerifySignature)?;

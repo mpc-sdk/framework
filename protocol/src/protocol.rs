@@ -462,7 +462,6 @@ pub struct SessionState {
 }
 
 impl SessionState {
-    
     /// Total number of participants in this session.
     pub fn len(&self) -> usize {
         self.all_participants.len()

@@ -85,6 +85,7 @@ where
 }
 
 /// Buffers incoming messages.
+#[derive(Debug)]
 pub(crate) struct RoundBuffer<I> {
     /// Determines the number of messages expected
     /// for each round.

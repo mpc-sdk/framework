@@ -5,7 +5,8 @@ use std::collections::HashMap;
 use mpc_driver::{
     curv::elliptic::curves::secp256_k1::Secp256k1,
     gg20::{
-        KeyGenerator, PreSignGenerator, Signature, SignatureGenerator,
+        KeyGenerator, ParticipantGenerator, PreSignGenerator,
+        Signature, SignatureGenerator,
     },
     gg_2020::state_machine::{
         keygen::LocalKey, sign::CompletedOfflineStage,
@@ -14,7 +15,7 @@ use mpc_driver::{
 };
 
 use mpc_relay_client::{NetworkTransport, Transport};
-use mpc_relay_protocol::{Keypair, SessionState};
+use mpc_relay_protocol::{Keypair, PartyNumber, SessionState};
 
 use sha3::{Digest, Keccak256};
 
@@ -313,8 +314,6 @@ async fn gg20_sign_offline(
         .remove(client_p_2_transport.public_key())
         .unwrap();
 
-    let participants: Vec<u16> = vec![local_key_i.i, local_key_p_2.i];
-
     let mut sessions: Vec<SessionState> = Vec::new();
 
     let mut client_i_session =
@@ -364,19 +363,86 @@ async fn gg20_sign_offline(
     let session_i = sessions.remove(0);
     let session_p_2 = sessions.remove(0);
 
+    let mut part_i = ParticipantGenerator::new(
+        client_i_transport.clone(),
+        parameters.clone(),
+        session_i.clone(),
+        PartyNumber::new(local_key_i.i).unwrap(),
+    )?;
+
+    let mut part_p_2 = ParticipantGenerator::new(
+        client_p_2_transport.clone(),
+        parameters.clone(),
+        session_p_2.clone(),
+        PartyNumber::new(local_key_p_2.i).unwrap(),
+    )?;
+
+    // Get participant party numbers assigned when the local
+    // keys were generated.
+    part_i.execute().await?;
+    part_p_2.execute().await?;
+
+    let mut participant_lists: HashMap<Vec<u8>, Vec<u16>> =
+        HashMap::new();
+    loop {
+        if participant_lists.len() == 2 {
+            break;
+        }
+        select! {
+            event = s_i.next().fuse() => {
+                match event {
+                    Some(event) => {
+                        let event = event?;
+                        if let Some(list) =
+                            part_i.handle_event(event).await? {
+                            participant_lists.insert(
+                                client_i_transport.public_key().to_vec(),
+                                list);
+                        }
+                    }
+                    _ => {}
+                }
+            },
+            event = s_p_2.next().fuse() => {
+                match event {
+                    Some(event) => {
+                        let event = event?;
+                        if let Some(list) =
+                            part_p_2.handle_event(event).await? {
+                            participant_lists.insert(
+                                client_p_2_transport.public_key().to_vec(),
+                                list);
+                        }
+                    }
+                    _ => {}
+                }
+            },
+        }
+    }
+
+    let mut participants_i = participant_lists
+        .remove(client_i_transport.public_key())
+        .unwrap();
+    let mut participants_p_2 = participant_lists
+        .remove(client_p_2_transport.public_key())
+        .unwrap();
+
+    participants_i.sort();
+    participants_p_2.sort();
+
     let mut presign_i = PreSignGenerator::new(
         client_i_transport.clone(),
         parameters.clone(),
         session_i,
         local_key_i,
-        participants.clone(),
+        participants_i,
     )?;
     let mut presign_p_2 = PreSignGenerator::new(
         client_p_2_transport.clone(),
         parameters.clone(),
         session_p_2,
         local_key_p_2,
-        participants.clone(),
+        participants_p_2,
     )?;
 
     // Each party starts pre-signature generation.

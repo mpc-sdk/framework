@@ -179,6 +179,7 @@ impl<D: ProtocolDriver> Bridge<D> {
             }
 
             let message: D::Outgoing = message.deserialize()?;
+
             let round_number = message.round_number();
 
             let incoming: D::Incoming = message.into();
@@ -191,11 +192,14 @@ impl<D: ProtocolDriver> Bridge<D> {
                     self.driver.handle_incoming(message).unwrap();
                 }
 
+                if self.buffer.len() == 1 {
+                    let result = self.driver.finish().unwrap();
+                    return Ok(Some(result));
+                }
+
                 // FIXME: do error conversion
                 let messages = self.driver.proceed().unwrap();
                 self.dispatch_round_messages(messages).await?;
-
-                //println!("is ready... {}", round_number.get());
 
                 if round_number.get() as usize == self.buffer.len() {
                     // FIXME: do error conversion
@@ -227,6 +231,7 @@ impl<D: ProtocolDriver> Bridge<D> {
             let message = messages.remove(0);
             let recipients =
                 self.session.recipients(self.transport.public_key());
+
             self.transport
                 .broadcast_json(
                     &self.session.session_id,
