@@ -40,7 +40,7 @@ impl KeyGenerator {
             KeygenDriver::new(parameters, party_number.into())?;
         let bridge = Bridge {
             transport,
-            driver,
+            driver: Some(driver),
             buffer,
             session,
         };
@@ -107,7 +107,7 @@ impl ProtocolDriver for KeygenDriver {
         Ok(RoundMsg::from_round(round, messages))
     }
 
-    fn finish(&mut self) -> Result<Self::Output> {
+    fn finish(mut self) -> Result<Self::Output> {
         Ok(self.inner.pick_output().unwrap()?)
     }
 }

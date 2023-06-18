@@ -78,7 +78,7 @@ pub(crate) trait ProtocolDriver {
 
     /// Complete the protocol and get the output.
     fn finish(
-        &mut self,
+        self,
     ) -> std::result::Result<Self::Output, Self::Error>;
 }
 

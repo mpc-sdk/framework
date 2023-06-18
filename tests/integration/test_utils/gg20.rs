@@ -420,15 +420,12 @@ async fn gg20_sign_offline(
         }
     }
 
-    let mut participants_i = participant_lists
+    let participants_i = participant_lists
         .remove(client_i_transport.public_key())
         .unwrap();
-    let mut participants_p_2 = participant_lists
+    let participants_p_2 = participant_lists
         .remove(client_p_2_transport.public_key())
         .unwrap();
-
-    participants_i.sort();
-    participants_p_2.sort();
 
     let mut presign_i = PreSignGenerator::new(
         client_i_transport.clone(),

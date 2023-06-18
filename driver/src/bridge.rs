@@ -154,7 +154,7 @@ pub(crate) struct Bridge<D: ProtocolDriver> {
     pub(crate) transport: Transport,
     //pub(crate) event_stream: EventStream,
     pub(crate) buffer: RoundBuffer<D::Incoming>,
-    pub(crate) driver: D,
+    pub(crate) driver: Option<D>,
     pub(crate) session: SessionState,
 }
 
@@ -189,21 +189,26 @@ impl<D: ProtocolDriver> Bridge<D> {
                 let messages = self.buffer.take(round_number);
                 for message in messages {
                     // FIXME: do error conversion
-                    self.driver.handle_incoming(message).unwrap();
+                    self.driver
+                        .as_mut()
+                        .unwrap()
+                        .handle_incoming(message).unwrap();
                 }
-
+                
+                // For single round drivers we mustn't call proceed again
                 if self.buffer.len() == 1 {
-                    let result = self.driver.finish().unwrap();
+                    let result = self.driver.take().unwrap().finish().unwrap();
                     return Ok(Some(result));
                 }
 
                 // FIXME: do error conversion
-                let messages = self.driver.proceed().unwrap();
+                let messages = self.driver
+                    .as_mut().unwrap().proceed().unwrap();
                 self.dispatch_round_messages(messages).await?;
 
                 if round_number.get() as usize == self.buffer.len() {
                     // FIXME: do error conversion
-                    let result = self.driver.finish().unwrap();
+                    let result = self.driver.take().unwrap().finish().unwrap();
                     return Ok(Some(result));
                 }
             }
@@ -215,7 +220,7 @@ impl<D: ProtocolDriver> Bridge<D> {
     /// Start running the protocol.
     pub async fn execute(&mut self) -> Result<()> {
         // FIXME: do error conversion
-        let messages = self.driver.proceed().unwrap();
+        let messages = self.driver.as_mut().unwrap().proceed().unwrap();
         self.dispatch_round_messages(messages).await?;
         Ok(())
     }

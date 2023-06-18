@@ -16,6 +16,10 @@ pub enum Error {
     #[error("local key index not found in list of participants")]
     LocalKeyNotParticipant,
 
+    /// Signature verification failed.
+    #[error("failed to verify generated signature")]
+    VerifySignature,
+
     /// Key generation error.
     #[error(transparent)]
     Keygen(#[from] keygen::Error),
@@ -27,10 +31,6 @@ pub enum Error {
     /// Signing error.
     #[error(transparent)]
     SignManual(#[from] sign::SignError),
-
-    /// Signature verification failed.
-    #[error("failed to verify generated signature")]
-    VerifySignature,
 
     /// Driver library error.
     #[error(transparent)]

@@ -67,7 +67,7 @@ impl ParticipantGenerator {
         );
         let bridge = Bridge {
             transport,
-            driver,
+            driver: Some(driver),
             buffer,
             session,
         };
@@ -120,7 +120,7 @@ impl PreSignGenerator {
         )?;
         let bridge = Bridge {
             transport,
-            driver,
+            driver: Some(driver),
             buffer,
             session,
         };
@@ -177,7 +177,7 @@ impl SignatureGenerator {
 
         let bridge = Bridge {
             transport,
-            driver,
+            driver: Some(driver),
             buffer,
             session,
         };
@@ -249,8 +249,9 @@ impl ProtocolDriver for ParticipantDriver {
         Ok(RoundMsg::from_round(1, messages))
     }
 
-    fn finish(&mut self) -> Result<Self::Output> {
-        Ok(self.participants.clone())
+    fn finish(mut self) -> Result<Self::Output> {
+        self.participants.sort();
+        Ok(self.participants)
     }
 }
 
@@ -293,7 +294,7 @@ impl ProtocolDriver for SignOfflineDriver {
         Ok(RoundMsg::from_round(round, messages))
     }
 
-    fn finish(&mut self) -> Result<Self::Output> {
+    fn finish(mut self) -> Result<Self::Output> {
         Ok(self.inner.pick_output().unwrap()?)
     }
 }
@@ -353,7 +354,7 @@ impl ProtocolDriver for SignOnlineDriver {
         Ok(RoundMsg::from_round(1, messages))
     }
 
-    fn finish(&mut self) -> Result<Self::Output> {
+    fn finish(self) -> Result<Self::Output> {
         let signature = self.sign.clone().complete(&self.partials)?;
         verify(&signature, &self.public_key, &self.data)
             .map_err(|_| Error::VerifySignature)?;
