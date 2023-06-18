@@ -462,6 +462,12 @@ pub struct SessionState {
 }
 
 impl SessionState {
+    
+    /// Total number of participants in this session.
+    pub fn len(&self) -> usize {
+        self.all_participants.len()
+    }
+
     /// Get the party index from a public key.
     pub fn party_number(
         &self,

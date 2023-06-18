@@ -1,6 +1,6 @@
 //! GG20 message signing.
 use mpc_relay_client::{Event, NetworkTransport, Transport};
-use mpc_relay_protocol::{hex, SessionState};
+use mpc_relay_protocol::{hex, SessionState, PartyNumber};
 use round_based::{Msg, StateMachine};
 use serde::{Deserialize, Serialize};
 
@@ -36,6 +36,59 @@ pub struct Signature {
     pub public_key: Vec<u8>,
     /// Address generated from the public key.
     pub address: String,
+}
+
+/// GG20 participant generator.
+pub struct ParticipantGenerator {
+    bridge: Bridge<ParticipantDriver>,
+}
+
+impl ParticipantGenerator {
+    /// Create a new GG20 participant generator.
+    pub fn new(
+        transport: Transport,
+        session: SessionState,
+        local_key_index: PartyNumber,
+    ) -> Result<Self> {
+        let buffer = RoundBuffer::new_fixed(1, (session.len() - 1) as u16);
+
+        let party_number = session
+            .party_number(transport.public_key())
+            .ok_or_else(|| {
+                Error::NotSessionParticipant(hex::encode(
+                    transport.public_key(),
+                ))
+            })?;
+
+        let driver = ParticipantDriver::new(
+            party_number.into(),
+            local_key_index.into(),
+        );
+        let bridge = Bridge {
+            transport,
+            driver,
+            buffer,
+            session,
+        };
+        Ok(Self { bridge })
+    }
+
+    /// Handle an incoming event.
+    pub async fn handle_event(
+        &mut self,
+        event: Event,
+    ) -> Result<Option<Vec<u16>>> {
+        Ok(self
+            .bridge
+            .handle_event(event)
+            .await
+            .map_err(Box::from)?)
+    }
+
+    /// Start running the protocol.
+    pub async fn execute(&mut self) -> Result<()> {
+        Ok(self.bridge.execute().await.map_err(Box::from)?)
+    }
 }
 
 /// GG20 presign generator.
