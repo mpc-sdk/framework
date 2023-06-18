@@ -52,7 +52,9 @@ impl Default for Parameters {
 /// protocol to completion.
 pub(crate) trait ProtocolDriver {
     /// Error type for results.
-    type Error: std::fmt::Debug;
+    type Error: std::fmt::Debug
+        + From<mpc_relay_client::Error>
+        + From<Box<crate::Error>>;
     /// Incoming message type.
     type Incoming: From<Self::Outgoing>;
     /// Outgoing message type.
@@ -77,9 +79,8 @@ pub(crate) trait ProtocolDriver {
     ) -> std::result::Result<Vec<Self::Outgoing>, Self::Error>;
 
     /// Complete the protocol and get the output.
-    fn finish(
-        self,
-    ) -> std::result::Result<Self::Output, Self::Error>;
+    fn finish(self)
+        -> std::result::Result<Self::Output, Self::Error>;
 }
 
 #[cfg(feature = "gg20")]

@@ -52,16 +52,12 @@ impl KeyGenerator {
         &mut self,
         event: Event,
     ) -> Result<Option<LocalKey<Secp256k1>>> {
-        Ok(self
-            .bridge
-            .handle_event(event)
-            .await
-            .map_err(Box::from)?)
+        self.bridge.handle_event(event).await
     }
 
     /// Start running the protocol.
     pub async fn execute(&mut self) -> Result<()> {
-        Ok(self.bridge.execute().await.map_err(Box::from)?)
+        self.bridge.execute().await
     }
 }
 

@@ -1,7 +1,7 @@
 use mpc_relay_client::{Event, NetworkTransport, Transport};
 use mpc_relay_protocol::SessionState;
 
-use crate::{Error, ProtocolDriver, Result, Round, RoundBuffer};
+use crate::{Error, ProtocolDriver, Round, RoundBuffer};
 use tokio::sync::Mutex;
 
 /// Initiate a session.
@@ -28,7 +28,7 @@ impl SessionInitiator {
     pub async fn create(
         &mut self,
         event: Event,
-    ) -> Result<Option<SessionState>> {
+    ) -> crate::Result<Option<SessionState>> {
         match event {
             Event::ServerConnected { .. } => {
                 self.transport
@@ -103,7 +103,7 @@ impl SessionParticipant {
     pub async fn join(
         &mut self,
         event: Event,
-    ) -> Result<Option<SessionState>> {
+    ) -> crate::Result<Option<SessionState>> {
         match event {
             Event::SessionReady(session) => {
                 let mut state = self.session_state.lock().await;
@@ -152,7 +152,6 @@ impl From<SessionParticipant> for Transport {
 /// Connects a network transport with a protocol driver.
 pub(crate) struct Bridge<D: ProtocolDriver> {
     pub(crate) transport: Transport,
-    //pub(crate) event_stream: EventStream,
     pub(crate) buffer: RoundBuffer<D::Incoming>,
     pub(crate) driver: Option<D>,
     pub(crate) session: SessionState,
@@ -163,7 +162,7 @@ impl<D: ProtocolDriver> Bridge<D> {
     pub async fn handle_event(
         &mut self,
         event: Event,
-    ) -> Result<Option<D::Output>> {
+    ) -> Result<Option<D::Output>, D::Error> {
         if let Event::JsonMessage {
             message,
             session_id,
@@ -172,43 +171,42 @@ impl<D: ProtocolDriver> Bridge<D> {
         {
             if let Some(session_id) = &session_id {
                 if session_id != &self.session.session_id {
-                    return Err(Error::SessionIdMismatch);
+                    return Err(
+                        Box::new(Error::SessionIdMismatch).into()
+                    );
                 }
             } else {
-                return Err(Error::SessionIdRequired);
+                return Err(Box::new(Error::SessionIdRequired).into());
             }
 
             let message: D::Outgoing = message.deserialize()?;
-
             let round_number = message.round_number();
-
             let incoming: D::Incoming = message.into();
             self.buffer.add_message(round_number, incoming);
 
             if self.buffer.is_ready(round_number) {
                 let messages = self.buffer.take(round_number);
                 for message in messages {
-                    // FIXME: do error conversion
                     self.driver
                         .as_mut()
                         .unwrap()
-                        .handle_incoming(message).unwrap();
+                        .handle_incoming(message)?;
                 }
-                
+
                 // For single round drivers we mustn't call proceed again
                 if self.buffer.len() == 1 {
-                    let result = self.driver.take().unwrap().finish().unwrap();
+                    let result =
+                        self.driver.take().unwrap().finish()?;
                     return Ok(Some(result));
                 }
 
-                // FIXME: do error conversion
-                let messages = self.driver
-                    .as_mut().unwrap().proceed().unwrap();
+                let messages =
+                    self.driver.as_mut().unwrap().proceed()?;
                 self.dispatch_round_messages(messages).await?;
 
                 if round_number.get() as usize == self.buffer.len() {
-                    // FIXME: do error conversion
-                    let result = self.driver.take().unwrap().finish().unwrap();
+                    let result =
+                        self.driver.take().unwrap().finish()?;
                     return Ok(Some(result));
                 }
             }
@@ -218,9 +216,8 @@ impl<D: ProtocolDriver> Bridge<D> {
     }
 
     /// Start running the protocol.
-    pub async fn execute(&mut self) -> Result<()> {
-        // FIXME: do error conversion
-        let messages = self.driver.as_mut().unwrap().proceed().unwrap();
+    pub async fn execute(&mut self) -> Result<(), D::Error> {
+        let messages = self.driver.as_mut().unwrap().proceed()?;
         self.dispatch_round_messages(messages).await?;
         Ok(())
     }
@@ -228,7 +225,7 @@ impl<D: ProtocolDriver> Bridge<D> {
     async fn dispatch_round_messages(
         &mut self,
         mut messages: Vec<D::Outgoing>,
-    ) -> Result<()> {
+    ) -> Result<(), D::Error> {
         let is_broadcast = messages.len() == 1
             && messages.get(0).as_ref().unwrap().is_broadcast();
 
@@ -249,7 +246,6 @@ impl<D: ProtocolDriver> Bridge<D> {
                 let party_number = message.receiver().unwrap();
                 let peer_key =
                     self.session.peer_key(*party_number).unwrap();
-
                 self.transport
                     .send_json(
                         peer_key,
@@ -259,7 +255,6 @@ impl<D: ProtocolDriver> Bridge<D> {
                     .await?;
             }
         }
-
         Ok(())
     }
 }

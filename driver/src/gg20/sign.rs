@@ -79,16 +79,12 @@ impl ParticipantGenerator {
         &mut self,
         event: Event,
     ) -> Result<Option<Vec<u16>>> {
-        Ok(self
-            .bridge
-            .handle_event(event)
-            .await
-            .map_err(Box::from)?)
+        self.bridge.handle_event(event).await
     }
 
     /// Start running the protocol.
     pub async fn execute(&mut self) -> Result<()> {
-        Ok(self.bridge.execute().await.map_err(Box::from)?)
+        self.bridge.execute().await
     }
 }
 
@@ -132,16 +128,12 @@ impl PreSignGenerator {
         &mut self,
         event: Event,
     ) -> Result<Option<CompletedOfflineStage>> {
-        Ok(self
-            .bridge
-            .handle_event(event)
-            .await
-            .map_err(Box::from)?)
+        self.bridge.handle_event(event).await
     }
 
     /// Start running the protocol.
     pub async fn execute(&mut self) -> Result<()> {
-        Ok(self.bridge.execute().await.map_err(Box::from)?)
+        self.bridge.execute().await
     }
 }
 
@@ -189,16 +181,12 @@ impl SignatureGenerator {
         &mut self,
         event: Event,
     ) -> Result<Option<Signature>> {
-        Ok(self
-            .bridge
-            .handle_event(event)
-            .await
-            .map_err(Box::from)?)
+        self.bridge.handle_event(event).await
     }
 
     /// Start running the protocol.
     pub async fn execute(&mut self) -> Result<()> {
-        Ok(self.bridge.execute().await.map_err(Box::from)?)
+        self.bridge.execute().await
     }
 }
 
