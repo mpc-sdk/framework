@@ -148,8 +148,63 @@ impl SignatureGenerator {
     }
 }
 
+/// GG20 local key participant number exchange.
+///
+/// Broadcasts the party number index for a previously generated 
+/// key share to other participants in a session.
+///
+/// This is required to determine the participants for a sign offline 
+/// protocol.
+struct ParticipantDriver {
+    party_number: u16,
+    participants: Vec<u16>,
+    local_key_index: u16,
+}
+
+impl ParticipantDriver {
+    /// Create a key participant driver.
+    pub fn new(
+        party_number: u16,
+        local_key_index: u16,
+    ) -> Self {
+        Self {
+            party_number,
+            participants: vec![local_key_index],
+            local_key_index,
+        }
+    }
+}
+
+impl ProtocolDriver for ParticipantDriver {
+    type Error = Error;
+    type Incoming = Msg<u16>;
+    type Outgoing = RoundMsg<u16>;
+    type Output = Vec<u16>;
+
+    fn handle_incoming(
+        &mut self,
+        message: Self::Incoming,
+    ) -> Result<()> {
+        self.participants.push(message.body);
+        Ok(())
+    }
+
+    fn proceed(&mut self) -> Result<Vec<Self::Outgoing>> {
+        let messages = vec![Msg {
+            sender: self.party_number,
+            receiver: None,
+            body: self.local_key_index,
+        }];
+        Ok(RoundMsg::from_round(1, messages))
+    }
+
+    fn finish(&mut self) -> Result<Self::Output> {
+        Ok(self.participants.clone())
+    }
+}
+
 /// Drive the offline signing stage.
-pub struct SignOfflineDriver {
+struct SignOfflineDriver {
     inner: OfflineStage,
 }
 
@@ -206,7 +261,7 @@ impl ProtocolDriver for SignOfflineDriver {
 }
 
 /// Drive the online signing stage.
-pub struct SignOnlineDriver {
+struct SignOnlineDriver {
     party_number: u16,
     data: BigInt,
     public_key: Point<Secp256k1>,

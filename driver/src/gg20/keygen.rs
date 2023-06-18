@@ -66,7 +66,7 @@ impl KeyGenerator {
 }
 
 /// GG20 keygen driver.
-pub struct KeygenDriver {
+struct KeygenDriver {
     inner: Keygen,
 }
 
