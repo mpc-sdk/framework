@@ -8,7 +8,7 @@ use mpc_driver::{
     Parameters, SessionInitiator, SessionParticipant,
 };
 
-use mpc_relay_client::{NetworkTransport, Transport};
+use mpc_relay_client::{NetworkTransport, Transport, EventStream};
 use mpc_relay_protocol::SessionState;
 
 use super::new_client;
@@ -17,8 +17,6 @@ pub async fn run(
     server: &str,
     server_public_key: Vec<u8>,
 ) -> Result<()> {
-    let mut sessions: Vec<SessionState> = Vec::new();
-
     // Create new clients
     let (client_i, event_loop_i, _) = new_client::<anyhow::Error>(
         server,
@@ -43,20 +41,58 @@ pub async fn run(
     let mut client_p_1_transport: Transport = client_p_1.into();
     let mut client_p_2_transport: Transport = client_p_2.into();
 
-    let session_participants = vec![
-        participant_key_1.public.clone(),
-        participant_key_2.public.clone(),
-    ];
-
     // Each client handshakes with the server
     client_i_transport.connect().await?;
     client_p_1_transport.connect().await?;
     client_p_2_transport.connect().await?;
 
+    // 2 of 3
     let parameters = Parameters {
         parties: 3,
         threshold: 1, // Remember signing requires t + 1
     };
+    
+    // Event loop streams
+    let mut s_i = event_loop_i.run();
+    let mut s_p_1 = event_loop_p_1.run();
+    let mut s_p_2 = event_loop_p_2.run();
+
+    let keygen_participants = vec![
+        participant_key_1.public.clone(),
+        participant_key_2.public.clone(),
+    ];
+
+    let key_shares = gg20_keygen(
+        parameters.clone(),
+        keygen_participants,
+        client_i_transport,
+        client_p_1_transport,
+        client_p_2_transport,
+        &mut s_i,
+        &mut s_p_1,
+        &mut s_p_2,
+    ).await?;
+
+    let sign_participants = vec![
+        participant_key_2.public.clone(),
+    ];
+
+    Ok(())
+}
+
+/// Create a new session and then perform 
+/// distributed key generation.
+async fn gg20_keygen(
+    parameters: Parameters,
+    session_participants: Vec<Vec<u8>>,
+    client_i_transport: Transport,
+    client_p_1_transport: Transport,
+    client_p_2_transport: Transport,
+    s_i: &mut EventStream,
+    s_p_1: &mut EventStream,
+    s_p_2: &mut EventStream,
+) -> Result<HashMap<Vec<u8>, LocalKey<Secp256k1>>> {
+    let mut sessions: Vec<SessionState> = Vec::new();
 
     let mut client_i_session = SessionInitiator::new(
         client_i_transport,
@@ -67,10 +103,6 @@ pub async fn run(
 
     let mut client_p_2_session =
         SessionParticipant::new(client_p_2_transport);
-
-    let mut s_i = event_loop_i.run();
-    let mut s_p_1 = event_loop_p_1.run();
-    let mut s_p_2 = event_loop_p_2.run();
 
     // Prepare the sessions for each party
     loop {
@@ -119,7 +151,7 @@ pub async fn run(
         }
     }
 
-    log::info!("sessions ready, preparing for keygen");
+    //log::info!("sessions ready, preparing for keygen");
 
     // Prepare for key generation
     let client_i_transport: Transport = client_i_session.into();
@@ -129,7 +161,8 @@ pub async fn run(
     let session_i = sessions.remove(0);
     let session_p_1 = sessions.remove(0);
     let session_p_2 = sessions.remove(0);
-
+    
+    /*
     println!(
         "session_i party_number {:#?}",
         session_i.party_number(client_i_transport.public_key())
@@ -142,6 +175,7 @@ pub async fn run(
         "session_p_2 party_number {:#?}",
         session_p_2.party_number(client_p_2_transport.public_key())
     );
+    */
 
     let mut keygen_i = KeyGenerator::new(
         client_i_transport.clone(),
@@ -216,7 +250,8 @@ pub async fn run(
             },
         }
     }
-
+    
+    /*
     let local_key_i =
         key_shares.remove(client_i_transport.public_key()).unwrap();
     let local_key_p_1 = key_shares
@@ -229,6 +264,7 @@ pub async fn run(
     println!("local key i index {}", local_key_i.i);
     println!("local key p_1 index {}", local_key_p_1.i);
     println!("local key p_2 index {}", local_key_p_2.i);
+    */
 
-    Ok(())
+    Ok(key_shares)
 }

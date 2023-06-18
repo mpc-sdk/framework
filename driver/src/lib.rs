@@ -25,7 +25,7 @@ pub use curv;
 use serde::{Deserialize, Serialize};
 
 /// Parameters used during key generation.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct Parameters {
     /// Number of parties `n`.
     pub parties: u16,
