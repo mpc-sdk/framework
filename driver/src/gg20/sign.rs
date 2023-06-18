@@ -50,21 +50,16 @@ impl PreSignGenerator {
         parameters: Parameters,
         session: SessionState,
         local_key: LocalKey<Secp256k1>,
+        participants: Vec<u16>,
     ) -> Result<Self> {
-        let buffer = RoundBuffer::new_fixed(7, parameters.threshold);
-
-        let party_number = session
-            .party_number(transport.public_key())
-            .ok_or_else(|| {
-                Error::NotSessionParticipant(hex::encode(
-                    transport.public_key(),
-                ))
-            })?;
-
-        let participants = session.participants();
-
+        let buffer = RoundBuffer::new_fixed(6, parameters.threshold);
+        let party_index = participants
+            .iter()
+            .position(|index| index == &local_key.i)
+            .map(|pos| pos + 1)
+            .ok_or_else(|| Error::LocalKeyNotParticipant)? as u16;
         let driver = SignOfflineDriver::new(
-            party_number.into(),
+            party_index,
             participants,
             local_key,
         )?;

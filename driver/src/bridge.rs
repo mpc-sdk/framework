@@ -197,6 +197,8 @@ impl<D: ProtocolDriver> Bridge<D> {
                     self.dispatch_round_messages(messages)
                         .await?;
 
+                    //println!("is ready... {}", round_number.get());
+
                     if round_number.get() as usize == self.buffer.len() {
                         // FIXME: do error conversion
                         let result = self.driver.finish().unwrap();

@@ -483,6 +483,7 @@ impl SessionState {
         None
     }
     
+    /*
     /// Get the party numbers for all session participants.
     pub fn participants(&self) -> Vec<u16> {
         self.all_participants
@@ -492,6 +493,7 @@ impl SessionState {
             .map(|num| num.unwrap().get())
             .collect()
     }
+    */
 
     /// Get the connections a peer should make.
     pub fn connections(&self, own_key: &[u8]) -> &[Vec<u8>] {

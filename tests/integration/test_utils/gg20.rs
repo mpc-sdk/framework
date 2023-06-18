@@ -4,21 +4,63 @@ use std::collections::HashMap;
 
 use mpc_driver::{
     curv::elliptic::curves::secp256_k1::Secp256k1,
-    gg20::KeyGenerator, gg_2020::state_machine::keygen::LocalKey,
+    gg20::{KeyGenerator, PreSignGenerator},
+    gg_2020::state_machine::{keygen::LocalKey, sign::CompletedOfflineStage},
     Parameters, SessionInitiator, SessionParticipant,
 };
 
 use mpc_relay_client::{NetworkTransport, Transport, EventStream};
-use mpc_relay_protocol::SessionState;
+use mpc_relay_protocol::{SessionState, snow::Keypair};
 
-use super::new_client;
+use super::{new_client, new_client_with_keypair, clone_keypair};
 
 pub async fn run(
     server: &str,
     server_public_key: Vec<u8>,
 ) -> Result<()> {
+    // 2 of 3
+    let parameters = Parameters {
+        parties: 3,
+        threshold: 1, // Remember signing requires t + 1
+    };
+    
+    let (key_shares, keypairs) = gg20_keygen(
+        server,
+        server_public_key.clone(),
+        parameters.clone(),
+    ).await?;
+    
+    let pre_signatures = gg20_sign_offline(
+        server,
+        server_public_key.clone(),
+        parameters.clone(),
+        key_shares,
+        keypairs,
+    ).await?;
+
+    Ok(())
+}
+
+/// Create a new session and then perform 
+/// distributed key generation.
+async fn gg20_keygen(
+    server: &str,
+    server_public_key: Vec<u8>,
+    parameters: Parameters,
+    /*
+    session_participants: Vec<Vec<u8>>,
+    client_i_transport: Transport,
+    client_p_1_transport: Transport,
+    client_p_2_transport: Transport,
+    s_i: &mut EventStream,
+    s_p_1: &mut EventStream,
+    s_p_2: &mut EventStream,
+    */
+) -> Result<(HashMap<Vec<u8>, LocalKey<Secp256k1>>, Vec<Keypair>)> {
+    let mut sessions: Vec<SessionState> = Vec::new();
+
     // Create new clients
-    let (client_i, event_loop_i, _) = new_client::<anyhow::Error>(
+    let (client_i, event_loop_i, initiator_key) = new_client::<anyhow::Error>(
         server,
         server_public_key.clone(),
     )
@@ -36,6 +78,11 @@ pub async fn run(
             server_public_key.clone(),
         )
         .await?;
+    let keypairs = vec![
+        clone_keypair(&initiator_key),
+        clone_keypair(&participant_key_1),
+        clone_keypair(&participant_key_2),
+    ];
 
     let mut client_i_transport: Transport = client_i.into();
     let mut client_p_1_transport: Transport = client_p_1.into();
@@ -46,53 +93,15 @@ pub async fn run(
     client_p_1_transport.connect().await?;
     client_p_2_transport.connect().await?;
 
-    // 2 of 3
-    let parameters = Parameters {
-        parties: 3,
-        threshold: 1, // Remember signing requires t + 1
-    };
-    
     // Event loop streams
     let mut s_i = event_loop_i.run();
     let mut s_p_1 = event_loop_p_1.run();
     let mut s_p_2 = event_loop_p_2.run();
 
-    let keygen_participants = vec![
+    let session_participants = vec![
         participant_key_1.public.clone(),
         participant_key_2.public.clone(),
     ];
-
-    let key_shares = gg20_keygen(
-        parameters.clone(),
-        keygen_participants,
-        client_i_transport,
-        client_p_1_transport,
-        client_p_2_transport,
-        &mut s_i,
-        &mut s_p_1,
-        &mut s_p_2,
-    ).await?;
-
-    let sign_participants = vec![
-        participant_key_2.public.clone(),
-    ];
-
-    Ok(())
-}
-
-/// Create a new session and then perform 
-/// distributed key generation.
-async fn gg20_keygen(
-    parameters: Parameters,
-    session_participants: Vec<Vec<u8>>,
-    client_i_transport: Transport,
-    client_p_1_transport: Transport,
-    client_p_2_transport: Transport,
-    s_i: &mut EventStream,
-    s_p_1: &mut EventStream,
-    s_p_2: &mut EventStream,
-) -> Result<HashMap<Vec<u8>, LocalKey<Secp256k1>>> {
-    let mut sessions: Vec<SessionState> = Vec::new();
 
     let mut client_i_session = SessionInitiator::new(
         client_i_transport,
@@ -266,5 +275,167 @@ async fn gg20_keygen(
     println!("local key p_2 index {}", local_key_p_2.i);
     */
 
-    Ok(key_shares)
+    Ok((key_shares, keypairs))
+}
+
+/// Create a new session and then perform 
+/// pre-signature generation.
+async fn gg20_sign_offline(
+    server: &str,
+    server_public_key: Vec<u8>,
+    parameters: Parameters,
+    mut key_shares: HashMap<Vec<u8>, LocalKey<Secp256k1>>,
+    mut keypairs: Vec<Keypair>,
+) -> Result<HashMap<Vec<u8>, CompletedOfflineStage>> {
+    let initiator_key = keypairs.remove(0);
+    let participant_key_2 = keypairs.pop().unwrap();
+
+    let sign_participants = vec![
+        participant_key_2.public.clone(),
+    ];
+    
+    // Create new clients for signing
+    let (client_i, event_loop_i) = new_client_with_keypair::<anyhow::Error>(
+        server,
+        server_public_key.clone(),
+        initiator_key,
+    ).await?;
+    let (client_p_2, event_loop_p_2) =
+        new_client_with_keypair::<anyhow::Error>(
+            server,
+            server_public_key.clone(),
+            participant_key_2,
+        )
+        .await?;
+
+    let mut client_i_transport: Transport = client_i.into();
+    let mut client_p_2_transport: Transport = client_p_2.into();
+
+    // Each client handshakes with the server
+    client_i_transport.connect().await?;
+    client_p_2_transport.connect().await?;
+
+    let mut s_i = event_loop_i.run();
+    let mut s_p_2 = event_loop_p_2.run();
+
+    let message = [16u8; 32];
+
+    let local_key_i = key_shares.remove(
+        client_i_transport.public_key()).unwrap();
+    let local_key_p_2 = key_shares.remove(
+        client_p_2_transport.public_key()).unwrap();
+    
+    let participants: Vec<u16> = vec![
+        local_key_i.i, local_key_p_2.i];
+
+    let mut sessions: Vec<SessionState> = Vec::new();
+
+    let mut client_i_session = SessionInitiator::new(
+        client_i_transport,
+        sign_participants,
+    );
+    let mut client_p_2_session =
+        SessionParticipant::new(client_p_2_transport);
+
+    // Prepare the sessions for each party
+    loop {
+        if sessions.len() == 2 {
+            break;
+        }
+
+        select! {
+            event = s_i.next().fuse() => {
+                match event {
+                    Some(event) => {
+                        let event = event?;
+
+                        if let Some(session) =
+                            client_i_session.create(event).await? {
+                            sessions.push(session);
+                        }
+                    }
+                    _ => {}
+                }
+            },
+            event = s_p_2.next().fuse() => {
+                match event {
+                    Some(event) => {
+                        let event = event?;
+                        if let Some(session) =
+                            client_p_2_session.join(event).await? {
+                            sessions.push(session);
+                        }
+                    }
+                    _ => {}
+                }
+            },
+        }
+    }
+
+    // Prepare for pre-signature generation
+    let client_i_transport: Transport = client_i_session.into();
+    let client_p_2_transport: Transport = client_p_2_session.into();
+
+    let session_i = sessions.remove(0);
+    let session_p_2 = sessions.remove(0);
+
+    let mut presign_i = PreSignGenerator::new(
+        client_i_transport.clone(),
+        parameters.clone(),
+        session_i,
+        local_key_i,
+        participants.clone(),
+    )?;
+    let mut presign_p_2 = PreSignGenerator::new(
+        client_p_2_transport.clone(),
+        parameters.clone(),
+        session_p_2,
+        local_key_p_2,
+        participants.clone(),
+    )?;
+
+    // Each party starts pre-signature generation.
+    presign_i.execute().await?;
+    presign_p_2.execute().await?;
+
+    let mut pre_signatures: HashMap<Vec<u8>, CompletedOfflineStage> =
+        HashMap::new();
+
+    loop {
+        if pre_signatures.len() == 2 {
+            break;
+        }
+        select! {
+            event = s_i.next().fuse() => {
+                match event {
+                    Some(event) => {
+                        let event = event?;
+                        if let Some(pre_signature) =
+                            presign_i.handle_event(event).await? {
+                            pre_signatures.insert(
+                                client_i_transport.public_key().to_vec(),
+                                pre_signature);
+                        }
+                    }
+                    _ => {}
+                }
+            },
+            event = s_p_2.next().fuse() => {
+                match event {
+                    Some(event) => {
+                        let event = event?;
+                        if let Some(pre_signature) =
+                            presign_p_2.handle_event(event).await? {
+                            pre_signatures.insert(
+                                client_p_2_transport.public_key().to_vec(),
+                                pre_signature);
+                        }
+                    }
+                    _ => {}
+                }
+            },
+        }
+    }
+
+    Ok(pre_signatures)
 }
