@@ -17,7 +17,7 @@ pem = "2"
 uuid = { version = "1", features = ["v4", "serde"] }
 http = "0.2"
 hex = { version = "0.4", features = ["serde"] }
-serde = "1"
+serde = { version = "1", features = ["derive"] }
 
 [dev-dependencies]
 anyhow = "1"
