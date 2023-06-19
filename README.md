@@ -1,4 +1,4 @@
-# MPC Relay
+# Multi-party computation protocol
 
 End-to-end encrypted relay service designed for MPC/TSS applications built using the [noise protocol][] and websockets for the transport layer.
 

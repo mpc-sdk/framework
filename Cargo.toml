@@ -5,7 +5,7 @@ edition = "2021"
 description = "Noise protocol websocket relay for MPC/TSS applications"
 keywords = ["mpc", "tss", "relay", "crypto", "e2ee"]
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/tmpfs/mpc-relay"
+repository = "https://github.com/tmpfs/mpc-protocol"
 
 [features]
 gg20 = ["mpc-driver/gg20"]
