@@ -2,7 +2,7 @@ use crate::Result;
 use async_trait::async_trait;
 use futures::{select, FutureExt, StreamExt};
 use mpc_protocol::{SessionId, SessionState};
-use mpc_relay_client::{
+use mpc_client::{
     Event, EventStream, NetworkTransport, Transport,
 };
 use tokio::sync::Mutex;

@@ -6,7 +6,7 @@ use mpc_driver::{
     gg20::KeyGenDriver, wait_for_driver, wait_for_session,
     SessionHandler, SessionInitiator, SessionParticipant,
 };
-use mpc_relay_client::{NetworkTransport, Transport};
+use mpc_client::{NetworkTransport, Transport};
 
 pub(crate) async fn keygen(
     options: SessionOptions,

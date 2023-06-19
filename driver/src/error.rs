@@ -19,7 +19,7 @@ pub enum Error {
 
     /// Client library errors.
     #[error(transparent)]
-    Client(#[from] mpc_relay_client::Error),
+    Client(#[from] mpc_client::Error),
 }
 
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]

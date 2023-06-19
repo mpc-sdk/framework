@@ -2,7 +2,7 @@
 #![deny(missing_docs)]
 #![cfg_attr(all(doc, CHANNEL_NIGHTLY), feature(doc_auto_cfg))]
 use async_trait::async_trait;
-use mpc_relay_client::Event;
+use mpc_client::Event;
 
 mod bridge;
 mod error;
@@ -37,7 +37,7 @@ pub use curv;
 #[async_trait]
 pub trait Driver {
     /// Error type.
-    type Error: std::fmt::Debug + From<mpc_relay_client::Error>;
+    type Error: std::fmt::Debug + From<mpc_client::Error>;
 
     /// Output yielded when the driver completes.
     type Output;
@@ -59,7 +59,7 @@ pub trait Driver {
 pub(crate) trait ProtocolDriver {
     /// Error type for results.
     type Error: std::fmt::Debug
-        + From<mpc_relay_client::Error>
+        + From<mpc_client::Error>
         + From<Box<crate::Error>>;
     /// Incoming message type.
     type Incoming: From<Self::Outgoing>;

@@ -20,15 +20,15 @@ pub use web::*;
 
 use mpc_protocol::{generate_keypair, Keypair};
 
-use mpc_relay_client::{Client, ClientOptions, EventLoop};
+use mpc_client::{Client, ClientOptions, EventLoop};
 
 /// Create a new client connected to the mock server.
-pub async fn new_client<E: From<mpc_relay_client::Error>>(
+pub async fn new_client<E: From<mpc_client::Error>>(
     server: &str,
     server_public_key: Vec<u8>,
 ) -> Result<(Client, EventLoop, Keypair), E> {
     let keypair = generate_keypair().map_err(|e| {
-        let err = mpc_relay_client::Error::from(e);
+        let err = mpc_client::Error::from(e);
         err
     })?;
     let copy = keypair.clone();
@@ -39,7 +39,7 @@ pub async fn new_client<E: From<mpc_relay_client::Error>>(
 }
 
 pub async fn new_client_with_keypair<
-    E: From<mpc_relay_client::Error>,
+    E: From<mpc_client::Error>,
 >(
     server: &str,
     server_public_key: Vec<u8>,

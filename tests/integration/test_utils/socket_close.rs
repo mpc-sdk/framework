@@ -1,6 +1,6 @@
 use anyhow::Result;
 use futures::StreamExt;
-use mpc_relay_client::{Event, NetworkTransport};
+use mpc_client::{Event, NetworkTransport};
 
 use super::new_client;
 

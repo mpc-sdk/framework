@@ -8,7 +8,7 @@ use mpc_driver::{
     SessionInitiator, SessionParticipant,
 };
 use mpc_protocol::PartyNumber;
-use mpc_relay_client::{NetworkTransport, Transport};
+use mpc_client::{NetworkTransport, Transport};
 
 pub(crate) async fn sign(
     options: SessionOptions,

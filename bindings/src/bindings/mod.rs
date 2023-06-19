@@ -20,7 +20,7 @@ mod types;
 pub use types::*;
 
 use mpc_protocol::Keypair;
-use mpc_relay_client::{Client, ClientOptions, EventLoop};
+use mpc_client::{Client, ClientOptions, EventLoop};
 
 /// Create a new relay client using the provided keypair connected
 /// to a relay server.

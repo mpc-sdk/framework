@@ -43,11 +43,11 @@ tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "fs", "i
 axum-server = { version = "0.5", features = ["tls-rustls"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-mpc-relay-client= { path = "client" }
+mpc-client= { path = "client" }
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 tokio = { version = "1", features = ["sync", "time"] }
-mpc-relay-client= { path = "client" }
+mpc-client= { path = "client" }
 wasm-bindgen-test = "0.3"
 wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
 wasm-log = "0.3"

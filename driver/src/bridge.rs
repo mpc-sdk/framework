@@ -1,6 +1,6 @@
 use futures::{select, FutureExt, StreamExt};
 use mpc_protocol::SessionState;
-use mpc_relay_client::{
+use mpc_client::{
     Event, EventStream, NetworkTransport, Transport,
 };
 

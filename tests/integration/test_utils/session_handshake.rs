@@ -5,7 +5,7 @@ use mpc_driver::{
     SessionEventHandler, SessionInitiator, SessionParticipant,
 };
 use mpc_protocol::SessionState;
-use mpc_relay_client::{NetworkTransport, Transport};
+use mpc_client::{NetworkTransport, Transport};
 
 use super::new_client;
 

@@ -1,6 +1,6 @@
 [package]
-name = "mpc-relay-client"
-version = "0.3.0"
+name = "mpc-client"
+version = "0.4.0"
 edition = "2021"
 description = "Noise protocol websocket relay client for MPC/TSS applications"
 keywords = ["mpc", "tss", "relay", "crypto", "e2ee"]
@@ -8,13 +8,12 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/tmpfs/mpc-relay"
 
 [dependencies]
-mpc-protocol = { path = "../protocol" }
-#mpc-protocol = "0.3"
+#mpc-protocol = { path = "../protocol" }
+mpc-protocol = "0.4"
 thiserror = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tracing = "0.1"
-#tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 async-trait = "0.1"
 futures = "0.3"
 async-stream = "0.3"
@@ -32,15 +31,12 @@ serde-wasm-bindgen = "0.5"
 js-sys = "0.3"
 log = "0.4"
 wasm-log = "0.3"
-#fastsink = "0.1"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies.web-sys]
 version = "0.3"
 features = [
   "BinaryType",
-  "Blob",
   "ErrorEvent",
-  "FileReader",
   "MessageEvent",
   "ProgressEvent",
   "WebSocket",

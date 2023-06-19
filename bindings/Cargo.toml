@@ -1,6 +1,6 @@
 [package]
 name = "mpc-bindings"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 description = "Webassembly bindings to drive multi-party computation protocols"
 
@@ -10,7 +10,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 mpc-driver = { path = "../driver", features = ["gg20"] }
 mpc-protocol = { path = "../protocol" }
-mpc-relay-client = { path = "../client" }
+mpc-client = { path = "../client" }
 
 mpc-ecdsa-getrandom-hack = "*"
 getrandom = {version = "0.1.16", features = ["wasm-bindgen"]}

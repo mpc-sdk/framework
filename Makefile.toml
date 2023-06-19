@@ -85,7 +85,7 @@ args = [
   "--target",
   "wasm32-unknown-unknown",
   "-p",
-  "mpc-relay-client",
+  "mpc-client",
   "-p",
   "mpc-driver",
   "-p",
