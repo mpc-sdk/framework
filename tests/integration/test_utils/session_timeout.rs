@@ -1,6 +1,6 @@
 use anyhow::Result;
 use futures::StreamExt;
-use mpc_relay_client::Event;
+use mpc_client::{Event, NetworkTransport};
 
 use super::new_client;
 
@@ -22,9 +22,8 @@ pub async fn run(
         )
         .await?;
 
-    let session_participants = vec![
-        participant_key.public.clone(),
-    ];
+    let session_participants =
+        vec![participant_key.public_key().to_vec()];
 
     initiator.connect().await?;
     participant.connect().await?;
@@ -39,7 +38,9 @@ pub async fn run(
         }
         match &event {
             Event::ServerConnected { .. } => {
-                initiator.new_session(session_participants.clone()).await?;
+                initiator
+                    .new_session(session_participants.clone(), None)
+                    .await?;
             }
             Event::SessionTimeout(_) => {
                 break;

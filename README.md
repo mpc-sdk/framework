@@ -92,13 +92,13 @@ cargo make test-wasm
 
 ## License
 
-MIT or Apache-2.0
+The driver crate is GPLv3 all other code is either MIT or Apache-2.0.
 
 [noise protocol]: https://noiseprotocol.org/
 [rust]: https://www.rust-lang.org/
 [web-sys]: https://docs.rs/web-sys
 [tokio-tungstenite]: https://docs.rs/tokio-tungstenite
-[protocol]: https://docs.rs/mpc-relay-protocol
+[protocol]: https://docs.rs/mpc-protocol
 [server]: https://docs.rs/mpc-relay-server
-[client]: https://docs.rs/mpc-relay-client
+[client]: https://docs.rs/mpc-client
 [cli]: https://docs.rs/mpc-relay

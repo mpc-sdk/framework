@@ -1,8 +1,8 @@
 [package]
-name = "mpc-relay-protocol"
-version = "0.3.0"
+name = "mpc-protocol"
+version = "0.4.0"
 edition = "2021"
-description = "Protocol layer for the MPC/TSS relay using the noise framework"
+description = "Multi-party computation framework using the noise protocol for end-to-end encryption"
 keywords = ["mpc", "tss", "relay", "crypto", "e2ee"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/tmpfs/mpc-relay"
@@ -14,9 +14,10 @@ binary-stream = { version = "8.1", features = ["async"] }
 async-trait = "0.1"
 futures = "0.3"
 pem = "2"
-uuid = { version = "1", features = ["v4"] }
+uuid = { version = "1", features = ["v4", "serde"] }
 http = "0.2"
 hex = { version = "0.4", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
 
 [dev-dependencies]
 anyhow = "1"

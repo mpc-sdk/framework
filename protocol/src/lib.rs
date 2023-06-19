@@ -6,6 +6,7 @@
 //! message is 65535 and we further limit the size of buffers
 //! for encoding to 32KB.
 #![deny(missing_docs)]
+#![allow(clippy::len_without_is_empty)]
 
 #[doc(hidden)]
 pub mod channel;
@@ -27,5 +28,11 @@ pub use pem;
 pub use snow;
 pub use uuid;
 
-/// Result type for the relay protocol.
+/// Round number.
+pub type RoundNumber = std::num::NonZeroU16;
+
+/// Party number.
+pub type PartyNumber = std::num::NonZeroU16;
+
+/// Result type for the protocol library.
 pub type Result<T> = std::result::Result<T, Error>;

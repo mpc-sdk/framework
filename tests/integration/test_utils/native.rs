@@ -4,7 +4,7 @@ use axum_server::Handle;
 use std::{net::SocketAddr, thread};
 use tokio::{fs, sync::oneshot};
 
-use mpc_relay_protocol::decode_keypair;
+use mpc_protocol::decode_keypair;
 
 use mpc_relay_server::{RelayServer, ServerConfig};
 
@@ -15,7 +15,7 @@ pub(crate) const SERVER: &str = "ws://localhost:7337";
 pub async fn server_public_key() -> Result<Vec<u8>> {
     let contents = fs::read_to_string("tests/test.pem").await?;
     let keypair = decode_keypair(&contents)?;
-    Ok(keypair.public)
+    Ok(keypair.public_key().to_vec())
 }
 
 #[allow(dead_code)]

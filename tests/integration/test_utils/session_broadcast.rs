@@ -3,8 +3,8 @@ use futures::{select, FutureExt, StreamExt};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use mpc_relay_client::{Client, Event};
-use mpc_relay_protocol::SessionState;
+use mpc_protocol::SessionState;
+use mpc_client::{Client, Event, NetworkTransport};
 
 use super::new_client;
 
@@ -48,8 +48,8 @@ pub async fn run(
         .await?;
 
     let session_participants = vec![
-        participant_key_1.public.clone(),
-        participant_key_2.public.clone(),
+        participant_key_1.public_key().to_vec(),
+        participant_key_2.public_key().to_vec(),
     ];
 
     // Each client handshakes with the server
@@ -152,7 +152,7 @@ async fn initiator(
         Event::ServerConnected { .. } => {
             tracing::info!("initiator connected to server");
             // Initiate a session context for broadcasting
-            client.new_session(session_participants).await?;
+            client.new_session(session_participants, None).await?;
         }
         Event::SessionCreated(session) => {
             tracing::info!(

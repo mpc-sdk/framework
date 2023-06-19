@@ -1,14 +1,35 @@
+use crate::{encoding::types, PartyNumber};
 use http::StatusCode;
+use serde::{Deserialize, Serialize};
 use snow::{HandshakeState, TransportState};
 use std::{
     collections::{HashMap, HashSet},
     time::{Duration, SystemTime},
 };
 
-use crate::encoding::types;
-
 /// Identifier for sessions.
 pub type SessionId = uuid::Uuid;
+
+/// Parameters used during key generation.
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+pub struct Parameters {
+    /// Number of parties `n`.
+    pub parties: u16,
+    /// Threshold for signing `t`.
+    ///
+    /// The threshold must be crossed (`t + 1`) for signing
+    /// to commence.
+    pub threshold: u16,
+}
+
+impl Default for Parameters {
+    fn default() -> Self {
+        Self {
+            parties: 3,
+            threshold: 1,
+        }
+    }
+}
 
 /// Enumeration of protocol states.
 pub enum ProtocolState {
@@ -44,7 +65,7 @@ impl From<&HandshakeMessage> for u8 {
     }
 }
 
-/// Transparent messaages are not encrypted.
+/// Transparent messages are not encrypted.
 #[derive(Default, Debug)]
 pub enum TransparentMessage {
     #[default]
@@ -106,7 +127,7 @@ pub enum ServerMessage {
     /// peer connections to each other.
     SessionActive(SessionState),
     /// Notification dispatched to all participants
-    /// in a session when the participants did not 
+    /// in a session when the participants did not
     /// all connect within the expected timeframe.
     SessionTimeout(SessionId),
     /// Request to close a session.
@@ -129,7 +150,9 @@ impl From<&ServerMessage> for u8 {
             }
             ServerMessage::SessionReady(_) => types::SESSION_READY,
             ServerMessage::SessionActive(_) => types::SESSION_ACTIVE,
-            ServerMessage::SessionTimeout(_) => types::SESSION_TIMEOUT,
+            ServerMessage::SessionTimeout(_) => {
+                types::SESSION_TIMEOUT
+            }
             ServerMessage::CloseSession(_) => types::SESSION_CLOSE,
             ServerMessage::SessionFinished(_) => {
                 types::SESSION_FINISHED
@@ -365,8 +388,10 @@ impl SessionManager {
         &mut self,
         owner_key: Vec<u8>,
         participant_keys: Vec<Vec<u8>>,
+        session_id: Option<SessionId>,
     ) -> SessionId {
-        let session_id = SessionId::new_v4();
+        let session_id =
+            session_id.unwrap_or_else(|| SessionId::new_v4());
         let session = Session {
             owner_key,
             participant_keys: participant_keys.into_iter().collect(),
@@ -446,6 +471,8 @@ impl SessionManager {
 /// is automatically added as the session *owner*.
 #[derive(Default, Debug)]
 pub struct SessionRequest {
+    /// User supplied session identifier.
+    pub session_id: Option<SessionId>,
     /// Public keys of the session participants.
     pub participant_keys: Vec<Vec<u8>>,
 }
@@ -460,6 +487,47 @@ pub struct SessionState {
 }
 
 impl SessionState {
+    /// Total number of participants in this session.
+    pub fn len(&self) -> usize {
+        self.all_participants.len()
+    }
+
+    /// Get the party index from a public key.
+    pub fn party_number(
+        &self,
+        public_key: impl AsRef<[u8]>,
+    ) -> Option<PartyNumber> {
+        self.all_participants
+            .iter()
+            .position(|k| k == public_key.as_ref())
+            .map(|pos| PartyNumber::new((pos + 1) as u16).unwrap())
+    }
+
+    /// Get the public key for a party number.
+    pub fn peer_key(
+        &self,
+        party_number: PartyNumber,
+    ) -> Option<&[u8]> {
+        for (index, key) in self.all_participants.iter().enumerate() {
+            if index + 1 == party_number.get() as usize {
+                return Some(key.as_slice());
+            }
+        }
+        None
+    }
+
+    /*
+    /// Get the party numbers for all session participants.
+    pub fn participants(&self) -> Vec<u16> {
+        self.all_participants
+            .iter()
+            .map(|key| self.party_number(key))
+            .filter(|num| num.is_some())
+            .map(|num| num.unwrap().get())
+            .collect()
+    }
+    */
+
     /// Get the connections a peer should make.
     pub fn connections(&self, own_key: &[u8]) -> &[Vec<u8>] {
         if self.all_participants.is_empty() {
@@ -477,5 +545,14 @@ impl SessionState {
         } else {
             &[]
         }
+    }
+
+    /// Get the recipients for a broadcast message.
+    pub fn recipients(&self, own_key: &[u8]) -> Vec<Vec<u8>> {
+        self.all_participants
+            .iter()
+            .filter(|&k| k != own_key)
+            .map(|k| k.to_vec())
+            .collect()
     }
 }

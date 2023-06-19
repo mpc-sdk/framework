@@ -12,9 +12,11 @@
 mod client;
 mod error;
 mod event_loop;
+mod transport;
 
-pub(crate) use client::client_impl;
-pub use event_loop::{Event, JsonMessage};
+pub(crate) use client::{client_impl, client_transport_impl};
+pub use event_loop::{Event, EventStream, JsonMessage};
+pub use transport::{NetworkTransport, Transport};
 
 #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
 mod native;
@@ -30,8 +32,8 @@ mod web;
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 pub use web::{WebClient as Client, WebEventLoop as EventLoop};
 
-use mpc_relay_protocol::{
-    hex, snow, Encoding, OpaqueMessage, ProtocolState,
+use mpc_protocol::{
+    hex, Encoding, Keypair, OpaqueMessage, ProtocolState,
     RequestMessage, SealedEnvelope, SessionId, TAGLEN,
 };
 use std::{collections::HashMap, sync::Arc};
@@ -43,7 +45,7 @@ pub(crate) type Server = Arc<RwLock<Option<ProtocolState>>>;
 /// Options used to create a new websocket client.
 pub struct ClientOptions {
     /// Client static keypair.
-    pub keypair: snow::Keypair,
+    pub keypair: Keypair,
     /// Public key for the server to connect to.
     pub server_public_key: Vec<u8>,
 }
@@ -58,14 +60,14 @@ impl ClientOptions {
         format!(
             "{}/?public_key={}",
             server,
-            hex::encode(&self.keypair.public)
+            hex::encode(self.keypair.public_key())
         )
     }
 }
 
 pub use error::Error;
 
-/// Result type for the relay client.
+/// Result type for the client library.
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// Encrypt a message to send to a peer.

@@ -22,7 +22,7 @@ use crate::{
     server::{Service, State},
     Result,
 };
-use mpc_relay_protocol::{
+use mpc_protocol::{
     hex, snow::Builder, uuid::Uuid, ProtocolState, PATTERN,
 };
 
@@ -75,12 +75,6 @@ pub async fn upgrade(
     let mut writer = state.write().await;
 
     // Check access lists
-    if writer.config.allow.is_some() || writer.config.deny.is_some() {
-        if !writer.config.is_allowed_access(&query.public_key) {
-            return Err(StatusCode::FORBIDDEN);
-        }
-    }
-
     if (writer.config.allow.is_some() || writer.config.deny.is_some())
         && !writer.config.is_allowed_access(&query.public_key)
     {
@@ -98,7 +92,7 @@ pub async fn upgrade(
     );
 
     let responder = builder
-        .local_private_key(&writer.keypair.private)
+        .local_private_key(writer.keypair.private_key())
         .remote_public_key(&query.public_key)
         .build_responder()
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
@@ -138,7 +132,7 @@ async fn disconnect(state: State, conn: Connection) {
         let reader = conn.read().await;
         (reader.id, reader.public_key.clone())
     };
-    //println!("disconnecting client...");
+    tracing::trace!(public_key = ?hex::encode(&public_key), "disconnect");
     let mut writer = state.write().await;
     writer.pending.remove(&id);
     writer.active.remove(&public_key);
@@ -176,7 +170,6 @@ async fn read(
             Ok(msg) => match msg {
                 Message::Text(_) => {}
                 Message::Binary(buffer) => {
-                    //println!("server ws read buffer");
                     tx.send(buffer).await?;
                 }
                 Message::Ping(_) => {}

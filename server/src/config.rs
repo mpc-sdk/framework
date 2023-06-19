@@ -1,5 +1,5 @@
 //! Server configuration.
-use mpc_relay_protocol::{decode_keypair, hex, snow::Keypair};
+use mpc_protocol::{decode_keypair, hex, Keypair};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use tokio::fs;
@@ -126,7 +126,8 @@ impl ServerConfig {
             return Err(Error::SessionTimeoutConfig);
         }
 
-        if config.session.wait_timeout <= config.session.wait_interval {
+        if config.session.wait_timeout <= config.session.wait_interval
+        {
             return Err(Error::SessionWaitConfig);
         }
 

@@ -1,6 +1,6 @@
 use anyhow::Result;
 use futures::{select, FutureExt, StreamExt};
-use mpc_relay_client::{Client, Event, EventLoop};
+use mpc_client::{Client, Event, EventLoop, NetworkTransport};
 use tokio::sync::mpsc;
 
 use super::new_client;
@@ -33,7 +33,7 @@ pub async fn run(
     let ev_p = participant_client::<anyhow::Error>(
         participant,
         event_loop_p,
-        &initiator_key.public,
+        initiator_key.public_key(),
         shutdown_rx,
     );
 
@@ -46,7 +46,7 @@ pub async fn run(
     Ok(())
 }
 
-pub async fn initiator_client<E: From<mpc_relay_client::Error>>(
+pub async fn initiator_client<E: From<mpc_client::Error>>(
     mut client: Client,
     event_loop: EventLoop,
     shutdown_tx: mpsc::Sender<()>,
@@ -82,7 +82,7 @@ pub async fn initiator_client<E: From<mpc_relay_client::Error>>(
     Ok(())
 }
 
-pub async fn participant_client<E: From<mpc_relay_client::Error>>(
+pub async fn participant_client<E: From<mpc_client::Error>>(
     mut client: Client,
     event_loop: EventLoop,
     initiator_public_key: &[u8],

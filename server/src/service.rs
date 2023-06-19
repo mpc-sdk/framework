@@ -7,7 +7,7 @@ use std::{
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::IntervalStream;
 
-use mpc_relay_protocol::{
+use mpc_protocol::{
     channel::{decrypt_server_channel, encrypt_server_channel},
     decode, encode, hex, Encoding, HandshakeMessage, OpaqueMessage,
     ProtocolState, RequestMessage, ResponseMessage, ServerMessage,
@@ -305,11 +305,8 @@ async fn wait_for_session_ready(
         } else {
             let duration = start_time.elapsed().unwrap();
             if duration > wait_timeout {
-                if let Err(e) = notify_session_timeout(
-                    state,
-                    session,
-                )
-                .await
+                if let Err(e) =
+                    notify_session_timeout(state, session).await
                 {
                     tracing::error!("{:#?}", e);
                 }
@@ -370,11 +367,8 @@ async fn wait_for_session_active(
         } else {
             let duration = start_time.elapsed().unwrap();
             if duration > wait_timeout {
-                if let Err(e) = notify_session_timeout(
-                    state,
-                    session,
-                )
-                .await
+                if let Err(e) =
+                    notify_session_timeout(state, session).await
                 {
                     tracing::error!("{:#?}", e);
                 }
@@ -421,14 +415,16 @@ async fn service(
     match message {
         ServerMessage::NewSession(request) => {
             let mut all_participants =
-                request.participant_keys.clone();
-            all_participants.push(public_key.as_ref().to_vec());
+                vec![public_key.as_ref().to_vec()];
+            all_participants
+                .append(&mut request.participant_keys.clone());
 
             let (session_id, wait_interval) = {
                 let mut writer = state.write().await;
                 let session_id = writer.sessions.new_session(
                     public_key.as_ref().to_vec(),
                     request.participant_keys,
+                    request.session_id,
                 );
                 (session_id, writer.config.session.wait_interval)
             };

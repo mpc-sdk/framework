@@ -10,7 +10,7 @@ use serde::Serialize;
 use std::{pin::Pin, sync::Arc};
 use tokio::sync::{mpsc, RwLock};
 
-use mpc_relay_protocol::{
+use mpc_protocol::{
     channel::encrypt_server_channel, decode, encode, hex,
     snow::Builder, Encoding, HandshakeMessage, OpaqueMessage,
     ProtocolState, RequestMessage, ResponseMessage, ServerMessage,
@@ -18,17 +18,17 @@ use mpc_relay_protocol::{
 };
 
 use crate::{
-    client_impl, encrypt_peer_channel,
-    event_loop::{event_loop_run_impl, EventLoop},
+    client_impl, client_transport_impl, encrypt_peer_channel,
+    event_loop::{
+        event_loop_run_impl, EventLoop, EventStream, InternalMessage,
+    },
     ClientOptions, Error, Event, Peers, Result, Server,
 };
 
 type WsMessage = Vec<u8>;
 type WsError = Error;
 type WsReadStream = BoxStream<'static, Result<Vec<u8>>>;
-type WsWriteStream = Pin<
-    Box<dyn futures::Sink<Vec<u8>, Error = Error> + Send + Unpin>,
->;
+type WsWriteStream = Pin<Box<WebSocketSink>>;
 
 /// Event loop for the web client.
 pub type WebEventLoop =
@@ -38,7 +38,7 @@ pub type WebEventLoop =
 #[derive(Clone)]
 pub struct WebClient {
     options: Arc<ClientOptions>,
-    outbound_tx: mpsc::Sender<RequestMessage>,
+    outbound_tx: mpsc::Sender<InternalMessage>,
     server: Server,
     peers: Peers,
     ptr: *mut mpsc::Sender<Result<Vec<u8>>>,
@@ -108,11 +108,11 @@ impl WebClient {
         // Channel for writing outbound messages to send
         // to the server
         let (outbound_tx, outbound_rx) =
-            mpsc::channel::<RequestMessage>(32);
+            mpsc::channel::<InternalMessage>(32);
 
         let builder = Builder::new(PATTERN.parse()?);
         let handshake = builder
-            .local_private_key(&options.keypair.private)
+            .local_private_key(options.keypair.private_key())
             .remote_public_key(&options.server_public_key)
             .build_initiator()?;
 
@@ -164,6 +164,8 @@ impl WebClient {
     client_impl!();
 }
 
+client_transport_impl!(WebClient);
+
 impl Drop for WebClient {
     fn drop(&mut self) {
         unsafe {
@@ -171,6 +173,9 @@ impl Drop for WebClient {
         }
     }
 }
+
+unsafe impl Send for WebClient {}
+unsafe impl Sync for WebClient {}
 
 impl EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream> {
     /// Receive and decode socket messages then send to
@@ -201,12 +206,18 @@ impl EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream> {
             .map_err(|_| Error::WebSocketSend)?)
     }
 
+    async fn handle_close_message(self) -> Result<()> {
+        self.ws_writer.ws.close()?;
+        Ok(())
+    }
+
     event_loop_run_impl!();
 }
 
 use core::task::{Context, Poll};
 
-struct WebSocketSink {
+#[doc(hidden)]
+pub struct WebSocketSink {
     ws: WebSocket,
 }
 

@@ -2,7 +2,7 @@ use async_stream::stream;
 use futures::{
     select,
     sink::SinkExt,
-    stream::{BoxStream, SplitSink, SplitStream},
+    stream::{SplitSink, SplitStream},
     FutureExt, StreamExt,
 };
 use serde::Serialize;
@@ -12,12 +12,11 @@ use tokio::{
     sync::{mpsc, RwLock},
 };
 use tokio_tungstenite::{
-    connect_async,
-    tungstenite::{client::IntoClientRequest, protocol::Message},
-    MaybeTlsStream, WebSocketStream,
+    connect_async, tungstenite::protocol::Message, MaybeTlsStream,
+    WebSocketStream,
 };
 
-use mpc_relay_protocol::{
+use mpc_protocol::{
     channel::encrypt_server_channel, decode, encode, hex,
     http::StatusCode, snow::Builder, Encoding, HandshakeMessage,
     OpaqueMessage, ProtocolState, RequestMessage, ResponseMessage,
@@ -27,10 +26,15 @@ use mpc_relay_protocol::{
 
 use super::{
     encrypt_peer_channel,
-    event_loop::{event_loop_run_impl, EventLoop},
+    event_loop::{
+        event_loop_run_impl, EventLoop, EventStream, InternalMessage,
+    },
     Peers, Server,
 };
-use crate::{client_impl, ClientOptions, Error, Event, Result};
+use crate::{
+    client_impl, client_transport_impl, ClientOptions, Error, Event,
+    Result,
+};
 
 type WsMessage = Message;
 type WsError = tokio_tungstenite::tungstenite::Error;
@@ -47,20 +51,17 @@ pub type NativeEventLoop =
 #[derive(Clone)]
 pub struct NativeClient {
     options: Arc<ClientOptions>,
-    outbound_tx: mpsc::Sender<RequestMessage>,
+    outbound_tx: mpsc::Sender<InternalMessage>,
     server: Server,
     peers: Peers,
 }
 
 impl NativeClient {
     /// Create a new native client.
-    pub async fn new<R>(
-        server: R,
+    pub async fn new(
+        server: &str,
         options: ClientOptions,
-    ) -> Result<(Self, NativeEventLoop)>
-    where
-        R: IntoClientRequest + Unpin,
-    {
+    ) -> Result<(Self, NativeEventLoop)> {
         let (stream, response) = connect_async(server).await?;
 
         if response.status() != StatusCode::SWITCHING_PROTOCOLS {
@@ -74,14 +75,14 @@ impl NativeClient {
 
         let builder = Builder::new(PATTERN.parse()?);
         let handshake = builder
-            .local_private_key(&options.keypair.private)
+            .local_private_key(options.keypair.private_key())
             .remote_public_key(&options.server_public_key)
             .build_initiator()?;
 
         // Channel for writing outbound messages to send
         // to the server
         let (outbound_tx, outbound_rx) =
-            mpsc::channel::<RequestMessage>(32);
+            mpsc::channel::<InternalMessage>(32);
 
         // State for the server transport
         let server = Arc::new(RwLock::new(Some(
@@ -119,6 +120,8 @@ impl NativeClient {
     client_impl!();
 }
 
+client_transport_impl!(NativeClient);
+
 impl EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream> {
     /// Receive and decode socket messages then send to
     /// the messages channel.
@@ -144,11 +147,21 @@ impl EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream> {
             .send(message)
             .await
             .map_err(|_| Error::WebSocketSend)?;
-        Ok(self
-            .ws_writer
+        self.ws_writer
             .flush()
             .await
-            .map_err(|_| Error::WebSocketSend)?)
+            .map_err(|_| Error::WebSocketSend)
+    }
+
+    async fn handle_close_message(self) -> Result<()> {
+        let mut websocket: WebSocketStream<
+            MaybeTlsStream<TcpStream>,
+        > = self
+            .ws_reader
+            .reunite(self.ws_writer)
+            .map_err(|_| Error::StreamReunite)?;
+        websocket.close(None).await?;
+        Ok(())
     }
 
     event_loop_run_impl!();

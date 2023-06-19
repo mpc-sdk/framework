@@ -2,5 +2,6 @@
 *.profraw
 /target
 /Cargo.lock
+/stubs
 *.bak
 *.pem

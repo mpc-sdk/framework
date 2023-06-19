@@ -1,6 +1,6 @@
 [package]
 name = "mpc-relay-server"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 description = "Noise protocol websocket relay server for MPC/TSS applications"
 keywords = ["mpc", "tss", "relay", "crypto", "e2ee"]
@@ -8,8 +8,8 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/tmpfs/mpc-relay"
 
 [dependencies]
-#mpc-relay-protocol = { path = "../protocol" }
-mpc-relay-protocol = "0.3"
+mpc-protocol = { path = "../protocol" }
+#mpc-protocol = "0.4"
 thiserror = "1"
 binary-stream = { version = "8", features = ["async"] }
 serde = {version = "1", features = ["derive"]}
