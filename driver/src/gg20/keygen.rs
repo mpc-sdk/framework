@@ -13,6 +13,9 @@ use crate::{
     Bridge, ProtocolDriver, RoundBuffer, RoundMsg,
 };
 
+/// Key share.
+pub type KeyShare = LocalKey<Secp256k1>;
+
 /// GG20 key generation.
 pub struct KeyGenerator {
     bridge: Bridge<KeygenDriver>,

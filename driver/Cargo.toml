@@ -16,7 +16,6 @@ mpc-protocol = { path = "../protocol" }
 mpc-relay-client = { path = "../client" }
 #mpc-relay-client = "0.3"
 thiserror = "1"
-#round-based = "0.1"
 serde = { version = "1", features = ["derive"] }
 sha3 = "0.10"
 tracing = "0.1"
@@ -45,6 +44,7 @@ version = "*"
 mpc-ecdsa-getrandom-hack = {version = "*"}
 getrandom = {version = "0.1.16", features = ["wasm-bindgen"]}
 rand = { version="0.6.5", features = ["wasm-bindgen"] }
+wasm-bindgen = { version = "0.2" }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies.curv-kzen]
 optional = true

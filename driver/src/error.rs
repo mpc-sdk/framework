@@ -21,3 +21,11 @@ pub enum Error {
     #[error(transparent)]
     Client(#[from] mpc_relay_client::Error),
 }
+
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+impl From<Error> for wasm_bindgen::JsValue {
+    fn from(value: Error) -> Self {
+        let s = value.to_string();
+        wasm_bindgen::JsValue::from_str(&s)
+    }
+}

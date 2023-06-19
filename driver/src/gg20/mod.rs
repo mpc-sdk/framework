@@ -5,7 +5,7 @@ mod keygen;
 mod sign;
 
 pub use error::Error;
-pub use keygen::KeyGenerator;
+pub use keygen::{KeyGenerator, KeyShare};
 pub use sign::{
     ParticipantGenerator, PreSignGenerator, Signature,
     SignatureGenerator,

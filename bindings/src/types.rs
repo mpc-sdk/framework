@@ -1,10 +1,11 @@
 //! Types passed across the Javascript/Webassembly boundary.
 use serde::{Deserialize, Serialize};
 
-use mpc_protocol::{Keypair, SessionId};
+use mpc_protocol::{Keypair, SessionId, Parameters};
+use mpc_driver::gg20;
 
 /// Supported multi-party computation protocols.
-#[derive(Serialize, Deserialize)]
+#[derive(Copy, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Protocol {
     /// The GG2020 protocol.
@@ -15,26 +16,43 @@ pub enum Protocol {
     CGGMP,
 }
 
+/// Generated key share.
+#[derive(Serialize, Deserialize)]
+pub struct KeyShare {
+    /// Private key share information.
+    pub local_key: LocalKey,
+}
+
+/// Key share variants by protocol.
+#[derive(Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum LocalKey {
+    /// Key share for the GG20 protocol.
+    GG20(gg20::KeyShare),
+}
+
 /// Server options.
 #[derive(Serialize, Deserialize)]
 pub struct ServerOptions {
     /// URL for the server.
-    server_url: String,
+    pub server_url: String,
     /// Server public key.
-    server_public_key: Vec<u8>,
+    pub server_public_key: Vec<u8>,
 }
 
 /// Options used for distributed key generation.
 #[derive(Serialize, Deserialize)]
 pub struct KeygenOptions {
     /// MPC protocol.
-    protocol: Protocol,
+    pub protocol: Protocol,
     /// Keypair for the participant.
-    keypair: Keypair,
+    pub keypair: Keypair,
     /// Other participants in the session.
-    participants: Vec<Vec<u8>>,
+    pub participants: Vec<Vec<u8>>,
     /// Session identifier.
-    session_id: SessionId,
+    pub session_id: SessionId,
     /// Server options.
-    server: ServerOptions,
+    pub server: ServerOptions,
+    /// Parameters for key generation.
+    pub parameters: Parameters,
 }

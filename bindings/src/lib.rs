@@ -18,3 +18,21 @@ mod keygen;
 mod types;
 
 pub use types::*;
+
+use mpc_protocol::Keypair;
+use mpc_relay_client::{Client, ClientOptions, EventLoop};
+
+/// Create a new relay client using the provided keypair connected 
+/// to a relay server.
+pub async fn new_client_with_keypair(
+    server: &str,
+    server_public_key: Vec<u8>,
+    keypair: Keypair,
+) -> Result<(Client, EventLoop), JsValue> {
+    let options = ClientOptions {
+        keypair,
+        server_public_key,
+    };
+    let url = options.url(server);
+    Ok(Client::new(&url, options).await?)
+}

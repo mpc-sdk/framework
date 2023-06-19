@@ -26,8 +26,6 @@ pub use multi_party_ecdsa::protocols::multi_party_ecdsa::gg_2020;
 #[doc(hidden)]
 pub use curv;
 
-use serde::{Deserialize, Serialize};
-
 /// Trait for implementations that drive
 /// protocol to completion.
 pub(crate) trait ProtocolDriver {
