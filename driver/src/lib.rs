@@ -5,11 +5,12 @@
 mod bridge;
 mod error;
 mod round;
+mod session;
 
 pub(crate) use bridge::Bridge;
-pub use bridge::{SessionInitiator, SessionParticipant};
 pub use error::Error;
 pub(crate) use round::{Round, RoundBuffer, RoundMsg};
+pub use session::{SessionInitiator, SessionParticipant};
 
 /// Result type for the driver library.
 pub type Result<T> = std::result::Result<T, Error>;
