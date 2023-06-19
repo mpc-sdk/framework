@@ -9,7 +9,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 mpc-driver = { path = "../driver" }
-mpc-relay-protocol = { path = "../protocol" }
+mpc-protocol = { path = "../protocol" }
 mpc-ecdsa-getrandom-hack = "*"
 getrandom = {version = "0.1.16", features = ["wasm-bindgen"]}
 wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }

@@ -5,7 +5,7 @@ use futures::{
 use std::sync::Arc;
 use tokio::sync::mpsc;
 
-use mpc_relay_protocol::{
+use mpc_protocol::{
     channel::decrypt_server_channel, decode, hex, snow::Builder,
     Encoding, HandshakeMessage, OpaqueMessage, ProtocolState,
     RequestMessage, ResponseMessage, SealedEnvelope, ServerMessage,

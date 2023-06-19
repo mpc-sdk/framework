@@ -11,8 +11,8 @@ repository = "https://github.com/tmpfs/mpc-relay"
 gg20 = ["dep:curv-kzen", "dep:paillier", "dep:multi-party-ecdsa"]
 
 [dependencies]
-mpc-relay-protocol = { path = "../protocol" }
-#mpc-relay-protocol = "0.3"
+mpc-protocol = { path = "../protocol" }
+#mpc-protocol = "0.3"
 mpc-relay-client = { path = "../client" }
 #mpc-relay-client = "0.3"
 thiserror = "1"

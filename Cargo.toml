@@ -20,8 +20,8 @@ members = [
 ]
 
 [dependencies]
-mpc-relay-protocol = { path = "protocol" }
-#mpc-relay-protocol = "0.3"
+mpc-protocol = { path = "protocol" }
+#mpc-protocol = "0.3"
 anyhow = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

@@ -1,7 +1,7 @@
 //! Types passed across the Javascript/Webassembly boundary.
 use serde::{Deserialize, Serialize};
 
-use mpc_relay_protocol::{Keypair, SessionId};
+use mpc_protocol::{Keypair, SessionId};
 
 /// Supported multi-party computation protocols.
 #[derive(Serialize, Deserialize)]

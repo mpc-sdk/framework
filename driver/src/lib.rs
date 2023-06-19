@@ -66,7 +66,7 @@ pub(crate) trait ProtocolDriver {
 #[cfg(feature = "gg20")]
 /// Compute the address of an uncompressed public key (65 bytes).
 pub(crate) fn address(public_key: &[u8]) -> String {
-    use mpc_relay_protocol::hex;
+    use mpc_protocol::hex;
     use sha3::{Digest, Keccak256};
 
     // Remove the leading 0x04

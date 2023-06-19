@@ -18,7 +18,7 @@ pub use native::*;
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 pub use web::*;
 
-use mpc_relay_protocol::{generate_keypair, Keypair};
+use mpc_protocol::{generate_keypair, Keypair};
 
 use mpc_relay_client::{Client, ClientOptions, EventLoop};
 

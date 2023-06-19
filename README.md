@@ -98,7 +98,7 @@ The driver crate is GPLv3 all other code is either MIT or Apache-2.0.
 [rust]: https://www.rust-lang.org/
 [web-sys]: https://docs.rs/web-sys
 [tokio-tungstenite]: https://docs.rs/tokio-tungstenite
-[protocol]: https://docs.rs/mpc-relay-protocol
+[protocol]: https://docs.rs/mpc-protocol
 [server]: https://docs.rs/mpc-relay-server
 [client]: https://docs.rs/mpc-relay-client
 [cli]: https://docs.rs/mpc-relay

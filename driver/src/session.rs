@@ -1,5 +1,5 @@
 use mpc_relay_client::{Event, NetworkTransport, Transport};
-use mpc_relay_protocol::{SessionId, SessionState};
+use mpc_protocol::{SessionId, SessionState};
 
 use tokio::sync::Mutex;
 

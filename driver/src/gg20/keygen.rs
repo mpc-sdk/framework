@@ -2,7 +2,7 @@
 use round_based::{Msg, StateMachine};
 
 use mpc_relay_client::{Event, NetworkTransport, Transport};
-use mpc_relay_protocol::{hex, SessionState, Parameters};
+use mpc_protocol::{hex, SessionState, Parameters};
 
 use super::{Error, Result};
 use crate::{

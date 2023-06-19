@@ -22,7 +22,7 @@ use crate::{
     server::{Service, State},
     Result,
 };
-use mpc_relay_protocol::{
+use mpc_protocol::{
     hex, snow::Builder, uuid::Uuid, ProtocolState, PATTERN,
 };
 

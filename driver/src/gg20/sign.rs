@@ -1,6 +1,6 @@
 //! GG20 message signing.
 use mpc_relay_client::{Event, NetworkTransport, Transport};
-use mpc_relay_protocol::{hex, PartyNumber, SessionState, Parameters};
+use mpc_protocol::{hex, PartyNumber, SessionState, Parameters};
 use round_based::{Msg, StateMachine};
 use serde::{Deserialize, Serialize};
 

@@ -10,7 +10,7 @@ use serde::Serialize;
 use std::{pin::Pin, sync::Arc};
 use tokio::sync::{mpsc, RwLock};
 
-use mpc_relay_protocol::{
+use mpc_protocol::{
     channel::encrypt_server_channel, decode, encode, hex,
     snow::Builder, Encoding, HandshakeMessage, OpaqueMessage,
     ProtocolState, RequestMessage, ResponseMessage, ServerMessage,

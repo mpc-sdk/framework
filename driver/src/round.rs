@@ -1,4 +1,4 @@
-use mpc_relay_protocol::{PartyNumber, RoundNumber};
+use mpc_protocol::{PartyNumber, RoundNumber};
 use round_based::Msg;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::collections::HashMap;

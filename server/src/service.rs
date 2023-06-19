@@ -7,7 +7,7 @@ use std::{
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::IntervalStream;
 
-use mpc_relay_protocol::{
+use mpc_protocol::{
     channel::{decrypt_server_channel, encrypt_server_channel},
     decode, encode, hex, Encoding, HandshakeMessage, OpaqueMessage,
     ProtocolState, RequestMessage, ResponseMessage, ServerMessage,

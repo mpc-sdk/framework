@@ -11,7 +11,7 @@ mod wasm_tests {
         gg20, peer_channel, session_broadcast, session_handshake,
         session_timeout, socket_close,
     };
-    use mpc_relay_protocol::hex;
+    use mpc_protocol::hex;
 
     const SERVER: &str = "ws://127.0.0.1:8008";
     const SERVER_PUBLIC_KEY: &str =

@@ -3,7 +3,7 @@ use futures::{select, FutureExt, StreamExt};
 
 use mpc_driver::{SessionInitiator, SessionParticipant};
 use mpc_relay_client::{NetworkTransport, Transport};
-use mpc_relay_protocol::SessionState;
+use mpc_protocol::SessionState;
 
 use super::new_client;
 

@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use mpc_relay_protocol::SessionId;
+use mpc_protocol::SessionId;
 use serde::Serialize;
 
 use crate::{Client, ClientOptions, EventLoop, Result};

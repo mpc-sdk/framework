@@ -16,7 +16,7 @@ use tokio_tungstenite::{
     WebSocketStream,
 };
 
-use mpc_relay_protocol::{
+use mpc_protocol::{
     channel::encrypt_server_channel, decode, encode, hex,
     http::StatusCode, snow::Builder, Encoding, HandshakeMessage,
     OpaqueMessage, ProtocolState, RequestMessage, ResponseMessage,

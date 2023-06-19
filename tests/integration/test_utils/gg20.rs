@@ -15,7 +15,7 @@ use mpc_driver::{
 };
 
 use mpc_relay_client::{NetworkTransport, Transport};
-use mpc_relay_protocol::{Keypair, PartyNumber, SessionState, Parameters};
+use mpc_protocol::{Keypair, PartyNumber, SessionState, Parameters};
 
 use sha3::{Digest, Keccak256};
 
