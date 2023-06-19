@@ -1,6 +1,6 @@
 //! Key generation for GG20.
 use round_based::{Msg, StateMachine};
-
+use async_trait::async_trait;
 use mpc_protocol::{hex, Parameters, SessionState};
 use mpc_relay_client::{Event, NetworkTransport, Transport};
 
@@ -11,6 +11,7 @@ use crate::{
         Keygen, LocalKey, ProtocolMessage,
     },
     Bridge, ProtocolDriver, RoundBuffer, RoundMsg,
+    Driver,
 };
 
 /// Key share.
@@ -50,16 +51,21 @@ impl KeyGenerator {
         Ok(Self { bridge })
     }
 
-    /// Handle an incoming event.
-    pub async fn handle_event(
+}
+
+#[async_trait]
+impl Driver for KeyGenerator {
+    type Error = Error;
+    type Output = LocalKey<Secp256k1>;
+
+    async fn handle_event(
         &mut self,
         event: Event,
-    ) -> Result<Option<LocalKey<Secp256k1>>> {
+    ) -> Result<Option<Self::Output>> {
         self.bridge.handle_event(event).await
     }
 
-    /// Start running the protocol.
-    pub async fn execute(&mut self) -> Result<()> {
+    async fn execute(&mut self) -> Result<()> {
         self.bridge.execute().await
     }
 }

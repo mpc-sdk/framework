@@ -1,6 +1,8 @@
 //! Drive MPC protocols to completion.
 #![deny(missing_docs)]
 #![cfg_attr(all(doc, CHANNEL_NIGHTLY), feature(doc_auto_cfg))]
+use async_trait::async_trait;
+use mpc_relay_client::Event;
 
 mod bridge;
 mod error;
@@ -12,7 +14,7 @@ pub use error::Error;
 pub(crate) use round::{Round, RoundBuffer, RoundMsg};
 pub use session::{
     wait_for_session, SessionEventHandler, SessionInitiator,
-    SessionParticipant,
+    SessionParticipant, SessionHandler,
 };
 
 /// Result type for the driver library.
@@ -28,6 +30,26 @@ pub use multi_party_ecdsa::protocols::multi_party_ecdsa::gg_2020;
 #[cfg(feature = "gg20")]
 #[doc(hidden)]
 pub use curv;
+
+/// Drives a protocol to completion bridging between 
+/// the network transport and local computation.
+#[async_trait]
+pub trait Driver {
+    /// Error type.
+    type Error;
+
+    /// Output yielded when the driver completes.
+    type Output;
+
+    /// Handle an incoming event.
+    async fn handle_event(
+        &mut self,
+        event: Event,
+    ) -> std::result::Result<Option<Self::Output>, Self::Error>;
+
+    /// Start running the protocol.
+    async fn execute(&mut self) -> std::result::Result<(), Self::Error>;
+}
 
 /// Trait for implementations that drive
 /// protocol to completion.

@@ -17,6 +17,36 @@ pub trait SessionEventHandler {
     ) -> Result<Option<SessionState>>;
 }
 
+/// Variants that can create or join a session.
+pub enum SessionHandler {
+    /// Session initiator.
+    Initiator(SessionInitiator),
+    /// Session participant.
+    Participant(SessionParticipant),
+}
+
+#[async_trait]
+impl SessionEventHandler for SessionHandler {
+    async fn handle_event(
+        &mut self,
+        event: Event,
+    ) -> Result<Option<SessionState>> {
+        match self {
+            Self::Initiator(s) => s.handle_event(event).await,
+            Self::Participant(s) => s.handle_event(event).await,
+        }
+    }
+}
+
+impl From<SessionHandler> for Transport {
+    fn from(value: SessionHandler) -> Self {
+        match value {
+            SessionHandler::Initiator(s) => s.into(),
+            SessionHandler::Participant(s) => s.into(),
+        }
+    }
+}
+
 /// Initiate a session.
 pub struct SessionInitiator {
     transport: Transport,

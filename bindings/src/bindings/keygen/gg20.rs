@@ -1,19 +1,20 @@
 //! Distributed key generation for the GG20 protocol.
 use wasm_bindgen::prelude::*;
 
-use crate::{
-    new_client_with_keypair, KeyShare, KeygenOptions,
-};
+use crate::{new_client_with_keypair, KeyShare, SessionOptions};
 use futures::{select, FutureExt, StreamExt};
 use mpc_driver::{
-    gg20::KeyGenerator, wait_for_session, SessionInitiator, SessionParticipant,
+    gg20::KeyGenerator, wait_for_session, SessionInitiator,
+    SessionParticipant, SessionHandler, Driver,
 };
 use mpc_relay_client::{EventStream, NetworkTransport, Transport};
 
-pub(crate) async fn keygen_init(
-    options: KeygenOptions,
-    participants: Vec<Vec<u8>>,
+pub(crate) async fn keygen(
+    options: SessionOptions,
+    participants: Option<Vec<Vec<u8>>>,
 ) -> Result<JsValue, JsValue> {
+    let is_initiator = participants.is_some();
+
     // Create the client
     let (client, event_loop) = new_client_with_keypair(
         &options.server.server_url,
@@ -31,11 +32,16 @@ pub(crate) async fn keygen_init(
     let mut stream = event_loop.run();
 
     // Wait for the session to become active
-    let client_session = SessionInitiator::new(
-        transport,
-        participants,
-        Some(options.session_id),
-    );
+    let client_session = if let Some(participants) = participants {
+        SessionHandler::Initiator(SessionInitiator::new(
+            transport,
+            participants,
+            Some(options.session_id),
+        ))
+    } else {
+        SessionHandler::Participant(SessionParticipant::new(transport))
+    };
+
     let (transport, session) =
         wait_for_session(&mut stream, client_session).await?;
 
@@ -49,16 +55,19 @@ pub(crate) async fn keygen_init(
     )?;
     let (mut transport, key_share) =
         wait_for_key_share(&mut stream, keygen).await?;
-    
+
     // Close the session and socket
-    transport.close_session(session_id).await?;
+    if is_initiator {
+        transport.close_session(session_id).await?;
+    }
     transport.close().await?;
 
     Ok(serde_wasm_bindgen::to_value(&key_share)?)
 }
 
+/*
 pub(crate) async fn keygen_join(
-    options: KeygenOptions,
+    options: SessionOptions,
 ) -> Result<JsValue, JsValue> {
     // Create the client
     let (client, event_loop) = new_client_with_keypair(
@@ -77,9 +86,7 @@ pub(crate) async fn keygen_join(
     let mut stream = event_loop.run();
 
     // Wait for the session to become active
-    let client_session = SessionParticipant::new(
-        transport,
-    );
+    let client_session = SessionParticipant::new(transport);
     let (transport, session) =
         wait_for_session(&mut stream, client_session).await?;
 
@@ -97,6 +104,7 @@ pub(crate) async fn keygen_join(
 
     Ok(serde_wasm_bindgen::to_value(&key_share)?)
 }
+*/
 
 async fn wait_for_key_share(
     stream: &mut EventStream,

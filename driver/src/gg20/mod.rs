@@ -8,7 +8,7 @@ pub use error::Error;
 pub use keygen::{KeyGenerator, KeyShare};
 pub use sign::{
     ParticipantGenerator, PreSignGenerator, Signature,
-    SignatureGenerator,
+    SignatureGenerator, OfflineResult,
 };
 
 /// Result type for the GG2020 protocol.

@@ -26,6 +26,9 @@ use crate::{
 
 type Message = Msg<<OfflineStage as StateMachine>::MessageBody>;
 
+/// Type alias to the completed offline stage.
+pub type OfflineResult = CompletedOfflineStage;
+
 /// Generated signature.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -88,6 +91,12 @@ impl ParticipantGenerator {
     }
 }
 
+impl From<ParticipantGenerator> for Transport {
+    fn from(value: ParticipantGenerator) -> Self {
+        value.bridge.transport
+    }
+}
+
 /// GG20 presign generator.
 pub struct PreSignGenerator {
     bridge: Bridge<SignOfflineDriver>,
@@ -134,6 +143,12 @@ impl PreSignGenerator {
     /// Start running the protocol.
     pub async fn execute(&mut self) -> Result<()> {
         self.bridge.execute().await
+    }
+}
+
+impl From<PreSignGenerator> for Transport {
+    fn from(value: PreSignGenerator) -> Self {
+        value.bridge.transport
     }
 }
 
@@ -187,6 +202,12 @@ impl SignatureGenerator {
     /// Start running the protocol.
     pub async fn execute(&mut self) -> Result<()> {
         self.bridge.execute().await
+    }
+}
+
+impl From<SignatureGenerator> for Transport {
+    fn from(value: SignatureGenerator) -> Self {
+        value.bridge.transport
     }
 }
 

@@ -12,6 +12,7 @@ use mpc_driver::{
         keygen::LocalKey, sign::CompletedOfflineStage,
     },
     SessionEventHandler, SessionInitiator, SessionParticipant,
+    Driver,
 };
 
 use mpc_protocol::{Keypair, Parameters, PartyNumber, SessionState};

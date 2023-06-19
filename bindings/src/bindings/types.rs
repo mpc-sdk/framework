@@ -1,9 +1,7 @@
 //! Types passed across the Javascript/Webassembly boundary.
 use serde::{Deserialize, Serialize};
 
-use mpc_driver::{
-    gg20,
-};
+use mpc_driver::gg20;
 use mpc_protocol::{Keypair, Parameters, SessionId};
 
 /// Supported multi-party computation protocols.
@@ -40,7 +38,8 @@ pub enum PrivateKey {
 
 impl From<gg20::KeyShare> for KeyShare {
     fn from(local_key: gg20::KeyShare) -> Self {
-        let public_key = local_key.public_key().to_bytes(false).to_vec();
+        let public_key =
+            local_key.public_key().to_bytes(false).to_vec();
         Self {
             private_key: PrivateKey::GG20(local_key),
             address: mpc_driver::address(&public_key),
@@ -60,7 +59,7 @@ pub struct ServerOptions {
 
 /// Options used for distributed key generation.
 #[derive(Serialize, Deserialize)]
-pub struct KeygenOptions {
+pub struct SessionOptions {
     /// MPC protocol.
     pub protocol: Protocol,
     /// Keypair for the participant.
