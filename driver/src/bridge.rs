@@ -1,5 +1,5 @@
 use mpc_relay_client::{Event, NetworkTransport, Transport};
-use mpc_relay_protocol::SessionState;
+use mpc_relay_protocol::{SessionId, SessionState};
 
 use crate::{Error, ProtocolDriver, Round, RoundBuffer};
 use tokio::sync::Mutex;
@@ -9,6 +9,7 @@ pub struct SessionInitiator {
     transport: Transport,
     session_participants: Vec<Vec<u8>>,
     session_state: Mutex<Option<SessionState>>,
+    session_id: Option<SessionId>,
 }
 
 impl SessionInitiator {
@@ -16,11 +17,13 @@ impl SessionInitiator {
     pub fn new(
         transport: Transport,
         session_participants: Vec<Vec<u8>>,
+        session_id: Option<SessionId>,
     ) -> Self {
         Self {
             transport,
             session_participants,
             session_state: Mutex::new(None),
+            session_id,
         }
     }
 
@@ -32,7 +35,10 @@ impl SessionInitiator {
         match event {
             Event::ServerConnected { .. } => {
                 self.transport
-                    .new_session(self.session_participants.clone())
+                    .new_session(
+                        self.session_participants.clone(),
+                        self.session_id.take(),
+                    )
                     .await?;
             }
             Event::SessionCreated(session) => {

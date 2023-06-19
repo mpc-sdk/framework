@@ -220,8 +220,9 @@ macro_rules! client_transport_impl {
             async fn new_session(
                 &mut self,
                 participant_keys: Vec<Vec<u8>>,
+                session_id: Option<SessionId>,
             ) -> Result<()> {
-                let session = SessionRequest { participant_keys };
+                let session = SessionRequest { participant_keys, session_id };
                 let message = ServerMessage::NewSession(session);
                 self.request(message).await
             }

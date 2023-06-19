@@ -551,9 +551,6 @@ impl Decodable for ResponseMessage {
     }
 }
 
-//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-
 #[async_trait]
 impl Encodable for SealedEnvelope {
     async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
@@ -569,9 +566,6 @@ impl Encodable for SealedEnvelope {
         Ok(())
     }
 }
-
-//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 
 #[async_trait]
 impl Decodable for SealedEnvelope {
@@ -601,15 +595,16 @@ impl Decodable for SealedEnvelope {
     }
 }
 
-//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-
 #[async_trait]
 impl Encodable for SessionRequest {
     async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
         &self,
         writer: &mut BinaryWriter<W>,
     ) -> Result<()> {
+        writer.write_bool(self.session_id.is_some()).await?;
+        if let Some(id) = self.session_id {
+            writer.write_bytes(id.as_bytes()).await?;
+        }
         // TODO: handle too many participants
         writer.write_u16(self.participant_keys.len() as u16).await?;
         for key in self.participant_keys.iter() {
@@ -619,15 +614,26 @@ impl Encodable for SessionRequest {
     }
 }
 
-//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-
 #[async_trait]
 impl Decodable for SessionRequest {
     async fn decode<R: AsyncRead + AsyncSeek + Unpin + Send>(
         &mut self,
         reader: &mut BinaryReader<R>,
     ) -> Result<()> {
+        let has_session_id = reader.read_bool().await?;
+        self.session_id = if has_session_id {
+            Some(SessionId::from_bytes(
+                reader
+                    .read_bytes(16)
+                    .await?
+                    .as_slice()
+                    .try_into()
+                    .map_err(encoding_error)?,
+            ))
+        } else {
+            None
+        };
+
         let size = reader.read_u16().await? as usize;
         for _ in 0..size {
             let key = decode_buffer(reader).await?;
@@ -636,9 +642,6 @@ impl Decodable for SessionRequest {
         Ok(())
     }
 }
-
-//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 
 #[async_trait]
 impl Encodable for SessionState {
@@ -654,9 +657,6 @@ impl Encodable for SessionState {
         Ok(())
     }
 }
-
-//#[cfg_attr(target_arch="wasm32", async_trait(?Send))]
-//#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 
 #[async_trait]
 impl Decodable for SessionState {

@@ -39,6 +39,7 @@ pub async fn run(
     let mut client_i_session = SessionInitiator::new(
         client_i_transport,
         session_participants,
+        None,
     );
     let mut client_p_session =
         SessionParticipant::new(client_p_transport);

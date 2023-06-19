@@ -80,10 +80,11 @@ impl NetworkTransport for Transport {
     async fn new_session(
         &mut self,
         participant_keys: Vec<Vec<u8>>,
+        session_id: Option<SessionId>,
     ) -> Result<()> {
         match self {
             Transport::Relay(client) => {
-                client.new_session(participant_keys).await
+                client.new_session(participant_keys, session_id).await
             }
         }
     }
@@ -212,6 +213,7 @@ pub trait NetworkTransport {
     async fn new_session(
         &mut self,
         participant_keys: Vec<Vec<u8>>,
+        session_id: Option<SessionId>,
     ) -> Result<()>;
 
     /// Register a peer connection in a session.

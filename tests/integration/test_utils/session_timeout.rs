@@ -39,7 +39,7 @@ pub async fn run(
         match &event {
             Event::ServerConnected { .. } => {
                 initiator
-                    .new_session(session_participants.clone())
+                    .new_session(session_participants.clone(), None)
                     .await?;
             }
             Event::SessionTimeout(_) => {

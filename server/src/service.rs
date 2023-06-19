@@ -424,6 +424,7 @@ async fn service(
                 let session_id = writer.sessions.new_session(
                     public_key.as_ref().to_vec(),
                     request.participant_keys,
+                    request.session_id,
                 );
                 (session_id, writer.config.session.wait_interval)
             };
