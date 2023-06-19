@@ -11,11 +11,11 @@ use mpc_driver::{
     gg_2020::state_machine::{
         keygen::LocalKey, sign::CompletedOfflineStage,
     },
-    SessionInitiator, SessionParticipant,
+    SessionEventHandler, SessionInitiator, SessionParticipant,
 };
 
+use mpc_protocol::{Keypair, Parameters, PartyNumber, SessionState};
 use mpc_relay_client::{NetworkTransport, Transport};
-use mpc_protocol::{Keypair, PartyNumber, SessionState, Parameters};
 
 use sha3::{Digest, Keccak256};
 
@@ -148,7 +148,7 @@ async fn gg20_keygen(
                         let event = event?;
 
                         if let Some(session) =
-                            client_i_session.create(event).await? {
+                            client_i_session.handle_event(event).await? {
                             sessions.push(session);
                         }
                     }
@@ -160,7 +160,7 @@ async fn gg20_keygen(
                     Some(event) => {
                         let event = event?;
                         if let Some(session) =
-                            client_p_1_session.join(event).await? {
+                            client_p_1_session.handle_event(event).await? {
                             sessions.push(session);
                         }
                     }
@@ -172,7 +172,7 @@ async fn gg20_keygen(
                     Some(event) => {
                         let event = event?;
                         if let Some(session) =
-                            client_p_2_session.join(event).await? {
+                            client_p_2_session.handle_event(event).await? {
                             sessions.push(session);
                         }
                     }
@@ -338,7 +338,7 @@ async fn gg20_sign_offline(
                         let event = event?;
 
                         if let Some(session) =
-                            client_i_session.create(event).await? {
+                            client_i_session.handle_event(event).await? {
                             sessions.push(session);
                         }
                     }
@@ -350,7 +350,7 @@ async fn gg20_sign_offline(
                     Some(event) => {
                         let event = event?;
                         if let Some(session) =
-                            client_p_2_session.join(event).await? {
+                            client_p_2_session.handle_event(event).await? {
                             sessions.push(session);
                         }
                     }
@@ -556,7 +556,7 @@ async fn gg20_sign_online(
                         let event = event?;
 
                         if let Some(session) =
-                            client_i_session.create(event).await? {
+                            client_i_session.handle_event(event).await? {
                             sessions.push(session);
                         }
                     }
@@ -568,7 +568,7 @@ async fn gg20_sign_online(
                     Some(event) => {
                         let event = event?;
                         if let Some(session) =
-                            client_p_2_session.join(event).await? {
+                            client_p_2_session.handle_event(event).await? {
                             sessions.push(session);
                         }
                     }

@@ -13,3 +13,4 @@ pub use sign::{
 
 /// Result type for the GG2020 protocol.
 pub type Result<T> = std::result::Result<T, Error>;
+

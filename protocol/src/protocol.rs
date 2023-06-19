@@ -1,11 +1,11 @@
+use crate::{encoding::types, PartyNumber};
 use http::StatusCode;
+use serde::{Deserialize, Serialize};
 use snow::{HandshakeState, TransportState};
 use std::{
     collections::{HashMap, HashSet},
     time::{Duration, SystemTime},
 };
-use serde::{Serialize, Deserialize};
-use crate::{encoding::types, PartyNumber};
 
 /// Identifier for sessions.
 pub type SessionId = uuid::Uuid;
@@ -30,7 +30,6 @@ impl Default for Parameters {
         }
     }
 }
-
 
 /// Enumeration of protocol states.
 pub enum ProtocolState {

@@ -1,7 +1,21 @@
-use mpc_relay_client::{Event, NetworkTransport, Transport};
+use crate::Result;
+use async_trait::async_trait;
+use futures::{select, FutureExt, StreamExt};
 use mpc_protocol::{SessionId, SessionState};
-
+use mpc_relay_client::{
+    Event, EventStream, NetworkTransport, Transport,
+};
 use tokio::sync::Mutex;
+
+/// Trait for types that handle session related events.
+#[async_trait]
+pub trait SessionEventHandler {
+    /// Handle an event.
+    async fn handle_event(
+        &mut self,
+        event: Event,
+    ) -> Result<Option<SessionState>>;
+}
 
 /// Initiate a session.
 pub struct SessionInitiator {
@@ -25,12 +39,14 @@ impl SessionInitiator {
             session_id,
         }
     }
+}
 
-    /// Handle session creation for an initiator.
-    pub async fn create(
+#[async_trait]
+impl SessionEventHandler for SessionInitiator {
+    async fn handle_event(
         &mut self,
         event: Event,
-    ) -> crate::Result<Option<SessionState>> {
+    ) -> Result<Option<SessionState>> {
         match event {
             Event::ServerConnected { .. } => {
                 self.transport
@@ -103,12 +119,15 @@ impl SessionParticipant {
             session_state: Mutex::new(None),
         }
     }
+}
 
+#[async_trait]
+impl SessionEventHandler for SessionParticipant {
     /// Handle joining a session for a participant.
-    pub async fn join(
+    async fn handle_event(
         &mut self,
         event: Event,
-    ) -> crate::Result<Option<SessionState>> {
+    ) -> Result<Option<SessionState>> {
         match event {
             Event::SessionReady(session) => {
                 let mut state = self.session_state.lock().await;
@@ -152,4 +171,34 @@ impl From<SessionParticipant> for Transport {
     fn from(value: SessionParticipant) -> Self {
         value.transport
     }
+}
+
+/// Wait for a session to become active.
+pub async fn wait_for_session<S>(
+    stream: &mut EventStream,
+    mut client_session: S,
+) -> Result<(Transport, SessionState)>
+where
+    S: SessionEventHandler + Into<Transport>,
+{
+    #[allow(unused_assignments)]
+    let mut session: Option<SessionState> = None;
+    loop {
+        select! {
+            event = stream.next().fuse() => {
+                match event {
+                    Some(event) => {
+                        let event = event?;
+                        if let Some(active_session) =
+                            client_session.handle_event(event).await? {
+                            session = Some(active_session);
+                            break;
+                        }
+                    }
+                    _ => {}
+                }
+            },
+        }
+    }
+    Ok((client_session.into(), session.take().unwrap()))
 }

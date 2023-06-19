@@ -1,8 +1,10 @@
 //! Types passed across the Javascript/Webassembly boundary.
 use serde::{Deserialize, Serialize};
 
-use mpc_protocol::{Keypair, SessionId, Parameters};
-use mpc_driver::gg20;
+use mpc_driver::{
+    gg20,
+};
+use mpc_protocol::{Keypair, Parameters, SessionId};
 
 /// Supported multi-party computation protocols.
 #[derive(Copy, Clone, Serialize, Deserialize)]
@@ -20,15 +22,31 @@ pub enum Protocol {
 #[derive(Serialize, Deserialize)]
 pub struct KeyShare {
     /// Private key share information.
-    pub local_key: LocalKey,
+    pub private_key: PrivateKey,
+    /// The public key.
+    #[serde(rename = "publicKey")]
+    pub public_key: Vec<u8>,
+    /// Address generated from the public key.
+    pub address: String,
 }
 
 /// Key share variants by protocol.
 #[derive(Serialize, Deserialize)]
 #[serde(untagged)]
-pub enum LocalKey {
+pub enum PrivateKey {
     /// Key share for the GG20 protocol.
     GG20(gg20::KeyShare),
+}
+
+impl From<gg20::KeyShare> for KeyShare {
+    fn from(local_key: gg20::KeyShare) -> Self {
+        let public_key = local_key.public_key().to_bytes(false).to_vec();
+        Self {
+            private_key: PrivateKey::GG20(local_key),
+            address: mpc_driver::address(&public_key),
+            public_key,
+        }
+    }
 }
 
 /// Server options.
@@ -47,8 +65,6 @@ pub struct KeygenOptions {
     pub protocol: Protocol,
     /// Keypair for the participant.
     pub keypair: Keypair,
-    /// Other participants in the session.
-    pub participants: Vec<Vec<u8>>,
     /// Session identifier.
     pub session_id: SessionId,
     /// Server options.

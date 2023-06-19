@@ -1,8 +1,8 @@
 //! Key generation for GG20.
 use round_based::{Msg, StateMachine};
 
+use mpc_protocol::{hex, Parameters, SessionState};
 use mpc_relay_client::{Event, NetworkTransport, Transport};
-use mpc_protocol::{hex, SessionState, Parameters};
 
 use super::{Error, Result};
 use crate::{
@@ -61,6 +61,12 @@ impl KeyGenerator {
     /// Start running the protocol.
     pub async fn execute(&mut self) -> Result<()> {
         self.bridge.execute().await
+    }
+}
+
+impl From<KeyGenerator> for Transport {
+    fn from(value: KeyGenerator) -> Self {
+        value.bridge.transport
     }
 }
 

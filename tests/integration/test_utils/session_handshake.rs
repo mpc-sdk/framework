@@ -1,9 +1,11 @@
 use anyhow::Result;
 use futures::{select, FutureExt, StreamExt};
 
-use mpc_driver::{SessionInitiator, SessionParticipant};
-use mpc_relay_client::{NetworkTransport, Transport};
+use mpc_driver::{
+    SessionEventHandler, SessionInitiator, SessionParticipant,
+};
 use mpc_protocol::SessionState;
+use mpc_relay_client::{NetworkTransport, Transport};
 
 use super::new_client;
 
@@ -59,7 +61,7 @@ pub async fn run(
                         let event = event?;
 
                         if let Some(session) =
-                            client_i_session.create(event).await? {
+                            client_i_session.handle_event(event).await? {
                             completed.push(session);
                         }
                     }
@@ -71,7 +73,7 @@ pub async fn run(
                     Some(event) => {
                         let event = event?;
                         if let Some(session) =
-                            client_p_session.join(event).await? {
+                            client_p_session.handle_event(event).await? {
                             completed.push(session);
                         }
                     }

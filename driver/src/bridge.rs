@@ -1,5 +1,5 @@
-use mpc_relay_client::{Event, NetworkTransport, Transport};
 use mpc_protocol::SessionState;
+use mpc_relay_client::{Event, NetworkTransport, Transport};
 
 use crate::{Error, ProtocolDriver, Round, RoundBuffer};
 
