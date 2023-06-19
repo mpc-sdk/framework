@@ -3,6 +3,7 @@ use mpc_protocol::{hex, Parameters, PartyNumber, SessionState};
 use mpc_relay_client::{Event, NetworkTransport, Transport};
 use round_based::{Msg, StateMachine};
 use serde::{Deserialize, Serialize};
+use async_trait::async_trait;
 
 use super::{Error, Result};
 use crate::{
@@ -21,7 +22,7 @@ use crate::{
             },
         },
     },
-    Bridge, ProtocolDriver, RoundBuffer, RoundMsg,
+    Bridge, ProtocolDriver, RoundBuffer, RoundMsg, Driver,
 };
 
 type Message = Msg<<OfflineStage as StateMachine>::MessageBody>;
@@ -76,17 +77,21 @@ impl ParticipantGenerator {
         };
         Ok(Self { bridge })
     }
+}
 
-    /// Handle an incoming event.
-    pub async fn handle_event(
+#[async_trait]
+impl Driver for ParticipantGenerator {
+    type Error = Error;
+    type Output = Vec<u16>;
+
+    async fn handle_event(
         &mut self,
         event: Event,
-    ) -> Result<Option<Vec<u16>>> {
+    ) -> Result<Option<Self::Output>> {
         self.bridge.handle_event(event).await
     }
 
-    /// Start running the protocol.
-    pub async fn execute(&mut self) -> Result<()> {
+    async fn execute(&mut self) -> Result<()> {
         self.bridge.execute().await
     }
 }
@@ -131,17 +136,21 @@ impl PreSignGenerator {
         };
         Ok(Self { bridge })
     }
+}
 
-    /// Handle an incoming event.
-    pub async fn handle_event(
+#[async_trait]
+impl Driver for PreSignGenerator {
+    type Error = Error;
+    type Output = CompletedOfflineStage;
+
+    async fn handle_event(
         &mut self,
         event: Event,
-    ) -> Result<Option<CompletedOfflineStage>> {
+    ) -> Result<Option<Self::Output>> {
         self.bridge.handle_event(event).await
     }
 
-    /// Start running the protocol.
-    pub async fn execute(&mut self) -> Result<()> {
+    async fn execute(&mut self) -> Result<()> {
         self.bridge.execute().await
     }
 }
@@ -190,17 +199,21 @@ impl SignatureGenerator {
         };
         Ok(Self { bridge })
     }
+}
 
-    /// Handle an incoming event.
-    pub async fn handle_event(
+#[async_trait]
+impl Driver for SignatureGenerator {
+    type Error = Error;
+    type Output = Signature;
+
+    async fn handle_event(
         &mut self,
         event: Event,
-    ) -> Result<Option<Signature>> {
+    ) -> Result<Option<Self::Output>> {
         self.bridge.handle_event(event).await
     }
 
-    /// Start running the protocol.
-    pub async fn execute(&mut self) -> Result<()> {
+    async fn execute(&mut self) -> Result<()> {
         self.bridge.execute().await
     }
 }

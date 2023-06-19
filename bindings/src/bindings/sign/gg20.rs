@@ -10,7 +10,7 @@ use mpc_driver::{
         self, OfflineResult, ParticipantGenerator,
         PreSignGenerator, Signature, SignatureGenerator,
     },
-    wait_for_session, SessionInitiator, SessionParticipant, SessionHandler,
+    wait_for_session, SessionInitiator, SessionParticipant, SessionHandler, Driver,
 };
 use mpc_protocol::{Parameters, PartyNumber, SessionState};
 use mpc_relay_client::{EventStream, NetworkTransport, Transport};
