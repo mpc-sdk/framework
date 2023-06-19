@@ -2,7 +2,7 @@
 use round_based::{Msg, StateMachine};
 
 use mpc_relay_client::{Event, NetworkTransport, Transport};
-use mpc_relay_protocol::{hex, SessionState};
+use mpc_relay_protocol::{hex, SessionState, Parameters};
 
 use super::{Error, Result};
 use crate::{
@@ -10,7 +10,7 @@ use crate::{
     gg_2020::state_machine::keygen::{
         Keygen, LocalKey, ProtocolMessage,
     },
-    Bridge, Parameters, ProtocolDriver, RoundBuffer, RoundMsg,
+    Bridge, ProtocolDriver, RoundBuffer, RoundMsg,
 };
 
 /// GG20 key generation.

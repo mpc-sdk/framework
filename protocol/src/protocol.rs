@@ -4,11 +4,33 @@ use std::{
     collections::{HashMap, HashSet},
     time::{Duration, SystemTime},
 };
-
+use serde::{Serialize, Deserialize};
 use crate::{encoding::types, PartyNumber};
 
 /// Identifier for sessions.
 pub type SessionId = uuid::Uuid;
+
+/// Parameters used during key generation.
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+pub struct Parameters {
+    /// Number of parties `n`.
+    pub parties: u16,
+    /// Threshold for signing `t`.
+    ///
+    /// The threshold must be crossed (`t + 1`) for signing
+    /// to commence.
+    pub threshold: u16,
+}
+
+impl Default for Parameters {
+    fn default() -> Self {
+        Self {
+            parties: 3,
+            threshold: 1,
+        }
+    }
+}
+
 
 /// Enumeration of protocol states.
 pub enum ProtocolState {

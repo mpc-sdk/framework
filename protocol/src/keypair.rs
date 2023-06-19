@@ -5,6 +5,12 @@ use crate::{
     Error, Result,
 };
 use pem::Pem;
+use serde::{
+    de::{self, Deserializer, Visitor},
+    ser::Serializer,
+    Deserialize, Serialize,
+};
+use std::fmt;
 
 /// Key pair used by the noise protocol.
 pub struct Keypair {
@@ -39,6 +45,55 @@ impl Clone for Keypair {
                 private: self.inner.private.clone(),
             },
         }
+    }
+}
+
+impl Serialize for Keypair {
+    fn serialize<S>(
+        &self,
+        serializer: S,
+    ) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let encoded = encode_keypair(self);
+        serializer.serialize_str(&encoded)
+    }
+}
+
+impl<'de> Deserialize<'de> for Keypair {
+    fn deserialize<D>(
+        deserializer: D,
+    ) -> std::result::Result<Keypair, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_str(KeypairVisitor)
+    }
+}
+
+struct KeypairVisitor;
+
+impl<'de> Visitor<'de> for KeypairVisitor {
+    type Value = Keypair;
+
+    fn expecting(
+        &self,
+        formatter: &mut fmt::Formatter,
+    ) -> fmt::Result {
+        formatter.write_str("PEM encoded keypair")
+    }
+
+    fn visit_str<E>(
+        self,
+        value: &str,
+    ) -> std::result::Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        let decoded = decode_keypair(value.as_bytes())
+            .map_err(de::Error::custom)?;
+        Ok(decoded)
     }
 }
 

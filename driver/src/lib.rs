@@ -28,27 +28,6 @@ pub use curv;
 
 use serde::{Deserialize, Serialize};
 
-/// Parameters used during key generation.
-#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
-pub struct Parameters {
-    /// Number of parties `n`.
-    pub parties: u16,
-    /// Threshold for signing `t`.
-    ///
-    /// The threshold must be crossed (`t + 1`) for signing
-    /// to commence.
-    pub threshold: u16,
-}
-
-impl Default for Parameters {
-    fn default() -> Self {
-        Self {
-            parties: 3,
-            threshold: 1,
-        }
-    }
-}
-
 /// Trait for implementations that drive
 /// protocol to completion.
 pub(crate) trait ProtocolDriver {

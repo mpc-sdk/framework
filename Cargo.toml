@@ -12,6 +12,7 @@ gg20 = ["mpc-driver/gg20"]
 
 [workspace]
 members = [
+  "bindings",
   "client",
   "driver",
   "protocol",

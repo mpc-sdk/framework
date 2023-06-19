@@ -88,6 +88,8 @@ args = [
   "mpc-relay-client",
   "-p",
   "mpc-driver",
+  "-p",
+  "mpc-bindings",
 ]
 
 [tasks.genhtml]

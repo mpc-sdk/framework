@@ -112,7 +112,7 @@ impl WebClient {
 
         let builder = Builder::new(PATTERN.parse()?);
         let handshake = builder
-            .local_private_key(&options.keypair.private)
+            .local_private_key(options.keypair.private_key())
             .remote_public_key(&options.server_public_key)
             .build_initiator()?;
 

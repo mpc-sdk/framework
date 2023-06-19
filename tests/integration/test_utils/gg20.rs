@@ -11,11 +11,11 @@ use mpc_driver::{
     gg_2020::state_machine::{
         keygen::LocalKey, sign::CompletedOfflineStage,
     },
-    Parameters, SessionInitiator, SessionParticipant,
+    SessionInitiator, SessionParticipant,
 };
 
 use mpc_relay_client::{NetworkTransport, Transport};
-use mpc_relay_protocol::{Keypair, PartyNumber, SessionState};
+use mpc_relay_protocol::{Keypair, PartyNumber, SessionState, Parameters};
 
 use sha3::{Digest, Keccak256};
 
