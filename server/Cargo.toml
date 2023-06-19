@@ -9,7 +9,7 @@ repository = "https://github.com/tmpfs/mpc-relay"
 
 [dependencies]
 mpc-protocol = { path = "../protocol" }
-#mpc-protocol = "0.3"
+#mpc-protocol = "0.4"
 thiserror = "1"
 binary-stream = { version = "8", features = ["async"] }
 serde = {version = "1", features = ["derive"]}
