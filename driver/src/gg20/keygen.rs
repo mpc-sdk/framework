@@ -1,8 +1,8 @@
 //! Key generation for GG20.
-use round_based::{Msg, StateMachine};
 use async_trait::async_trait;
 use mpc_protocol::{hex, Parameters, SessionState};
 use mpc_relay_client::{Event, NetworkTransport, Transport};
+use round_based::{Msg, StateMachine};
 
 use super::{Error, Result};
 use crate::{
@@ -10,19 +10,18 @@ use crate::{
     gg_2020::state_machine::keygen::{
         Keygen, LocalKey, ProtocolMessage,
     },
-    Bridge, ProtocolDriver, RoundBuffer, RoundMsg,
-    Driver,
+    Bridge, Driver, ProtocolDriver, RoundBuffer, RoundMsg,
 };
 
 /// Key share.
 pub type KeyShare = LocalKey<Secp256k1>;
 
 /// GG20 key generation.
-pub struct KeyGenerator {
+pub struct KeyGenDriver {
     bridge: Bridge<KeygenDriver>,
 }
 
-impl KeyGenerator {
+impl KeyGenDriver {
     /// Create a new GG20 key generator.
     pub fn new(
         transport: Transport,
@@ -50,11 +49,10 @@ impl KeyGenerator {
         };
         Ok(Self { bridge })
     }
-
 }
 
 #[async_trait]
-impl Driver for KeyGenerator {
+impl Driver for KeyGenDriver {
     type Error = Error;
     type Output = LocalKey<Secp256k1>;
 
@@ -70,8 +68,8 @@ impl Driver for KeyGenerator {
     }
 }
 
-impl From<KeyGenerator> for Transport {
-    fn from(value: KeyGenerator) -> Self {
+impl From<KeyGenDriver> for Transport {
+    fn from(value: KeyGenDriver) -> Self {
         value.bridge.transport
     }
 }

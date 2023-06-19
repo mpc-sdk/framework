@@ -1,9 +1,9 @@
 //! GG20 message signing.
+use async_trait::async_trait;
 use mpc_protocol::{hex, Parameters, PartyNumber, SessionState};
 use mpc_relay_client::{Event, NetworkTransport, Transport};
 use round_based::{Msg, StateMachine};
 use serde::{Deserialize, Serialize};
-use async_trait::async_trait;
 
 use super::{Error, Result};
 use crate::{
@@ -22,7 +22,7 @@ use crate::{
             },
         },
     },
-    Bridge, ProtocolDriver, RoundBuffer, RoundMsg, Driver,
+    Bridge, Driver, ProtocolDriver, RoundBuffer, RoundMsg,
 };
 
 type Message = Msg<<OfflineStage as StateMachine>::MessageBody>;
@@ -43,11 +43,11 @@ pub struct Signature {
 }
 
 /// GG20 participant generator.
-pub struct ParticipantGenerator {
-    bridge: Bridge<ParticipantDriver>,
+pub struct ParticipantDriver {
+    bridge: Bridge<ParticipantProtocolDriver>,
 }
 
-impl ParticipantGenerator {
+impl ParticipantDriver {
     /// Create a new GG20 participant generator.
     pub fn new(
         transport: Transport,
@@ -65,7 +65,7 @@ impl ParticipantGenerator {
                 ))
             })?;
 
-        let driver = ParticipantDriver::new(
+        let driver = ParticipantProtocolDriver::new(
             party_number.into(),
             local_key_index.into(),
         );
@@ -80,7 +80,7 @@ impl ParticipantGenerator {
 }
 
 #[async_trait]
-impl Driver for ParticipantGenerator {
+impl Driver for ParticipantDriver {
     type Error = Error;
     type Output = Vec<u16>;
 
@@ -96,18 +96,18 @@ impl Driver for ParticipantGenerator {
     }
 }
 
-impl From<ParticipantGenerator> for Transport {
-    fn from(value: ParticipantGenerator) -> Self {
+impl From<ParticipantDriver> for Transport {
+    fn from(value: ParticipantDriver) -> Self {
         value.bridge.transport
     }
 }
 
 /// GG20 presign generator.
-pub struct PreSignGenerator {
+pub struct PreSignDriver {
     bridge: Bridge<SignOfflineDriver>,
 }
 
-impl PreSignGenerator {
+impl PreSignDriver {
     /// Create a new GG20 key generator.
     pub fn new(
         transport: Transport,
@@ -139,7 +139,7 @@ impl PreSignGenerator {
 }
 
 #[async_trait]
-impl Driver for PreSignGenerator {
+impl Driver for PreSignDriver {
     type Error = Error;
     type Output = CompletedOfflineStage;
 
@@ -155,18 +155,18 @@ impl Driver for PreSignGenerator {
     }
 }
 
-impl From<PreSignGenerator> for Transport {
-    fn from(value: PreSignGenerator) -> Self {
+impl From<PreSignDriver> for Transport {
+    fn from(value: PreSignDriver) -> Self {
         value.bridge.transport
     }
 }
 
 /// GG20 signature generator.
-pub struct SignatureGenerator {
+pub struct SignatureDriver {
     bridge: Bridge<SignOnlineDriver>,
 }
 
-impl SignatureGenerator {
+impl SignatureDriver {
     /// Create a new GG20 key generator.
     pub fn new(
         transport: Transport,
@@ -202,7 +202,7 @@ impl SignatureGenerator {
 }
 
 #[async_trait]
-impl Driver for SignatureGenerator {
+impl Driver for SignatureDriver {
     type Error = Error;
     type Output = Signature;
 
@@ -218,8 +218,8 @@ impl Driver for SignatureGenerator {
     }
 }
 
-impl From<SignatureGenerator> for Transport {
-    fn from(value: SignatureGenerator) -> Self {
+impl From<SignatureDriver> for Transport {
+    fn from(value: SignatureDriver) -> Self {
         value.bridge.transport
     }
 }
@@ -231,13 +231,13 @@ impl From<SignatureGenerator> for Transport {
 ///
 /// This is required to determine the participants for a sign offline
 /// protocol.
-struct ParticipantDriver {
+struct ParticipantProtocolDriver {
     party_number: u16,
     participants: Vec<u16>,
     local_key_index: u16,
 }
 
-impl ParticipantDriver {
+impl ParticipantProtocolDriver {
     /// Create a key participant driver.
     pub fn new(party_number: u16, local_key_index: u16) -> Self {
         Self {
@@ -248,7 +248,7 @@ impl ParticipantDriver {
     }
 }
 
-impl ProtocolDriver for ParticipantDriver {
+impl ProtocolDriver for ParticipantProtocolDriver {
     type Error = Error;
     type Incoming = Msg<u16>;
     type Outgoing = RoundMsg<u16>;

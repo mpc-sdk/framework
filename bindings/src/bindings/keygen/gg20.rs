@@ -4,8 +4,8 @@ use wasm_bindgen::prelude::*;
 use crate::{new_client_with_keypair, KeyShare, SessionOptions};
 use futures::{select, FutureExt, StreamExt};
 use mpc_driver::{
-    gg20::KeyGenerator, wait_for_session, SessionInitiator,
-    SessionParticipant, SessionHandler, Driver,
+    gg20::KeyGenDriver, wait_for_session, Driver, SessionHandler,
+    SessionInitiator, SessionParticipant,
 };
 use mpc_relay_client::{EventStream, NetworkTransport, Transport};
 
@@ -39,7 +39,9 @@ pub(crate) async fn keygen(
             Some(options.session_id),
         ))
     } else {
-        SessionHandler::Participant(SessionParticipant::new(transport))
+        SessionHandler::Participant(SessionParticipant::new(
+            transport,
+        ))
     };
 
     let (transport, session) =
@@ -48,7 +50,7 @@ pub(crate) async fn keygen(
     let session_id = session.session_id;
 
     // Wait for key generation
-    let keygen = KeyGenerator::new(
+    let keygen = KeyGenDriver::new(
         transport,
         options.parameters.clone(),
         session,
@@ -91,7 +93,7 @@ pub(crate) async fn keygen_join(
         wait_for_session(&mut stream, client_session).await?;
 
     // Wait for key generation
-    let keygen = KeyGenerator::new(
+    let keygen = KeyGenDriver::new(
         transport,
         options.parameters.clone(),
         session,
@@ -108,7 +110,7 @@ pub(crate) async fn keygen_join(
 
 async fn wait_for_key_share(
     stream: &mut EventStream,
-    mut keygen: KeyGenerator,
+    mut keygen: KeyGenDriver,
 ) -> Result<(Transport, KeyShare), JsValue> {
     #[allow(unused_assignments)]
     let mut key_share: Option<KeyShare> = None;

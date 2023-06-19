@@ -13,8 +13,8 @@ pub(crate) use bridge::Bridge;
 pub use error::Error;
 pub(crate) use round::{Round, RoundBuffer, RoundMsg};
 pub use session::{
-    wait_for_session, SessionEventHandler, SessionInitiator,
-    SessionParticipant, SessionHandler,
+    wait_for_session, SessionEventHandler, SessionHandler,
+    SessionInitiator, SessionParticipant,
 };
 
 /// Result type for the driver library.
@@ -31,7 +31,7 @@ pub use multi_party_ecdsa::protocols::multi_party_ecdsa::gg_2020;
 #[doc(hidden)]
 pub use curv;
 
-/// Drives a protocol to completion bridging between 
+/// Drives a protocol to completion bridging between
 /// the network transport and local computation.
 #[async_trait]
 pub trait Driver {
@@ -48,7 +48,9 @@ pub trait Driver {
     ) -> std::result::Result<Option<Self::Output>, Self::Error>;
 
     /// Start running the protocol.
-    async fn execute(&mut self) -> std::result::Result<(), Self::Error>;
+    async fn execute(
+        &mut self,
+    ) -> std::result::Result<(), Self::Error>;
 }
 
 /// Trait for implementations that drive

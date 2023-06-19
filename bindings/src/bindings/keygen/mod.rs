@@ -17,11 +17,8 @@ pub fn keygen(
         serde_wasm_bindgen::from_value(participants)?;
     match &options.protocol {
         Protocol::GG20 => {
-            Ok(future_to_promise(gg20::keygen(
-                options,
-                participants,
-            ))
-            .into())
+            Ok(future_to_promise(gg20::keygen(options, participants))
+                .into())
         }
         _ => todo!("drive CGGMP protocol"),
     }

@@ -5,14 +5,14 @@ use std::collections::HashMap;
 use mpc_driver::{
     curv::elliptic::curves::secp256_k1::Secp256k1,
     gg20::{
-        KeyGenerator, ParticipantGenerator, PreSignGenerator,
-        Signature, SignatureGenerator,
+        KeyGenDriver, ParticipantDriver, PreSignDriver, Signature,
+        SignatureDriver,
     },
     gg_2020::state_machine::{
         keygen::LocalKey, sign::CompletedOfflineStage,
     },
-    SessionEventHandler, SessionInitiator, SessionParticipant,
-    Driver,
+    Driver, SessionEventHandler, SessionInitiator,
+    SessionParticipant,
 };
 
 use mpc_protocol::{Keypair, Parameters, PartyNumber, SessionState};
@@ -192,17 +192,17 @@ async fn gg20_keygen(
     let session_p_1 = sessions.remove(0);
     let session_p_2 = sessions.remove(0);
 
-    let mut keygen_i = KeyGenerator::new(
+    let mut keygen_i = KeyGenDriver::new(
         client_i_transport.clone(),
         parameters.clone(),
         session_i,
     )?;
-    let mut keygen_p_1 = KeyGenerator::new(
+    let mut keygen_p_1 = KeyGenDriver::new(
         client_p_1_transport.clone(),
         parameters.clone(),
         session_p_1,
     )?;
-    let mut keygen_p_2 = KeyGenerator::new(
+    let mut keygen_p_2 = KeyGenDriver::new(
         client_p_2_transport.clone(),
         parameters.clone(),
         session_p_2,
@@ -368,14 +368,14 @@ async fn gg20_sign_offline(
     let session_i = sessions.remove(0);
     let session_p_2 = sessions.remove(0);
 
-    let mut part_i = ParticipantGenerator::new(
+    let mut part_i = ParticipantDriver::new(
         client_i_transport.clone(),
         parameters.clone(),
         session_i.clone(),
         PartyNumber::new(local_key_i.i).unwrap(),
     )?;
 
-    let mut part_p_2 = ParticipantGenerator::new(
+    let mut part_p_2 = ParticipantDriver::new(
         client_p_2_transport.clone(),
         parameters.clone(),
         session_p_2.clone(),
@@ -432,14 +432,14 @@ async fn gg20_sign_offline(
         .remove(client_p_2_transport.public_key())
         .unwrap();
 
-    let mut presign_i = PreSignGenerator::new(
+    let mut presign_i = PreSignDriver::new(
         client_i_transport.clone(),
         parameters.clone(),
         session_i,
         local_key_i,
         participants_i,
     )?;
-    let mut presign_p_2 = PreSignGenerator::new(
+    let mut presign_p_2 = PreSignDriver::new(
         client_p_2_transport.clone(),
         parameters.clone(),
         session_p_2,
@@ -593,14 +593,14 @@ async fn gg20_sign_online(
         .remove(client_p_2_transport.public_key())
         .unwrap();
 
-    let mut sign_i = SignatureGenerator::new(
+    let mut sign_i = SignatureDriver::new(
         client_i_transport.clone(),
         parameters.clone(),
         session_i,
         offline_stage_i,
         message,
     )?;
-    let mut sign_p_2 = SignatureGenerator::new(
+    let mut sign_p_2 = SignatureDriver::new(
         client_p_2_transport.clone(),
         parameters.clone(),
         session_p_2,

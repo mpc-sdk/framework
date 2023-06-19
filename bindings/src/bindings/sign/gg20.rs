@@ -1,16 +1,15 @@
 //! Signing for the GG20 protocol.
 use wasm_bindgen::prelude::*;
 
-use crate::{
-    new_client_with_keypair, PrivateKey, SessionOptions,
-};
+use crate::{new_client_with_keypair, PrivateKey, SessionOptions};
 use futures::{select, FutureExt, StreamExt};
 use mpc_driver::{
     gg20::{
-        self, OfflineResult, ParticipantGenerator,
-        PreSignGenerator, Signature, SignatureGenerator,
+        self, OfflineResult, ParticipantDriver, PreSignDriver,
+        Signature, SignatureDriver,
     },
-    wait_for_session, SessionInitiator, SessionParticipant, SessionHandler, Driver,
+    wait_for_session, Driver, SessionHandler, SessionInitiator,
+    SessionParticipant,
 };
 use mpc_protocol::{Parameters, PartyNumber, SessionState};
 use mpc_relay_client::{EventStream, NetworkTransport, Transport};
@@ -47,7 +46,9 @@ pub(crate) async fn sign(
             Some(options.session_id),
         ))
     } else {
-        SessionHandler::Participant(SessionParticipant::new(transport))
+        SessionHandler::Participant(SessionParticipant::new(
+            transport,
+        ))
     };
     let (transport, session) =
         wait_for_session(&mut stream, client_session).await?;
@@ -102,7 +103,7 @@ async fn wait_for_participants(
     session: SessionState,
     local_key: &gg20::KeyShare,
 ) -> Result<(Transport, Vec<u16>), JsValue> {
-    let mut part = ParticipantGenerator::new(
+    let mut part = ParticipantDriver::new(
         transport,
         parameters,
         session,
@@ -143,7 +144,7 @@ async fn wait_for_offline_stage(
     local_key: gg20::KeyShare,
     participants: Vec<u16>,
 ) -> Result<(Transport, OfflineResult), JsValue> {
-    let mut presign = PreSignGenerator::new(
+    let mut presign = PreSignDriver::new(
         transport,
         parameters,
         session,
@@ -183,7 +184,7 @@ async fn wait_for_signature(
     offline_result: OfflineResult,
     message: [u8; 32],
 ) -> Result<(Transport, Signature), JsValue> {
-    let mut signer = SignatureGenerator::new(
+    let mut signer = SignatureDriver::new(
         transport,
         parameters,
         session,
