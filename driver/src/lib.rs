@@ -1,4 +1,4 @@
-//! Drive MPC protocols to completion.
+//! Drive multi-party computation protocols to completion.
 #![deny(missing_docs)]
 #![cfg_attr(all(doc, CHANNEL_NIGHTLY), feature(doc_auto_cfg))]
 use async_trait::async_trait;
@@ -9,6 +9,7 @@ mod error;
 mod round;
 mod session;
 
+pub use bridge::wait_for_driver;
 pub(crate) use bridge::Bridge;
 pub use error::Error;
 pub(crate) use round::{Round, RoundBuffer, RoundMsg};
@@ -36,7 +37,7 @@ pub use curv;
 #[async_trait]
 pub trait Driver {
     /// Error type.
-    type Error;
+    type Error: std::fmt::Debug + From<mpc_relay_client::Error>;
 
     /// Output yielded when the driver completes.
     type Output;

@@ -1,7 +1,10 @@
+use futures::{select, FutureExt, StreamExt};
 use mpc_protocol::SessionState;
-use mpc_relay_client::{Event, NetworkTransport, Transport};
+use mpc_relay_client::{
+    Event, EventStream, NetworkTransport, Transport,
+};
 
-use crate::{Error, ProtocolDriver, Round, RoundBuffer};
+use crate::{Driver, Error, ProtocolDriver, Round, RoundBuffer};
 
 /// Connects a network transport with a protocol driver.
 pub(crate) struct Bridge<D: ProtocolDriver> {
@@ -111,4 +114,36 @@ impl<D: ProtocolDriver> Bridge<D> {
         }
         Ok(())
     }
+}
+
+/// Wait for a driver to complete.
+pub async fn wait_for_driver<D>(
+    stream: &mut EventStream,
+    mut driver: D,
+) -> Result<(Transport, D::Output), D::Error>
+where
+    D: Driver + Into<Transport>,
+{
+    driver.execute().await?;
+
+    #[allow(unused_assignments)]
+    let mut output: Option<D::Output> = None;
+    loop {
+        select! {
+            event = stream.next().fuse() => {
+                match event {
+                    Some(event) => {
+                        let event = event?;
+                        if let Some(result) =
+                            driver.handle_event(event).await? {
+                            output = Some(result);
+                            break;
+                        }
+                    }
+                    _ => {}
+                }
+            },
+        }
+    }
+    Ok((driver.into(), output.take().unwrap()))
 }

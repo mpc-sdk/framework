@@ -65,7 +65,7 @@ impl From<&HandshakeMessage> for u8 {
     }
 }
 
-/// Transparent messaages are not encrypted.
+/// Transparent messages are not encrypted.
 #[derive(Default, Debug)]
 pub enum TransparentMessage {
     #[default]

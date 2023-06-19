@@ -108,7 +108,7 @@ pub enum InternalMessage {
     Close,
 }
 
-/// Event loop for a websocket client.
+/// Event loop for a client.
 pub struct EventLoop<M, E, R, W>
 where
     M: Send,

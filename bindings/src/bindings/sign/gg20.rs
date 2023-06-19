@@ -2,17 +2,13 @@
 use wasm_bindgen::prelude::*;
 
 use crate::{new_client_with_keypair, PrivateKey, SessionOptions};
-use futures::{select, FutureExt, StreamExt};
 use mpc_driver::{
-    gg20::{
-        self, OfflineResult, ParticipantDriver, PreSignDriver,
-        Signature, SignatureDriver,
-    },
-    wait_for_session, Driver, SessionHandler, SessionInitiator,
-    SessionParticipant,
+    gg20::{ParticipantDriver, PreSignDriver, SignatureDriver},
+    wait_for_driver, wait_for_session, SessionHandler,
+    SessionInitiator, SessionParticipant,
 };
-use mpc_protocol::{Parameters, PartyNumber, SessionState};
-use mpc_relay_client::{EventStream, NetworkTransport, Transport};
+use mpc_protocol::PartyNumber;
+use mpc_relay_client::{NetworkTransport, Transport};
 
 pub(crate) async fn sign(
     options: SessionOptions,
@@ -56,36 +52,36 @@ pub(crate) async fn sign(
     let session_id = session.session_id;
 
     // Wait for participant party numbers
-    let (transport, participants) = wait_for_participants(
-        &mut stream,
+    let driver = ParticipantDriver::new(
         transport,
         options.parameters,
         session.clone(),
-        &local_key,
-    )
-    .await?;
+        PartyNumber::new(local_key.i).unwrap(),
+    )?;
+    let (transport, participants) =
+        wait_for_driver(&mut stream, driver).await?;
 
     // Wait for offline stage to complete
-    let (transport, offline_result) = wait_for_offline_stage(
-        &mut stream,
+    let driver = PreSignDriver::new(
         transport,
         options.parameters,
         session.clone(),
         local_key,
         participants,
-    )
-    .await?;
+    )?;
+    let (transport, offline_result) =
+        wait_for_driver(&mut stream, driver).await?;
 
     // Wait for message to be signed
-    let (mut transport, signature) = wait_for_signature(
-        &mut stream,
+    let driver = SignatureDriver::new(
         transport,
         options.parameters,
         session,
         offline_result,
         message,
-    )
-    .await?;
+    )?;
+    let (mut transport, signature) =
+        wait_for_driver(&mut stream, driver).await?;
 
     // Close the session and socket
     if is_initiator {
@@ -94,124 +90,4 @@ pub(crate) async fn sign(
     transport.close().await?;
 
     Ok(serde_wasm_bindgen::to_value(&signature)?)
-}
-
-async fn wait_for_participants(
-    stream: &mut EventStream,
-    transport: Transport,
-    parameters: Parameters,
-    session: SessionState,
-    local_key: &gg20::KeyShare,
-) -> Result<(Transport, Vec<u16>), JsValue> {
-    let mut part = ParticipantDriver::new(
-        transport,
-        parameters,
-        session,
-        PartyNumber::new(local_key.i).unwrap(),
-    )?;
-
-    // Get participant party numbers assigned when the local
-    // keys were generated.
-    part.execute().await?;
-
-    #[allow(unused_assignments)]
-    let mut participants: Option<Vec<u16>> = None;
-    loop {
-        select! {
-            event = stream.next().fuse() => {
-                match event {
-                    Some(event) => {
-                        let event = event?;
-                        if let Some(list) =
-                            part.handle_event(event).await? {
-                            participants = Some(list);
-                            break;
-                        }
-                    }
-                    _ => {}
-                }
-            },
-        }
-    }
-    Ok((part.into(), participants.take().unwrap()))
-}
-
-async fn wait_for_offline_stage(
-    stream: &mut EventStream,
-    transport: Transport,
-    parameters: Parameters,
-    session: SessionState,
-    local_key: gg20::KeyShare,
-    participants: Vec<u16>,
-) -> Result<(Transport, OfflineResult), JsValue> {
-    let mut presign = PreSignDriver::new(
-        transport,
-        parameters,
-        session,
-        local_key,
-        participants,
-    )?;
-
-    presign.execute().await?;
-
-    #[allow(unused_assignments)]
-    let mut offline_stage: Option<OfflineResult> = None;
-    loop {
-        select! {
-            event = stream.next().fuse() => {
-                match event {
-                    Some(event) => {
-                        let event = event?;
-                        if let Some(completed_offline_stage) =
-                            presign.handle_event(event).await? {
-                            offline_stage = Some(completed_offline_stage);
-                            break;
-                        }
-                    }
-                    _ => {}
-                }
-            },
-        }
-    }
-    Ok((presign.into(), offline_stage.take().unwrap()))
-}
-
-async fn wait_for_signature(
-    stream: &mut EventStream,
-    transport: Transport,
-    parameters: Parameters,
-    session: SessionState,
-    offline_result: OfflineResult,
-    message: [u8; 32],
-) -> Result<(Transport, Signature), JsValue> {
-    let mut signer = SignatureDriver::new(
-        transport,
-        parameters,
-        session,
-        offline_result,
-        message,
-    )?;
-
-    signer.execute().await?;
-
-    #[allow(unused_assignments)]
-    let mut signature: Option<Signature> = None;
-    loop {
-        select! {
-            event = stream.next().fuse() => {
-                match event {
-                    Some(event) => {
-                        let event = event?;
-                        if let Some(sig) =
-                            signer.handle_event(event).await? {
-                            signature = Some(sig);
-                            break;
-                        }
-                    }
-                    _ => {}
-                }
-            },
-        }
-    }
-    Ok((signer.into(), signature.take().unwrap()))
 }

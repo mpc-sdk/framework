@@ -67,7 +67,7 @@ impl ClientOptions {
 
 pub use error::Error;
 
-/// Result type for the relay client.
+/// Result type for the client library.
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// Encrypt a message to send to a peer.

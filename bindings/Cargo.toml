@@ -22,8 +22,3 @@ console_error_panic_hook = "0.1"
 serde = { version = "1", features = ["derive"] }
 log = "0.4"
 wasm-log = "0.3"
-futures = "0.3"
-
-#sha3 = "0.10"
-#hex = "0.4"
-#round-based = "0.1"

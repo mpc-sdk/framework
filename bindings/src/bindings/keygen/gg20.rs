@@ -1,13 +1,12 @@
 //! Distributed key generation for the GG20 protocol.
 use wasm_bindgen::prelude::*;
 
-use crate::{new_client_with_keypair, KeyShare, SessionOptions};
-use futures::{select, FutureExt, StreamExt};
+use crate::{new_client_with_keypair, SessionOptions};
 use mpc_driver::{
-    gg20::KeyGenDriver, wait_for_session, Driver, SessionHandler,
-    SessionInitiator, SessionParticipant,
+    gg20::KeyGenDriver, wait_for_driver, wait_for_session,
+    SessionHandler, SessionInitiator, SessionParticipant,
 };
-use mpc_relay_client::{EventStream, NetworkTransport, Transport};
+use mpc_relay_client::{NetworkTransport, Transport};
 
 pub(crate) async fn keygen(
     options: SessionOptions,
@@ -56,7 +55,7 @@ pub(crate) async fn keygen(
         session,
     )?;
     let (mut transport, key_share) =
-        wait_for_key_share(&mut stream, keygen).await?;
+        wait_for_driver(&mut stream, keygen).await?;
 
     // Close the session and socket
     if is_initiator {
@@ -68,46 +67,6 @@ pub(crate) async fn keygen(
 }
 
 /*
-pub(crate) async fn keygen_join(
-    options: SessionOptions,
-) -> Result<JsValue, JsValue> {
-    // Create the client
-    let (client, event_loop) = new_client_with_keypair(
-        &options.server.server_url,
-        options.server.server_public_key.clone(),
-        options.keypair.clone(),
-    )
-    .await?;
-
-    let mut transport: Transport = client.into();
-
-    // Handshake with the server
-    transport.connect().await?;
-
-    // Start the event stream
-    let mut stream = event_loop.run();
-
-    // Wait for the session to become active
-    let client_session = SessionParticipant::new(transport);
-    let (transport, session) =
-        wait_for_session(&mut stream, client_session).await?;
-
-    // Wait for key generation
-    let keygen = KeyGenDriver::new(
-        transport,
-        options.parameters.clone(),
-        session,
-    )?;
-    let (transport, key_share) =
-        wait_for_key_share(&mut stream, keygen).await?;
-
-    // Close the socket
-    transport.close().await?;
-
-    Ok(serde_wasm_bindgen::to_value(&key_share)?)
-}
-*/
-
 async fn wait_for_key_share(
     stream: &mut EventStream,
     mut keygen: KeyGenDriver,
@@ -133,3 +92,4 @@ async fn wait_for_key_share(
     }
     Ok((keygen.into(), key_share.take().unwrap()))
 }
+*/
