@@ -61,6 +61,10 @@ mod cli {
             #[clap(short, long)]
             force: bool,
 
+            /// Write hex-encoded public key to a file.
+            #[clap(long)]
+            public_key: Option<PathBuf>,
+
             /// Write keypair to this file.
             file: PathBuf,
         },
@@ -87,8 +91,8 @@ mod cli {
     pub(super) async fn run() -> Result<()> {
         let args = RelayServer::parse();
         match args.cmd {
-            Command::GenerateKeypair { file, force } => {
-                commands::generate_keypair::run(file, force).await?
+            Command::GenerateKeypair { file, force, public_key } => {
+                commands::generate_keypair::run(file, force, public_key).await?
             }
             Command::Server {
                 session_interval,

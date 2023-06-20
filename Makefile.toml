@@ -79,6 +79,20 @@ cd bindings
 wasm-pack build --target web --scope mpc-sdk
 '''
 
+[tasks.gen-keys]
+script = '''
+cargo run -- generate-keypair server.pem
+cargo run -- generate-keypair tests/test.pem --public-key tests/server_public_key.txt
+cargo run -- generate-keypair tests/e2e/p1.pem
+cargo run -- generate-keypair tests/e2e/p2.pem
+cargo run -- generate-keypair tests/e2e/p3.pem
+'''
+
+[tasks.test-server]
+script = '''
+cargo run -- server -b 127.0.0.1:8008 tests/config.toml
+'''
+
 [tasks.dev-server]
 script = '''
 cd tools

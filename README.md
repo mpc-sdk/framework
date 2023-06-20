@@ -36,15 +36,15 @@ cargo install wasm-pack
 
 Minimum supported rust version (MSRV) is 1.68.1.
 
+Run the `gen-keys` task to setup keypairs for the server and test specs:
+
+```
+cargo make gen-keys
+```
+
 ### Server
 
-First generate a keypair:
-
-```
-cargo run -- generate-keypair server.pem
-```
-
-Then start the server:
+Start a server:
 
 ```
 cargo run -- server config.toml
@@ -78,10 +78,10 @@ cargo make test
 
 #### Web Client
 
-To test the web client using webassembly, first start a test server:
+To test the web client using webassembly, first start a test server (port 8008):
 
 ```
-cargo run -- server -b 127.0.0.1:8008 tests/config.toml
+cargo make test-server
 ```
 
 Now you can run the webassembly tests:
