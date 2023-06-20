@@ -19,6 +19,7 @@ members = [
   "server"
 ]
 exclude = [
+  "tools",
   "stubs/mpc-relay-client",
   "stubs/mpc-relay-protocol"
 ]

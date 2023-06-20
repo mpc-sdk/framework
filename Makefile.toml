@@ -73,6 +73,18 @@ dependencies = ["unit", "integration"]
 [tasks.dev]
 dependencies = ["check-wasm", "test", "format"]
 
+[tasks.bindings]
+script = '''
+cd bindings
+wasm-pack build --target web --scope mpc-sdk
+'''
+
+[tasks.dev-server]
+script = '''
+cd tools
+cargo run --bin dev-server
+'''
+
 [tasks.test-wasm]
 command = "wasm-pack"
 args = ["test", "--firefox", "--all-features"]
