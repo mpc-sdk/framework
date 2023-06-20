@@ -58,16 +58,6 @@ cargo make doc
 
 ### Tests
 
-#### Server Key
-
-Generate a server key for the test specs and print the public key:
-
-```
-cargo run -- generate-keypair tests/test.pem
-```
-
-Copy the hex-encoded public key into the file `tests/server_public_key.txt`.
-
 #### Native Client
 
 To run the tests using the native client:
