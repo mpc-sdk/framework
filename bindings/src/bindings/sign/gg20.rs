@@ -2,13 +2,13 @@
 use wasm_bindgen::prelude::*;
 
 use crate::{new_client_with_keypair, PrivateKey, SessionOptions};
+use mpc_client::{NetworkTransport, Transport};
 use mpc_driver::{
     gg20::{ParticipantDriver, PreSignDriver, SignatureDriver},
     wait_for_driver, wait_for_session, SessionHandler,
     SessionInitiator, SessionParticipant,
 };
 use mpc_protocol::PartyNumber;
-use mpc_client::{NetworkTransport, Transport};
 
 pub(crate) async fn sign(
     options: SessionOptions,

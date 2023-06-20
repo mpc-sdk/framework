@@ -1,11 +1,11 @@
 use anyhow::Result;
 use futures::{select, FutureExt, StreamExt};
 
+use mpc_client::{NetworkTransport, Transport};
 use mpc_driver::{
     SessionEventHandler, SessionInitiator, SessionParticipant,
 };
 use mpc_protocol::SessionState;
-use mpc_client::{NetworkTransport, Transport};
 
 use super::new_client;
 

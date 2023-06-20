@@ -38,9 +38,7 @@ pub async fn new_client<E: From<mpc_client::Error>>(
     Ok((client, event_loop, copy))
 }
 
-pub async fn new_client_with_keypair<
-    E: From<mpc_client::Error>,
->(
+pub async fn new_client_with_keypair<E: From<mpc_client::Error>>(
     server: &str,
     server_public_key: Vec<u8>,
     keypair: Keypair,

@@ -1,10 +1,8 @@
 use crate::Result;
 use async_trait::async_trait;
 use futures::{select, FutureExt, StreamExt};
+use mpc_client::{Event, EventStream, NetworkTransport, Transport};
 use mpc_protocol::{SessionId, SessionState};
-use mpc_client::{
-    Event, EventStream, NetworkTransport, Transport,
-};
 use tokio::sync::Mutex;
 
 /// Trait for types that handle session related events.

@@ -1,6 +1,6 @@
 //! Distributed key generation.
 use crate::PrivateKey;
-use crate::{Protocol, SessionOptions};
+use crate::{Protocol, SessionOptions, parse_participants};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::future_to_promise;
 
@@ -20,8 +20,7 @@ pub fn sign(
         serde_wasm_bindgen::from_value(signing_key)?;
     let message: [u8; 32] =
         message.as_slice().try_into().map_err(JsError::from)?;
-    let participants: Option<Vec<Vec<u8>>> =
-        serde_wasm_bindgen::from_value(participants)?;
+    let participants = parse_participants(participants)?;
     match &options.protocol {
         Protocol::GG20 => {
             assert!(matches!(signing_key, PrivateKey::GG20(_)));

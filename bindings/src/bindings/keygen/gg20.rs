@@ -2,17 +2,19 @@
 use wasm_bindgen::prelude::*;
 
 use crate::{new_client_with_keypair, SessionOptions};
+use mpc_client::{NetworkTransport, Transport};
 use mpc_driver::{
     gg20::KeyGenDriver, wait_for_driver, wait_for_session,
     SessionHandler, SessionInitiator, SessionParticipant,
 };
-use mpc_client::{NetworkTransport, Transport};
 
 pub(crate) async fn keygen(
     options: SessionOptions,
     participants: Option<Vec<Vec<u8>>>,
 ) -> Result<JsValue, JsValue> {
     let is_initiator = participants.is_some();
+
+    log::info!("keygen starting {}", is_initiator);
 
     // Create the client
     let (client, event_loop) = new_client_with_keypair(
@@ -26,6 +28,8 @@ pub(crate) async fn keygen(
 
     // Handshake with the server
     transport.connect().await?;
+
+    log::info!("keygen connected to server, prepare session");
 
     // Start the event stream
     let mut stream = event_loop.run();
@@ -46,6 +50,8 @@ pub(crate) async fn keygen(
     let (transport, session) =
         wait_for_session(&mut stream, client_session).await?;
 
+    log::info!("keygen, session is ready");
+
     let session_id = session.session_id;
 
     // Wait for key generation
@@ -65,31 +71,3 @@ pub(crate) async fn keygen(
 
     Ok(serde_wasm_bindgen::to_value(&key_share)?)
 }
-
-/*
-async fn wait_for_key_share(
-    stream: &mut EventStream,
-    mut keygen: KeyGenDriver,
-) -> Result<(Transport, KeyShare), JsValue> {
-    #[allow(unused_assignments)]
-    let mut key_share: Option<KeyShare> = None;
-    loop {
-        select! {
-            event = stream.next().fuse() => {
-                match event {
-                    Some(event) => {
-                        let event = event?;
-                        if let Some(local_key_share) =
-                            keygen.handle_event(event).await? {
-                            key_share = Some(local_key_share.into());
-                            break;
-                        }
-                    }
-                    _ => {}
-                }
-            },
-        }
-    }
-    Ok((keygen.into(), key_share.take().unwrap()))
-}
-*/

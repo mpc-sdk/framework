@@ -1,5 +1,6 @@
 //! Webassembly bindings for the web platform.
 use wasm_bindgen::prelude::*;
+use mpc_protocol::hex;
 
 /// Initialize the panic hook and logging.
 #[doc(hidden)]
@@ -19,8 +20,23 @@ mod types;
 
 pub use types::*;
 
-use mpc_protocol::Keypair;
 use mpc_client::{Client, ClientOptions, EventLoop};
+use mpc_protocol::Keypair;
+
+pub(crate) fn parse_participants(
+    participants: JsValue) -> Result<Option<Vec<Vec<u8>>>, JsError> {
+    let participants: Option<Vec<String>> =
+        serde_wasm_bindgen::from_value(participants)?;
+    if let Some(participants) = participants {
+        let mut parties = Vec::new();
+        for participant in participants {
+            parties.push(hex::decode(participant).map_err(JsError::from)?);
+        }
+        Ok(Some(parties))
+    } else {
+        Ok(None)
+    }
+}
 
 /// Create a new relay client using the provided keypair connected
 /// to a relay server.

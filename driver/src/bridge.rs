@@ -1,8 +1,6 @@
 use futures::{select, FutureExt, StreamExt};
+use mpc_client::{Event, EventStream, NetworkTransport, Transport};
 use mpc_protocol::SessionState;
-use mpc_client::{
-    Event, EventStream, NetworkTransport, Transport,
-};
 
 use crate::{Driver, Error, ProtocolDriver, Round, RoundBuffer};
 

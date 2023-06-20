@@ -58,7 +58,7 @@ cargo make doc
 
 ### Tests
 
-#### Native Client
+#### Native Platform
 
 To run the tests using the native client:
 
@@ -66,7 +66,7 @@ To run the tests using the native client:
 cargo make test
 ```
 
-#### Web Client
+#### Web Platform
 
 To test the web client using webassembly, first start a test server (port 8008):
 
@@ -78,6 +78,26 @@ Now you can run the webassembly tests:
 
 ```
 cargo make test-wasm
+```
+
+The webassembly tests cannot simulate key generation and signing as it is too computationally intensive for a single-threaded context and the integration tests would hit the browser script timeout before completion.
+
+To run end to end tests for the web platform, first compile the webassmbly bindings:
+
+```
+cargo make bindings
+```
+
+Then generate the test files:
+
+```
+cargo make gen-e2e
+```
+
+Make sure you have a test server running (`cargo make test-server`) and then start a dev server (port 9009) used to serve the HTML and Javascript:
+
+```
+cargo make dev-server
 ```
 
 ## License

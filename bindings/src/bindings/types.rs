@@ -2,15 +2,16 @@
 use serde::{Deserialize, Serialize};
 
 use mpc_driver::gg20;
-use mpc_protocol::{Keypair, Parameters, SessionId, hex};
+use mpc_protocol::{hex, Keypair, Parameters, SessionId};
 
 /// Supported multi-party computation protocols.
 #[derive(Copy, Clone, Serialize, Deserialize)]
-#[serde(untagged, rename_all = "lowercase")]
 pub enum Protocol {
     /// The GG2020 protocol.
+    #[serde(rename = "gg20")]
     GG20,
     /// The CGGMP protocol.
+    #[serde(rename = "cggmp")]
     CGGMP,
 }
 

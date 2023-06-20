@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+mpc-protocol = { path = "../protocol" }
 tokio = { version = "1", features = ["rt", "macros", "rt-multi-thread"] }
 axum = { version = "0.6", features = ["headers"] }
 axum-macros = "0.3"
@@ -12,7 +13,12 @@ axum-extra = "0.7"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tower-http = { version = "0.4", features = ["fs", "trace"] }
+uuid = { version = "1", features = ["v4"] }
 
 [[bin]]
 name = "dev-server"
 path = "src/dev-server.rs"
+
+[[bin]]
+name = "gen-e2e"
+path = "src/gen-e2e.rs"

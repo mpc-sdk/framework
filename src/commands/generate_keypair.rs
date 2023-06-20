@@ -6,7 +6,11 @@ use tokio::{fs, io::AsyncWriteExt};
 use mpc_protocol::{encode_keypair, generate_keypair, hex};
 
 /// Generate keypair and write to file.
-pub async fn run(path: PathBuf, force: bool, public_key: Option<PathBuf>) -> Result<()> {
+pub async fn run(
+    path: PathBuf,
+    force: bool,
+    public_key: Option<PathBuf>,
+) -> Result<()> {
     if fs::try_exists(&path).await? && !force {
         bail!(
             "file {} already exists, use --force to overwrite",
