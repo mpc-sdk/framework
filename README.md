@@ -80,6 +80,8 @@ Now you can run the webassembly tests:
 cargo make test-wasm
 ```
 
+##### End-to-end tests
+
 The webassembly tests cannot simulate key generation and signing as it is too computationally intensive for a single-threaded context and the integration tests would hit the browser script timeout before completion.
 
 To run end to end tests for the web platform, first compile the webassmbly bindings:
@@ -100,7 +102,7 @@ Start a server for the end-to-end tests:
 cargo make e2e-server
 ```
 
-Note we don't use the `test-server` task as the e2e tests use a different configuration with the standard timeout settings.
+Note we don't use the `test-server` task as the e2e tests use a configuration with different timeout settings.
 
 Then start a dev server (port 9009) used to serve the HTML and Javascript:
 
@@ -108,12 +110,41 @@ Then start a dev server (port 9009) used to serve the HTML and Javascript:
 cargo make dev-server
 ```
 
+Running the test specs requires [playwright][], so first install the dependencies for the end-to-end tests and then the [playwright][] browsers:
+
+```
+cd tests/e2e
+npm install
+npx playwright install
+```
+
+Then you should be able to run the end-to-end tests:
+
+```
+npm test
+```
+
+Or run headed to see the browsers, which can be useful for debugging:
+
+```
+npm run test-headed
+```
+
+Or use the [playwright][] UI:
+
+```
+npm run test-ui
+```
+
+If you need to debug the test specs you can also just open the pages manually in a browser, first open the initiator `/gg20/p1.html` and then open the participant pages `/gg20/p2.html` and `/gg20/p3.html` on the `http://localhost:9009` development server.
+
 ## License
 
 The driver crate is GPLv3 all other code is either MIT or Apache-2.0.
 
 [noise protocol]: https://noiseprotocol.org/
 [rust]: https://www.rust-lang.org/
+[playwright]: https://playwright.dev
 [web-sys]: https://docs.rs/web-sys
 [tokio-tungstenite]: https://docs.rs/tokio-tungstenite
 [protocol]: https://docs.rs/mpc-protocol

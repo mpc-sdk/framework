@@ -29,9 +29,9 @@ pub struct KeyShare {
 
 /// Key share variants by protocol.
 #[derive(Serialize, Deserialize)]
-#[serde(untagged)]
 pub enum PrivateKey {
     /// Key share for the GG20 protocol.
+    #[serde(rename = "gg20")]
     GG20(gg20::KeyShare),
 }
 

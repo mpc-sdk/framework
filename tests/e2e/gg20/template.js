@@ -24,6 +24,11 @@ import("/pkg/mpc_bindings.js").then(async (module) => {
     keygen
       .then((keyShare) => {
         console.log("key share generated: ", keyShare);
+
+        const keyShareElement = document.getElementById("key-share");
+        keyShareElement.innerHTML = `
+          <p class="address">Address: ${keyShare.address}</p>
+          <p class="party-number">Party number: ${keyShare.privateKey.gg20.i}</p>`;
       })
       .catch((err) => {
         console.error(err);

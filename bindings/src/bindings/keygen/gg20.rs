@@ -1,7 +1,7 @@
 //! Distributed key generation for the GG20 protocol.
 use wasm_bindgen::prelude::*;
 
-use crate::{new_client_with_keypair, SessionOptions};
+use crate::{new_client_with_keypair, SessionOptions, KeyShare};
 use mpc_client::{NetworkTransport, Transport};
 use mpc_driver::{
     gg20::KeyGenDriver, wait_for_driver, wait_for_session,
@@ -53,7 +53,7 @@ pub(crate) async fn keygen(
         options.parameters.clone(),
         session,
     )?;
-    let (mut transport, key_share) =
+    let (mut transport, local_key_share) =
         wait_for_driver(&mut stream, keygen).await?;
 
     // Close the session and socket
@@ -61,6 +61,8 @@ pub(crate) async fn keygen(
         transport.close_session(session_id).await?;
     }
     transport.close().await?;
+
+    let key_share: KeyShare = local_key_share.into();
 
     Ok(serde_wasm_bindgen::to_value(&key_share)?)
 }
