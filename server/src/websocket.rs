@@ -13,7 +13,7 @@ use futures::{
 
 use serde::Deserialize;
 
-use std::sync::Arc;
+use std::{sync::Arc, fmt};
 use tokio::sync::{mpsc, RwLock};
 
 //use axum_macros::debug_handler;
@@ -52,6 +52,15 @@ pub struct WebSocketConnection {
     /// so we move out of the option and convert to
     /// transport mode and then put it back.
     pub(crate) state: Option<ProtocolState>,
+}
+
+impl fmt::Debug for WebSocketConnection {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("WebSocketConnection")
+         .field("id", &self.id)
+         .field("public_key", &hex::encode(&self.public_key))
+         .finish()
+    }
 }
 
 impl WebSocketConnection {

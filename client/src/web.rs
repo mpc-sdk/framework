@@ -68,7 +68,14 @@ impl WebClient {
                         {
                             let array = js_sys::Uint8Array::new(&buf);
                             let buffer = array.to_vec();
-                            msg_proxy.send(Ok(buffer)).await.unwrap();
+
+                            if let Err(e) = msg_proxy.send(Ok(buffer)).await {
+
+                                if let mpsc::error::SendError(Ok(buffer)) = e {
+                                    let message: ResponseMessage = decode(&buffer).await.unwrap();
+                                    log::error!("send error {:#?}", message);
+                                }
+                            }
                         } else {
                             log::warn!(
                                 "unknown message event: {:?}",

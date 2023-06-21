@@ -152,7 +152,7 @@ async fn initiator(
         Event::ServerConnected { .. } => {
             tracing::info!("initiator connected to server");
             // Initiate a session context for broadcasting
-            client.new_session(session_participants, None).await?;
+            client.new_session(session_participants).await?;
         }
         Event::SessionCreated(session) => {
             tracing::info!(

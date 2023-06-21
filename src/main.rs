@@ -130,7 +130,7 @@ pub async fn main() -> anyhow::Result<()> {
     tracing_subscriber::registry()
         .with(tracing_subscriber::EnvFilter::new(
             std::env::var("RUST_LOG")
-                .unwrap_or_else(|_| "mpc_relay=info".into()),
+                .unwrap_or_else(|_| "mpc_relay=debug".into()),
         ))
         .with(tracing_subscriber::fmt::layer().without_time())
         .init();

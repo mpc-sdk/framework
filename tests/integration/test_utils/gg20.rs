@@ -128,7 +128,6 @@ async fn gg20_keygen(
     let mut client_i_session = SessionInitiator::new(
         client_i_transport,
         session_participants,
-        None,
     );
     let mut client_p_1_session =
         SessionParticipant::new(client_p_1_transport);
@@ -321,7 +320,6 @@ async fn gg20_sign_offline(
     let mut client_i_session = SessionInitiator::new(
         client_i_transport,
         sign_participants,
-        None,
     );
     let mut client_p_2_session =
         SessionParticipant::new(client_p_2_transport);
@@ -539,7 +537,6 @@ async fn gg20_sign_online(
     let mut client_i_session = SessionInitiator::new(
         client_i_transport,
         sign_participants,
-        None,
     );
     let mut client_p_2_session =
         SessionParticipant::new(client_p_2_transport);
