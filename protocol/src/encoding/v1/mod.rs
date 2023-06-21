@@ -601,10 +601,6 @@ impl Encodable for SessionRequest {
         &self,
         writer: &mut BinaryWriter<W>,
     ) -> Result<()> {
-        writer.write_bool(self.session_id.is_some()).await?;
-        if let Some(id) = self.session_id {
-            writer.write_bytes(id.as_bytes()).await?;
-        }
         // TODO: handle too many participants
         writer.write_u16(self.participant_keys.len() as u16).await?;
         for key in self.participant_keys.iter() {
@@ -620,20 +616,6 @@ impl Decodable for SessionRequest {
         &mut self,
         reader: &mut BinaryReader<R>,
     ) -> Result<()> {
-        let has_session_id = reader.read_bool().await?;
-        self.session_id = if has_session_id {
-            Some(SessionId::from_bytes(
-                reader
-                    .read_bytes(16)
-                    .await?
-                    .as_slice()
-                    .try_into()
-                    .map_err(encoding_error)?,
-            ))
-        } else {
-            None
-        };
-
         let size = reader.read_u16().await? as usize;
         for _ in 0..size {
             let key = decode_buffer(reader).await?;

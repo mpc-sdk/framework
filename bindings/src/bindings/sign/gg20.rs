@@ -39,7 +39,6 @@ pub(crate) async fn sign(
         SessionHandler::Initiator(SessionInitiator::new(
             transport,
             participants,
-            options.session_id,
         ))
     } else {
         SessionHandler::Participant(SessionParticipant::new(

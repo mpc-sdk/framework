@@ -2,7 +2,7 @@
 use serde::{Deserialize, Serialize};
 
 use mpc_driver::gg20;
-use mpc_protocol::{hex, Keypair, Parameters, SessionId};
+use mpc_protocol::{hex, Keypair, Parameters};
 
 /// Supported multi-party computation protocols.
 #[derive(Copy, Clone, Serialize, Deserialize)]
@@ -66,8 +66,6 @@ pub struct SessionOptions {
     pub protocol: Protocol,
     /// Keypair for the participant.
     pub keypair: Keypair,
-    /// Session identifier.
-    pub session_id: Option<SessionId>,
     /// Server options.
     pub server: ServerOptions,
     /// Parameters for key generation.

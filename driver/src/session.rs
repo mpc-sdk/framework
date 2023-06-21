@@ -50,7 +50,6 @@ pub struct SessionInitiator {
     transport: Transport,
     session_participants: Vec<Vec<u8>>,
     session_state: Mutex<Option<SessionState>>,
-    session_id: Option<SessionId>,
     requested_session: bool,
 }
 
@@ -59,13 +58,11 @@ impl SessionInitiator {
     pub fn new(
         transport: Transport,
         session_participants: Vec<Vec<u8>>,
-        session_id: Option<SessionId>,
     ) -> Self {
         Self {
             transport,
             session_participants,
             session_state: Mutex::new(None),
-            session_id,
             requested_session: false,
         }
     }
@@ -76,7 +73,6 @@ impl SessionInitiator {
             self.transport
                 .new_session(
                     self.session_participants.clone(),
-                    self.session_id.take(),
                 )
                 .await?;
 

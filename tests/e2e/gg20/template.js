@@ -6,8 +6,6 @@ import("/pkg/mpc_bindings.js").then(async (module) => {
   const options = {
     protocol: "gg20",
     keypair: `${KEYPAIR}`,
-    //sessionId: "${SESSION_ID}",
-    sessionId: null,
     server: {
       serverUrl: "${SERVER_URL}",
       serverPublicKey: "${SERVER_PUBLIC_KEY}",

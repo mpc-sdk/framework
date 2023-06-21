@@ -23,7 +23,6 @@ fn main() {
     let base_path = base_path.parent().expect("parent path");
     let output_dir = base_path.join("tests").join("e2e").join("gg20");
 
-    let uuid = uuid::Uuid::new_v4().to_string();
     let file_names = vec!["p1", "p2", "p3"];
     let keypairs = vec![KEYPAIR_P1, KEYPAIR_P2, KEYPAIR_P3];
 
@@ -42,7 +41,6 @@ fn main() {
         let js = GG20_JS
             .replace("${PARTICIPANTS}", &participants)
             .replace("${KEYPAIR}", keypair)
-            .replace("${SESSION_ID}", &uuid)
             .replace("${SERVER_URL}", SERVER_URL)
             .replace("${SERVER_PUBLIC_KEY}", SERVER_PUBLIC_KEY);
 
