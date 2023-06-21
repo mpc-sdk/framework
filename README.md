@@ -94,7 +94,15 @@ Then generate the test files:
 cargo make gen-e2e
 ```
 
-Make sure you have a test server running (`cargo make test-server`) and then start a dev server (port 9009) used to serve the HTML and Javascript:
+Start a server for the end-to-end tests:
+
+```
+cargo make e2e-server
+```
+
+Note we don't use the `test-server` task as the e2e tests use a different configuration with the standard timeout settings.
+
+Then start a dev server (port 9009) used to serve the HTML and Javascript:
 
 ```
 cargo make dev-server

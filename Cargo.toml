@@ -25,8 +25,8 @@ exclude = [
 ]
 
 [dependencies]
-#mpc-protocol = { path = "protocol" }
-mpc-protocol = "0.4"
+mpc-protocol = { path = "protocol" }
+#mpc-protocol = "0.4"
 anyhow = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
@@ -41,8 +41,8 @@ serial_test = "2"
 sha3 = "0.10"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-#mpc-relay-server = { path = "server" }
-mpc-relay-server = "0.4"
+mpc-relay-server = { path = "server" }
+#mpc-relay-server = "0.4"
 clap = { version = "4", features = ["derive", "wrap_help", "env"] }
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "fs", "io-util" ] }
 axum-server = { version = "0.5", features = ["tls-rustls"] }

@@ -67,7 +67,7 @@ pub struct SessionOptions {
     /// Keypair for the participant.
     pub keypair: Keypair,
     /// Session identifier.
-    pub session_id: SessionId,
+    pub session_id: Option<SessionId>,
     /// Server options.
     pub server: ServerOptions,
     /// Parameters for key generation.

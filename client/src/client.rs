@@ -125,6 +125,11 @@ macro_rules! client_transport_impl {
                 Ok(())
             }
 
+            async fn is_connected(&self) -> bool {
+                let state = self.server.read().await;
+                matches!(&*state, Some(ProtocolState::Transport(_)))
+            }
+
             /// Handshake with a peer.
             ///
             /// Peer already exists error is returned if this

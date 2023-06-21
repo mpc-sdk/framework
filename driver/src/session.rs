@@ -51,6 +51,7 @@ pub struct SessionInitiator {
     session_participants: Vec<Vec<u8>>,
     session_state: Mutex<Option<SessionState>>,
     session_id: Option<SessionId>,
+    requested_session: bool,
 }
 
 impl SessionInitiator {
@@ -65,7 +66,23 @@ impl SessionInitiator {
             session_participants,
             session_state: Mutex::new(None),
             session_id,
+            requested_session: false,
         }
+    }
+
+    /// Lazily request to create new session only once.
+    async fn new_session(&mut self) -> Result<()> {
+        if !self.requested_session && self.transport.is_connected().await {
+            self.transport
+                .new_session(
+                    self.session_participants.clone(),
+                    self.session_id.take(),
+                )
+                .await?;
+
+            self.requested_session = true;
+        }
+        Ok(())
     }
 }
 
@@ -75,15 +92,10 @@ impl SessionEventHandler for SessionInitiator {
         &mut self,
         event: Event,
     ) -> Result<Option<SessionState>> {
+
+        self.new_session().await?;
+
         match event {
-            Event::ServerConnected { .. } => {
-                self.transport
-                    .new_session(
-                        self.session_participants.clone(),
-                        self.session_id.take(),
-                    )
-                    .await?;
-            }
             Event::SessionCreated(session) => {
                 tracing::info!(
                     id = ?session.session_id.to_string(),

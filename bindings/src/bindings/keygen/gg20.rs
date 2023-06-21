@@ -14,8 +14,6 @@ pub(crate) async fn keygen(
 ) -> Result<JsValue, JsValue> {
     let is_initiator = participants.is_some();
 
-    log::info!("keygen starting {}", is_initiator);
-
     // Create the client
     let (client, event_loop) = new_client_with_keypair(
         &options.server.server_url,
@@ -29,8 +27,6 @@ pub(crate) async fn keygen(
     // Handshake with the server
     transport.connect().await?;
 
-    log::info!("keygen connected to server, prepare session");
-
     // Start the event stream
     let mut stream = event_loop.run();
 
@@ -39,7 +35,7 @@ pub(crate) async fn keygen(
         SessionHandler::Initiator(SessionInitiator::new(
             transport,
             participants,
-            Some(options.session_id),
+            options.session_id,
         ))
     } else {
         SessionHandler::Participant(SessionParticipant::new(
@@ -49,8 +45,6 @@ pub(crate) async fn keygen(
 
     let (transport, session) =
         wait_for_session(&mut stream, client_session).await?;
-
-    log::info!("keygen, session is ready");
 
     let session_id = session.session_id;
 

@@ -33,6 +33,12 @@ impl NetworkTransport for Transport {
         }
     }
 
+    async fn is_connected(&self) -> bool {
+        match self {
+            Transport::Relay(client) => client.is_connected().await,
+        }
+    }
+
     async fn connect_peer(
         &mut self,
         public_key: &[u8],
@@ -180,6 +186,10 @@ pub trait NetworkTransport {
 
     /// Perform initial handshake with the server.
     async fn connect(&mut self) -> Result<()>;
+
+    /// Determine if this client has completed a
+    /// server handshake.
+    async fn is_connected(&self) -> bool;
 
     /// Handshake with a peer.
     ///
