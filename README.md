@@ -84,7 +84,7 @@ cargo make test-wasm
 
 The webassembly tests cannot simulate key generation and signing as it is too computationally intensive for a single-threaded context and the integration tests would hit the browser script timeout before completion.
 
-To run end to end tests for the web platform, first compile the webassmbly bindings:
+To run end to end tests for the web platform, first compile the webassembly bindings:
 
 ```
 cargo make bindings
@@ -140,7 +140,7 @@ If you need to debug the test specs you can also just open the pages manually in
 
 ## License
 
-The driver crate is GPLv3 all other code is either MIT or Apache-2.0.
+The bindings and driver crates are released under the GPLv3 license and all other code is either MIT or Apache-2.0.
 
 [noise protocol]: https://noiseprotocol.org/
 [rust]: https://www.rust-lang.org/
