@@ -69,11 +69,11 @@ impl SessionInitiator {
 
     /// Lazily request to create new session only once.
     async fn new_session(&mut self) -> Result<()> {
-        if !self.requested_session && self.transport.is_connected().await {
+        if !self.requested_session
+            && self.transport.is_connected().await
+        {
             self.transport
-                .new_session(
-                    self.session_participants.clone(),
-                )
+                .new_session(self.session_participants.clone())
                 .await?;
 
             self.requested_session = true;
@@ -88,7 +88,6 @@ impl SessionEventHandler for SessionInitiator {
         &mut self,
         event: Event,
     ) -> Result<Option<SessionState>> {
-
         self.new_session().await?;
 
         match event {

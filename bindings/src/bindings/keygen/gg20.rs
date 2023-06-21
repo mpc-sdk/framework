@@ -1,7 +1,7 @@
 //! Distributed key generation for the GG20 protocol.
 use wasm_bindgen::prelude::*;
 
-use crate::{new_client_with_keypair, SessionOptions, KeyShare};
+use crate::{new_client_with_keypair, KeyShare, SessionOptions};
 use mpc_client::{NetworkTransport, Transport};
 use mpc_driver::{
     gg20::KeyGenDriver, wait_for_driver, wait_for_session,

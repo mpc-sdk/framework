@@ -1,5 +1,5 @@
 //! Distributed key generation.
-use crate::{Protocol, SessionOptions, parse_participants};
+use crate::{parse_participants, Protocol, SessionOptions};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::future_to_promise;
 

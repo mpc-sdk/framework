@@ -44,10 +44,11 @@ test("GG20: keygen and sign message", async ({ context, page }) => {
 
   const pages = context.pages();
 
-  await Promise.all(
-    pages.map((page) => {
-      return page.waitForSelector(".party-number");
-    })
-  );
+  const selectors = [
+    page.waitForSelector(".signature-address"),
+    page2.waitForSelector(".party-number"),
+    page3.waitForSelector(".signature-address"),
+  ];
 
+  await Promise.all(selectors);
 });
