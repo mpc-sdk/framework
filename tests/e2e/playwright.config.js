@@ -22,7 +22,7 @@ module.exports = defineConfig({
   workers: 1,
 
   // Chrome and Safari finish quite fast, but firefox is slow
-  timeout: 60000,
+  timeout: 90000,
 
   use: {
     trace: 'on-first-retry',

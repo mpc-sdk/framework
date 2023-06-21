@@ -41,7 +41,7 @@ pub struct WebClient {
     outbound_tx: mpsc::Sender<InternalMessage>,
     server: Server,
     peers: Peers,
-    ptr: *mut mpsc::UnboundedSender<Result<Vec<u8>>>,
+    ptr: *mut mpsc::Sender<Result<Vec<u8>>>,
 }
 
 impl WebClient {
@@ -53,29 +53,15 @@ impl WebClient {
         let ws = WebSocket::new(server)?;
         ws.set_binary_type(web_sys::BinaryType::Arraybuffer);
 
-        let (ws_msg_tx, mut ws_msg_rx) = mpsc::unbounded_channel();
+        let (ws_msg_tx, mut ws_msg_rx) = mpsc::channel(32);
         let msg_tx = Box::new(ws_msg_tx);
 
         let ptr = Box::into_raw(msg_tx);
         unsafe {
             let msg_proxy = &*(ptr as *const _)
-                as &'static mpsc::UnboundedSender<Result<Vec<u8>>>;
+                as &'static mpsc::Sender<Result<Vec<u8>>>;
             let onmessage_callback = Closure::<dyn FnMut(_)>::new(
                 move |e: MessageEvent| {
-                    if let Ok(buf) =
-                        e.data().dyn_into::<js_sys::ArrayBuffer>()
-                    {
-                        let array = js_sys::Uint8Array::new(&buf);
-                        let buffer = array.to_vec();
-                        msg_proxy.send(Ok(buffer)).unwrap();
-                    } else {
-                        log::warn!(
-                            "unknown message event: {:?}",
-                            e.data()
-                        );
-                    }
-
-                    /*
                     spawn_local(async move {
                         if let Ok(buf) =
                             e.data().dyn_into::<js_sys::ArrayBuffer>()
@@ -90,7 +76,6 @@ impl WebClient {
                             );
                         }
                     });
-                    */
                 },
             );
             ws.set_onmessage(Some(
@@ -101,7 +86,7 @@ impl WebClient {
 
         let onerror_callback =
             Closure::<dyn FnMut(_)>::new(move |e: ErrorEvent| {
-                log::error!("error event: {:?}", e);
+                log::error!("error event: {:?}", e.as_string());
             });
         ws.set_onerror(Some(
             onerror_callback.as_ref().unchecked_ref(),
