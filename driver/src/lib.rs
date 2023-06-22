@@ -8,6 +8,7 @@ mod bridge;
 mod error;
 mod round;
 mod session;
+mod types;
 
 pub(crate) use bridge::Bridge;
 pub use bridge::{
@@ -19,6 +20,7 @@ pub use session::{
     wait_for_session, SessionEventHandler, SessionHandler,
     SessionInitiator, SessionParticipant,
 };
+pub use types::*;
 
 /// Result type for the driver library.
 pub type Result<T> = std::result::Result<T, Error>;
