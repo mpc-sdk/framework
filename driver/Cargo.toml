@@ -9,6 +9,7 @@ repository = "https://github.com/tmpfs/mpc-protocol"
 
 [features]
 gg20 = ["dep:curv-kzen", "dep:paillier", "dep:multi-party-ecdsa"]
+cggmp = []
 
 [dependencies]
 mpc-protocol = { path = "../protocol" }

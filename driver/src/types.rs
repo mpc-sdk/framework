@@ -1,18 +1,41 @@
 //! Types passed across the Javascript/Webassembly boundary.
 use serde::{Deserialize, Serialize};
 
-use mpc_driver::gg20;
 use mpc_protocol::{hex, Keypair, Parameters};
 
 /// Supported multi-party computation protocols.
 #[derive(Copy, Clone, Serialize, Deserialize)]
 pub enum Protocol {
+    #[cfg(feature = "gg20")]
     /// The GG2020 protocol.
     #[serde(rename = "gg20")]
     GG20,
+    #[cfg(feature = "cggmp")]
     /// The CGGMP protocol.
     #[serde(rename = "cggmp")]
     CGGMP,
+}
+
+/// Signature for different protocols.
+#[derive(Serialize, Deserialize)]
+pub enum Signature {
+    #[cfg(feature = "gg20")]
+    /// The GG2020 protocol.
+    #[serde(rename = "gg20")]
+    GG20(crate::gg20::Signature),
+    /*
+    #[cfg(feature = "cggmp")]
+    /// The CGGMP protocol.
+    #[serde(rename = "cggmp")]
+    CGGMP,
+    */
+}
+
+#[cfg(feature = "gg20")]
+impl From<crate::gg20::Signature> for Signature {
+    fn from(value: crate::gg20::Signature) -> Self {
+        Signature::GG20(value)
+    }
 }
 
 /// Generated key share.
@@ -30,18 +53,20 @@ pub struct KeyShare {
 /// Key share variants by protocol.
 #[derive(Serialize, Deserialize)]
 pub enum PrivateKey {
+    #[cfg(feature = "gg20")]
     /// Key share for the GG20 protocol.
     #[serde(rename = "gg20")]
-    GG20(gg20::KeyShare),
+    GG20(crate::gg20::KeyShare),
 }
 
-impl From<gg20::KeyShare> for KeyShare {
-    fn from(local_key: gg20::KeyShare) -> Self {
+#[cfg(feature = "gg20")]
+impl From<crate::gg20::KeyShare> for KeyShare {
+    fn from(local_key: crate::gg20::KeyShare) -> Self {
         let public_key =
             local_key.public_key().to_bytes(false).to_vec();
         Self {
             private_key: PrivateKey::GG20(local_key),
-            address: mpc_driver::address(&public_key),
+            address: crate::address(&public_key),
             public_key,
         }
     }
@@ -58,7 +83,7 @@ pub struct ServerOptions {
     pub server_public_key: Vec<u8>,
 }
 
-/// Options used for distributed key generation.
+/// Options used to drive a session to completion.
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SessionOptions {

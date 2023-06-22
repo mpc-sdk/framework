@@ -8,7 +8,7 @@ description = "Webassembly bindings to drive multi-party computation protocols"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-mpc-driver = { path = "../driver", features = ["gg20"] }
+mpc-driver = { path = "../driver", features = ["gg20", "cggmp"] }
 mpc-protocol = { path = "../protocol" }
 mpc-client = { path = "../client" }
 
