@@ -700,6 +700,7 @@ dependencies = [
  "futures",
  "hex",
  "http",
+ "log",
  "pem",
  "serde",
  "snow",

@@ -16,6 +16,28 @@ pub enum Protocol {
     CGGMP,
 }
 
+/// Signature for different protocols.
+#[derive(Serialize, Deserialize)]
+pub enum Signature {
+    #[cfg(feature = "gg20")]
+    /// The GG2020 protocol.
+    #[serde(rename = "gg20")]
+    GG20(crate::gg20::Signature),
+    /*
+    #[cfg(feature = "cggmp")]
+    /// The CGGMP protocol.
+    #[serde(rename = "cggmp")]
+    CGGMP,
+    */
+}
+
+#[cfg(feature = "gg20")]
+impl From<crate::gg20::Signature> for Signature {
+    fn from(value: crate::gg20::Signature) -> Self {
+        Signature::GG20(value)
+    }
+}
+
 /// Generated key share.
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -61,7 +83,7 @@ pub struct ServerOptions {
     pub server_public_key: Vec<u8>,
 }
 
-/// Options used for distributed key generation.
+/// Options used to drive a session to completion.
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SessionOptions {

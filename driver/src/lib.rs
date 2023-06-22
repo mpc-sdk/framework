@@ -2,7 +2,8 @@
 #![deny(missing_docs)]
 #![cfg_attr(all(doc, CHANNEL_NIGHTLY), feature(doc_auto_cfg))]
 use async_trait::async_trait;
-use mpc_client::Event;
+use mpc_client::{Client, ClientOptions, Event, EventLoop};
+use mpc_protocol::Keypair;
 
 mod bridge;
 mod error;
@@ -93,6 +94,42 @@ pub(crate) trait ProtocolDriver {
         -> std::result::Result<Self::Output, Self::Error>;
 }
 
+/// Run distributed key generation.
+pub async fn keygen(
+    options: SessionOptions,
+    participants: Option<Vec<Vec<u8>>>,
+) -> Result<KeyShare> {
+    match &options.protocol {
+        Protocol::GG20 => {
+            Ok(crate::gg20::keygen(options, participants).await?)
+        }
+        _ => todo!("drive CGGMP protocol"),
+    }
+}
+
+/// Sign a message.
+pub async fn sign(
+    options: SessionOptions,
+    participants: Option<Vec<Vec<u8>>>,
+    signing_key: PrivateKey,
+    message: [u8; 32],
+) -> Result<Signature> {
+    match &options.protocol {
+        Protocol::GG20 => {
+            assert!(matches!(signing_key, PrivateKey::GG20(_)));
+            Ok(gg20::sign(
+                options,
+                participants,
+                signing_key,
+                message,
+            )
+            .await?
+            .into())
+        }
+        _ => todo!("drive CGGMP protocol"),
+    }
+}
+
 #[doc(hidden)]
 /// Compute the address of an uncompressed public key (65 bytes).
 pub fn address(public_key: &[u8]) -> String {
@@ -103,4 +140,19 @@ pub fn address(public_key: &[u8]) -> String {
     let digest = Keccak256::digest(bytes);
     let final_bytes = &digest[12..];
     format!("0x{}", hex::encode(final_bytes))
+}
+
+/// Create a new relay client using the provided keypair connected
+/// to a relay server.
+pub(crate) async fn new_client_with_keypair(
+    server: &str,
+    server_public_key: Vec<u8>,
+    keypair: Keypair,
+) -> Result<(Client, EventLoop)> {
+    let options = ClientOptions {
+        keypair,
+        server_public_key,
+    };
+    let url = options.url(server);
+    Ok(Client::new(&url, options).await?)
 }
