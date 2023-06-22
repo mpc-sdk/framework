@@ -81,6 +81,8 @@ pub struct ServerOptions {
     /// Server public key.
     #[serde(with = "hex::serde")]
     pub server_public_key: Vec<u8>,
+    /// Noise parameters pattern.
+    pub pattern: Option<String>,
 }
 
 /// Options used to drive a session to completion.

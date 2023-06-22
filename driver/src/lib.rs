@@ -3,7 +3,6 @@
 #![cfg_attr(all(doc, CHANNEL_NIGHTLY), feature(doc_auto_cfg))]
 use async_trait::async_trait;
 use mpc_client::{Client, ClientOptions, Event, EventLoop};
-use mpc_protocol::Keypair;
 
 mod bridge;
 mod error;
@@ -142,18 +141,16 @@ pub fn address(public_key: &[u8]) -> String {
     format!("0x{}", hex::encode(final_bytes))
 }
 
-/// Create a new relay client using the provided keypair connected
-/// to a relay server.
-pub(crate) async fn new_client_with_keypair(
-    server: &str,
-    server_public_key: Vec<u8>,
-    keypair: Keypair,
+/// Create a new client using the provided session options.
+pub(crate) async fn new_client(
+    options: SessionOptions,
 ) -> Result<(Client, EventLoop)> {
+    let server_url = options.server.server_url;
     let options = ClientOptions {
-        keypair,
-        server_public_key,
-        pattern: None,
+        keypair: options.keypair,
+        server_public_key: options.server.server_public_key,
+        pattern: options.server.pattern,
     };
-    let url = options.url(server);
+    let url = options.url(&server_url);
     Ok(Client::new(&url, options).await?)
 }

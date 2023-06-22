@@ -18,7 +18,7 @@ use mpc_client::{NetworkTransport, Transport};
 use mpc_protocol::PartyNumber;
 
 use crate::{
-    new_client_with_keypair, wait_for_close, wait_for_driver,
+    new_client, wait_for_close, wait_for_driver,
     wait_for_session, wait_for_session_finish, PrivateKey,
     SessionHandler, SessionInitiator, SessionOptions,
     SessionParticipant,
@@ -31,13 +31,10 @@ pub async fn keygen(
 ) -> crate::Result<crate::KeyShare> {
     let is_initiator = participants.is_some();
 
+    let parameters = options.parameters.clone();
+
     // Create the client
-    let (client, event_loop) = new_client_with_keypair(
-        &options.server.server_url,
-        options.server.server_public_key.clone(),
-        options.keypair.clone(),
-    )
-    .await?;
+    let (client, event_loop) = new_client(options).await?;
 
     let mut transport: Transport = client.into();
 
@@ -67,7 +64,7 @@ pub async fn keygen(
     // Wait for key generation
     let keygen = KeyGenDriver::new(
         transport,
-        options.parameters.clone(),
+        parameters,
         session,
     )?;
     let (mut transport, local_key_share) =
@@ -95,13 +92,10 @@ pub async fn sign(
 ) -> crate::Result<Signature> {
     let is_initiator = participants.is_some();
 
+    let parameters = options.parameters.clone();
+
     // Create the client
-    let (client, event_loop) = new_client_with_keypair(
-        &options.server.server_url,
-        options.server.server_public_key.clone(),
-        options.keypair.clone(),
-    )
-    .await?;
+    let (client, event_loop) = new_client(options).await?;
 
     let mut transport: Transport = client.into();
 
@@ -130,7 +124,7 @@ pub async fn sign(
     // Wait for participant party numbers
     let driver = ParticipantDriver::new(
         transport,
-        options.parameters,
+        parameters,
         session.clone(),
         PartyNumber::new(local_key.i).unwrap(),
     )?;
@@ -140,7 +134,7 @@ pub async fn sign(
     // Wait for offline stage to complete
     let driver = PreSignDriver::new(
         transport,
-        options.parameters,
+        parameters,
         session.clone(),
         local_key,
         participants,
@@ -151,7 +145,7 @@ pub async fn sign(
     // Wait for message to be signed
     let driver = SignatureDriver::new(
         transport,
-        options.parameters,
+        parameters,
         session,
         offline_result,
         message,
