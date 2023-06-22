@@ -1,6 +1,6 @@
 use futures::{select, FutureExt, StreamExt};
 use mpc_client::{Event, EventStream, NetworkTransport, Transport};
-use mpc_protocol::SessionState;
+use mpc_protocol::{SessionState, SessionId};
 
 use crate::{Driver, Error, ProtocolDriver, Round, RoundBuffer};
 
@@ -162,6 +162,31 @@ pub async fn wait_for_close(
                         let event = event?;
                         if let Event::Close = event {
                             break;
+                        }
+                    }
+                    _ => {}
+                }
+            },
+        }
+    }
+    Ok(())
+}
+
+/// Wait for a session finish event.
+pub async fn wait_for_session_finish(
+    stream: &mut EventStream,
+    session_id: SessionId,
+) -> crate::Result<()> {
+    loop {
+        select! {
+            event = stream.next().fuse() => {
+                match event {
+                    Some(event) => {
+                        let event = event?;
+                        if let Event::SessionFinished(id)= event {
+                            if session_id == id {
+                                break;
+                            }
                         }
                     }
                     _ => {}

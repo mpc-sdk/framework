@@ -5,7 +5,7 @@ use crate::{new_client_with_keypair, KeyShare, SessionOptions};
 use mpc_client::{NetworkTransport, Transport};
 use mpc_driver::{
     gg20::KeyGenDriver, wait_for_driver, wait_for_session,
-    SessionHandler, SessionInitiator, SessionParticipant, wait_for_close,
+    SessionHandler, SessionInitiator, SessionParticipant, wait_for_close, wait_for_session_finish,
 };
 
 pub(crate) async fn keygen(
@@ -59,6 +59,7 @@ pub(crate) async fn keygen(
     // Close the session and socket
     if is_initiator {
         transport.close_session(session_id).await?;
+        wait_for_session_finish(&mut stream, session_id).await?;
     }
 
     transport.close().await?;

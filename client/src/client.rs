@@ -289,7 +289,6 @@ macro_rules! client_transport_impl {
             }
 
             async fn close(&self) -> Result<()> {
-                log::info!("CLIENT close() was called");
                 Ok(self.outbound_tx.send(InternalMessage::Close).await?)
             }
         }

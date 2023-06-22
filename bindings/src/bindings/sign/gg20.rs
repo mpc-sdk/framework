@@ -6,7 +6,7 @@ use mpc_client::{NetworkTransport, Transport};
 use mpc_driver::{
     gg20::{ParticipantDriver, PreSignDriver, SignatureDriver},
     wait_for_driver, wait_for_session, SessionHandler,
-    SessionInitiator, SessionParticipant, wait_for_close,
+    SessionInitiator, SessionParticipant, wait_for_close, wait_for_session_finish,
 };
 use mpc_protocol::PartyNumber;
 
@@ -85,6 +85,7 @@ pub(crate) async fn sign(
     // Close the session and socket
     if is_initiator {
         transport.close_session(session_id).await?;
+        wait_for_session_finish(&mut stream, session_id).await?;
     }
     transport.close().await?;
     wait_for_close(&mut stream).await?;
