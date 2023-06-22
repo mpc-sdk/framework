@@ -5,7 +5,7 @@ use crate::{new_client_with_keypair, KeyShare, SessionOptions};
 use mpc_client::{NetworkTransport, Transport};
 use mpc_driver::{
     gg20::KeyGenDriver, wait_for_driver, wait_for_session,
-    SessionHandler, SessionInitiator, SessionParticipant,
+    SessionHandler, SessionInitiator, SessionParticipant, wait_for_close,
 };
 
 pub(crate) async fn keygen(
@@ -60,9 +60,10 @@ pub(crate) async fn keygen(
     if is_initiator {
         transport.close_session(session_id).await?;
     }
+
     transport.close().await?;
+    wait_for_close(&mut stream).await?;
 
     let key_share: KeyShare = local_key_share.into();
-
     Ok(serde_wasm_bindgen::to_value(&key_share)?)
 }

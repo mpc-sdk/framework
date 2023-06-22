@@ -18,6 +18,7 @@ uuid = { version = "1", features = ["v4", "serde"] }
 http = "0.2"
 hex = { version = "0.4", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
+log = "0.4"
 
 [dev-dependencies]
 anyhow = "1"

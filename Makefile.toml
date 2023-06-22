@@ -76,7 +76,7 @@ dependencies = ["check-wasm", "test", "format"]
 [tasks.bindings]
 script = '''
 cd bindings
-wasm-pack build --target web --scope mpc-sdk
+WASM_BINDGEN_WEAKREF=1 wasm-pack build --target web --scope mpc-sdk
 '''
 
 [tasks.gen-keys]

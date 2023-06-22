@@ -141,7 +141,7 @@ async fn disconnect(state: State, conn: Connection) {
         let reader = conn.read().await;
         (reader.id, reader.public_key.clone())
     };
-    tracing::trace!(public_key = ?hex::encode(&public_key), "disconnect");
+    tracing::debug!(public_key = ?hex::encode(&public_key), "disconnect");
     let mut writer = state.write().await;
     writer.pending.remove(&id);
     writer.active.remove(&public_key);

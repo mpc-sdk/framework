@@ -9,7 +9,7 @@ mod error;
 mod round;
 mod session;
 
-pub use bridge::wait_for_driver;
+pub use bridge::{wait_for_driver, wait_for_close};
 pub(crate) use bridge::Bridge;
 pub use error::Error;
 pub(crate) use round::{Round, RoundBuffer, RoundMsg};
@@ -100,3 +100,4 @@ pub fn address(public_key: &[u8]) -> String {
     let final_bytes = &digest[12..];
     format!("0x{}", hex::encode(final_bytes))
 }
+

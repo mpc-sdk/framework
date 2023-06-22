@@ -145,3 +145,29 @@ where
     }
     Ok((driver.into(), output.take().unwrap()))
 }
+
+/// Wait for a close event.
+///
+/// Calling close() on a transport internally sends
+/// the message view the event loop so we still need
+/// to drive the event loop after calling close.
+pub async fn wait_for_close(
+    stream: &mut EventStream,
+) -> crate::Result<()> {
+    loop {
+        select! {
+            event = stream.next().fuse() => {
+                match event {
+                    Some(event) => {
+                        let event = event?;
+                        if let Event::Close = event {
+                            break;
+                        }
+                    }
+                    _ => {}
+                }
+            },
+        }
+    }
+    Ok(())
+}

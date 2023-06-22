@@ -6,7 +6,7 @@ use mpc_client::{NetworkTransport, Transport};
 use mpc_driver::{
     gg20::{ParticipantDriver, PreSignDriver, SignatureDriver},
     wait_for_driver, wait_for_session, SessionHandler,
-    SessionInitiator, SessionParticipant,
+    SessionInitiator, SessionParticipant, wait_for_close,
 };
 use mpc_protocol::PartyNumber;
 
@@ -87,6 +87,7 @@ pub(crate) async fn sign(
         transport.close_session(session_id).await?;
     }
     transport.close().await?;
+    wait_for_close(&mut stream).await?;
 
     Ok(serde_wasm_bindgen::to_value(&signature)?)
 }

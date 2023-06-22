@@ -37,6 +37,7 @@ pub type WebEventLoop =
 /// Client for the web platform.
 #[derive(Clone)]
 pub struct WebClient {
+    //ws: WebSocket,
     options: Arc<ClientOptions>,
     outbound_tx: mpsc::Sender<InternalMessage>,
     server: Server,
@@ -60,6 +61,9 @@ impl WebClient {
         unsafe {
             let msg_proxy = &*(ptr as *const _)
                 as &'static mpsc::Sender<Result<Vec<u8>>>;
+
+            log::info!("msg proxy pointer {:p}", msg_proxy);
+
             let onmessage_callback = Closure::<dyn FnMut(_)>::new(
                 move |e: MessageEvent| {
                     spawn_local(async move {
@@ -69,10 +73,14 @@ impl WebClient {
                             let array = js_sys::Uint8Array::new(&buf);
                             let buffer = array.to_vec();
 
+                            log::info!("send {:p} {}",
+                                msg_proxy, msg_proxy.is_closed());
+
                             if let Err(e) = msg_proxy.send(Ok(buffer)).await {
 
                                 if let mpsc::error::SendError(Ok(buffer)) = e {
-                                    let message: ResponseMessage = decode(&buffer).await.unwrap();
+                                    let message: ResponseMessage =
+                                        decode(&buffer).await.unwrap();
                                     log::error!("send error {:#?}", message);
                                 }
                             }
@@ -132,6 +140,7 @@ impl WebClient {
         let options = Arc::new(options);
 
         let client = WebClient {
+            //ws: ws.clone(),
             options: Arc::clone(&options),
             outbound_tx: outbound_tx.clone(),
             server: Arc::clone(&server),
@@ -169,12 +178,22 @@ impl WebClient {
     }
 
     client_impl!();
+
+    /*
+        self.ws_writer.ws.set_onopen(None);
+        self.ws_writer.ws.set_onmessage(None);
+        self.ws_writer.ws.set_onerror(None);
+
+        self.ws_writer.ws.close()?;
+    */
+
 }
 
 client_transport_impl!(WebClient);
 
 impl Drop for WebClient {
     fn drop(&mut self) {
+        //log::info!("drop called for {:p}", self);
         unsafe {
             std::ptr::drop_in_place(self.ptr);
         }
@@ -214,7 +233,14 @@ impl EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream> {
     }
 
     async fn handle_close_message(self) -> Result<()> {
+        // Remove event listener closures
+        self.ws_writer.ws.set_onopen(None);
+        self.ws_writer.ws.set_onmessage(None);
+        self.ws_writer.ws.set_onerror(None);
+
+        // Close the socket connection
         self.ws_writer.ws.close()?;
+
         Ok(())
     }
 
