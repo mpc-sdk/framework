@@ -14,7 +14,7 @@ use mpc_protocol::{
     channel::encrypt_server_channel, decode, encode, hex,
     snow::Builder, Encoding, HandshakeMessage, OpaqueMessage,
     ProtocolState, RequestMessage, ResponseMessage, ServerMessage,
-    SessionId, SessionRequest, TransparentMessage, PATTERN,
+    SessionId, SessionRequest, TransparentMessage,
 };
 
 use crate::{
@@ -129,7 +129,7 @@ impl WebClient {
         let (outbound_tx, outbound_rx) =
             mpsc::channel::<InternalMessage>(32);
 
-        let builder = Builder::new(PATTERN.parse()?);
+        let builder = Builder::new(options.params()?);
         let handshake = builder
             .local_private_key(options.keypair.private_key())
             .remote_public_key(&options.server_public_key)

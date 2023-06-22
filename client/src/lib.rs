@@ -33,8 +33,9 @@ mod web;
 pub use web::{WebClient as Client, WebEventLoop as EventLoop};
 
 use mpc_protocol::{
-    hex, Encoding, Keypair, OpaqueMessage, ProtocolState,
-    RequestMessage, SealedEnvelope, SessionId, TAGLEN,
+    hex, snow::params::NoiseParams, Encoding, Keypair, OpaqueMessage,
+    ProtocolState, RequestMessage, SealedEnvelope, SessionId,
+    PATTERN, TAGLEN,
 };
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
@@ -48,6 +49,11 @@ pub struct ClientOptions {
     pub keypair: Keypair,
     /// Public key for the server to connect to.
     pub server_public_key: Vec<u8>,
+    /// Noise parameters pattern.
+    ///
+    /// If no pattern is specified the default noise parameters
+    /// pattern is used.
+    pub pattern: Option<String>,
 }
 
 impl ClientOptions {
@@ -62,6 +68,16 @@ impl ClientOptions {
             server,
             hex::encode(self.keypair.public_key())
         )
+    }
+
+    /// Parse noise parameters from the pattern.
+    pub fn params(&self) -> Result<NoiseParams> {
+        let pattern = self
+            .pattern
+            .as_ref()
+            .map(|s| &s[..])
+            .unwrap_or_else(|| PATTERN);
+        Ok(pattern.parse()?)
     }
 }
 

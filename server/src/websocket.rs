@@ -23,7 +23,10 @@ use crate::{
     Result,
 };
 use mpc_protocol::{
-    hex, snow::{Builder, params::NoiseParams}, uuid::Uuid, ProtocolState, PATTERN,
+    hex,
+    snow::{params::NoiseParams, Builder},
+    uuid::Uuid,
+    ProtocolState, PATTERN,
 };
 
 pub type Connection = Arc<RwLock<WebSocketConnection>>;
@@ -97,8 +100,8 @@ pub async fn upgrade(
     };
 
     let params: NoiseParams = pattern
-            .parse()
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .parse()
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     let responder = Builder::new(params)
         .local_private_key(writer.keypair.private_key())

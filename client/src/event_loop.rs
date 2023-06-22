@@ -9,7 +9,7 @@ use mpc_protocol::{
     channel::decrypt_server_channel, decode, hex, snow::Builder,
     Encoding, HandshakeMessage, OpaqueMessage, ProtocolState,
     RequestMessage, ResponseMessage, SealedEnvelope, ServerMessage,
-    SessionId, SessionState, TransparentMessage, PATTERN,
+    SessionId, SessionState, TransparentMessage,
 };
 
 use super::{decrypt_peer_channel, Peers, Server};
@@ -286,7 +286,7 @@ where
                 "peer handshake responder"
             );
 
-            let builder = Builder::new(PATTERN.parse()?);
+            let builder = Builder::new(options.params()?);
             let mut responder = builder
                 .local_private_key(options.keypair.private_key())
                 .remote_public_key(public_key.as_ref())

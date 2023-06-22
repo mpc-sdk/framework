@@ -21,7 +21,6 @@ use mpc_protocol::{
     http::StatusCode, snow::Builder, Encoding, HandshakeMessage,
     OpaqueMessage, ProtocolState, RequestMessage, ResponseMessage,
     ServerMessage, SessionId, SessionRequest, TransparentMessage,
-    PATTERN,
 };
 
 use super::{
@@ -73,7 +72,7 @@ impl NativeClient {
 
         let (ws_writer, ws_reader) = stream.split();
 
-        let builder = Builder::new(PATTERN.parse()?);
+        let builder = Builder::new(options.params()?);
         let handshake = builder
             .local_private_key(options.keypair.private_key())
             .remote_public_key(&options.server_public_key)
