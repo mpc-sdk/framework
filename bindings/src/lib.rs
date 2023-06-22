@@ -3,8 +3,10 @@
 
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 mod bindings {
-    use mpc_protocol::hex;
+    use mpc_driver::{PrivateKey, SessionOptions};
+    use mpc_protocol::{hex, PATTERN};
     use wasm_bindgen::prelude::*;
+    use wasm_bindgen_futures::future_to_promise;
 
     /// Initialize the panic hook and logging.
     #[doc(hidden)]
@@ -20,9 +22,6 @@ mod bindings {
         }
     }
 
-    use mpc_driver::{PrivateKey, SessionOptions};
-    use wasm_bindgen_futures::future_to_promise;
-
     /// Distributed key generation.
     #[wasm_bindgen]
     pub fn keygen(
@@ -32,13 +31,11 @@ mod bindings {
         let options: SessionOptions =
             serde_wasm_bindgen::from_value(options)?;
         let participants = parse_participants(participants)?;
-
         let fut = async move {
             let key_share =
                 mpc_driver::keygen(options, participants).await?;
             Ok(serde_wasm_bindgen::to_value(&key_share)?)
         };
-
         Ok(future_to_promise(fut).into())
     }
 
@@ -56,7 +53,6 @@ mod bindings {
         let signing_key: PrivateKey =
             serde_wasm_bindgen::from_value(signing_key)?;
         let message = parse_message(message)?;
-
         let fut = async move {
             let signature = mpc_driver::sign(
                 options,
@@ -67,7 +63,6 @@ mod bindings {
             .await?;
             Ok(serde_wasm_bindgen::to_value(&signature)?)
         };
-
         Ok(future_to_promise(fut).into())
     }
 
@@ -79,16 +74,17 @@ mod bindings {
     pub fn generate_keypair(
         pattern: Option<String>,
     ) -> Result<JsValue, JsError> {
-        let keypair = if let Some(pattern) = pattern {
-            mpc_protocol::Keypair::new(pattern.parse()?)?
+        let pattern = if let Some(pattern) = pattern {
+            pattern
         } else {
-            mpc_protocol::generate_keypair()?
+            PATTERN.to_owned()
         };
+        let keypair = mpc_protocol::Keypair::new(pattern.parse()?)?;
         let pem = mpc_protocol::encode_keypair(&keypair);
         Ok(serde_wasm_bindgen::to_value(&pem)?)
     }
 
-    pub(crate) fn parse_participants(
+    fn parse_participants(
         participants: JsValue,
     ) -> Result<Option<Vec<Vec<u8>>>, JsError> {
         let participants: Option<Vec<String>> =
@@ -107,9 +103,7 @@ mod bindings {
         }
     }
 
-    pub(crate) fn parse_message(
-        message: JsValue,
-    ) -> Result<[u8; 32], JsError> {
+    fn parse_message(message: JsValue) -> Result<[u8; 32], JsError> {
         let message: String =
             serde_wasm_bindgen::from_value(message)?;
         let message: Vec<u8> =
