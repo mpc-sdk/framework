@@ -23,7 +23,7 @@ use crate::{
     Result,
 };
 use mpc_protocol::{
-    hex, snow::Builder, uuid::Uuid, ProtocolState, PATTERN,
+    hex, snow::{Builder, params::NoiseParams}, uuid::Uuid, ProtocolState, PATTERN,
 };
 
 pub type Connection = Arc<RwLock<WebSocketConnection>>;
@@ -90,23 +90,27 @@ pub async fn upgrade(
         return Err(StatusCode::FORBIDDEN);
     }
 
-    let id = Uuid::new_v4();
-    let (outgoing_tx, outgoing_rx) = mpsc::channel::<Message>(32);
-    let (incoming, service_reader) = mpsc::channel::<Vec<u8>>(32);
-
-    let builder = Builder::new(
+    let pattern = if let Some(pattern) = &writer.config.pattern {
+        pattern
+    } else {
         PATTERN
-            .parse()
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
-    );
+    };
 
-    let responder = builder
+    let params: NoiseParams = pattern
+            .parse()
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let responder = Builder::new(params)
         .local_private_key(writer.keypair.private_key())
         .remote_public_key(&query.public_key)
         .build_responder()
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     let protocol_state =
         ProtocolState::Handshake(Box::new(responder));
+
+    let id = Uuid::new_v4();
+    let (outgoing_tx, outgoing_rx) = mpsc::channel::<Message>(32);
+    let (incoming, service_reader) = mpsc::channel::<Vec<u8>>(32);
 
     let conn = Arc::new(RwLock::new(WebSocketConnection {
         id,
@@ -118,13 +122,6 @@ pub async fn upgrade(
     let socket_conn = Arc::clone(&conn);
     writer.pending.insert(id, conn);
     drop(writer);
-
-    /*
-    let service_writer = {
-        let reader = socket_conn.read().await;
-        reader.outgoing.clone()
-    };
-    */
 
     let socket_state = Arc::clone(&state);
     Ok(ws.on_upgrade(move |socket| {

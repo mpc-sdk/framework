@@ -13,6 +13,9 @@ pub struct ServerConfig {
     /// Path to the server key.
     pub key: PathBuf,
 
+    /// Optional noise parameters pattern.
+    pub pattern: Option<String>,
+
     /// Settings for session management.
     pub session: SessionConfig,
 
