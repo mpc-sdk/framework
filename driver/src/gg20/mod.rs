@@ -18,10 +18,9 @@ use mpc_client::{NetworkTransport, Transport};
 use mpc_protocol::PartyNumber;
 
 use crate::{
-    new_client, wait_for_close, wait_for_driver,
-    wait_for_session, wait_for_session_finish, PrivateKey,
-    SessionHandler, SessionInitiator, SessionOptions,
-    SessionParticipant,
+    new_client, wait_for_close, wait_for_driver, wait_for_session,
+    wait_for_session_finish, PrivateKey, SessionHandler,
+    SessionInitiator, SessionOptions, SessionParticipant,
 };
 
 /// Run distributed key generation for the GG20 protocol.
@@ -62,11 +61,7 @@ pub async fn keygen(
     let session_id = session.session_id;
 
     // Wait for key generation
-    let keygen = KeyGenDriver::new(
-        transport,
-        parameters,
-        session,
-    )?;
+    let keygen = KeyGenDriver::new(transport, parameters, session)?;
     let (mut transport, local_key_share) =
         wait_for_driver(&mut stream, keygen).await?;
 

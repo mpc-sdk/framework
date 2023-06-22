@@ -71,6 +71,23 @@ mod bindings {
         Ok(future_to_promise(fut).into())
     }
 
+    /// Generate a PEM-encoded keypair.
+    ///
+    /// Uses the default noise protocol parameters
+    /// if no pattern is given.
+    #[wasm_bindgen(js_name = "generateKeypair")]
+    pub fn generate_keypair(
+        pattern: Option<String>,
+    ) -> Result<JsValue, JsError> {
+        let keypair = if let Some(pattern) = pattern {
+            mpc_protocol::Keypair::new(pattern.parse()?)?
+        } else {
+            mpc_protocol::generate_keypair()?
+        };
+        let pem = mpc_protocol::encode_keypair(&keypair);
+        Ok(serde_wasm_bindgen::to_value(&pem)?)
+    }
+
     pub(crate) fn parse_participants(
         participants: JsValue,
     ) -> Result<Option<Vec<Vec<u8>>>, JsError> {
