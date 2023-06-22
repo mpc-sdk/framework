@@ -2,7 +2,7 @@ use crate::Result;
 use async_trait::async_trait;
 use futures::{select, FutureExt, StreamExt};
 use mpc_client::{Event, EventStream, NetworkTransport, Transport};
-use mpc_protocol::{SessionState, log};
+use mpc_protocol::{log, SessionState};
 use tokio::sync::Mutex;
 
 /// Trait for types that handle session related events.
@@ -181,8 +181,8 @@ impl SessionEventHandler for SessionParticipant {
             Event::PeerConnected { peer_key } => {
                 let state = self.session_state.lock().await;
                 if let Some(session) = state.as_ref() {
-                    let connections =
-                        session.connections(self.transport.public_key());
+                    let connections = session
+                        .connections(self.transport.public_key());
                     if connections.contains(&peer_key) {
                         self.transport
                             .register_connection(
@@ -192,7 +192,9 @@ impl SessionEventHandler for SessionParticipant {
                             .await?;
                     }
                 } else {
-                    log::warn!("peer connected event without session");
+                    log::warn!(
+                        "peer connected event without session"
+                    );
                 }
             }
             Event::SessionActive(session) => {

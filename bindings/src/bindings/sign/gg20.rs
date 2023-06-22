@@ -5,8 +5,9 @@ use crate::{new_client_with_keypair, PrivateKey, SessionOptions};
 use mpc_client::{NetworkTransport, Transport};
 use mpc_driver::{
     gg20::{ParticipantDriver, PreSignDriver, SignatureDriver},
-    wait_for_driver, wait_for_session, SessionHandler,
-    SessionInitiator, SessionParticipant, wait_for_close, wait_for_session_finish,
+    wait_for_close, wait_for_driver, wait_for_session,
+    wait_for_session_finish, SessionHandler, SessionInitiator,
+    SessionParticipant,
 };
 use mpc_protocol::PartyNumber;
 

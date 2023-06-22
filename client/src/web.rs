@@ -62,8 +62,6 @@ impl WebClient {
             let msg_proxy = &*(ptr as *const _)
                 as &'static mpsc::Sender<Result<Vec<u8>>>;
 
-            log::info!("msg proxy pointer {:p}", msg_proxy);
-
             let onmessage_callback = Closure::<dyn FnMut(_)>::new(
                 move |e: MessageEvent| {
                     spawn_local(async move {
@@ -73,15 +71,21 @@ impl WebClient {
                             let array = js_sys::Uint8Array::new(&buf);
                             let buffer = array.to_vec();
 
-                            log::info!("send {:p} {}",
-                                msg_proxy, msg_proxy.is_closed());
-
-                            if let Err(e) = msg_proxy.send(Ok(buffer)).await {
-
-                                if let mpsc::error::SendError(Ok(buffer)) = e {
+                            if let Err(e) =
+                                msg_proxy.send(Ok(buffer)).await
+                            {
+                                if let mpsc::error::SendError(Ok(
+                                    buffer,
+                                )) = e
+                                {
                                     let message: ResponseMessage =
-                                        decode(&buffer).await.unwrap();
-                                    log::error!("send error {:#?}", message);
+                                        decode(&buffer)
+                                            .await
+                                            .unwrap();
+                                    log::error!(
+                                        "send error {:#?}",
+                                        message
+                                    );
                                 }
                             }
                         } else {
@@ -186,7 +190,6 @@ impl WebClient {
 
         self.ws_writer.ws.close()?;
     */
-
 }
 
 client_transport_impl!(WebClient);

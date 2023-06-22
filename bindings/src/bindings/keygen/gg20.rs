@@ -4,8 +4,9 @@ use wasm_bindgen::prelude::*;
 use crate::{new_client_with_keypair, KeyShare, SessionOptions};
 use mpc_client::{NetworkTransport, Transport};
 use mpc_driver::{
-    gg20::KeyGenDriver, wait_for_driver, wait_for_session,
-    SessionHandler, SessionInitiator, SessionParticipant, wait_for_close, wait_for_session_finish,
+    gg20::KeyGenDriver, wait_for_close, wait_for_driver,
+    wait_for_session, wait_for_session_finish, SessionHandler,
+    SessionInitiator, SessionParticipant,
 };
 
 pub(crate) async fn keygen(

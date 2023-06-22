@@ -54,7 +54,7 @@ pub(crate) fn parse_message(
 
 /// Create a new relay client using the provided keypair connected
 /// to a relay server.
-pub async fn new_client_with_keypair(
+pub(crate) async fn new_client_with_keypair(
     server: &str,
     server_public_key: Vec<u8>,
     keypair: Keypair,

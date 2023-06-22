@@ -317,10 +317,8 @@ async fn gg20_sign_offline(
 
     let mut sessions: Vec<SessionState> = Vec::new();
 
-    let mut client_i_session = SessionInitiator::new(
-        client_i_transport,
-        sign_participants,
-    );
+    let mut client_i_session =
+        SessionInitiator::new(client_i_transport, sign_participants);
     let mut client_p_2_session =
         SessionParticipant::new(client_p_2_transport);
 
@@ -534,10 +532,8 @@ async fn gg20_sign_online(
 
     let mut sessions: Vec<SessionState> = Vec::new();
 
-    let mut client_i_session = SessionInitiator::new(
-        client_i_transport,
-        sign_participants,
-    );
+    let mut client_i_session =
+        SessionInitiator::new(client_i_transport, sign_participants);
     let mut client_p_2_session =
         SessionParticipant::new(client_p_2_transport);
 

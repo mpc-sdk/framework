@@ -13,7 +13,7 @@ use futures::{
 
 use serde::Deserialize;
 
-use std::{sync::Arc, fmt};
+use std::{fmt, sync::Arc};
 use tokio::sync::{mpsc, RwLock};
 
 //use axum_macros::debug_handler;
@@ -57,9 +57,9 @@ pub struct WebSocketConnection {
 impl fmt::Debug for WebSocketConnection {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("WebSocketConnection")
-         .field("id", &self.id)
-         .field("public_key", &hex::encode(&self.public_key))
-         .finish()
+            .field("id", &self.id)
+            .field("public_key", &hex::encode(&self.public_key))
+            .finish()
     }
 }
 
@@ -128,11 +128,15 @@ pub async fn upgrade(
 
     let socket_state = Arc::clone(&state);
     Ok(ws.on_upgrade(move |socket| {
-        service.listen_socket(
-            Arc::clone(&socket_conn),
-            service_reader,
-        );
-        handle_socket(socket, socket_state, socket_conn, outgoing_rx, outgoing_tx)
+        service
+            .listen_socket(Arc::clone(&socket_conn), service_reader);
+        handle_socket(
+            socket,
+            socket_state,
+            socket_conn,
+            outgoing_rx,
+            outgoing_tx,
+        )
     }))
 }
 
@@ -191,7 +195,8 @@ async fn read(
                 Message::Ping(_) => {}
                 Message::Pong(_) => {}
                 Message::Close(frame) => {
-                    let _ = outgoing_tx.send(Message::Close(frame)).await;
+                    let _ =
+                        outgoing_tx.send(Message::Close(frame)).await;
                     return Ok(());
                 }
             },
