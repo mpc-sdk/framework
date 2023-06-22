@@ -73,6 +73,43 @@ dependencies = ["unit", "integration"]
 [tasks.dev]
 dependencies = ["check-wasm", "test", "format"]
 
+[tasks.bindings]
+script = '''
+cd bindings
+WASM_BINDGEN_WEAKREF=1 wasm-pack build --target web --scope mpc-sdk
+'''
+
+[tasks.gen-keys]
+script = '''
+cargo run -- generate-keypair server.pem
+cargo run -- generate-keypair tests/test.pem --public-key tests/server_public_key.txt
+cargo run -- generate-keypair tests/e2e/p1.pem
+cargo run -- generate-keypair tests/e2e/p2.pem
+cargo run -- generate-keypair tests/e2e/p3.pem
+'''
+
+[tasks.gen-e2e]
+script = '''
+cd tools
+cargo run --bin gen-e2e
+'''
+
+[tasks.test-server]
+script = '''
+cargo run -- server -b 127.0.0.1:8008 tests/config.toml
+'''
+
+[tasks.e2e-server]
+script = '''
+cargo run -- server -b 127.0.0.1:8008 tests/e2e/config.toml
+'''
+
+[tasks.dev-server]
+script = '''
+cd tools
+cargo run --bin dev-server
+'''
+
 [tasks.test-wasm]
 command = "wasm-pack"
 args = ["test", "--firefox", "--all-features"]

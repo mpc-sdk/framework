@@ -1,3 +1,4 @@
+use axum::extract::ws::Message;
 use mpc_protocol::SessionId;
 use std::path::PathBuf;
 use thiserror::Error;
@@ -88,5 +89,11 @@ pub enum Error {
     #[error(transparent)]
     BufferMpscSend(
         #[from] tokio::sync::mpsc::error::SendError<Vec<u8>>,
+    ),
+
+    /// Error generated sending a message over a channel.
+    #[error(transparent)]
+    MessageMpscSend(
+        #[from] tokio::sync::mpsc::error::SendError<Message>,
     ),
 }

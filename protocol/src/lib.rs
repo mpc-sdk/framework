@@ -24,6 +24,7 @@ pub use protocol::*;
 
 pub use hex;
 pub use http;
+pub use log;
 pub use pem;
 pub use snow;
 pub use uuid;

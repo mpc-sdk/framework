@@ -2,11 +2,10 @@
 use serde::{Deserialize, Serialize};
 
 use mpc_driver::gg20;
-use mpc_protocol::{Keypair, Parameters, SessionId};
+use mpc_protocol::{hex, Keypair, Parameters};
 
 /// Supported multi-party computation protocols.
 #[derive(Copy, Clone, Serialize, Deserialize)]
-#[serde(untagged)]
 pub enum Protocol {
     /// The GG2020 protocol.
     #[serde(rename = "gg20")]
@@ -18,11 +17,11 @@ pub enum Protocol {
 
 /// Generated key share.
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct KeyShare {
     /// Private key share information.
     pub private_key: PrivateKey,
     /// The public key.
-    #[serde(rename = "publicKey")]
     pub public_key: Vec<u8>,
     /// Address generated from the public key.
     pub address: String,
@@ -30,9 +29,9 @@ pub struct KeyShare {
 
 /// Key share variants by protocol.
 #[derive(Serialize, Deserialize)]
-#[serde(untagged)]
 pub enum PrivateKey {
     /// Key share for the GG20 protocol.
+    #[serde(rename = "gg20")]
     GG20(gg20::KeyShare),
 }
 
@@ -50,22 +49,23 @@ impl From<gg20::KeyShare> for KeyShare {
 
 /// Server options.
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ServerOptions {
     /// URL for the server.
     pub server_url: String,
     /// Server public key.
+    #[serde(with = "hex::serde")]
     pub server_public_key: Vec<u8>,
 }
 
 /// Options used for distributed key generation.
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SessionOptions {
     /// MPC protocol.
     pub protocol: Protocol,
     /// Keypair for the participant.
     pub keypair: Keypair,
-    /// Session identifier.
-    pub session_id: SessionId,
     /// Server options.
     pub server: ServerOptions,
     /// Parameters for key generation.

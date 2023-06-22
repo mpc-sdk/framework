@@ -1,12 +1,13 @@
 //! Distributed key generation for the GG20 protocol.
 use wasm_bindgen::prelude::*;
 
-use crate::{new_client_with_keypair, SessionOptions};
-use mpc_driver::{
-    gg20::KeyGenDriver, wait_for_driver, wait_for_session,
-    SessionHandler, SessionInitiator, SessionParticipant,
-};
+use crate::{new_client_with_keypair, KeyShare, SessionOptions};
 use mpc_client::{NetworkTransport, Transport};
+use mpc_driver::{
+    gg20::KeyGenDriver, wait_for_close, wait_for_driver,
+    wait_for_session, wait_for_session_finish, SessionHandler,
+    SessionInitiator, SessionParticipant,
+};
 
 pub(crate) async fn keygen(
     options: SessionOptions,
@@ -35,7 +36,6 @@ pub(crate) async fn keygen(
         SessionHandler::Initiator(SessionInitiator::new(
             transport,
             participants,
-            Some(options.session_id),
         ))
     } else {
         SessionHandler::Participant(SessionParticipant::new(
@@ -54,42 +54,18 @@ pub(crate) async fn keygen(
         options.parameters.clone(),
         session,
     )?;
-    let (mut transport, key_share) =
+    let (mut transport, local_key_share) =
         wait_for_driver(&mut stream, keygen).await?;
 
     // Close the session and socket
     if is_initiator {
         transport.close_session(session_id).await?;
+        wait_for_session_finish(&mut stream, session_id).await?;
     }
-    transport.close().await?;
 
+    transport.close().await?;
+    wait_for_close(&mut stream).await?;
+
+    let key_share: KeyShare = local_key_share.into();
     Ok(serde_wasm_bindgen::to_value(&key_share)?)
 }
-
-/*
-async fn wait_for_key_share(
-    stream: &mut EventStream,
-    mut keygen: KeyGenDriver,
-) -> Result<(Transport, KeyShare), JsValue> {
-    #[allow(unused_assignments)]
-    let mut key_share: Option<KeyShare> = None;
-    loop {
-        select! {
-            event = stream.next().fuse() => {
-                match event {
-                    Some(event) => {
-                        let event = event?;
-                        if let Some(local_key_share) =
-                            keygen.handle_event(event).await? {
-                            key_share = Some(local_key_share.into());
-                            break;
-                        }
-                    }
-                    _ => {}
-                }
-            },
-        }
-    }
-    Ok((keygen.into(), key_share.take().unwrap()))
-}
-*/

@@ -1,11 +1,11 @@
 use anyhow::Result;
 use futures::{select, FutureExt, StreamExt};
 
+use mpc_client::{NetworkTransport, Transport};
 use mpc_driver::{
     SessionEventHandler, SessionInitiator, SessionParticipant,
 };
 use mpc_protocol::SessionState;
-use mpc_client::{NetworkTransport, Transport};
 
 use super::new_client;
 
@@ -41,7 +41,6 @@ pub async fn run(
     let mut client_i_session = SessionInitiator::new(
         client_i_transport,
         session_participants,
-        None,
     );
     let mut client_p_session =
         SessionParticipant::new(client_p_transport);

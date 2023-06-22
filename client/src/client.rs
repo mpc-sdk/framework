@@ -125,6 +125,11 @@ macro_rules! client_transport_impl {
                 Ok(())
             }
 
+            async fn is_connected(&self) -> bool {
+                let state = self.server.read().await;
+                matches!(&*state, Some(ProtocolState::Transport(_)))
+            }
+
             /// Handshake with a peer.
             ///
             /// Peer already exists error is returned if this
@@ -220,9 +225,8 @@ macro_rules! client_transport_impl {
             async fn new_session(
                 &mut self,
                 participant_keys: Vec<Vec<u8>>,
-                session_id: Option<SessionId>,
             ) -> Result<()> {
-                let session = SessionRequest { participant_keys, session_id };
+                let session = SessionRequest { participant_keys };
                 let message = ServerMessage::NewSession(session);
                 self.request(message).await
             }

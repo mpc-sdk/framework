@@ -1,7 +1,7 @@
 //! Key generation for GG20.
 use async_trait::async_trait;
-use mpc_protocol::{hex, Parameters, SessionState};
 use mpc_client::{Event, NetworkTransport, Transport};
+use mpc_protocol::{hex, Parameters, SessionState};
 use round_based::{Msg, StateMachine};
 
 use super::{Error, Result};

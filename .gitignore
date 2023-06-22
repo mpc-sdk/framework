@@ -1,6 +1,6 @@
 .DS_Store
 *.profraw
-/target
+target
 /Cargo.lock
 /stubs
 *.bak

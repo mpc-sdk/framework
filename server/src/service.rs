@@ -30,7 +30,6 @@ impl RelayService {
         &self,
         conn: Connection,
         reader: mpsc::Receiver<Vec<u8>>,
-        _writer: mpsc::Sender<Vec<u8>>,
     ) {
         tokio::spawn(listen(
             Arc::clone(&self.state),
@@ -396,6 +395,8 @@ async fn notify_session_timeout(
     state: State,
     session: SessionState,
 ) -> Result<()> {
+    println!("notify session timeout!!!");
+
     let public_keys: Vec<_> = session
         .all_participants
         .iter()
@@ -403,6 +404,7 @@ async fn notify_session_timeout(
         .collect();
     let message = ServerMessage::SessionTimeout(session.session_id);
     notify_peers(state, public_keys, message).await?;
+
     Ok(())
 }
 
@@ -424,7 +426,6 @@ async fn service(
                 let session_id = writer.sessions.new_session(
                     public_key.as_ref().to_vec(),
                     request.participant_keys,
-                    request.session_id,
                 );
                 (session_id, writer.config.session.wait_interval)
             };

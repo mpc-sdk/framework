@@ -1,4 +1,4 @@
-# MPC Relay
+# Multi-party computation protocol
 
 End-to-end encrypted relay service designed for MPC/TSS applications built using the [noise protocol][] and websockets for the transport layer.
 
@@ -36,15 +36,15 @@ cargo install wasm-pack
 
 Minimum supported rust version (MSRV) is 1.68.1.
 
+Run the `gen-keys` task to setup keypairs for the server and test specs:
+
+```
+cargo make gen-keys
+```
+
 ### Server
 
-First generate a keypair:
-
-```
-cargo run -- generate-keypair server.pem
-```
-
-Then start the server:
+Start a server:
 
 ```
 cargo run -- server config.toml
@@ -58,17 +58,7 @@ cargo make doc
 
 ### Tests
 
-#### Server Key
-
-Generate a server key for the test specs and print the public key:
-
-```
-cargo run -- generate-keypair tests/test.pem
-```
-
-Copy the hex-encoded public key into the file `tests/server_public_key.txt`.
-
-#### Native Client
+#### Native Platform
 
 To run the tests using the native client:
 
@@ -76,12 +66,12 @@ To run the tests using the native client:
 cargo make test
 ```
 
-#### Web Client
+#### Web Platform
 
-To test the web client using webassembly, first start a test server:
+To test the web client using webassembly, first start a test server (port 8008):
 
 ```
-cargo run -- server -b 127.0.0.1:8008 tests/config.toml
+cargo make test-server
 ```
 
 Now you can run the webassembly tests:
@@ -90,12 +80,71 @@ Now you can run the webassembly tests:
 cargo make test-wasm
 ```
 
+##### End-to-end tests
+
+The webassembly tests cannot simulate key generation and signing as it is too computationally intensive for a single-threaded context and the integration tests would hit the browser script timeout before completion.
+
+To run end to end tests for the web platform, first compile the webassembly bindings:
+
+```
+cargo make bindings
+```
+
+Then generate the test files:
+
+```
+cargo make gen-e2e
+```
+
+Start a server for the end-to-end tests:
+
+```
+cargo make e2e-server
+```
+
+Note we don't use the `test-server` task as the e2e tests use a configuration with different timeout settings.
+
+Then start a dev server (port 9009) used to serve the HTML and Javascript:
+
+```
+cargo make dev-server
+```
+
+Running the test specs requires [playwright][], so first install the dependencies for the end-to-end tests and then the [playwright][] browsers:
+
+```
+cd tests/e2e
+npm install
+npx playwright install
+```
+
+Then you should be able to run the end-to-end tests:
+
+```
+npm test
+```
+
+Or run headed to see the browsers, which can be useful for debugging:
+
+```
+npm run test-headed
+```
+
+Or use the [playwright][] UI:
+
+```
+npm run test-ui
+```
+
+If you need to debug the test specs you can also just open the pages manually in a browser, first open the initiator `/gg20/p1.html` and then open the participant pages `/gg20/p2.html` and `/gg20/p3.html` on the `http://localhost:9009` development server.
+
 ## License
 
-The driver crate is GPLv3 all other code is either MIT or Apache-2.0.
+The bindings and driver crates are released under the GPLv3 license and all other code is either MIT or Apache-2.0.
 
 [noise protocol]: https://noiseprotocol.org/
 [rust]: https://www.rust-lang.org/
+[playwright]: https://playwright.dev
 [web-sys]: https://docs.rs/web-sys
 [tokio-tungstenite]: https://docs.rs/tokio-tungstenite
 [protocol]: https://docs.rs/mpc-protocol

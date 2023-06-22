@@ -1,0 +1,9 @@
+key = "../test.pem"
+
+# speed up polling for e2e tests (wait-interval)
+# but keep the standard timeout setting (wait-timeout)
+[session]
+timeout = 300
+interval = 900
+wait-interval = 1
+wait-timeout = 60

@@ -388,10 +388,8 @@ impl SessionManager {
         &mut self,
         owner_key: Vec<u8>,
         participant_keys: Vec<Vec<u8>>,
-        session_id: Option<SessionId>,
     ) -> SessionId {
-        let session_id =
-            session_id.unwrap_or_else(|| SessionId::new_v4());
+        let session_id = SessionId::new_v4();
         let session = Session {
             owner_key,
             participant_keys: participant_keys.into_iter().collect(),
@@ -471,8 +469,6 @@ impl SessionManager {
 /// is automatically added as the session *owner*.
 #[derive(Default, Debug)]
 pub struct SessionRequest {
-    /// User supplied session identifier.
-    pub session_id: Option<SessionId>,
     /// Public keys of the session participants.
     pub participant_keys: Vec<Vec<u8>>,
 }
@@ -515,18 +511,6 @@ impl SessionState {
         }
         None
     }
-
-    /*
-    /// Get the party numbers for all session participants.
-    pub fn participants(&self) -> Vec<u16> {
-        self.all_participants
-            .iter()
-            .map(|key| self.party_number(key))
-            .filter(|num| num.is_some())
-            .map(|num| num.unwrap().get())
-            .collect()
-    }
-    */
 
     /// Get the connections a peer should make.
     pub fn connections(&self, own_key: &[u8]) -> &[Vec<u8>] {

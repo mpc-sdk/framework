@@ -1,10 +1,8 @@
 use crate::Result;
 use async_trait::async_trait;
 use futures::{select, FutureExt, StreamExt};
-use mpc_protocol::{SessionId, SessionState};
-use mpc_client::{
-    Event, EventStream, NetworkTransport, Transport,
-};
+use mpc_client::{Event, EventStream, NetworkTransport, Transport};
+use mpc_protocol::{log, SessionState};
 use tokio::sync::Mutex;
 
 /// Trait for types that handle session related events.
@@ -52,7 +50,7 @@ pub struct SessionInitiator {
     transport: Transport,
     session_participants: Vec<Vec<u8>>,
     session_state: Mutex<Option<SessionState>>,
-    session_id: Option<SessionId>,
+    requested_session: bool,
 }
 
 impl SessionInitiator {
@@ -60,14 +58,27 @@ impl SessionInitiator {
     pub fn new(
         transport: Transport,
         session_participants: Vec<Vec<u8>>,
-        session_id: Option<SessionId>,
     ) -> Self {
         Self {
             transport,
             session_participants,
             session_state: Mutex::new(None),
-            session_id,
+            requested_session: false,
         }
+    }
+
+    /// Lazily request to create new session only once.
+    async fn new_session(&mut self) -> Result<()> {
+        if !self.requested_session
+            && self.transport.is_connected().await
+        {
+            self.transport
+                .new_session(self.session_participants.clone())
+                .await?;
+
+            self.requested_session = true;
+        }
+        Ok(())
     }
 }
 
@@ -77,15 +88,9 @@ impl SessionEventHandler for SessionInitiator {
         &mut self,
         event: Event,
     ) -> Result<Option<SessionState>> {
+        self.new_session().await?;
+
         match event {
-            Event::ServerConnected { .. } => {
-                self.transport
-                    .new_session(
-                        self.session_participants.clone(),
-                        self.session_id.take(),
-                    )
-                    .await?;
-            }
             Event::SessionCreated(session) => {
                 tracing::info!(
                     id = ?session.session_id.to_string(),
@@ -175,16 +180,21 @@ impl SessionEventHandler for SessionParticipant {
             }
             Event::PeerConnected { peer_key } => {
                 let state = self.session_state.lock().await;
-                let session = state.as_ref().unwrap();
-                let connections =
-                    session.connections(self.transport.public_key());
-                if connections.contains(&peer_key) {
-                    self.transport
-                        .register_connection(
-                            &session.session_id,
-                            peer_key.as_slice(),
-                        )
-                        .await?;
+                if let Some(session) = state.as_ref() {
+                    let connections = session
+                        .connections(self.transport.public_key());
+                    if connections.contains(&peer_key) {
+                        self.transport
+                            .register_connection(
+                                &session.session_id,
+                                peer_key.as_slice(),
+                            )
+                            .await?;
+                    }
+                } else {
+                    log::warn!(
+                        "peer connected event without session"
+                    );
                 }
             }
             Event::SessionActive(session) => {

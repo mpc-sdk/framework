@@ -1,7 +1,7 @@
 //! GG20 message signing.
 use async_trait::async_trait;
-use mpc_protocol::{hex, Parameters, PartyNumber, SessionState};
 use mpc_client::{Event, NetworkTransport, Transport};
+use mpc_protocol::{hex, Parameters, PartyNumber, SessionState};
 use round_based::{Msg, StateMachine};
 use serde::{Deserialize, Serialize};
 

@@ -3,8 +3,8 @@ use futures::{select, FutureExt, StreamExt};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use mpc_protocol::SessionState;
 use mpc_client::{Client, Event, NetworkTransport};
+use mpc_protocol::SessionState;
 
 use super::new_client;
 
@@ -152,7 +152,7 @@ async fn initiator(
         Event::ServerConnected { .. } => {
             tracing::info!("initiator connected to server");
             // Initiate a session context for broadcasting
-            client.new_session(session_participants, None).await?;
+            client.new_session(session_participants).await?;
         }
         Event::SessionCreated(session) => {
             tracing::info!(

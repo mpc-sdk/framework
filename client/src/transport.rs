@@ -33,6 +33,12 @@ impl NetworkTransport for Transport {
         }
     }
 
+    async fn is_connected(&self) -> bool {
+        match self {
+            Transport::Relay(client) => client.is_connected().await,
+        }
+    }
+
     async fn connect_peer(
         &mut self,
         public_key: &[u8],
@@ -80,11 +86,10 @@ impl NetworkTransport for Transport {
     async fn new_session(
         &mut self,
         participant_keys: Vec<Vec<u8>>,
-        session_id: Option<SessionId>,
     ) -> Result<()> {
         match self {
             Transport::Relay(client) => {
-                client.new_session(participant_keys, session_id).await
+                client.new_session(participant_keys).await
             }
         }
     }
@@ -181,6 +186,10 @@ pub trait NetworkTransport {
     /// Perform initial handshake with the server.
     async fn connect(&mut self) -> Result<()>;
 
+    /// Determine if this client has completed a
+    /// server handshake.
+    async fn is_connected(&self) -> bool;
+
     /// Handshake with a peer.
     ///
     /// Peer already exists error is returned if this
@@ -213,7 +222,6 @@ pub trait NetworkTransport {
     async fn new_session(
         &mut self,
         participant_keys: Vec<Vec<u8>>,
-        session_id: Option<SessionId>,
     ) -> Result<()>;
 
     /// Register a peer connection in a session.
