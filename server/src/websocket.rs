@@ -42,7 +42,7 @@ pub struct WebSocketConnection {
     /// User supplied public key.
     pub(crate) public_key: Vec<u8>,
     /// Outoing channel for messages sent to clients.
-    pub(crate) outgoing: mpsc::Sender<Vec<u8>>,
+    pub(crate) outgoing: mpsc::Sender<Message>,
     // Incoming channel for messages received from clients.
     pub(crate) incoming: mpsc::Sender<Vec<u8>>,
     /// Protocol state for this connection.
@@ -66,7 +66,7 @@ impl fmt::Debug for WebSocketConnection {
 impl WebSocketConnection {
     /// Send a buffer to the client at this socket.
     pub async fn send(&mut self, buffer: Vec<u8>) -> Result<()> {
-        self.outgoing.send(buffer).await?;
+        self.outgoing.send(Message::Binary(buffer)).await?;
         Ok(())
     }
 }
@@ -91,7 +91,7 @@ pub async fn upgrade(
     }
 
     let id = Uuid::new_v4();
-    let (outgoing_tx, outgoing_rx) = mpsc::channel::<Vec<u8>>(32);
+    let (outgoing_tx, outgoing_rx) = mpsc::channel::<Message>(32);
     let (incoming, service_reader) = mpsc::channel::<Vec<u8>>(32);
 
     let builder = Builder::new(
@@ -111,8 +111,7 @@ pub async fn upgrade(
     let conn = Arc::new(RwLock::new(WebSocketConnection {
         id,
         public_key: query.public_key,
-        outgoing: outgoing_tx,
-        //outgoing_rx,
+        outgoing: outgoing_tx.clone(),
         incoming,
         state: Some(protocol_state),
     }));
@@ -120,19 +119,20 @@ pub async fn upgrade(
     writer.pending.insert(id, conn);
     drop(writer);
 
+    /*
     let service_writer = {
         let reader = socket_conn.read().await;
         reader.outgoing.clone()
     };
+    */
 
     let socket_state = Arc::clone(&state);
     Ok(ws.on_upgrade(move |socket| {
         service.listen_socket(
             Arc::clone(&socket_conn),
             service_reader,
-            service_writer,
         );
-        handle_socket(socket, socket_state, socket_conn, outgoing_rx)
+        handle_socket(socket, socket_state, socket_conn, outgoing_rx, outgoing_tx)
     }))
 }
 
@@ -151,7 +151,8 @@ async fn handle_socket(
     socket: WebSocket,
     state: State,
     conn: Connection,
-    outgoing: mpsc::Receiver<Vec<u8>>,
+    outgoing_rx: mpsc::Receiver<Message>,
+    outgoing_tx: mpsc::Sender<Message>,
 ) {
     let (writer, reader) = socket.split();
 
@@ -159,15 +160,21 @@ async fn handle_socket(
         writer,
         Arc::clone(&state),
         Arc::clone(&conn),
-        outgoing,
+        outgoing_rx,
     ));
-    tokio::spawn(read(reader, Arc::clone(&state), Arc::clone(&conn)));
+    tokio::spawn(read(
+        reader,
+        Arc::clone(&state),
+        Arc::clone(&conn),
+        outgoing_tx,
+    ));
 }
 
 async fn read(
     mut receiver: SplitStream<WebSocket>,
     state: State,
     conn: Connection,
+    outgoing_tx: mpsc::Sender<Message>,
 ) -> Result<()> {
     let tx = {
         let reader = conn.read().await;
@@ -183,8 +190,8 @@ async fn read(
                 }
                 Message::Ping(_) => {}
                 Message::Pong(_) => {}
-                Message::Close(_) => {
-                    disconnect(state, Arc::clone(&conn)).await;
+                Message::Close(frame) => {
+                    let _ = outgoing_tx.send(Message::Close(frame)).await;
                     return Ok(());
                 }
             },
@@ -201,10 +208,10 @@ async fn write(
     mut sender: SplitSink<WebSocket, Message>,
     state: State,
     conn: Connection,
-    mut outgoing: mpsc::Receiver<Vec<u8>>,
+    mut outgoing_rx: mpsc::Receiver<Message>,
 ) -> Result<()> {
-    while let Some(buffer) = outgoing.recv().await {
-        if sender.send(Message::Binary(buffer)).await.is_err() {
+    while let Some(message) = outgoing_rx.recv().await {
+        if sender.send(message).await.is_err() {
             disconnect(state, Arc::clone(&conn)).await;
             return Ok(());
         }

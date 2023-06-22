@@ -30,7 +30,6 @@ impl RelayService {
         &self,
         conn: Connection,
         reader: mpsc::Receiver<Vec<u8>>,
-        _writer: mpsc::Sender<Vec<u8>>,
     ) {
         tokio::spawn(listen(
             Arc::clone(&self.state),
@@ -495,9 +494,6 @@ async fn notify_peers(
     public_keys: Vec<Vec<u8>>,
     message: ServerMessage,
 ) -> Result<()> {
-
-    println!("notify peers {:#?}", message);
-
     let reader = state.read().await;
     for key in &public_keys {
         if let Some(conn) = reader.active.get(key).map(Arc::clone) {
@@ -551,8 +547,6 @@ async fn send_message(
         broadcast,
     )
     .await?;
-
-    tracing::debug!(to = ?writer, "server message (opaque)");
 
     let response = ResponseMessage::Opaque(
         OpaqueMessage::ServerMessage(envelope),
