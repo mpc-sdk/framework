@@ -152,6 +152,7 @@ pub(crate) async fn new_client_with_keypair(
     let options = ClientOptions {
         keypair,
         server_public_key,
+        pattern: None,
     };
     let url = options.url(server);
     Ok(Client::new(&url, options).await?)

@@ -11,8 +11,10 @@ mod bindings {
     #[wasm_bindgen(start)]
     pub fn start() {
         console_error_panic_hook::set_once();
-        if wasm_log::try_init(wasm_log::Config::new(log::Level::Debug))
-            .is_ok()
+        if wasm_log::try_init(wasm_log::Config::new(
+            log::Level::Debug,
+        ))
+        .is_ok()
         {
             log::info!("Webassembly logger initialized");
         }
@@ -32,7 +34,8 @@ mod bindings {
         let participants = parse_participants(participants)?;
 
         let fut = async move {
-            let key_share = mpc_driver::keygen(options, participants).await?;
+            let key_share =
+                mpc_driver::keygen(options, participants).await?;
             Ok(serde_wasm_bindgen::to_value(&key_share)?)
         };
 
@@ -60,7 +63,8 @@ mod bindings {
                 participants,
                 signing_key,
                 message,
-            ).await?;
+            )
+            .await?;
             Ok(serde_wasm_bindgen::to_value(&signature)?)
         };
 
@@ -76,7 +80,8 @@ mod bindings {
             let mut parties = Vec::new();
             for participant in participants {
                 parties.push(
-                    hex::decode(participant).map_err(JsError::from)?,
+                    hex::decode(participant)
+                        .map_err(JsError::from)?,
                 );
             }
             Ok(Some(parties))
@@ -88,7 +93,8 @@ mod bindings {
     pub(crate) fn parse_message(
         message: JsValue,
     ) -> Result<[u8; 32], JsError> {
-        let message: String = serde_wasm_bindgen::from_value(message)?;
+        let message: String =
+            serde_wasm_bindgen::from_value(message)?;
         let message: Vec<u8> =
             hex::decode(&message).map_err(JsError::from)?;
         let message: [u8; 32] =

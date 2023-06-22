@@ -46,6 +46,7 @@ pub async fn new_client_with_keypair<E: From<mpc_client::Error>>(
     let options = ClientOptions {
         keypair,
         server_public_key,
+        pattern: None,
     };
     let url = options.url(server);
     let (client, event_loop) = Client::new(&url, options).await?;

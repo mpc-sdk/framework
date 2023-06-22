@@ -149,7 +149,7 @@ macro_rules! client_transport_impl {
                     "peer handshake initiator"
                 );
 
-                let builder = Builder::new(PATTERN.parse()?);
+                let builder = Builder::new(self.options.params()?);
                 let handshake = builder
                     .local_private_key(self.options.keypair.private_key())
                     .remote_public_key(public_key.as_ref())
