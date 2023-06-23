@@ -1,55 +1,54 @@
-import("/pkg/mpc_bindings.js").then(async (module) => {
-  // Initialize the webassembly
-  await module.default();
+const module = await import("/pkg/mpc_bindings.js");
 
-  const partyIndex = ${INDEX};
-  const message = "${MESSAGE}";
-  const participants = ${PARTICIPANTS};
-  const signingParticipants = ${SIGNING_PARTICIPANTS};
-  const options = {
-    protocol: "gg20",
-    keypair: `${KEYPAIR}`,
-    server: {
-      serverUrl: "${SERVER_URL}",
-      serverPublicKey: "${SERVER_PUBLIC_KEY}",
-    },
-    parameters: {
-      parties: 3,
-      threshold: 1,
-    },
-  };
+// Initialize the webassembly
+await module.default();
 
-  // Start key generation
-  try {
-    // Get the promise for key generation
-    const keyShare = await module.keygen(options, participants);
+const partyIndex = ${INDEX};
+const message = "${MESSAGE}";
+const participants = ${PARTICIPANTS};
+const signingParticipants = ${SIGNING_PARTICIPANTS};
+const options = {
+  protocol: "gg20",
+  keypair: `${KEYPAIR}`,
+  server: {
+    serverUrl: "${SERVER_URL}",
+    serverPublicKey: "${SERVER_PUBLIC_KEY}",
+  },
+  parameters: {
+    parties: 3,
+    threshold: 1,
+  },
+};
 
-    console.log("keygen completed");
+// Start key generation
+try {
+  // Get the promise for key generation
+  const keyShare = await module.keygen(options, participants);
 
-    const keyShareElement = document.getElementById("key-share");
-    keyShareElement.innerHTML = `
-      <p class="address">Address: ${keyShare.address}</p>
-      <p class="party-number">Party number: ${keyShare.privateKey.gg20.i}</p>`;
-    // First and third parties perform signing
-    if (partyIndex == 0 || partyIndex == 2) {
+  console.log("keygen completed");
 
-      const result = await module.sign(
-        options,
-        signingParticipants,
-        keyShare.privateKey,
-        message);
+  const keyShareElement = document.getElementById("key-share");
+  keyShareElement.innerHTML = `
+    <p class="address">Address: ${keyShare.address}</p>
+    <p class="party-number">Party number: ${keyShare.privateKey.gg20.i}</p>`;
+  // First and third parties perform signing
+  if (partyIndex == 0 || partyIndex == 2) {
 
-      console.log("signature: ", result);
+    const result = await module.sign(
+      options,
+      signingParticipants,
+      keyShare.privateKey,
+      message);
 
-      const signatureElement = document.getElementById("signature");
-      signatureElement.innerHTML = `
-        <p class="signature-address">Address: ${result.address}</p>
-        <p>${JSON.stringify(result.signature)}</p>`;
+    console.log("signature: ", result);
 
-      console.log("signing completed");
-    }
-  } catch (e) {
-    console.error(e);
+    const signatureElement = document.getElementById("signature");
+    signatureElement.innerHTML = `
+      <p class="signature-address">Address: ${result.address}</p>
+      <p>${JSON.stringify(result.signature)}</p>`;
+
+    console.log("signing completed");
   }
-
-});
+} catch (e) {
+  console.error(e);
+}
