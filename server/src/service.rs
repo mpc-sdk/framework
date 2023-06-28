@@ -543,7 +543,7 @@ async fn send_message(
     let payload = encode(message).await?;
     let envelope = encrypt_server_channel(
         writer.state.as_mut().unwrap(),
-        payload,
+        &payload,
         broadcast,
     )
     .await?;

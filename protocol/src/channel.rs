@@ -12,14 +12,14 @@ use crate::{
 #[doc(hidden)]
 pub async fn encrypt_server_channel(
     server: &mut ProtocolState,
-    payload: Vec<u8>,
+    payload: &[u8],
     broadcast: bool,
 ) -> Result<SealedEnvelope> {
     match server {
         ProtocolState::Transport(transport) => {
             let mut contents = vec![0; payload.len() + TAGLEN];
             let length =
-                transport.write_message(&payload, &mut contents)?;
+                transport.write_message(payload, &mut contents)?;
             let envelope = SealedEnvelope {
                 length,
                 encoding: Encoding::Blob,

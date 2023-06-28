@@ -1,6 +1,6 @@
 [package]
 name = "mpc-protocol"
-version = "0.4.0"
+version = "0.4.1"
 edition = "2021"
 description = "Multi-party computation framework using the noise protocol for end-to-end encryption"
 keywords = ["mpc", "tss", "relay", "crypto", "e2ee"]

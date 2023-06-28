@@ -42,7 +42,7 @@ macro_rules! client_impl {
                 if let Some(server) = server.as_mut() {
                     let payload = encode(&message).await?;
                     let inner = encrypt_server_channel(
-                        server, payload, false,
+                        server, &payload, false,
                     )
                     .await?;
                     Some(inner)
