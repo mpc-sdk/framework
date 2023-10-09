@@ -5,7 +5,7 @@ edition = "2021"
 description = "Driver for round-based MPC protocols"
 keywords = ["mpc", "tss", "relay", "crypto", "e2ee"]
 license = "GPL-3.0"
-repository = "https://github.com/tmpfs/mpc-protocol"
+repository = "https://github.com/mpc-sdk/framework"
 
 [features]
 gg20 = ["dep:curv-kzen", "dep:paillier", "dep:multi-party-ecdsa"]
