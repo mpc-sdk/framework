@@ -10,7 +10,7 @@ use axum_server::{tls_rustls::RustlsConfig, Handle};
 use tower_http::trace::TraceLayer;
 use uuid::Uuid;
 
-use mpc_protocol::{hex, uuid, Keypair, SessionManager};
+use mpc_protocol::{hex, uuid, Keypair, MeetingManager, SessionManager};
 
 use crate::{
     config::{ServerConfig, TlsConfig},
@@ -22,12 +22,21 @@ use crate::{service::RelayService, websocket::Connection};
 pub type State = Arc<RwLock<ServerState>>;
 pub(crate) type Service = Arc<RelayService>;
 
-async fn session_reaper(state: State, interval_secs: u64) {
+async fn purge_expired(state: State, interval_secs: u64) {
     let interval =
         tokio::time::interval(Duration::from_secs(interval_secs));
     let mut stream = IntervalStream::new(interval);
     while stream.next().await.is_some() {
         let mut writer = state.write().await;
+        let expired_meetings = writer
+            .meetings
+            .expired_keys(writer.config.session.timeout);
+        tracing::debug!(
+            expired_meetings = %expired_meetings.len());
+        for key in expired_meetings {
+            writer.meetings.remove_meeting(&key);
+        }
+
         let expired_sessions = writer
             .sessions
             .expired_keys(writer.config.session.timeout);
@@ -54,6 +63,9 @@ pub struct ServerState {
     /// Now the hashmap key is the client's public key.
     pub(crate) active: HashMap<Vec<u8>, Connection>,
 
+    /// Meeting point manager.
+    pub(crate) meetings: MeetingManager,
+
     /// Session manager.
     pub(crate) sessions: SessionManager,
 }
@@ -72,6 +84,7 @@ impl RelayServer {
                 config,
                 pending: Default::default(),
                 active: Default::default(),
+                meetings: Default::default(),
                 sessions: Default::default(),
             })),
         }
@@ -89,7 +102,7 @@ impl RelayServer {
         drop(reader);
 
         // Spawn task to reap expired sessions
-        tokio::task::spawn(session_reaper(
+        tokio::task::spawn(purge_expired(
             Arc::clone(&self.state),
             interval,
         ));

@@ -396,6 +396,73 @@ impl Session {
     }
 }
 
+/// Meeting point information.
+pub struct Meeting {
+    /// Public key of the owner.
+    ///
+    /// The owner is the initiator that created this meeting point.
+    owner_key: Vec<u8>,
+
+    /// Public keys of all the registered meeting participants.
+    registered_participants: HashSet<Vec<u8>>,
+
+    /// Last access time so the server can reap
+    /// stale meetings.
+    last_access: SystemTime,
+}
+
+/// Manages a collection of meeting points.
+#[derive(Default)]
+pub struct MeetingManager {
+    meetings: HashMap<MeetingId, Meeting>,
+}
+
+impl MeetingManager {
+    /// Create a new meeting point.
+    pub fn new_meeting(
+        &mut self,
+        owner_key: Vec<u8>,
+        registered_participants: Vec<Vec<u8>>,
+    ) -> MeetingId {
+        let meeting_id = MeetingId::new_v4();
+        let meeting = Meeting {
+            owner_key,
+            registered_participants: registered_participants
+                .into_iter()
+                .collect(),
+            last_access: SystemTime::now(),
+        };
+        self.meetings.insert(meeting_id, meeting);
+        meeting_id
+    }
+
+    /// Remove a meeting.
+    pub fn remove_meeting(
+        &mut self,
+        id: &MeetingId,
+    ) -> Option<Meeting> {
+        self.meetings.remove(id)
+    }
+
+    /// Get the keys of meetings that have expired.
+    pub fn expired_keys(&self, timeout: u64) -> Vec<MeetingId> {
+        self.meetings
+            .iter()
+            .filter(|(_, v)| {
+                let now = SystemTime::now();
+                let ttl = Duration::from_millis(timeout * 1000);
+                if let Some(current) = v.last_access.checked_add(ttl)
+                {
+                    current < now
+                } else {
+                    false
+                }
+            })
+            .map(|(k, _)| *k)
+            .collect::<Vec<_>>()
+    }
+}
+
 /// Manages a collection of sessions.
 #[derive(Default)]
 pub struct SessionManager {
@@ -419,17 +486,7 @@ impl SessionManager {
         self.sessions.insert(session_id, session);
         session_id
     }
-
-    /// Get the number of sessions.
-    pub fn len(&self) -> usize {
-        self.sessions.len()
-    }
-
-    /// Determine if the session manager is empty.
-    pub fn is_empty(&self) -> bool {
-        self.sessions.is_empty()
-    }
-
+    
     /// Get a session.
     pub fn get_session(&self, id: &SessionId) -> Option<&Session> {
         self.sessions.get(id)

@@ -413,6 +413,14 @@ async fn service(
     message: ServerMessage,
 ) -> Result<Option<ServerMessage>> {
     match message {
+        ServerMessage::NewMeeting { limit } => {
+            // Meeting initiator is automatically a
+            // registered participant
+            let mut registered_participants =
+                vec![public_key.as_ref().to_vec()];
+
+            todo!();
+        }
         ServerMessage::NewSession(request) => {
             let mut all_participants =
                 vec![public_key.as_ref().to_vec()];
