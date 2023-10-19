@@ -1,8 +1,9 @@
 use anyhow::Result;
 use futures::{select, FutureExt, StreamExt};
+use mpc_protocol::hex;
 
-use mpc_client::{Event, NetworkTransport, Transport};
 use super::new_client;
+use mpc_client::{Event, NetworkTransport, Transport};
 
 pub async fn run(
     server: &str,
@@ -11,12 +12,13 @@ pub async fn run(
     let mut completed: Vec<()> = Vec::new();
 
     // Create new clients
-    let (client_i, event_loop_i, _) = new_client::<anyhow::Error>(
-        server,
-        server_public_key.clone(),
-    )
-    .await?;
-    let (client_p, event_loop_p, _) =
+    let (client_i, event_loop_i, init_key) =
+        new_client::<anyhow::Error>(
+            server,
+            server_public_key.clone(),
+        )
+        .await?;
+    let (client_p, event_loop_p, part_key) =
         new_client::<anyhow::Error>(
             server,
             server_public_key.clone(),
@@ -29,6 +31,15 @@ pub async fn run(
     // Each client handshakes with the server
     client_i_transport.connect().await?;
     client_p_transport.connect().await?;
+
+    // Expected public keys that should be broadcast
+    // as the meeting ready event when the meeting point
+    // limit has been reached
+    let mut expected = vec![
+        hex::encode(init_key.public_key()),
+        hex::encode(part_key.public_key()),
+    ];
+    expected.sort();
 
     // Meeting point limit is for a 2 of 2.
     let limit = 2;
@@ -58,7 +69,17 @@ pub async fn run(
                                 client_p_transport.join_meeting(
                                     meeting.meeting_id).await?;
                             }
-                            Event::MeetingReady(_) => {
+                            Event::MeetingReady(meeting) => {
+                                let mut public_keys: Vec<String> =
+                                    meeting
+                                        .registered_participants
+                                        .into_iter()
+                                        .map(hex::encode)
+                                        .collect();
+
+                                public_keys.sort();
+                                assert_eq!(expected, public_keys);
+
                                 completed.push(());
                             }
                             _ => {}
@@ -71,7 +92,17 @@ pub async fn run(
                 match event {
                     Some(event) => {
                         let event = event?;
-                        if let Event::MeetingReady(_) = &event {
+                        if let Event::MeetingReady(meeting) = event {
+                            let mut public_keys: Vec<String> =
+                                meeting
+                                    .registered_participants
+                                    .into_iter()
+                                    .map(hex::encode)
+                                    .collect();
+
+                            public_keys.sort();
+                            assert_eq!(expected, public_keys);
+
                             completed.push(());
                         }
                     }
