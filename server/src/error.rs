@@ -44,6 +44,11 @@ pub enum Error {
     #[error(r#"meeting "{0}" not found"#)]
     MeetingNotFound(MeetingId),
 
+    /// Error generated when a participant attempts to join a meeting
+    /// that is full.
+    #[error(r#"meeting "{0}" is full"#)]
+    MeetingFull(MeetingId),
+
     /// Error generated when a session could not be found.
     #[error(r#"session "{0}" not found"#)]
     SessionNotFound(SessionId),

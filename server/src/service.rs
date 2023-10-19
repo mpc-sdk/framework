@@ -261,6 +261,51 @@ async fn handle_request(
     Ok(())
 }
 
+async fn wait_for_meeting_ready(
+    interval_secs: u64,
+    state: State,
+    _owner: Connection,
+    _start_time: SystemTime,
+    meeting: MeetingState,
+) {
+    let interval =
+        tokio::time::interval(Duration::from_secs(interval_secs));
+    let mut stream = IntervalStream::new(interval);
+    while stream.next().await.is_some() {
+        let (ready, target) = {
+            let reader = state.read().await;
+            if let Some(target) =
+                reader.meetings.get_meeting(&meeting.meeting_id)
+            {
+                let ready = target.is_full();
+                let state = MeetingState {
+                    meeting_id: meeting.meeting_id,
+                    registered_participants: target
+                        .participants()
+                        .into_iter()
+                        .cloned()
+                        .collect(),
+                };
+                (ready, state)
+            } else {
+                break;
+            }
+        };
+
+        if ready {
+            if let Err(e) = notify_meeting_ready(
+                Arc::clone(&state),
+                target.into(),
+            )
+            .await
+            {
+                tracing::error!("{:#?}", e);
+            }
+            break;
+        }
+    }
+}
+
 async fn wait_for_session_ready(
     interval_secs: u64,
     state: State,
@@ -313,6 +358,20 @@ async fn wait_for_session_ready(
             }
         }
     }
+}
+
+async fn notify_meeting_ready(
+    state: State,
+    meeting: MeetingState,
+) -> Result<()> {
+    let public_keys: Vec<_> = meeting
+        .registered_participants
+        .iter()
+        .map(|key| key.to_vec())
+        .collect();
+    let message = ServerMessage::MeetingReady(meeting);
+    notify_peers(state, public_keys, message).await?;
+    Ok(())
 }
 
 async fn notify_session_ready(
@@ -416,7 +475,7 @@ async fn service(
         ServerMessage::NewMeeting { limit } => {
             // Meeting initiator is automatically a
             // registered participant
-            let mut registered_participants =
+            let registered_participants =
                 vec![public_key.as_ref().to_vec()];
 
             let (meeting_id, wait_interval) = {
@@ -424,6 +483,7 @@ async fn service(
                 let meeting_id = writer.meetings.new_meeting(
                     public_key.as_ref().to_vec(),
                     registered_participants.clone(),
+                    limit,
                 );
                 (meeting_id, writer.config.session.wait_interval)
             };
@@ -433,10 +493,13 @@ async fn service(
                 registered_participants,
             };
 
-            // TODO: wait for the meeting limit to be reached 
-            // TODO: and dispatch the meeting ready event
-
-            //todo!();
+            tokio::task::spawn(wait_for_meeting_ready(
+                wait_interval,
+                Arc::clone(&state),
+                Arc::clone(&conn),
+                SystemTime::now(),
+                response.clone(),
+            ));
 
             Ok(Some(ServerMessage::MeetingCreated(response)))
         }
@@ -450,8 +513,12 @@ async fn service(
             if let Some(meeting) =
                 writer.meetings.get_meeting_mut(&meeting_id)
             {
-                meeting.join(from_public_key);
-                Ok(None)
+                if meeting.is_full() {
+                    Err(Error::MeetingFull(meeting_id))
+                } else {
+                    meeting.join(from_public_key);
+                    Ok(None)
+                }
             } else {
                 Err(Error::MeetingNotFound(meeting_id))
             }

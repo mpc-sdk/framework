@@ -227,6 +227,9 @@ impl Encodable for ServerMessage {
             Self::JoinMeeting(meeting_id) => {
                 writer.write_bytes(meeting_id.as_bytes()).await?;
             }
+            Self::MeetingReady(response) => {
+                response.encode(writer).await?;
+            }
             Self::NewSession(request) => {
                 request.encode(writer).await?;
             }
@@ -300,6 +303,11 @@ impl Decodable for ServerMessage {
                         .map_err(encoding_error)?,
                 );
                 *self = ServerMessage::JoinMeeting(meeting_id);
+            }
+            types::MEETING_READY => {
+                let mut meeting: MeetingState = Default::default();
+                meeting.decode(reader).await?;
+                *self = ServerMessage::MeetingReady(meeting);
             }
             types::SESSION_NEW => {
                 let mut session: SessionRequest = Default::default();

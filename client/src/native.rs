@@ -19,8 +19,9 @@ use tokio_tungstenite::{
 use mpc_protocol::{
     channel::encrypt_server_channel, decode, encode, hex,
     http::StatusCode, snow::Builder, Encoding, HandshakeMessage,
-    OpaqueMessage, ProtocolState, RequestMessage, ResponseMessage,
-    ServerMessage, SessionId, SessionRequest, TransparentMessage, MeetingId,
+    MeetingId, OpaqueMessage, ProtocolState, RequestMessage,
+    ResponseMessage, ServerMessage, SessionId, SessionRequest,
+    TransparentMessage,
 };
 
 use super::{

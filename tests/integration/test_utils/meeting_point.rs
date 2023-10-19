@@ -2,11 +2,6 @@ use anyhow::Result;
 use futures::{select, FutureExt, StreamExt};
 
 use mpc_client::{Event, NetworkTransport, Transport};
-use mpc_driver::{
-    SessionEventHandler, SessionInitiator, SessionParticipant,
-};
-use mpc_protocol::MeetingState;
-
 use super::new_client;
 
 pub async fn run(
@@ -21,7 +16,7 @@ pub async fn run(
         server_public_key.clone(),
     )
     .await?;
-    let (client_p, event_loop_p, participant_key) =
+    let (client_p, event_loop_p, _) =
         new_client::<anyhow::Error>(
             server,
             server_public_key.clone(),
@@ -31,23 +26,9 @@ pub async fn run(
     let mut client_i_transport: Transport = client_i.into();
     let mut client_p_transport: Transport = client_p.into();
 
-    let session_participants =
-        vec![participant_key.public_key().to_vec()];
-
     // Each client handshakes with the server
     client_i_transport.connect().await?;
     client_p_transport.connect().await?;
-
-    println!("Server conns completed...");
-
-    /*
-    let mut client_i_session = SessionInitiator::new(
-        client_i_transport,
-        session_participants,
-    );
-    let mut client_p_session =
-        SessionParticipant::new(client_p_transport);
-    */
 
     // Meeting point limit is for a 2 of 2.
     let limit = 2;
@@ -68,28 +49,20 @@ pub async fn run(
 
                         match event {
                             Event::ServerConnected { .. } => {
-                                println!("init got event {:#?}", event);
                                 client_i_transport.new_meeting(limit).await?;
                             }
                             Event::MeetingCreated(meeting) => {
-                                println!("Got created meeting {:#?}", meeting);
-                                
-                                // In the real world the initiator needs 
-                                // to share the meeting identifier with 
+                                // In the real world the initiator needs
+                                // to share the meeting identifier with
                                 // all the participants
                                 client_p_transport.join_meeting(
                                     meeting.meeting_id).await?;
                             }
+                            Event::MeetingReady(_) => {
+                                completed.push(());
+                            }
                             _ => {}
                         }
-
-
-                        /*
-                        if let Some(session) =
-                            client_i_session.handle_event(event).await? {
-                            completed.push(session);
-                        }
-                        */
                     }
                     _ => {}
                 }
@@ -98,15 +71,9 @@ pub async fn run(
                 match event {
                     Some(event) => {
                         let event = event?;
-
-                        //println!("part got event {:#?}", event);
-
-                        /*
-                        if let Some(session) =
-                            client_p_session.handle_event(event).await? {
-                            completed.push(session);
+                        if let Event::MeetingReady(_) = &event {
+                            completed.push(());
                         }
-                        */
                     }
                     _ => {}
                 }

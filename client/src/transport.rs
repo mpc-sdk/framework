@@ -93,9 +93,7 @@ impl NetworkTransport for Transport {
 
     async fn join_meeting(&mut self, id: MeetingId) -> Result<()> {
         match self {
-            Transport::Relay(client) => {
-                client.join_meeting(id).await
-            }
+            Transport::Relay(client) => client.join_meeting(id).await,
         }
     }
 

@@ -55,6 +55,12 @@ pub enum Event {
     /// Event dispatched when a meeting has been created.
     MeetingCreated(MeetingState),
 
+    /// Event dispatched when a meeting is ready.
+    ///
+    /// A meeting is ready when the limit for the meeting point
+    /// has been reached.
+    MeetingReady(MeetingState),
+
     /// Event dispatched when a session has been created.
     SessionCreated(SessionState),
 
@@ -231,6 +237,9 @@ where
             }
             ServerMessage::MeetingCreated(response) => {
                 Ok(Some(Event::MeetingCreated(response)))
+            }
+            ServerMessage::MeetingReady(response) => {
+                Ok(Some(Event::MeetingReady(response)))
             }
             ServerMessage::SessionCreated(response) => {
                 Ok(Some(Event::SessionCreated(response)))
