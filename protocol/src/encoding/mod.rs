@@ -94,7 +94,7 @@ pub(crate) mod types {
 
     pub const MEETING_NEW: u8 = 1;
     pub const MEETING_CREATED: u8 = 2;
-    pub const MEETING_JOINED: u8 = 3;
+    pub const MEETING_JOIN: u8 = 3;
     pub const MEETING_READY: u8 = 4;
 
     pub const SESSION_NEW: u8 = 5;

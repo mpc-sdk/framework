@@ -9,9 +9,9 @@ use tokio_stream::wrappers::IntervalStream;
 
 use mpc_protocol::{
     channel::{decrypt_server_channel, encrypt_server_channel},
-    decode, encode, hex, Encoding, HandshakeMessage, OpaqueMessage,
-    ProtocolState, RequestMessage, ResponseMessage, ServerMessage,
-    SessionState, TransparentMessage,
+    decode, encode, hex, Encoding, HandshakeMessage, MeetingState,
+    OpaqueMessage, ProtocolState, RequestMessage, ResponseMessage,
+    ServerMessage, SessionState, TransparentMessage,
 };
 
 use crate::{server::State, websocket::Connection, Error, Result};
@@ -419,7 +419,42 @@ async fn service(
             let mut registered_participants =
                 vec![public_key.as_ref().to_vec()];
 
-            todo!();
+            let (meeting_id, wait_interval) = {
+                let mut writer = state.write().await;
+                let meeting_id = writer.meetings.new_meeting(
+                    public_key.as_ref().to_vec(),
+                    registered_participants.clone(),
+                );
+                (meeting_id, writer.config.session.wait_interval)
+            };
+
+            let response = MeetingState {
+                meeting_id,
+                registered_participants,
+            };
+
+            // TODO: wait for the meeting limit to be reached 
+            // TODO: and dispatch the meeting ready event
+
+            //todo!();
+
+            Ok(Some(ServerMessage::MeetingCreated(response)))
+        }
+        ServerMessage::JoinMeeting(meeting_id) => {
+            let from_public_key = {
+                let reader = conn.read().await;
+                reader.public_key.clone()
+            };
+
+            let mut writer = state.write().await;
+            if let Some(meeting) =
+                writer.meetings.get_meeting_mut(&meeting_id)
+            {
+                meeting.join(from_public_key);
+                Ok(None)
+            } else {
+                Err(Error::MeetingNotFound(meeting_id))
+            }
         }
         ServerMessage::NewSession(request) => {
             let mut all_participants =

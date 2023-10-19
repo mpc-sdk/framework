@@ -10,7 +10,9 @@ use axum_server::{tls_rustls::RustlsConfig, Handle};
 use tower_http::trace::TraceLayer;
 use uuid::Uuid;
 
-use mpc_protocol::{hex, uuid, Keypair, MeetingManager, SessionManager};
+use mpc_protocol::{
+    hex, uuid, Keypair, MeetingManager, SessionManager,
+};
 
 use crate::{
     config::{ServerConfig, TlsConfig},

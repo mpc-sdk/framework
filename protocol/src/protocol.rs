@@ -118,9 +118,12 @@ pub enum ServerMessage {
         /// of parties and for signing it should be `t + 1`.
         limit: u16,
     },
-    /*
     /// Response to a new meeting point request.
     MeetingCreated(MeetingState),
+    /// Participant joins a meeting.
+    JoinMeeting(MeetingId),
+
+    /*
     /// Notification dispatched to all participants
     /// in a meeting when the limit for the meeting
     /// has been reached.
@@ -161,6 +164,12 @@ impl From<&ServerMessage> for u8 {
             ServerMessage::Noop => types::NOOP,
             ServerMessage::Error(_, _) => types::ERROR,
             ServerMessage::NewMeeting { .. } => types::MEETING_NEW,
+            ServerMessage::MeetingCreated(_) => {
+                types::MEETING_CREATED
+            }
+            ServerMessage::JoinMeeting(_) => {
+                types::MEETING_JOIN
+            }
             ServerMessage::NewSession(_) => types::SESSION_NEW,
             ServerMessage::SessionConnection { .. } => {
                 types::SESSION_CONNECTION
@@ -411,6 +420,14 @@ pub struct Meeting {
     last_access: SystemTime,
 }
 
+impl Meeting {
+    /// Add a participant public key to this meeting.
+    pub fn join(&mut self, public_key: Vec<u8>) {
+        self.registered_participants.insert(public_key);
+        self.last_access = SystemTime::now();
+    }
+}
+
 /// Manages a collection of meeting points.
 #[derive(Default)]
 pub struct MeetingManager {
@@ -442,6 +459,14 @@ impl MeetingManager {
         id: &MeetingId,
     ) -> Option<Meeting> {
         self.meetings.remove(id)
+    }
+
+    /// Get a mutable meeting.
+    pub fn get_meeting_mut(
+        &mut self,
+        id: &MeetingId,
+    ) -> Option<&mut Meeting> {
+        self.meetings.get_mut(id)
     }
 
     /// Get the keys of meetings that have expired.
@@ -486,7 +511,7 @@ impl SessionManager {
         self.sessions.insert(session_id, session);
         session_id
     }
-    
+
     /// Get a session.
     pub fn get_session(&self, id: &SessionId) -> Option<&Session> {
         self.sessions.get(id)

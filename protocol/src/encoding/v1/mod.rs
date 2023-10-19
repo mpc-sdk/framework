@@ -10,9 +10,10 @@ use crate::{
         decode_preamble, encode_preamble, encoding_error, types,
         MAX_BUFFER_SIZE,
     },
-    Encoding, Error, HandshakeMessage, OpaqueMessage, RequestMessage,
-    ResponseMessage, SealedEnvelope, ServerMessage, SessionId,
-    SessionRequest, SessionState, TransparentMessage,
+    Encoding, Error, HandshakeMessage, MeetingId, MeetingState,
+    OpaqueMessage, RequestMessage, ResponseMessage, SealedEnvelope,
+    ServerMessage, SessionId, SessionRequest, SessionState,
+    TransparentMessage,
 };
 
 /// Version for binary encoding.
@@ -220,6 +221,12 @@ impl Encodable for ServerMessage {
             Self::NewMeeting { limit } => {
                 writer.write_u16(limit).await?;
             }
+            Self::MeetingCreated(response) => {
+                response.encode(writer).await?;
+            }
+            Self::JoinMeeting(meeting_id) => {
+                writer.write_bytes(meeting_id.as_bytes()).await?;
+            }
             Self::NewSession(request) => {
                 request.encode(writer).await?;
             }
@@ -277,6 +284,22 @@ impl Decodable for ServerMessage {
             types::MEETING_NEW => {
                 let limit = reader.read_u16().await?;
                 *self = ServerMessage::NewMeeting { limit };
+            }
+            types::MEETING_CREATED => {
+                let mut meeting: MeetingState = Default::default();
+                meeting.decode(reader).await?;
+                *self = ServerMessage::MeetingCreated(meeting);
+            }
+            types::MEETING_JOIN => {
+                let meeting_id = MeetingId::from_bytes(
+                    reader
+                        .read_bytes(16)
+                        .await?
+                        .as_slice()
+                        .try_into()
+                        .map_err(encoding_error)?,
+                );
+                *self = ServerMessage::JoinMeeting(meeting_id);
             }
             types::SESSION_NEW => {
                 let mut session: SessionRequest = Default::default();
@@ -627,6 +650,46 @@ impl Decodable for SessionRequest {
         for _ in 0..size {
             let key = decode_buffer(reader).await?;
             self.participant_keys.push(key);
+        }
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl Encodable for MeetingState {
+    async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
+        &self,
+        writer: &mut BinaryWriter<W>,
+    ) -> Result<()> {
+        writer.write_bytes(self.meeting_id.as_bytes()).await?;
+        writer
+            .write_u16(self.registered_participants.len() as u16)
+            .await?;
+        for key in &self.registered_participants {
+            encode_buffer(writer, key).await?;
+        }
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl Decodable for MeetingState {
+    async fn decode<R: AsyncRead + AsyncSeek + Unpin + Send>(
+        &mut self,
+        reader: &mut BinaryReader<R>,
+    ) -> Result<()> {
+        self.meeting_id = MeetingId::from_bytes(
+            reader
+                .read_bytes(16)
+                .await?
+                .as_slice()
+                .try_into()
+                .map_err(encoding_error)?,
+        );
+        let size = reader.read_u16().await? as usize;
+        for _ in 0..size {
+            let key = decode_buffer(reader).await?;
+            self.registered_participants.push(key);
         }
         Ok(())
     }

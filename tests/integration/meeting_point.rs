@@ -2,7 +2,7 @@ use anyhow::Result;
 use serial_test::serial;
 
 use crate::test_utils::{
-    server_public_key, meeting_point, spawn_server, SERVER,
+    meeting_point, server_public_key, spawn_server, SERVER,
 };
 
 /// Mimics a meeting point flow for two participants.

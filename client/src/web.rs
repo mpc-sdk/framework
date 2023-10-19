@@ -14,7 +14,7 @@ use mpc_protocol::{
     channel::encrypt_server_channel, decode, encode, hex,
     snow::Builder, Encoding, HandshakeMessage, OpaqueMessage,
     ProtocolState, RequestMessage, ResponseMessage, ServerMessage,
-    SessionId, SessionRequest, TransparentMessage,
+    SessionId, SessionRequest, TransparentMessage, MeetingId,
 };
 
 use crate::{

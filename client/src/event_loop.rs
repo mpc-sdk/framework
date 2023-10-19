@@ -7,9 +7,9 @@ use tokio::sync::mpsc;
 
 use mpc_protocol::{
     channel::decrypt_server_channel, decode, hex, snow::Builder,
-    Encoding, HandshakeMessage, OpaqueMessage, ProtocolState,
-    RequestMessage, ResponseMessage, SealedEnvelope, ServerMessage,
-    SessionId, SessionState, TransparentMessage,
+    Encoding, HandshakeMessage, MeetingState, OpaqueMessage,
+    ProtocolState, RequestMessage, ResponseMessage, SealedEnvelope,
+    ServerMessage, SessionId, SessionState, TransparentMessage,
 };
 
 use super::{decrypt_peer_channel, Peers, Server};
@@ -51,6 +51,10 @@ pub enum Event {
         /// Session identifier.
         session_id: Option<SessionId>,
     },
+
+    /// Event dispatched when a meeting has been created.
+    MeetingCreated(MeetingState),
+
     /// Event dispatched when a session has been created.
     SessionCreated(SessionState),
 
@@ -224,6 +228,9 @@ where
         match message {
             ServerMessage::Error(code, message) => {
                 Err(Error::ServerError(code, message))
+            }
+            ServerMessage::MeetingCreated(response) => {
+                Ok(Some(Event::MeetingCreated(response)))
             }
             ServerMessage::SessionCreated(response) => {
                 Ok(Some(Event::SessionCreated(response)))

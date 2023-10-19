@@ -221,6 +221,24 @@ macro_rules! client_transport_impl {
                 .await
             }
 
+            /// Create a new meeting point.
+            async fn new_meeting(
+                &mut self,
+                limit: u16,
+            ) -> Result<()> {
+                let message = ServerMessage::NewMeeting { limit };
+                self.request(message).await
+            }
+
+            /// Join a meeting point.
+            async fn join_meeting(
+                &mut self,
+                id: MeetingId,
+            ) -> Result<()> {
+                let message = ServerMessage::JoinMeeting(id);
+                self.request(message).await
+            }
+
             /// Create a new session.
             async fn new_session(
                 &mut self,

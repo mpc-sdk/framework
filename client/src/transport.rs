@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use mpc_protocol::SessionId;
+use mpc_protocol::{MeetingId, SessionId};
 use serde::Serialize;
 
 use crate::{Client, ClientOptions, EventLoop, Result};
@@ -79,6 +79,22 @@ impl NetworkTransport for Transport {
                 client
                     .send_blob(public_key, payload, session_id)
                     .await
+            }
+        }
+    }
+
+    async fn new_meeting(&mut self, limit: u16) -> Result<()> {
+        match self {
+            Transport::Relay(client) => {
+                client.new_meeting(limit).await
+            }
+        }
+    }
+
+    async fn join_meeting(&mut self, id: MeetingId) -> Result<()> {
+        match self {
+            Transport::Relay(client) => {
+                client.join_meeting(id).await
             }
         }
     }
@@ -214,6 +230,12 @@ pub trait NetworkTransport {
         payload: Vec<u8>,
         session_id: Option<SessionId>,
     ) -> Result<()>;
+
+    /// Create a new meeting point.
+    async fn new_meeting(&mut self, limit: u16) -> Result<()>;
+
+    /// Join a meeting point.
+    async fn join_meeting(&mut self, id: MeetingId) -> Result<()>;
 
     /// Create a new session.
     ///

@@ -20,7 +20,7 @@ use mpc_protocol::{
     channel::encrypt_server_channel, decode, encode, hex,
     http::StatusCode, snow::Builder, Encoding, HandshakeMessage,
     OpaqueMessage, ProtocolState, RequestMessage, ResponseMessage,
-    ServerMessage, SessionId, SessionRequest, TransparentMessage,
+    ServerMessage, SessionId, SessionRequest, TransparentMessage, MeetingId,
 };
 
 use super::{
