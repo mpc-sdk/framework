@@ -5,6 +5,9 @@ mod test_utils;
 mod gg20;
 
 #[cfg(not(target_arch = "wasm32"))]
+mod meeting_point;
+
+#[cfg(not(target_arch = "wasm32"))]
 mod peer_channel;
 
 #[cfg(not(target_arch = "wasm32"))]

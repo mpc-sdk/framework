@@ -94,6 +94,7 @@ pub(crate) trait ProtocolDriver {
 }
 
 /// Run distributed key generation.
+#[cfg(feature = "gg20")]
 pub async fn keygen(
     options: SessionOptions,
     participants: Option<Vec<Vec<u8>>>,
@@ -107,6 +108,7 @@ pub async fn keygen(
 }
 
 /// Sign a message.
+#[cfg(feature = "gg20")]
 pub async fn sign(
     options: SessionOptions,
     participants: Option<Vec<Vec<u8>>>,
