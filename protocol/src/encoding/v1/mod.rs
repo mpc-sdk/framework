@@ -3,7 +3,7 @@ use binary_stream::futures::{
     BinaryReader, BinaryWriter, Decodable, Encodable,
 };
 use futures::io::{AsyncRead, AsyncSeek, AsyncWrite};
-use std::io::Result;
+use std::{collections::HashSet, io::Result};
 
 use crate::{
     encoding::{
@@ -218,14 +218,19 @@ impl Encodable for ServerMessage {
                 writer.write_u16(code).await?;
                 writer.write_string(message).await?;
             }
-            Self::NewMeeting { limit } => {
-                writer.write_u16(limit).await?;
+            Self::NewMeeting { owner_id, slots } => {
+                writer.write_bytes(owner_id.as_ref()).await?;
+                writer.write_u32(slots.len() as u32).await?;
+                for slot in slots {
+                    writer.write_bytes(slot.as_ref()).await?;
+                }
             }
             Self::MeetingCreated(response) => {
                 response.encode(writer).await?;
             }
-            Self::JoinMeeting(meeting_id) => {
+            Self::JoinMeeting(meeting_id, user_id) => {
                 writer.write_bytes(meeting_id.as_bytes()).await?;
+                writer.write_bytes(user_id.as_ref()).await?;
             }
             Self::MeetingReady(response) => {
                 response.encode(writer).await?;
@@ -285,8 +290,23 @@ impl Decodable for ServerMessage {
                 *self = ServerMessage::Error(code, message);
             }
             types::MEETING_NEW => {
-                let limit = reader.read_u16().await?;
-                *self = ServerMessage::NewMeeting { limit };
+                let owner_id: [u8; 32] =
+                    reader.read_bytes(32).await?.try_into().unwrap();
+
+                let mut slots = HashSet::new();
+                let num_slots = reader.read_u32().await?;
+                for _ in 0..num_slots {
+                    let slot: [u8; 32] = reader
+                        .read_bytes(32)
+                        .await?
+                        .try_into()
+                        .unwrap();
+                    slots.insert(slot.into());
+                }
+                *self = ServerMessage::NewMeeting {
+                    owner_id: owner_id.into(),
+                    slots,
+                };
             }
             types::MEETING_CREATED => {
                 let mut meeting: MeetingState = Default::default();
@@ -302,7 +322,13 @@ impl Decodable for ServerMessage {
                         .try_into()
                         .map_err(encoding_error)?,
                 );
-                *self = ServerMessage::JoinMeeting(meeting_id);
+                let user_id: [u8; 32] =
+                    reader.read_bytes(32).await?.try_into().unwrap();
+
+                *self = ServerMessage::JoinMeeting(
+                    meeting_id,
+                    user_id.into(),
+                );
             }
             types::MEETING_READY => {
                 let mut meeting: MeetingState = Default::default();

@@ -7,7 +7,7 @@ use futures::{
     select, stream::BoxStream, FutureExt, Sink, SinkExt, StreamExt,
 };
 use serde::Serialize;
-use std::{pin::Pin, sync::Arc};
+use std::{collections::HashSet, pin::Pin, sync::Arc};
 use tokio::sync::{mpsc, RwLock};
 
 use mpc_protocol::{
@@ -15,6 +15,7 @@ use mpc_protocol::{
     snow::Builder, Encoding, HandshakeMessage, MeetingId,
     OpaqueMessage, ProtocolState, RequestMessage, ResponseMessage,
     ServerMessage, SessionId, SessionRequest, TransparentMessage,
+    UserId,
 };
 
 use crate::{

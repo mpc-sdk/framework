@@ -280,11 +280,7 @@ async fn wait_for_meeting_ready(
                 let ready = target.is_full();
                 let state = MeetingState {
                     meeting_id: meeting.meeting_id,
-                    registered_participants: target
-                        .participants()
-                        .into_iter()
-                        .cloned()
-                        .collect(),
+                    registered_participants: target.participants(),
                 };
                 (ready, state)
             } else {
@@ -472,7 +468,7 @@ async fn service(
     message: ServerMessage,
 ) -> Result<Option<ServerMessage>> {
     match message {
-        ServerMessage::NewMeeting { limit } => {
+        ServerMessage::NewMeeting { owner_id, slots } => {
             // Meeting initiator is automatically a
             // registered participant
             let registered_participants =
@@ -482,8 +478,8 @@ async fn service(
                 let mut writer = state.write().await;
                 let meeting_id = writer.meetings.new_meeting(
                     public_key.as_ref().to_vec(),
-                    registered_participants.clone(),
-                    limit,
+                    owner_id,
+                    slots,
                 );
                 (meeting_id, writer.config.session.wait_interval)
             };
@@ -503,7 +499,7 @@ async fn service(
 
             Ok(Some(ServerMessage::MeetingCreated(response)))
         }
-        ServerMessage::JoinMeeting(meeting_id) => {
+        ServerMessage::JoinMeeting(meeting_id, user_id) => {
             let from_public_key = {
                 let reader = conn.read().await;
                 reader.public_key.clone()
@@ -516,7 +512,7 @@ async fn service(
                 if meeting.is_full() {
                     Err(Error::MeetingFull(meeting_id))
                 } else {
-                    meeting.join(from_public_key);
+                    meeting.join(user_id, from_public_key);
                     Ok(None)
                 }
             } else {

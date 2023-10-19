@@ -1,8 +1,8 @@
-use async_trait::async_trait;
-use mpc_protocol::{MeetingId, SessionId};
-use serde::Serialize;
-
 use crate::{Client, ClientOptions, EventLoop, Result};
+use async_trait::async_trait;
+use mpc_protocol::{MeetingId, SessionId, UserId};
+use serde::Serialize;
+use std::collections::HashSet;
 
 /// Enumeration of available transports.
 #[derive(Clone)]
@@ -83,17 +83,27 @@ impl NetworkTransport for Transport {
         }
     }
 
-    async fn new_meeting(&mut self, limit: u16) -> Result<()> {
+    async fn new_meeting(
+        &mut self,
+        owner_id: UserId,
+        slots: HashSet<UserId>,
+    ) -> Result<()> {
         match self {
             Transport::Relay(client) => {
-                client.new_meeting(limit).await
+                client.new_meeting(owner_id, slots).await
             }
         }
     }
 
-    async fn join_meeting(&mut self, id: MeetingId) -> Result<()> {
+    async fn join_meeting(
+        &mut self,
+        meeting_id: MeetingId,
+        user_id: UserId,
+    ) -> Result<()> {
         match self {
-            Transport::Relay(client) => client.join_meeting(id).await,
+            Transport::Relay(client) => {
+                client.join_meeting(meeting_id, user_id).await
+            }
         }
     }
 
@@ -230,10 +240,18 @@ pub trait NetworkTransport {
     ) -> Result<()>;
 
     /// Create a new meeting point.
-    async fn new_meeting(&mut self, limit: u16) -> Result<()>;
+    async fn new_meeting(
+        &mut self,
+        owner_id: UserId,
+        slots: HashSet<UserId>,
+    ) -> Result<()>;
 
     /// Join a meeting point.
-    async fn join_meeting(&mut self, id: MeetingId) -> Result<()>;
+    async fn join_meeting(
+        &mut self,
+        meeting_id: MeetingId,
+        user_id: UserId,
+    ) -> Result<()>;
 
     /// Create a new session.
     ///

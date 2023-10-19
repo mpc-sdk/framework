@@ -1,6 +1,8 @@
 use anyhow::Result;
 use futures::{select, FutureExt, StreamExt};
-use mpc_protocol::hex;
+use mpc_protocol::{hex, UserId};
+use sha2::{Digest, Sha256};
+use std::collections::HashSet;
 
 use super::new_client;
 use mpc_client::{Event, NetworkTransport, Transport};
@@ -25,6 +27,16 @@ pub async fn run(
         )
         .await?;
 
+    // Identifiers can be any arbitrary value, in the real world
+    // this might be a nickname or email address
+    let init_id: [u8; 32] =
+        Sha256::digest("initiator".as_bytes()).try_into().unwrap();
+    let part_id: [u8; 32] =
+        Sha256::digest("participant".as_bytes()).try_into().unwrap();
+
+    let init_id: UserId = init_id.into();
+    let part_id: UserId = part_id.into();
+
     let mut client_i_transport: Transport = client_i.into();
     let mut client_p_transport: Transport = client_p.into();
 
@@ -40,9 +52,6 @@ pub async fn run(
         hex::encode(part_key.public_key()),
     ];
     expected.sort();
-
-    // Meeting point limit is for a 2 of 2.
-    let limit = 2;
 
     let mut s_i = event_loop_i.run();
     let mut s_p = event_loop_p.run();
@@ -60,14 +69,20 @@ pub async fn run(
 
                         match event {
                             Event::ServerConnected { .. } => {
-                                client_i_transport.new_meeting(limit).await?;
+
+                                // Prepare enough slots for a 2 of 2
+                                let mut slots = HashSet::new();
+                                slots.insert(init_id.clone());
+                                slots.insert(part_id.clone());
+
+                                client_i_transport.new_meeting(init_id.clone(), slots).await?;
                             }
                             Event::MeetingCreated(meeting) => {
                                 // In the real world the initiator needs
-                                // to share the meeting identifier with
+                                // to share the meeting/user identifiers with
                                 // all the participants
                                 client_p_transport.join_meeting(
-                                    meeting.meeting_id).await?;
+                                    meeting.meeting_id, part_id.clone()).await?;
                             }
                             Event::MeetingReady(meeting) => {
                                 let mut public_keys: Vec<String> =

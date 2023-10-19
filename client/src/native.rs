@@ -6,7 +6,7 @@ use futures::{
     FutureExt, StreamExt,
 };
 use serde::Serialize;
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 use tokio::{
     net::TcpStream,
     sync::{mpsc, RwLock},
@@ -21,7 +21,7 @@ use mpc_protocol::{
     http::StatusCode, snow::Builder, Encoding, HandshakeMessage,
     MeetingId, OpaqueMessage, ProtocolState, RequestMessage,
     ResponseMessage, ServerMessage, SessionId, SessionRequest,
-    TransparentMessage,
+    TransparentMessage, UserId,
 };
 
 use super::{

@@ -13,6 +13,23 @@ pub type MeetingId = uuid::Uuid;
 /// Identifier for sessions.
 pub type SessionId = uuid::Uuid;
 
+/// User identifier wraps an SHA-256 hash of a
+/// unique arbitrary value.
+#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+pub struct UserId([u8; 32]);
+
+impl AsRef<[u8; 32]> for UserId {
+    fn as_ref(&self) -> &[u8; 32] {
+        &self.0
+    }
+}
+
+impl From<[u8; 32]> for UserId {
+    fn from(value: [u8; 32]) -> Self {
+        Self(value)
+    }
+}
+
 /// Parameters used during key generation.
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct Parameters {
@@ -112,16 +129,17 @@ pub enum ServerMessage {
     Error(StatusCode, String),
     /// Request a new meeting point.
     NewMeeting {
-        /// Number of meeting participants.
+        /// The identifier for the owner of the meeting point.
         ///
-        /// For keygen meeting points this should be the number
-        /// of parties and for signing it should be `t + 1`.
-        limit: u16,
+        /// The owner id must exist in the set of slots.
+        owner_id: UserId,
+        /// Slots for participants in the meeting.
+        slots: HashSet<UserId>,
     },
     /// Response to a new meeting point request.
     MeetingCreated(MeetingState),
     /// Participant joins a meeting.
-    JoinMeeting(MeetingId),
+    JoinMeeting(MeetingId, UserId),
     /// Notification dispatched to all participants
     /// in a meeting when the limit for the meeting
     /// has been reached.
@@ -164,7 +182,7 @@ impl From<&ServerMessage> for u8 {
             ServerMessage::MeetingCreated(_) => {
                 types::MEETING_CREATED
             }
-            ServerMessage::JoinMeeting(_) => types::MEETING_JOIN,
+            ServerMessage::JoinMeeting(_, _) => types::MEETING_JOIN,
             ServerMessage::MeetingReady(_) => types::MEETING_READY,
             ServerMessage::NewSession(_) => types::SESSION_NEW,
             ServerMessage::SessionConnection { .. } => {
@@ -404,17 +422,8 @@ impl Session {
 /// Meeting point information.
 #[derive(Debug)]
 pub struct Meeting {
-    /// Public key of the owner.
-    ///
-    /// The owner is the initiator that created this meeting point.
-    #[allow(dead_code)]
-    owner_key: Vec<u8>,
-
-    /// Public keys of all the registered meeting participants.
-    registered_participants: HashSet<Vec<u8>>,
-
-    /// Participant limit for this meeting point.
-    limit: u16,
+    /// Map of user identifiers to public keys.
+    slots: HashMap<UserId, Option<Vec<u8>>>,
 
     /// Last access time so the server can reap
     /// stale meetings.
@@ -423,19 +432,23 @@ pub struct Meeting {
 
 impl Meeting {
     /// Add a participant public key to this meeting.
-    pub fn join(&mut self, public_key: Vec<u8>) {
-        self.registered_participants.insert(public_key);
+    pub fn join(&mut self, user_id: UserId, public_key: Vec<u8>) {
+        self.slots.insert(user_id, Some(public_key));
         self.last_access = SystemTime::now();
     }
 
     /// Whether this meeting point is full.
     pub fn is_full(&self) -> bool {
-        self.limit as usize == self.registered_participants.len()
+        self.slots.values().all(|s| s.is_some())
     }
 
-    /// Meeting participants.
-    pub fn participants(&self) -> &HashSet<Vec<u8>> {
-        &self.registered_participants
+    /// Public keys of the meeting participants.
+    pub fn participants(&self) -> Vec<Vec<u8>> {
+        self.slots
+            .values()
+            .filter(|s| s.is_some())
+            .map(|s| s.as_ref().unwrap().to_owned())
+            .collect()
     }
 }
 
@@ -450,18 +463,19 @@ impl MeetingManager {
     pub fn new_meeting(
         &mut self,
         owner_key: Vec<u8>,
-        registered_participants: Vec<Vec<u8>>,
-        limit: u16,
+        owner_id: UserId,
+        slots: HashSet<UserId>,
     ) -> MeetingId {
         let meeting_id = MeetingId::new_v4();
-        let meeting = Meeting {
-            owner_key,
-            registered_participants: registered_participants
-                .into_iter()
-                .collect(),
-            limit,
+        let slots: HashMap<UserId, Option<Vec<u8>>> =
+            slots.into_iter().map(|id| (id, None)).collect();
+
+        let mut meeting = Meeting {
+            slots,
             last_access: SystemTime::now(),
         };
+        meeting.join(owner_id, owner_key);
+
         self.meetings.insert(meeting_id, meeting);
         meeting_id
     }
