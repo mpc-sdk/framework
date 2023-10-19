@@ -92,14 +92,19 @@ pub(crate) mod types {
     pub const OPAQUE_SERVER: u8 = 1;
     pub const OPAQUE_PEER: u8 = 2;
 
-    pub const SESSION_NEW: u8 = 1;
-    pub const SESSION_CREATED: u8 = 2;
-    pub const SESSION_READY: u8 = 3;
-    pub const SESSION_CONNECTION: u8 = 4;
-    pub const SESSION_ACTIVE: u8 = 5;
-    pub const SESSION_TIMEOUT: u8 = 6;
-    pub const SESSION_CLOSE: u8 = 7;
-    pub const SESSION_FINISHED: u8 = 8;
+    pub const MEETING_NEW: u8 = 1;
+    pub const MEETING_CREATED: u8 = 2;
+    pub const MEETING_JOINED: u8 = 3;
+    pub const MEETING_READY: u8 = 4;
+
+    pub const SESSION_NEW: u8 = 5;
+    pub const SESSION_CREATED: u8 = 6;
+    pub const SESSION_READY: u8 = 7;
+    pub const SESSION_CONNECTION: u8 = 8;
+    pub const SESSION_ACTIVE: u8 = 9;
+    pub const SESSION_TIMEOUT: u8 = 10;
+    pub const SESSION_CLOSE: u8 = 11;
+    pub const SESSION_FINISHED: u8 = 12;
 
     pub const ENCODING_BLOB: u8 = 1;
     pub const ENCODING_JSON: u8 = 2;

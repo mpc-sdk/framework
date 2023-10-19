@@ -217,6 +217,9 @@ impl Encodable for ServerMessage {
                 writer.write_u16(code).await?;
                 writer.write_string(message).await?;
             }
+            Self::NewMeeting { limit } => {
+                writer.write_u16(limit).await?;
+            }
             Self::NewSession(request) => {
                 request.encode(writer).await?;
             }
@@ -270,6 +273,10 @@ impl Decodable for ServerMessage {
                     .map_err(encoding_error)?;
                 let message = reader.read_string().await?;
                 *self = ServerMessage::Error(code, message);
+            }
+            types::MEETING_NEW => {
+                let limit = reader.read_u16().await?;
+                *self = ServerMessage::NewMeeting { limit };
             }
             types::SESSION_NEW => {
                 let mut session: SessionRequest = Default::default();

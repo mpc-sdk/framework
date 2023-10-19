@@ -7,6 +7,9 @@ use std::{
     time::{Duration, SystemTime},
 };
 
+/// Identifier for meeting points.
+pub type MeetingId = uuid::Uuid;
+
 /// Identifier for sessions.
 pub type SessionId = uuid::Uuid;
 
@@ -107,6 +110,22 @@ pub enum ServerMessage {
     Noop,
     /// Return an error message to the client.
     Error(StatusCode, String),
+    /// Request a new meeting point.
+    NewMeeting {
+        /// Number of meeting participants.
+        ///
+        /// For keygen meeting points this should be the number
+        /// of parties and for signing it should be `t + 1`.
+        limit: u16,
+    },
+    /*
+    /// Response to a new meeting point request.
+    MeetingCreated(MeetingState),
+    /// Notification dispatched to all participants
+    /// in a meeting when the limit for the meeting
+    /// has been reached.
+    MeetingReady(MeetingState),
+    */
     /// Request a new session.
     NewSession(SessionRequest),
     /// Register a peer connection in a session.
@@ -141,6 +160,7 @@ impl From<&ServerMessage> for u8 {
         match value {
             ServerMessage::Noop => types::NOOP,
             ServerMessage::Error(_, _) => types::ERROR,
+            ServerMessage::NewMeeting { .. } => types::MEETING_NEW,
             ServerMessage::NewSession(_) => types::SESSION_NEW,
             ServerMessage::SessionConnection { .. } => {
                 types::SESSION_CONNECTION
@@ -461,6 +481,15 @@ impl SessionManager {
             .map(|(k, _)| *k)
             .collect::<Vec<_>>()
     }
+}
+
+/// Response from creating a meeting point.
+#[derive(Default, Debug, Clone)]
+pub struct MeetingState {
+    /// Meeting identifier.
+    pub meeting_id: MeetingId,
+    /// Public keys of the registered participants.
+    pub registered_participants: Vec<Vec<u8>>,
 }
 
 /// Request to create a new session.

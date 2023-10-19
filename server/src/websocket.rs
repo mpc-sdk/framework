@@ -31,8 +31,10 @@ use mpc_protocol::{
 
 pub type Connection = Arc<RwLock<WebSocketConnection>>;
 
+/// Query string for initiating websocket connections.
 #[derive(Debug, Deserialize)]
 pub struct WebSocketQuery {
+    /// Public key offered by the client socket.
     #[serde(with = "hex::serde")]
     pub public_key: Vec<u8>,
 }

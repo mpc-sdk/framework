@@ -395,8 +395,6 @@ async fn notify_session_timeout(
     state: State,
     session: SessionState,
 ) -> Result<()> {
-    println!("notify session timeout!!!");
-
     let public_keys: Vec<_> = session
         .all_participants
         .iter()
