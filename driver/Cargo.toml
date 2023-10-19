@@ -8,7 +8,7 @@ license = "GPL-3.0"
 repository = "https://github.com/mpc-sdk/framework"
 
 [features]
-gg20 = ["dep:curv-kzen", "dep:paillier", "dep:multi-party-ecdsa"]
+gg20 = ["dep:curv-kzen", "dep:paillier", "dep:cggmp-threshold-ecdsa"]
 cggmp = []
 
 [dependencies]
@@ -36,10 +36,10 @@ optional = true
 version = "0.4.3"
 package = "kzen-paillier"
 
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies.multi-party-ecdsa]
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies.cggmp-threshold-ecdsa]
 optional = true
-git = "https://github.com/webb-tools/multi-party-ecdsa"
-version = "*"
+git = "https://github.com/webb-tools/cggmp-threshold-ecdsa"
+version = "0.1"
 
 # WASM
 
@@ -61,11 +61,11 @@ version = "0.4.3"
 package = "kzen-paillier"
 default-features = false
 
-[target.'cfg(target_arch = "wasm32")'.dependencies.multi-party-ecdsa]
+[target.'cfg(target_arch = "wasm32")'.dependencies.cggmp-threshold-ecdsa]
 optional = true
-git = "https://github.com/webb-tools/multi-party-ecdsa"
+git = "https://github.com/webb-tools/cggmp-threshold-ecdsa"
 default-features = false
-version = "*"
+version = "0.1"
 
 [build-dependencies]
 rustc_version = "0.4.0"

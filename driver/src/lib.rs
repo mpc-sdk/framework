@@ -30,7 +30,7 @@ pub mod gg20;
 
 #[cfg(feature = "gg20")]
 #[doc(hidden)]
-pub use multi_party_ecdsa::protocols::multi_party_ecdsa::gg_2020;
+pub use cggmp_threshold_ecdsa::mpc_ecdsa::gg_2020;
 
 #[cfg(feature = "gg20")]
 #[doc(hidden)]
