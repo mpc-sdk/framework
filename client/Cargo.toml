@@ -1,6 +1,6 @@
 [package]
 name = "mpc-client"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2021"
 description = "Noise protocol websocket relay client for MPC/TSS applications"
 keywords = ["mpc", "tss", "relay", "crypto", "e2ee"]
