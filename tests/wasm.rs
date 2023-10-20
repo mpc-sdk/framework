@@ -9,7 +9,7 @@ mod wasm_tests {
 
     use super::integration::test_utils::{
         gg20, peer_channel, session_broadcast, session_handshake,
-        session_timeout, socket_close,
+        session_timeout, socket_close, meeting_point,
     };
     use mpc_protocol::hex;
 
@@ -51,6 +51,21 @@ mod wasm_tests {
         let mut result = session_result.lock().await;
         result.sort();
         assert_eq!(expected_result, result.clone());
+
+        Ok(())
+    }
+
+    #[wasm_bindgen_test]
+    async fn meeting_point() -> Result<(), JsValue> {
+        let _ = wasm_log::try_init(wasm_log::Config::default());
+
+        let server_public_key =
+            hex::decode(SERVER_PUBLIC_KEY.trim()).unwrap();
+
+        let expected_participants = 2;
+        let connected_participants =
+            meeting_point::run(SERVER, server_public_key).await.unwrap();
+        assert_eq!(expected_participants, connected_participants);
 
         Ok(())
     }
