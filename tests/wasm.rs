@@ -8,8 +8,8 @@ mod wasm_tests {
     use wasm_bindgen_test::*;
 
     use super::integration::test_utils::{
-        gg20, peer_channel, session_broadcast, session_handshake,
-        session_timeout, socket_close, meeting_point,
+        gg20, meeting_point, peer_channel, session_broadcast,
+        session_handshake, session_timeout, socket_close,
     };
     use mpc_protocol::hex;
 
@@ -64,7 +64,9 @@ mod wasm_tests {
 
         let expected_participants = 2;
         let connected_participants =
-            meeting_point::run(SERVER, server_public_key).await.unwrap();
+            meeting_point::run(SERVER, server_public_key)
+                .await
+                .unwrap();
         assert_eq!(expected_participants, connected_participants);
 
         Ok(())

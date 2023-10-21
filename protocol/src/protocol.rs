@@ -1,4 +1,4 @@
-use crate::{encoding::types, PartyNumber};
+use crate::{encoding::types, PartyNumber, Result, TAGLEN};
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
 use snow::{HandshakeState, TransportState};
@@ -304,6 +304,58 @@ impl From<Encoding> for u8 {
             Encoding::Blob => types::ENCODING_BLOB,
             Encoding::Json => types::ENCODING_JSON,
         }
+    }
+}
+
+/// Chunk is used to respect the 65535 limit for
+/// noise protocol messages.
+///
+/// Payloads may be larger than this limit so we chunk
+/// them into individually encrypted payloads which then
+/// need to be re-combined after each chunk has been decrypted.
+#[derive(Default, Debug)]
+pub struct Chunk {
+    /// Length of the payload data.
+    pub length: usize,
+    /// Encrypted payload.
+    pub contents: Vec<u8>,
+}
+
+impl Chunk {
+    const CHUNK_SIZE: usize = 65535 - TAGLEN;
+
+    /// Split a payload into encrypted chunks.
+    pub fn split(
+        payload: &[u8],
+        transport: &mut TransportState,
+    ) -> Result<Vec<Chunk>> {
+        let mut chunks = Vec::new();
+        for chunk in payload.chunks(Self::CHUNK_SIZE) {
+            let mut contents = vec![0; chunk.len() + TAGLEN];
+            let length =
+                transport.write_message(chunk, &mut contents)?;
+            chunks.push(Chunk { length, contents });
+        }
+        Ok(chunks)
+    }
+
+    /// Decrypt chunks and join into a single payload.
+    pub fn join(
+        chunks: Vec<Chunk>,
+        transport: &mut TransportState,
+    ) -> Result<Vec<u8>> {
+        let mut payload = Vec::new();
+        for chunk in chunks {
+            let mut contents = vec![0; chunk.length];
+            transport.read_message(
+                &chunk.contents[..chunk.length],
+                &mut contents,
+            )?;
+            let new_length = contents.len() - TAGLEN;
+            contents.truncate(new_length);
+            payload.extend_from_slice(contents.as_slice());
+        }
+        Ok(payload)
     }
 }
 
@@ -681,5 +733,64 @@ impl SessionState {
             .filter(|&k| k != own_key)
             .map(|k| k.to_vec())
             .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Chunk;
+    use crate::{
+        Error, PATTERN, PEM_PATTERN, PEM_PRIVATE, PEM_PUBLIC, TAGLEN,
+    };
+    use anyhow::Result;
+
+    #[test]
+    fn chunks_split_join() -> Result<()> {
+        let builder_1 = snow::Builder::new(PATTERN.parse()?);
+        let builder_2 = snow::Builder::new(PATTERN.parse()?);
+
+        let keypair1 = builder_1.generate_keypair()?;
+        let keypair2 = builder_2.generate_keypair()?;
+
+        let mut initiator = builder_1
+            .local_private_key(&keypair1.private)
+            .remote_public_key(&keypair2.public)
+            .build_initiator()?;
+
+        let mut responder = builder_2
+            .local_private_key(&keypair2.private)
+            .remote_public_key(&keypair1.public)
+            .build_responder()?;
+
+        let (mut read_buf, mut first_msg, mut second_msg) =
+            ([0u8; 1024], [0u8; 1024], [0u8; 1024]);
+
+        // -> e
+        let len = initiator.write_message(&[], &mut first_msg)?;
+
+        // responder processes the first message...
+        responder.read_message(&first_msg[..len], &mut read_buf)?;
+
+        // <- e, ee
+        let len = responder.write_message(&[], &mut second_msg)?;
+
+        // initiator processes the response...
+        initiator.read_message(&second_msg[..len], &mut read_buf)?;
+
+        // NN handshake complete, transition into transport mode.
+        let mut initiator = initiator.into_transport_mode()?;
+        let mut responder = responder.into_transport_mode()?;
+
+        let mock_payload = vec![0; 76893];
+
+        // Split into chunks
+        let chunks = Chunk::split(&mock_payload, &mut initiator)?;
+        assert_eq!(2, chunks.len());
+
+        // Decrypt and combine the chunks
+        let decrypted_payload = Chunk::join(chunks, &mut responder)?;
+        assert_eq!(mock_payload, decrypted_payload);
+
+        Ok(())
     }
 }
