@@ -8,7 +8,7 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/mpc-sdk/framework"
 
 [dependencies]
-mpc-protocol = { path = "../protocol" }
+mpc-protocol = { path = "../protocol", features = ["zlib"] }
 #mpc-protocol = "0.4"
 thiserror = "1"
 binary-stream = { version = "8", features = ["async"] }
@@ -26,7 +26,6 @@ tower-http = { version = "0.4", features = ["trace"] }
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "sync", "macros", "time", "net"] }
 tokio-stream = "0.1"
 tokio-tungstenite = "0.20"
-flate2 = { version = "1", features = ["zlib"] }
 
 [dev-dependencies]
 anyhow = "1"

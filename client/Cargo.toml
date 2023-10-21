@@ -8,7 +8,7 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/mpc-sdk/framework"
 
 [dependencies]
-mpc-protocol = { path = "../protocol" }
+mpc-protocol = { path = "../protocol", features = ["zlib"] }
 #mpc-protocol = "0.4"
 thiserror = "1"
 serde = { version = "1", features = ["derive"] }
@@ -17,7 +17,6 @@ tracing = "0.1"
 async-trait = "0.1"
 futures = "0.3"
 async-stream = "0.3"
-flate2 = { version = "1", features = ["zlib"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "sync", "macros", "time", "net"] }
