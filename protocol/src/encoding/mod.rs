@@ -18,7 +18,7 @@ pub(crate) fn encoding_error(
 }
 
 /// Maximum buffer size for encoding and decoding.
-pub(crate) const MAX_BUFFER_SIZE: usize = 1024 * 32;
+pub(crate) const MAX_BUFFER_SIZE: usize = 65535;
 
 /// Identity bytes (MPCR)
 const IDENTITY: [u8; 4] = [0x4D, 0x50, 0x43, 0x52];

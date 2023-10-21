@@ -33,9 +33,9 @@ mod web;
 pub use web::{WebClient as Client, WebEventLoop as EventLoop};
 
 use mpc_protocol::{
-    hex, snow::params::NoiseParams, Encoding, Keypair, OpaqueMessage,
-    ProtocolState, RequestMessage, SealedEnvelope, SessionId,
-    PATTERN, TAGLEN,
+    hex, snow::params::NoiseParams, Chunk, Encoding, Keypair,
+    OpaqueMessage, ProtocolState, RequestMessage, SealedEnvelope,
+    SessionId, PATTERN,
 };
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
@@ -99,13 +99,10 @@ async fn encrypt_peer_channel(
 ) -> Result<RequestMessage> {
     match peer {
         ProtocolState::Transport(transport) => {
-            let mut contents = vec![0; payload.len() + TAGLEN];
-            let length =
-                transport.write_message(payload, &mut contents)?;
+            let chunks = Chunk::split(payload, transport)?;
             let envelope = SealedEnvelope {
-                length,
                 encoding,
-                payload: contents,
+                chunks,
                 broadcast,
             };
 
@@ -127,18 +124,12 @@ async fn encrypt_peer_channel(
 /// The protocol must be in transport mode.
 async fn decrypt_peer_channel(
     peer: &mut ProtocolState,
-    envelope: &SealedEnvelope,
-) -> Result<Vec<u8>> {
+    envelope: SealedEnvelope,
+) -> Result<(Encoding, Vec<u8>)> {
     match peer {
         ProtocolState::Transport(transport) => {
-            let mut contents = vec![0; envelope.length];
-            transport.read_message(
-                &envelope.payload[..envelope.length],
-                &mut contents,
-            )?;
-            let new_length = contents.len() - TAGLEN;
-            contents.truncate(new_length);
-            Ok(contents)
+            let contents = Chunk::join(envelope.chunks, transport)?;
+            Ok((envelope.encoding, contents))
         }
         _ => Err(Error::NotTransportState),
     }

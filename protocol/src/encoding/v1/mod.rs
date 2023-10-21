@@ -10,10 +10,10 @@ use crate::{
         decode_preamble, encode_preamble, encoding_error, types,
         MAX_BUFFER_SIZE,
     },
-    Encoding, Error, HandshakeMessage, MeetingId, MeetingState,
-    OpaqueMessage, RequestMessage, ResponseMessage, SealedEnvelope,
-    ServerMessage, SessionId, SessionRequest, SessionState,
-    TransparentMessage,
+    Chunk, Encoding, Error, HandshakeMessage, MeetingId,
+    MeetingState, OpaqueMessage, RequestMessage, ResponseMessage,
+    SealedEnvelope, ServerMessage, SessionId, SessionRequest,
+    SessionState, TransparentMessage,
 };
 
 /// Version for binary encoding.
@@ -616,6 +616,30 @@ impl Decodable for ResponseMessage {
 }
 
 #[async_trait]
+impl Encodable for Chunk {
+    async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
+        &self,
+        writer: &mut BinaryWriter<W>,
+    ) -> Result<()> {
+        encode_payload(writer, &self.length, &self.contents).await?;
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl Decodable for Chunk {
+    async fn decode<R: AsyncRead + AsyncSeek + Unpin + Send>(
+        &mut self,
+        reader: &mut BinaryReader<R>,
+    ) -> Result<()> {
+        let (length, contents) = decode_payload(reader).await?;
+        self.length = length;
+        self.contents = contents;
+        Ok(())
+    }
+}
+
+#[async_trait]
 impl Encodable for SealedEnvelope {
     async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
         &self,
@@ -625,8 +649,10 @@ impl Encodable for SealedEnvelope {
         writer.write_u8(id).await?;
         writer.write_bool(self.broadcast).await?;
 
-        encode_payload(writer, &self.length, &self.payload).await?;
-
+        writer.write_u32(self.chunks.len() as u32).await?;
+        for chunk in &self.chunks {
+            chunk.encode(writer).await?;
+        }
         Ok(())
     }
 }
@@ -652,9 +678,14 @@ impl Decodable for SealedEnvelope {
             }
         }
         self.broadcast = reader.read_bool().await?;
-        let (length, payload) = decode_payload(reader).await?;
-        self.length = length;
-        self.payload = payload;
+
+        let num_chunks = reader.read_u32().await?;
+        for _ in 0..num_chunks {
+            let mut chunk: Chunk = Default::default();
+            chunk.decode(&mut *reader).await?;
+            self.chunks.push(chunk);
+        }
+
         Ok(())
     }
 }

@@ -388,9 +388,9 @@ where
     ) -> Result<Event> {
         let mut peers = peers.write().await;
         if let Some(peer) = peers.get_mut(public_key.as_ref()) {
-            let contents =
-                decrypt_peer_channel(peer, &envelope).await?;
-            match envelope.encoding {
+            let (encoding, contents) =
+                decrypt_peer_channel(peer, envelope).await?;
+            match encoding {
                 Encoding::Noop => unreachable!(),
                 Encoding::Blob => Ok(Event::BinaryMessage {
                     peer_key: public_key.as_ref().to_vec(),
