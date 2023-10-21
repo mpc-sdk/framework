@@ -24,6 +24,20 @@ function proxyConsoleError(id, page) {
 }
 
 test("GG20: keygen and sign message", async ({ context, page }) => {
+  // The default timeout is 90 seconds which fails on Firefox
+  // (Chromium and Webkit are ok) so we increase the timeout here.
+  //
+  // SEE: https://playwright.dev/docs/test-timeouts#test-timeout
+  //
+  // Firefox can be up to 5x slower, here is an example
+  // from a successful test run:
+  //
+  // Slow test file: [firefox] › gg20.spec.js (10.6m)
+  // Slow test file: [webkit] › gg20.spec.js (2.3m)
+  // Slow test file: [chromium] › gg20.spec.js (1.2m)
+  //
+  test.setTimeout(60 * 1000 * 15);
+
   const p1 = `${GG20_URL}/p1.html`;
   const p2 = `${GG20_URL}/p2.html`;
   const p3 = `${GG20_URL}/p3.html`;
