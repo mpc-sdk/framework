@@ -27,6 +27,7 @@ use mpc_protocol::{
     snow::{params::NoiseParams, Builder},
     uuid::Uuid,
     ProtocolState, PATTERN,
+    zlib,
 };
 
 pub type Connection = Arc<RwLock<WebSocketConnection>>;
@@ -71,7 +72,8 @@ impl fmt::Debug for WebSocketConnection {
 impl WebSocketConnection {
     /// Send a buffer to the client at this socket.
     pub async fn send(&mut self, buffer: Vec<u8>) -> Result<()> {
-        self.outgoing.send(Message::Binary(buffer)).await?;
+        let deflated = zlib::deflate(&buffer)?;
+        self.outgoing.send(Message::Binary(deflated)).await?;
         Ok(())
     }
 }
@@ -192,7 +194,11 @@ async fn read(
             Ok(msg) => match msg {
                 Message::Text(_) => {}
                 Message::Binary(buffer) => {
-                    tx.send(buffer).await?;
+                    if let Ok(inflated) = zlib::inflate(&buffer) {
+                        tx.send(inflated).await?;
+                    } else {
+                        tracing::warn!("could not inflate message buffer");
+                    }
                 }
                 Message::Ping(_) => {}
                 Message::Pong(_) => {}

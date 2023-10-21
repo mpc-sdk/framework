@@ -21,7 +21,7 @@ use mpc_protocol::{
     http::StatusCode, snow::Builder, Encoding, HandshakeMessage,
     MeetingId, OpaqueMessage, ProtocolState, RequestMessage,
     ResponseMessage, ServerMessage, SessionId, SessionRequest,
-    TransparentMessage, UserId,
+    TransparentMessage, UserId, zlib,
 };
 
 use super::{
@@ -130,7 +130,8 @@ impl EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream> {
         event_proxy: &mut mpsc::Sender<ResponseMessage>,
     ) -> Result<()> {
         if let Message::Binary(buffer) = incoming {
-            let response: ResponseMessage = decode(buffer).await?;
+            let inflated = zlib::inflate(&buffer)?;
+            let response: ResponseMessage = decode(inflated).await?;
             event_proxy.send(response).await?;
         }
         Ok(())
@@ -141,7 +142,9 @@ impl EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream> {
         &mut self,
         message: RequestMessage,
     ) -> Result<()> {
-        let message = Message::Binary(encode(&message).await?);
+        let encoded = encode(&message).await?;
+        let deflated = zlib::deflate(&encoded)?;
+        let message = Message::Binary(deflated);
 
         self.ws_writer
             .send(message)

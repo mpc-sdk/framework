@@ -15,6 +15,8 @@ pub(crate) mod encoding;
 mod error;
 mod keypair;
 mod protocol;
+#[cfg(feature = "zlib")]
+pub mod zlib;
 
 pub use constants::*;
 pub use encoding::{decode, encode, VERSION};

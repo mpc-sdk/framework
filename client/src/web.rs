@@ -15,7 +15,7 @@ use mpc_protocol::{
     snow::Builder, Encoding, HandshakeMessage, MeetingId,
     OpaqueMessage, ProtocolState, RequestMessage, ResponseMessage,
     ServerMessage, SessionId, SessionRequest, TransparentMessage,
-    UserId,
+    UserId, zlib,
 };
 
 use crate::{
@@ -214,7 +214,8 @@ impl EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream> {
         incoming: WsMessage,
         event_proxy: &mut mpsc::Sender<ResponseMessage>,
     ) -> Result<()> {
-        let response: ResponseMessage = decode(&incoming).await?;
+        let inflated = zlib::inflate(&incoming)?;
+        let response: ResponseMessage = decode(&inflated).await?;
         event_proxy.send(response).await?;
         Ok(())
     }
@@ -224,9 +225,10 @@ impl EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream> {
         &mut self,
         message: RequestMessage,
     ) -> Result<()> {
-        let message = encode(&message).await?;
+        let encoded = encode(&message).await?;
+        let deflated = zlib::deflate(&encoded)?;
         self.ws_writer
-            .send(message)
+            .send(deflated)
             .await
             .map_err(|_| Error::WebSocketSend)?;
         Ok(self
