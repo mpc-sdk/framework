@@ -13,7 +13,7 @@ use crate::{
     Encoding, Error, HandshakeMessage, MeetingId, MeetingState,
     OpaqueMessage, RequestMessage, ResponseMessage, SealedEnvelope,
     ServerMessage, SessionId, SessionRequest, SessionState,
-    TransparentMessage,
+    TransparentMessage, Chunk,
 };
 
 /// Version for binary encoding.
@@ -611,6 +611,30 @@ impl Decodable for ResponseMessage {
                 ))
             }
         }
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl Encodable for Chunk {
+    async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
+        &self,
+        writer: &mut BinaryWriter<W>,
+    ) -> Result<()> {
+        encode_payload(writer, &self.length, &self.contents).await?;
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl Decodable for Chunk {
+    async fn decode<R: AsyncRead + AsyncSeek + Unpin + Send>(
+        &mut self,
+        reader: &mut BinaryReader<R>,
+    ) -> Result<()> {
+        let (length, contents) = decode_payload(reader).await?;
+        self.length = length;
+        self.contents = contents;
         Ok(())
     }
 }
