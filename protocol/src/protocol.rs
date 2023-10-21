@@ -367,10 +367,8 @@ impl Chunk {
 pub struct SealedEnvelope {
     /// Encoding for the payload.
     pub encoding: Encoding,
-    /// Length of the payload data.
-    pub length: usize,
-    /// Encrypted payload.
-    pub payload: Vec<u8>,
+    /// Encrypted chunks.
+    pub chunks: Vec<Chunk>,
     /// Whether this is a broadcast message.
     pub broadcast: bool,
 }

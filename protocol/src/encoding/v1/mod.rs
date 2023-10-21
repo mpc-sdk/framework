@@ -649,8 +649,10 @@ impl Encodable for SealedEnvelope {
         writer.write_u8(id).await?;
         writer.write_bool(self.broadcast).await?;
 
-        encode_payload(writer, &self.length, &self.payload).await?;
-
+        writer.write_u32(self.chunks.len() as u32).await?;
+        for chunk in &self.chunks {
+            chunk.encode(writer).await?;
+        }
         Ok(())
     }
 }
@@ -676,9 +678,14 @@ impl Decodable for SealedEnvelope {
             }
         }
         self.broadcast = reader.read_bool().await?;
-        let (length, payload) = decode_payload(reader).await?;
-        self.length = length;
-        self.payload = payload;
+
+        let num_chunks = reader.read_u32().await?;
+        for _ in 0..num_chunks {
+            let mut chunk: Chunk = Default::default();
+            chunk.decode(&mut *reader).await?;
+            self.chunks.push(chunk);
+        }
+
         Ok(())
     }
 }
