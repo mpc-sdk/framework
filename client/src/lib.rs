@@ -33,9 +33,9 @@ mod web;
 pub use web::{WebClient as Client, WebEventLoop as EventLoop};
 
 use mpc_protocol::{
-    hex, snow::params::NoiseParams, Encoding, Keypair, OpaqueMessage,
-    ProtocolState, RequestMessage, SealedEnvelope, SessionId, Chunk,
-    PATTERN,
+    hex, snow::params::NoiseParams, Chunk, Encoding, Keypair,
+    OpaqueMessage, ProtocolState, RequestMessage, SealedEnvelope,
+    SessionId, PATTERN,
 };
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;

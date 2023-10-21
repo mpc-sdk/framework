@@ -737,9 +737,7 @@ impl SessionState {
 #[cfg(test)]
 mod tests {
     use super::Chunk;
-    use crate::{
-        Error, PATTERN, PEM_PATTERN, PEM_PRIVATE, PEM_PUBLIC, TAGLEN,
-    };
+    use crate::PATTERN;
     use anyhow::Result;
 
     #[test]

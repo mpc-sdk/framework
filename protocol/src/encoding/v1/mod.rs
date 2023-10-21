@@ -10,10 +10,10 @@ use crate::{
         decode_preamble, encode_preamble, encoding_error, types,
         MAX_BUFFER_SIZE,
     },
-    Encoding, Error, HandshakeMessage, MeetingId, MeetingState,
-    OpaqueMessage, RequestMessage, ResponseMessage, SealedEnvelope,
-    ServerMessage, SessionId, SessionRequest, SessionState,
-    TransparentMessage, Chunk,
+    Chunk, Encoding, Error, HandshakeMessage, MeetingId,
+    MeetingState, OpaqueMessage, RequestMessage, ResponseMessage,
+    SealedEnvelope, ServerMessage, SessionId, SessionRequest,
+    SessionState, TransparentMessage,
 };
 
 /// Version for binary encoding.
