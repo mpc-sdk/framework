@@ -3,6 +3,7 @@ use mpc_protocol::{decode_keypair, hex, Keypair};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use tokio::fs;
+use url::Url;
 
 use crate::{Error, Result};
 
@@ -29,6 +30,9 @@ pub struct ServerConfig {
     /// Deny access to clients with these
     /// public keys.
     pub deny: Option<Vec<AccessKey>>,
+
+    /// Configuration for CORS.
+    pub cors: CorsConfig,
 }
 
 impl ServerConfig {
@@ -170,4 +174,11 @@ impl ServerConfig {
             .map(|p| p.to_path_buf())
             .ok_or_else(|| Error::NoParentDir)
     }
+}
+
+/// Configuration for CORS.
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct CorsConfig {
+    /// List of additional CORS origins for the server.
+    pub origins: Vec<Url>,
 }
