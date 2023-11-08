@@ -289,11 +289,8 @@ async fn wait_for_meeting_ready(
         };
 
         if ready {
-            if let Err(e) = notify_meeting_ready(
-                Arc::clone(&state),
-                target.into(),
-            )
-            .await
+            if let Err(e) =
+                notify_meeting_ready(Arc::clone(&state), target).await
             {
                 tracing::error!("{:#?}", e);
             }

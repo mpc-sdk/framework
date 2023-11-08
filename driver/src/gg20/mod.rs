@@ -30,7 +30,7 @@ pub async fn keygen(
 ) -> crate::Result<crate::KeyShare> {
     let is_initiator = participants.is_some();
 
-    let parameters = options.parameters.clone();
+    let parameters = options.parameters;
 
     // Create the client
     let (client, event_loop) = new_client(options).await?;
@@ -74,7 +74,7 @@ pub async fn keygen(
     transport.close().await?;
     wait_for_close(&mut stream).await?;
 
-    let key_share: KeyShare = local_key_share.into();
+    let key_share: KeyShare = local_key_share;
     Ok(key_share.into())
 }
 
@@ -87,7 +87,7 @@ pub async fn sign(
 ) -> crate::Result<Signature> {
     let is_initiator = participants.is_some();
 
-    let parameters = options.parameters.clone();
+    let parameters = options.parameters;
 
     // Create the client
     let (client, event_loop) = new_client(options).await?;

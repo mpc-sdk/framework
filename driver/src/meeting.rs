@@ -2,13 +2,13 @@
 //! can exchange public keys.
 //!
 //! The meeting identifier is the shared secret that participants
-//! can use to exchange public keys so should only be given to parties 
+//! can use to exchange public keys so should only be given to parties
 //! that should be included in a session.
-use std::collections::HashSet;
-use mpc_protocol::{UserId, MeetingId};
-use mpc_client::{Client, ClientOptions, NetworkTransport};
+use crate::{Error, Event, MeetingOptions, Result, ServerOptions};
 use futures::StreamExt;
-use crate::{Result, MeetingOptions, ServerOptions, Event, Error};
+use mpc_client::{Client, ClientOptions, NetworkTransport};
+use mpc_protocol::{MeetingId, UserId};
+use std::collections::HashSet;
 
 /// Create a new meeting point.
 pub async fn create(
@@ -27,7 +27,11 @@ pub async fn create(
         return Err(Error::MeetingInitiatorNotExist);
     }
 
-    let ServerOptions { server_url, server_public_key, .. } = options.server;
+    let ServerOptions {
+        server_url,
+        server_public_key,
+        ..
+    } = options.server;
     let options = ClientOptions {
         keypair: options.keypair,
         server_public_key,
@@ -43,8 +47,9 @@ pub async fn create(
         let event = event?;
         match event {
             Event::ServerConnected { .. } => {
-                client.new_meeting(
-                    initiator.clone(), slots.clone()).await?;
+                client
+                    .new_meeting(initiator.clone(), slots.clone())
+                    .await?;
             }
             Event::MeetingCreated(meeting) => {
                 return Ok(meeting.meeting_id);
@@ -60,15 +65,19 @@ pub async fn create(
 /// When all participants have joined the meeting point the public
 /// keys of all participants are returned.
 ///
-/// When  the user identifier is not given then the user is 
-/// the creator of the meeting point who has already been 
+/// When  the user identifier is not given then the user is
+/// the creator of the meeting point who has already been
 /// registered as a participant when creating the meeting.
 pub async fn join(
     options: MeetingOptions,
     meeting_id: MeetingId,
     user_id: Option<UserId>,
 ) -> Result<Vec<Vec<u8>>> {
-    let ServerOptions { server_url, server_public_key, .. } = options.server;
+    let ServerOptions {
+        server_url,
+        server_public_key,
+        ..
+    } = options.server;
     let options = ClientOptions {
         keypair: options.keypair,
         server_public_key,
@@ -85,16 +94,16 @@ pub async fn join(
         match event {
             Event::ServerConnected { .. } => {
                 if let Some(user_id) = &user_id {
-                    client.join_meeting(
-                        meeting_id.clone(), user_id.clone()).await?;
+                    client
+                        .join_meeting(meeting_id, user_id.clone())
+                        .await?;
                 }
             }
             Event::MeetingReady(meeting) => {
-                let public_keys: Vec<Vec<u8>> =
-                    meeting
-                        .registered_participants
-                        .into_iter()
-                        .collect();
+                let public_keys: Vec<Vec<u8>> = meeting
+                    .registered_participants
+                    .into_iter()
+                    .collect();
                 return Ok(public_keys);
             }
             _ => {}

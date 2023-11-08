@@ -3,8 +3,10 @@
 
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 mod bindings {
-    use mpc_driver::{PrivateKey, SessionOptions, meeting, MeetingOptions};
-    use mpc_protocol::{hex, PATTERN, UserId};
+    use mpc_driver::{
+        meeting, MeetingOptions, PrivateKey, SessionOptions,
+    };
+    use mpc_protocol::{hex, UserId, PATTERN};
     use wasm_bindgen::prelude::*;
     use wasm_bindgen_futures::future_to_promise;
 
@@ -83,7 +85,7 @@ mod bindings {
         let pem = mpc_protocol::encode_keypair(&keypair);
         Ok(serde_wasm_bindgen::to_value(&pem)?)
     }
-    
+
     /// Participants are hex-encoded public keys.
     fn parse_participants(
         participants: JsValue,
@@ -127,12 +129,13 @@ mod bindings {
         let initiator = parse_user_id(initiator)?;
         let fut = async move {
             let meeting_id =
-                meeting::create(options, identifiers, initiator).await?;
+                meeting::create(options, identifiers, initiator)
+                    .await?;
             Ok(serde_wasm_bindgen::to_value(&meeting_id)?)
         };
         Ok(future_to_promise(fut).into())
     }
-    
+
     /// Parse a collection of user identifiers.
     fn parse_user_identifiers(
         identifiers: JsValue,
@@ -145,11 +148,12 @@ mod bindings {
         }
         Ok(ids)
     }
-    
+
     /// Parse a single hex-encoded user identifier (SHA256 checksum).
     fn parse_user_id(id: String) -> Result<UserId, JsError> {
         let id = hex::decode(id).map_err(JsError::from)?;
-        let id: [u8; 32] = id.as_slice().try_into().map_err(JsError::from)?;
+        let id: [u8; 32] =
+            id.as_slice().try_into().map_err(JsError::from)?;
         Ok(id.into())
     }
 }

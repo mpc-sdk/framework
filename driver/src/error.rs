@@ -16,7 +16,7 @@ pub enum Error {
     #[error("meeting identifiers must be unique")]
     MeetingIdentifiersNotUnique,
 
-    /// Error generated when the meeting initiator does not exist 
+    /// Error generated when the meeting initiator does not exist
     /// in the list of meeting point identifiers.
     #[error("meeting initiator must exist in list of identifiers")]
     MeetingInitiatorNotExist,

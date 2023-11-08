@@ -12,10 +12,10 @@ use tokio::sync::{mpsc, RwLock};
 
 use mpc_protocol::{
     channel::encrypt_server_channel, decode, encode, hex,
-    snow::Builder, Encoding, HandshakeMessage, MeetingId,
+    snow::Builder, zlib, Encoding, HandshakeMessage, MeetingId,
     OpaqueMessage, ProtocolState, RequestMessage, ResponseMessage,
     ServerMessage, SessionId, SessionRequest, TransparentMessage,
-    UserId, zlib,
+    UserId,
 };
 
 use crate::{

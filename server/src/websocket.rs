@@ -26,8 +26,7 @@ use mpc_protocol::{
     hex,
     snow::{params::NoiseParams, Builder},
     uuid::Uuid,
-    ProtocolState, PATTERN,
-    zlib,
+    zlib, ProtocolState, PATTERN,
 };
 
 pub type Connection = Arc<RwLock<WebSocketConnection>>;
@@ -197,7 +196,9 @@ async fn read(
                     if let Ok(inflated) = zlib::inflate(&buffer) {
                         tx.send(inflated).await?;
                     } else {
-                        tracing::warn!("could not inflate message buffer");
+                        tracing::warn!(
+                            "could not inflate message buffer"
+                        );
                     }
                 }
                 Message::Ping(_) => {}
