@@ -38,7 +38,7 @@ pub type WebEventLoop =
 /// Client for the web platform.
 #[derive(Clone)]
 pub struct WebClient {
-    //ws: WebSocket,
+    ws: WebSocket,
     options: Arc<ClientOptions>,
     outbound_tx: mpsc::Sender<InternalMessage>,
     server: Server,
@@ -145,7 +145,7 @@ impl WebClient {
         let options = Arc::new(options);
 
         let client = WebClient {
-            //ws: ws.clone(),
+            ws: ws.clone(),
             options: Arc::clone(&options),
             outbound_tx: outbound_tx.clone(),
             server: Arc::clone(&server),
@@ -239,14 +239,13 @@ impl EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream> {
     }
 
     async fn handle_close_message(self) -> Result<()> {
-        // Remove event listener closures
-        self.ws_writer.ws.set_onopen(None);
-        self.ws_writer.ws.set_onmessage(None);
-        self.ws_writer.ws.set_onerror(None);
-
-        // Close the socket connection
-        self.ws_writer.ws.close()?;
-
+        // NOTE: for webassembly this is handled by a platform
+        // NOTE: specific implementation of close() in the 
+        // NOTE: NetworkTransport as sending InternalMessage::Close
+        // NOTE: over the channel was not working, as the message 
+        // NOTE: would be not be received before the event loop 
+        // NOTE: was dropped which would cause the webassembly 
+        // NOTE: implementation to leak socket connections.
         Ok(())
     }
 

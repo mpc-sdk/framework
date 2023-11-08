@@ -445,7 +445,6 @@ macro_rules! event_loop_run_impl {
                             self.outbound_rx.recv().fuse()
                                 => match message_out {
                             Some(message) => {
-
                                 match message {
                                     InternalMessage::Request(request) => {
                                         if let Err(e) = self.send_message(request).await {

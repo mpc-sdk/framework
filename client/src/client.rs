@@ -307,9 +307,23 @@ macro_rules! client_transport_impl {
                 )
                 .await
             }
-
+            
+            #[cfg(not(target_arch="wasm32"))]
             async fn close(&self) -> Result<()> {
-                Ok(self.outbound_tx.send(InternalMessage::Close).await?)
+                self.outbound_tx.send(InternalMessage::Close).await?;
+                Ok(())
+            }
+
+            #[cfg(target_arch="wasm32")]
+            async fn close(&self) -> Result<()> {
+                // Remove event listener closures
+                self.ws.set_onopen(None);
+                self.ws.set_onmessage(None);
+                self.ws.set_onerror(None);
+
+                // Close the socket connection
+                self.ws.close()?;
+                Ok(())
             }
         }
     }
