@@ -3,8 +3,8 @@
 
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 mod bindings {
-    use mpc_driver::{PrivateKey, SessionOptions};
-    use mpc_protocol::{hex, PATTERN};
+    use mpc_driver::{PrivateKey, SessionOptions, meeting, MeetingOptions};
+    use mpc_protocol::{hex, PATTERN, UserId};
     use wasm_bindgen::prelude::*;
     use wasm_bindgen_futures::future_to_promise;
 
@@ -83,7 +83,8 @@ mod bindings {
         let pem = mpc_protocol::encode_keypair(&keypair);
         Ok(serde_wasm_bindgen::to_value(&pem)?)
     }
-
+    
+    /// Participants are hex-encoded public keys.
     fn parse_participants(
         participants: JsValue,
     ) -> Result<Option<Vec<Vec<u8>>>, JsError> {
@@ -111,5 +112,44 @@ mod bindings {
         let message: [u8; 32] =
             message.as_slice().try_into().map_err(JsError::from)?;
         Ok(message)
+    }
+
+    /// Create a meeting point used to exchange public keys.
+    #[wasm_bindgen(js_name = "createMeeting")]
+    pub fn create_meeting(
+        options: JsValue,
+        identifiers: JsValue,
+        initiator: String,
+    ) -> Result<JsValue, JsError> {
+        let options: MeetingOptions =
+            serde_wasm_bindgen::from_value(options)?;
+        let identifiers = parse_user_identifiers(identifiers)?;
+        let initiator = parse_user_id(initiator)?;
+        let fut = async move {
+            let meeting_id =
+                meeting::create(options, identifiers, initiator).await?;
+            Ok(serde_wasm_bindgen::to_value(&meeting_id)?)
+        };
+        Ok(future_to_promise(fut).into())
+    }
+    
+    /// Parse a collection of user identifiers.
+    fn parse_user_identifiers(
+        identifiers: JsValue,
+    ) -> Result<Vec<UserId>, JsError> {
+        let identifiers: Vec<String> =
+            serde_wasm_bindgen::from_value(identifiers)?;
+        let mut ids = Vec::new();
+        for id in identifiers {
+            ids.push(parse_user_id(id)?);
+        }
+        Ok(ids)
+    }
+    
+    /// Parse a single hex-encoded user identifier (SHA256 checksum).
+    fn parse_user_id(id: String) -> Result<UserId, JsError> {
+        let id = hex::decode(id).map_err(JsError::from)?;
+        let id: [u8; 32] = id.as_slice().try_into().map_err(JsError::from)?;
+        Ok(id.into())
     }
 }

@@ -1,3 +1,9 @@
+//! Create and join meeting points so session participants
+//! can exchange public keys.
+//!
+//! The meeting identifier is the shared secret that participants
+//! can use to exchange public keys so should only be given to parties 
+//! that should be included in a session.
 use std::collections::HashSet;
 use mpc_protocol::{UserId, MeetingId};
 use mpc_client::{Client, ClientOptions, NetworkTransport};
