@@ -6,7 +6,7 @@ mod bindings {
     use mpc_driver::{
         meeting, MeetingOptions, PrivateKey, SessionOptions,
     };
-    use mpc_protocol::{hex, UserId, PATTERN};
+    use mpc_protocol::{hex, MeetingId, UserId, PATTERN};
     use wasm_bindgen::prelude::*;
     use wasm_bindgen_futures::future_to_promise;
 
@@ -132,6 +132,33 @@ mod bindings {
                 meeting::create(options, identifiers, initiator)
                     .await?;
             Ok(serde_wasm_bindgen::to_value(&meeting_id)?)
+        };
+        Ok(future_to_promise(fut).into())
+    }
+
+    /// Join a meeting point used to exchange public keys.
+    #[wasm_bindgen(js_name = "joinMeeting")]
+    pub fn join_meeting(
+        options: JsValue,
+        meeting_id: String,
+        user_id: JsValue,
+    ) -> Result<JsValue, JsError> {
+        let options: MeetingOptions =
+            serde_wasm_bindgen::from_value(options)?;
+        let meeting_id: MeetingId =
+            meeting_id.parse().map_err(JsError::from)?;
+        let user_id: Option<String> =
+            serde_wasm_bindgen::from_value(user_id)?;
+        let user_id = if let Some(user_id) = user_id {
+            Some(parse_user_id(user_id)?)
+        } else {
+            None
+        };
+
+        let fut = async move {
+            let public_keys =
+                meeting::join(options, meeting_id, user_id).await?;
+            Ok(serde_wasm_bindgen::to_value(&public_keys)?)
         };
         Ok(future_to_promise(fut).into())
     }
