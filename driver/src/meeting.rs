@@ -1,7 +1,7 @@
 use std::collections::HashSet;
-use mpc_protocol::{UserId, MeetingState, MeetingId};
-use mpc_client::{Client, ClientOptions, EventLoop, NetworkTransport};
-use futures::{FutureExt, StreamExt};
+use mpc_protocol::{UserId, MeetingId};
+use mpc_client::{Client, ClientOptions, NetworkTransport};
+use futures::StreamExt;
 use crate::{Result, MeetingOptions, ServerOptions, Event, Error};
 
 /// Create a new meeting point.

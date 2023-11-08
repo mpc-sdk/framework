@@ -16,7 +16,7 @@ pub use bridge::{
     wait_for_close, wait_for_driver, wait_for_session_finish,
 };
 pub use error::Error;
-pub use meeting::{create, join};
+pub use meeting::{create as create_meeting, join as join_meeting};
 pub(crate) use round::{Round, RoundBuffer, RoundMsg};
 pub use session::{
     wait_for_session, SessionEventHandler, SessionHandler,
