@@ -226,16 +226,13 @@ where
     loop {
         select! {
             event = stream.next().fuse() => {
-                match event {
-                    Some(event) => {
-                        let event = event?;
-                        if let Some(active_session) =
-                            client_session.handle_event(event).await? {
-                            session = Some(active_session);
-                            break;
-                        }
+                if let Some(event) = event {
+                    let event = event?;
+                    if let Some(active_session) =
+                        client_session.handle_event(event).await? {
+                        session = Some(active_session);
+                        break;
                     }
-                    _ => {}
                 }
             },
         }

@@ -1,12 +1,16 @@
 //! Compression helpers using zlib.
 
-use flate2::{write::{ZlibEncoder, ZlibDecoder}, Compression};
-use std::io::prelude::*;
 use crate::Result;
+use flate2::{
+    write::{ZlibDecoder, ZlibEncoder},
+    Compression,
+};
+use std::io::prelude::*;
 
 /// Compress bytes.
 pub fn deflate(packet: &[u8]) -> Result<Vec<u8>> {
-    let mut encoder = ZlibEncoder::new(Vec::new(), Compression::fast());
+    let mut encoder =
+        ZlibEncoder::new(Vec::new(), Compression::fast());
     encoder.write_all(packet)?;
     Ok(encoder.finish()?)
 }

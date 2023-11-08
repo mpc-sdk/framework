@@ -129,16 +129,13 @@ where
     loop {
         select! {
             event = stream.next().fuse() => {
-                match event {
-                    Some(event) => {
-                        let event = event?;
-                        if let Some(result) =
-                            driver.handle_event(event).await? {
-                            output = Some(result);
-                            break;
-                        }
+                if let Some(event) = event {
+                    let event = event?;
+                    if let Some(result) =
+                        driver.handle_event(event).await? {
+                        output = Some(result);
+                        break;
                     }
-                    _ => {}
                 }
             },
         }
@@ -157,14 +154,11 @@ pub async fn wait_for_close(
     loop {
         select! {
             event = stream.next().fuse() => {
-                match event {
-                    Some(event) => {
-                        let event = event?;
-                        if let Event::Close = event {
-                            break;
-                        }
+                if let Some(event) = event {
+                    let event = event?;
+                    if let Event::Close = event {
+                        break;
                     }
-                    _ => {}
                 }
             },
         }
@@ -180,16 +174,13 @@ pub async fn wait_for_session_finish(
     loop {
         select! {
             event = stream.next().fuse() => {
-                match event {
-                    Some(event) => {
-                        let event = event?;
-                        if let Event::SessionFinished(id)= event {
-                            if session_id == id {
-                                break;
-                            }
+                if let Some(event) = event {
+                    let event = event?;
+                    if let Event::SessionFinished(id)= event {
+                        if session_id == id {
+                            break;
                         }
                     }
-                    _ => {}
                 }
             },
         }

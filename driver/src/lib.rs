@@ -6,6 +6,7 @@ use mpc_client::{Client, ClientOptions, Event, EventLoop};
 
 mod bridge;
 mod error;
+pub mod meeting;
 mod round;
 mod session;
 mod types;
