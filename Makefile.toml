@@ -78,15 +78,19 @@ script = '''
 cd bindings
 WASM_BINDGEN_WEAKREF=1 wasm-pack build --target web --scope mpc-sdk
 '''
+[tasks.gen-server-key]
+script = '''
+cargo run -- generate-keypair server.pem
+'''
 
 [tasks.gen-keys]
 script = '''
-cargo run -- generate-keypair server.pem
 cargo run -- generate-keypair tests/test.pem --public-key tests/server_public_key.txt
 cargo run -- generate-keypair tests/e2e/p1.pem
 cargo run -- generate-keypair tests/e2e/p2.pem
 cargo run -- generate-keypair tests/e2e/p3.pem
 '''
+dependencies = ["gen-server-key"]
 
 [tasks.gen-e2e]
 script = '''
