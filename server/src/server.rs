@@ -5,7 +5,13 @@ use std::{
 use tokio::sync::RwLock;
 use tokio_stream::wrappers::IntervalStream;
 
-use axum::{extract::Extension, routing::get, Router};
+use axum::{
+    extract::Extension,
+    http::StatusCode,
+    response::{IntoResponse, Response},
+    routing::get,
+    Router,
+};
 use axum_server::{tls_rustls::RustlsConfig, Handle};
 use tower_http::trace::TraceLayer;
 use uuid::Uuid;
@@ -161,12 +167,21 @@ impl RelayServer {
 
     fn router(&self, state: State) -> Result<Router> {
         let service = Arc::new(RelayService::new(Arc::clone(&state)));
-        let mut app =
-            Router::new().route("/", get(crate::websocket::upgrade));
+        let mut app = Router::new()
+            .route("/", get(crate::websocket::upgrade))
+            .route("/public-key", get(public_key));
         app = app
             .layer(TraceLayer::new_for_http())
             .layer(Extension(service))
             .layer(Extension(state));
         Ok(app)
     }
+}
+
+async fn public_key(
+    Extension(state): Extension<State>,
+) -> std::result::Result<Response, StatusCode> {
+    let reader = state.read().await;
+    let public_key = hex::encode(reader.keypair.public_key());
+    Ok((StatusCode::OK, public_key).into_response())
 }
