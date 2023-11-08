@@ -52,6 +52,7 @@ pub async fn create(
                     .await?;
             }
             Event::MeetingCreated(meeting) => {
+                let _ = client.close().await;
                 return Ok(meeting.meeting_id);
             }
             _ => {}
@@ -100,6 +101,7 @@ pub async fn join(
                 }
             }
             Event::MeetingReady(meeting) => {
+                let _ = client.close().await;
                 let public_keys: Vec<Vec<u8>> = meeting
                     .registered_participants
                     .into_iter()
