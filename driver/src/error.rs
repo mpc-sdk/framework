@@ -12,6 +12,15 @@ pub enum Error {
     #[error("session identifier required")]
     SessionIdRequired,
 
+    /// Error generated when meeting identifiers are not unique.
+    #[error("meeting identifiers must be unique")]
+    MeetingIdentifiersNotUnique,
+
+    /// Error generated when the meeting initiator does not exist 
+    /// in the list of meeting point identifiers.
+    #[error("meeting initiator must exist in list of identifiers")]
+    MeetingInitiatorNotExist,
+
     #[cfg(feature = "gg20")]
     /// GG20 driver errors.
     #[error(transparent)]

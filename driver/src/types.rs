@@ -72,6 +72,15 @@ impl From<crate::gg20::KeyShare> for KeyShare {
     }
 }
 
+/// Options for creating or joining a meeting point.
+#[derive(Serialize, Deserialize)]
+pub struct MeetingOptions {
+    /// Keypair for the participant.
+    pub keypair: Keypair,
+    /// Server options.
+    pub server: ServerOptions,
+}
+
 /// Server options.
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

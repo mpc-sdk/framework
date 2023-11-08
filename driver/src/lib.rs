@@ -6,6 +6,7 @@ use mpc_client::{Client, ClientOptions, Event, EventLoop};
 
 mod bridge;
 mod error;
+mod meeting;
 mod round;
 mod session;
 mod types;
@@ -15,6 +16,7 @@ pub use bridge::{
     wait_for_close, wait_for_driver, wait_for_session_finish,
 };
 pub use error::Error;
+pub use meeting::{create, join};
 pub(crate) use round::{Round, RoundBuffer, RoundMsg};
 pub use session::{
     wait_for_session, SessionEventHandler, SessionHandler,
