@@ -7,13 +7,13 @@ use tokio_stream::wrappers::IntervalStream;
 
 use axum::{
     extract::Extension,
-    http::StatusCode,
+    http::{StatusCode, Method, HeaderValue},
     response::{IntoResponse, Response},
     routing::get,
     Router,
 };
 use axum_server::{tls_rustls::RustlsConfig, Handle};
-use tower_http::trace::TraceLayer;
+use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use uuid::Uuid;
 
 use mpc_protocol::{
@@ -131,7 +131,7 @@ impl RelayServer {
     ) -> Result<()> {
         let tls =
             RustlsConfig::from_pem_file(&tls.cert, &tls.key).await?;
-        let app = self.router(Arc::clone(&self.state))?;
+        let app = self.router(Arc::clone(&self.state)).await?;
         let public_key = {
             let reader = self.state.read().await;
             reader.keypair.public_key().to_vec()
@@ -151,7 +151,7 @@ impl RelayServer {
         addr: SocketAddr,
         handle: Handle,
     ) -> Result<()> {
-        let app = self.router(Arc::clone(&self.state))?;
+        let app = self.router(Arc::clone(&self.state)).await?;
         let public_key = {
             let reader = self.state.read().await;
             reader.keypair.public_key().to_vec()
@@ -165,12 +165,31 @@ impl RelayServer {
         Ok(())
     }
 
-    fn router(&self, state: State) -> Result<Router> {
+    async fn router(&self, state: State) -> Result<Router> {
+        let origins = {
+            let reader = state.read().await;
+            let mut origins = Vec::new();
+            for url in reader.config.cors.origins.iter() {
+                tracing::info!(url = %url, "cors");
+                origins.push(HeaderValue::from_str(
+                    url.as_str().trim_end_matches('/'),
+                )?);
+            }
+            origins
+        };
+
+        let cors = CorsLayer::new()
+            .allow_methods(vec![Method::GET])
+            //.allow_headers(vec![])
+            //.expose_headers(vec![])
+            .allow_origin(origins);
+
         let service = Arc::new(RelayService::new(Arc::clone(&state)));
         let mut app = Router::new()
             .route("/", get(crate::websocket::upgrade))
             .route("/public-key", get(public_key));
         app = app
+            .layer(cors)
             .layer(TraceLayer::new_for_http())
             .layer(Extension(service))
             .layer(Extension(state));
