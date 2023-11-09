@@ -1,6 +1,7 @@
 use crate::{encoding::types, PartyNumber, Result, TAGLEN};
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use snow::{HandshakeState, TransportState};
 use std::{
     collections::{HashMap, HashSet},
@@ -135,6 +136,8 @@ pub enum ServerMessage {
         owner_id: UserId,
         /// Slots for participants in the meeting.
         slots: HashSet<UserId>,
+        /// Data associated aith the meeting point.
+        data: Value,
     },
     /// Response to a new meeting point request.
     MeetingCreated(MeetingState),
@@ -478,6 +481,9 @@ pub struct Meeting {
     /// Last access time so the server can reap
     /// stale meetings.
     last_access: SystemTime,
+
+    /// Associated data for the meeting.
+    data: Value,
 }
 
 impl Meeting {
@@ -500,6 +506,11 @@ impl Meeting {
             .map(|s| s.as_ref().unwrap().to_owned())
             .collect()
     }
+
+    /// Associated data.
+    pub fn data(&self) -> &Value {
+        &self.data
+    }
 }
 
 /// Manages a collection of meeting points.
@@ -515,6 +526,7 @@ impl MeetingManager {
         owner_key: Vec<u8>,
         owner_id: UserId,
         slots: HashSet<UserId>,
+        data: Value,
     ) -> MeetingId {
         let meeting_id = MeetingId::new_v4();
         let slots: HashMap<UserId, Option<Vec<u8>>> =
@@ -523,6 +535,7 @@ impl MeetingManager {
         let mut meeting = Meeting {
             slots,
             last_access: SystemTime::now(),
+            data,
         };
         meeting.join(owner_id, owner_key);
 
@@ -654,6 +667,8 @@ pub struct MeetingState {
     pub meeting_id: MeetingId,
     /// Public keys of the registered participants.
     pub registered_participants: Vec<Vec<u8>>,
+    /// Data for the meeting state.
+    pub data: Value,
 }
 
 /// Request to create a new session.

@@ -8,6 +8,7 @@ use crate::{Error, Event, MeetingOptions, Result, ServerOptions};
 use futures::StreamExt;
 use mpc_client::{Client, ClientOptions, NetworkTransport};
 use mpc_protocol::{MeetingId, UserId};
+use serde_json::Value;
 use std::collections::HashSet;
 
 /// Create a new meeting point.
@@ -15,6 +16,7 @@ pub async fn create(
     options: MeetingOptions,
     identifiers: Vec<UserId>,
     initiator: UserId,
+    data: Value,
 ) -> Result<MeetingId> {
     let num_ids = identifiers.len();
     let slots: HashSet<UserId> = identifiers.into_iter().collect();
@@ -48,7 +50,11 @@ pub async fn create(
         match event {
             Event::ServerConnected { .. } => {
                 client
-                    .new_meeting(initiator.clone(), slots.clone())
+                    .new_meeting(
+                        initiator.clone(),
+                        slots.clone(),
+                        data.clone(),
+                    )
                     .await?;
             }
             Event::MeetingCreated(meeting) => {
@@ -73,7 +79,7 @@ pub async fn join(
     options: MeetingOptions,
     meeting_id: MeetingId,
     user_id: Option<UserId>,
-) -> Result<Vec<Vec<u8>>> {
+) -> Result<(Vec<Vec<u8>>, Value)> {
     let ServerOptions {
         server_url,
         server_public_key,
@@ -106,7 +112,7 @@ pub async fn join(
                     .registered_participants
                     .into_iter()
                     .collect();
-                return Ok(public_keys);
+                return Ok((public_keys, meeting.data));
             }
             _ => {}
         }
