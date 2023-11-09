@@ -156,8 +156,11 @@ mod bindings {
         };
 
         let fut = async move {
-            let public_keys =
-                meeting::join(options, meeting_id, user_id).await?;
+            let public_keys: Vec<String> =
+                meeting::join(options, meeting_id, user_id).await?
+                .into_iter()
+                .map(|v| hex::encode(v))
+                .collect();
             Ok(serde_wasm_bindgen::to_value(&public_keys)?)
         };
         Ok(future_to_promise(fut).into())
