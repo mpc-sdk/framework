@@ -7,6 +7,7 @@ use futures::{
     select, stream::BoxStream, FutureExt, Sink, SinkExt, StreamExt,
 };
 use serde::Serialize;
+use serde_json::Value;
 use std::{collections::HashSet, pin::Pin, sync::Arc};
 use tokio::sync::{mpsc, RwLock};
 
@@ -240,11 +241,11 @@ impl EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream> {
 
     async fn handle_close_message(self) -> Result<()> {
         // NOTE: for webassembly this is handled by a platform
-        // NOTE: specific implementation of close() in the 
+        // NOTE: specific implementation of close() in the
         // NOTE: NetworkTransport as sending InternalMessage::Close
-        // NOTE: over the channel was not working, as the message 
-        // NOTE: would be not be received before the event loop 
-        // NOTE: was dropped which would cause the webassembly 
+        // NOTE: over the channel was not working, as the message
+        // NOTE: would be not be received before the event loop
+        // NOTE: was dropped which would cause the webassembly
         // NOTE: implementation to leak socket connections.
         Ok(())
     }

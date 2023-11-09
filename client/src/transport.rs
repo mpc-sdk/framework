@@ -2,6 +2,7 @@ use crate::{Client, ClientOptions, EventLoop, Result};
 use async_trait::async_trait;
 use mpc_protocol::{MeetingId, SessionId, UserId};
 use serde::Serialize;
+use serde_json::Value;
 use std::collections::HashSet;
 
 /// Enumeration of available transports.
@@ -87,10 +88,11 @@ impl NetworkTransport for Transport {
         &mut self,
         owner_id: UserId,
         slots: HashSet<UserId>,
+        data: Value,
     ) -> Result<()> {
         match self {
             Transport::Relay(client) => {
-                client.new_meeting(owner_id, slots).await
+                client.new_meeting(owner_id, slots, data).await
             }
         }
     }
@@ -244,6 +246,7 @@ pub trait NetworkTransport {
         &mut self,
         owner_id: UserId,
         slots: HashSet<UserId>,
+        data: Value,
     ) -> Result<()>;
 
     /// Join a meeting point.

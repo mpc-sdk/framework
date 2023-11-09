@@ -281,6 +281,7 @@ async fn wait_for_meeting_ready(
                 let state = MeetingState {
                     meeting_id: meeting.meeting_id,
                     registered_participants: target.participants(),
+                    data: target.data().clone(),
                 };
                 (ready, state)
             } else {
@@ -465,7 +466,11 @@ async fn service(
     message: ServerMessage,
 ) -> Result<Option<ServerMessage>> {
     match message {
-        ServerMessage::NewMeeting { owner_id, slots } => {
+        ServerMessage::NewMeeting {
+            owner_id,
+            slots,
+            data,
+        } => {
             // Meeting initiator is automatically a
             // registered participant
             let registered_participants =
@@ -477,6 +482,7 @@ async fn service(
                     public_key.as_ref().to_vec(),
                     owner_id,
                     slots,
+                    data.clone(),
                 );
                 (meeting_id, writer.config.session.wait_interval)
             };
@@ -484,6 +490,7 @@ async fn service(
             let response = MeetingState {
                 meeting_id,
                 registered_participants,
+                data,
             };
 
             tokio::task::spawn(wait_for_meeting_ready(

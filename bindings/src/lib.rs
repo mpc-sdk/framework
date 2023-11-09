@@ -7,6 +7,7 @@ mod bindings {
         meeting, MeetingOptions, PrivateKey, SessionOptions,
     };
     use mpc_protocol::{hex, MeetingId, UserId, PATTERN};
+    use serde_json::Value;
     use wasm_bindgen::prelude::*;
     use wasm_bindgen_futures::future_to_promise;
 
@@ -122,15 +123,21 @@ mod bindings {
         options: JsValue,
         identifiers: JsValue,
         initiator: String,
+        data: JsValue,
     ) -> Result<JsValue, JsError> {
         let options: MeetingOptions =
             serde_wasm_bindgen::from_value(options)?;
         let identifiers = parse_user_identifiers(identifiers)?;
         let initiator = parse_user_id(initiator)?;
+        let data: Value = serde_wasm_bindgen::from_value(data)?;
         let fut = async move {
-            let meeting_id =
-                meeting::create(options, identifiers, initiator)
-                    .await?;
+            let meeting_id = meeting::create(
+                options,
+                identifiers,
+                initiator,
+                data,
+            )
+            .await?;
             Ok(serde_wasm_bindgen::to_value(&meeting_id)?)
         };
         Ok(future_to_promise(fut).into())
@@ -156,12 +163,13 @@ mod bindings {
         };
 
         let fut = async move {
-            let public_keys: Vec<String> =
-                meeting::join(options, meeting_id, user_id).await?
+            let (public_keys, data) =
+                meeting::join(options, meeting_id, user_id).await?;
+            let public_keys: Vec<String> = public_keys
                 .into_iter()
                 .map(|v| hex::encode(v))
                 .collect();
-            Ok(serde_wasm_bindgen::to_value(&public_keys)?)
+            Ok(serde_wasm_bindgen::to_value(&(public_keys, data))?)
         };
         Ok(future_to_promise(fut).into())
     }

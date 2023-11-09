@@ -218,12 +218,19 @@ impl Encodable for ServerMessage {
                 writer.write_u16(code).await?;
                 writer.write_string(message).await?;
             }
-            Self::NewMeeting { owner_id, slots } => {
+            Self::NewMeeting {
+                owner_id,
+                slots,
+                data,
+            } => {
                 writer.write_bytes(owner_id.as_ref()).await?;
                 writer.write_u32(slots.len() as u32).await?;
                 for slot in slots {
                     writer.write_bytes(slot.as_ref()).await?;
                 }
+                writer
+                    .write_string(serde_json::to_string(&data)?)
+                    .await?;
             }
             Self::MeetingCreated(response) => {
                 response.encode(writer).await?;
@@ -303,9 +310,11 @@ impl Decodable for ServerMessage {
                         .unwrap();
                     slots.insert(slot.into());
                 }
+                let data = reader.read_string().await?;
                 *self = ServerMessage::NewMeeting {
                     owner_id: owner_id.into(),
                     slots,
+                    data: serde_json::from_str(&data)?,
                 };
             }
             types::MEETING_CREATED => {
@@ -733,6 +742,9 @@ impl Encodable for MeetingState {
         for key in &self.registered_participants {
             encode_buffer(writer, key).await?;
         }
+        writer
+            .write_string(serde_json::to_string(&self.data)?)
+            .await?;
         Ok(())
     }
 }
@@ -756,6 +768,10 @@ impl Decodable for MeetingState {
             let key = decode_buffer(reader).await?;
             self.registered_participants.push(key);
         }
+
+        let data = reader.read_string().await?;
+        self.data = serde_json::from_str(&data)?;
+
         Ok(())
     }
 }

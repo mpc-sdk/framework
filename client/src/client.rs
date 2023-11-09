@@ -226,8 +226,9 @@ macro_rules! client_transport_impl {
                 &mut self,
                 owner_id: UserId,
                 slots: HashSet<UserId>,
+                data: Value,
             ) -> Result<()> {
-                let message = ServerMessage::NewMeeting { owner_id, slots };
+                let message = ServerMessage::NewMeeting { owner_id, slots, data };
                 self.request(message).await
             }
 
@@ -307,7 +308,7 @@ macro_rules! client_transport_impl {
                 )
                 .await
             }
-            
+
             #[cfg(not(target_arch="wasm32"))]
             async fn close(&self) -> Result<()> {
                 self.outbound_tx.send(InternalMessage::Close).await?;

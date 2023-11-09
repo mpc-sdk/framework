@@ -7,7 +7,7 @@ use tokio_stream::wrappers::IntervalStream;
 
 use axum::{
     extract::Extension,
-    http::{StatusCode, Method, HeaderValue},
+    http::{HeaderValue, Method, StatusCode},
     response::{IntoResponse, Response},
     routing::get,
     Router,

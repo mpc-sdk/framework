@@ -1,6 +1,7 @@
 use anyhow::Result;
 use futures::{select, FutureExt, StreamExt};
 use mpc_protocol::{hex, UserId};
+use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 
@@ -75,7 +76,8 @@ pub async fn run(
                                 slots.insert(init_id.clone());
                                 slots.insert(part_id.clone());
 
-                                client_i_transport.new_meeting(init_id.clone(), slots).await?;
+                                client_i_transport.new_meeting(
+                                    init_id.clone(), slots, Value::Null).await?;
                             }
                             Event::MeetingCreated(meeting) => {
                                 // In the real world the initiator needs
