@@ -703,6 +703,7 @@ dependencies = [
  "log",
  "pem",
  "serde",
+ "serde_json",
  "snow",
  "thiserror",
  "uuid",

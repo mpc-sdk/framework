@@ -325,6 +325,10 @@ macro_rules! client_transport_impl {
 
                 // Close the socket connection
                 self.ws.close()?;
+
+                // Must also dispatch the close event for the driver
+                self.outbound_tx.send(InternalMessage::Close).await?;
+
                 Ok(())
             }
         }
