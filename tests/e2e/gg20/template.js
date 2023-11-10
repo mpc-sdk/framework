@@ -44,8 +44,8 @@ try {
 
     const signatureElement = document.getElementById("signature");
     signatureElement.innerHTML = `
-      <p class="signature-address">Address: ${result.address}</p>
-      <p>${JSON.stringify(result.signature)}</p>`;
+      <p class="signature-address">Address: ${result.gg20.address}</p>
+      <p>${JSON.stringify(result.gg20.signature)}</p>`;
 
     console.log("signing completed");
   }
