@@ -80,8 +80,10 @@ impl WebClient {
                                     buffer,
                                 )) = e
                                 {
+                                    let inflated = zlib::inflate(&buffer)
+                                        .unwrap();
                                     let message: ResponseMessage =
-                                        decode(&buffer)
+                                        decode(&inflated)
                                             .await
                                             .unwrap();
                                     log::error!(
