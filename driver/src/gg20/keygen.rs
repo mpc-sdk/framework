@@ -105,7 +105,7 @@ impl ProtocolDriver for KeygenDriver {
         &mut self,
         message: Self::Incoming,
     ) -> Result<()> {
-        log::info!(
+        tracing::info!(
             "keygen handle incoming (round = {}, sender = {})",
             self.inner.current_round(),
             message.sender,

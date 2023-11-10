@@ -16,16 +16,25 @@ mod bindings {
     #[wasm_bindgen(start)]
     pub fn start() {
         console_error_panic_hook::set_once();
-        if wasm_log::try_init(wasm_log::Config::new(
-            log::Level::Debug,
-        ))
-        .is_ok()
-        {
-            log::info!("Webassembly logger initialized");
-        }
 
         #[cfg(feature = "tracing")]
-        tracing_wasm::set_as_global_default();
+        {
+            use tracing_subscriber::fmt;
+            use tracing_subscriber_wasm::MakeConsoleWriter;
+            fmt()
+                .with_max_level(tracing::Level::DEBUG)
+                .with_writer(
+                    MakeConsoleWriter::default()
+                        .map_trace_level_to(tracing::Level::DEBUG),
+                )
+                // For some reason, if we don't do this
+                // in the browser, we get
+                // a runtime error.
+                .without_time()
+                .init();
+
+            log::info!("Webassembly tracing initialized");
+        }
     }
 
     /// Distributed key generation.
