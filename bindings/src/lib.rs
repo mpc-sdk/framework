@@ -23,6 +23,8 @@ mod bindings {
         {
             log::info!("Webassembly logger initialized");
         }
+
+        tracing_wasm::set_as_global_default();
     }
 
     /// Distributed key generation.
