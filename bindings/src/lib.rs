@@ -95,8 +95,9 @@ mod bindings {
             PATTERN.to_owned()
         };
         let keypair = mpc_protocol::Keypair::new(pattern.parse()?)?;
+        let public_key = hex::encode(keypair.public_key());
         let pem = mpc_protocol::encode_keypair(&keypair);
-        Ok(serde_wasm_bindgen::to_value(&pem)?)
+        Ok(serde_wasm_bindgen::to_value(&(pem, public_key))?)
     }
 
     /// Participants are hex-encoded public keys.
