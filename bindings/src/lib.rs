@@ -24,6 +24,7 @@ mod bindings {
             log::info!("Webassembly logger initialized");
         }
 
+        #[cfg(feature = "tracing")]
         tracing_wasm::set_as_global_default();
     }
 

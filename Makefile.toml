@@ -76,8 +76,15 @@ dependencies = ["check-wasm", "test", "format"]
 [tasks.bindings]
 script = '''
 cd bindings
-WASM_BINDGEN_WEAKREF=1 wasm-pack build --target web --scope mpc-sdk
+wasm-pack build --target web --scope mpc-sdk
 '''
+
+[tasks.bindings-debug]
+script = '''
+cd bindings
+wasm-pack build --target web --scope mpc-sdk --features tracing
+'''
+
 [tasks.gen-server-key]
 script = '''
 cargo run -- generate-keypair server.pem
