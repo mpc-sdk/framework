@@ -141,8 +141,8 @@ macro_rules! client_transport_impl {
                 let mut peers = self.peers.write().await;
 
                 if peers.get(public_key.as_ref()).is_some() {
-                    //return Err(Error::PeerAlreadyExists);
-                    return Ok(())
+                    return Err(Error::PeerAlreadyExists);
+                    //return Ok(())
                 }
 
                 tracing::debug!(

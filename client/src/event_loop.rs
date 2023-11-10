@@ -295,8 +295,8 @@ where
         let mut peers = peers.write().await;
 
         if peers.get(public_key.as_ref()).is_some() {
-            //Err(Error::PeerAlreadyExistsMaybeRace)
-            Ok(None)
+            Err(Error::PeerAlreadyExistsMaybeRace)
+            //Ok(None)
         } else {
             tracing::debug!(
                 from = ?hex::encode(public_key.as_ref()),
