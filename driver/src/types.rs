@@ -45,6 +45,7 @@ pub struct KeyShare {
     /// Private key share information.
     pub private_key: PrivateKey,
     /// The public key.
+    #[serde(with = "hex::serde")]
     pub public_key: Vec<u8>,
     /// Address generated from the public key.
     pub address: String,
