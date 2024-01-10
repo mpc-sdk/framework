@@ -47,7 +47,7 @@ mpc-relay-server = { path = "server" }
 #mpc-relay-server = "0.4"
 clap = { version = "4", features = ["derive", "wrap_help", "env"] }
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "fs", "io-util" ] }
-axum-server = { version = "0.5", features = ["tls-rustls"] }
+axum-server = { version = "0.6", features = ["tls-rustls"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 mpc-client= { path = "client" }

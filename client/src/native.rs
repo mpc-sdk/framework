@@ -64,10 +64,11 @@ impl NativeClient {
         options: ClientOptions,
     ) -> Result<(Self, NativeEventLoop)> {
         let (stream, response) = connect_async(server).await?;
-
-        if response.status() != StatusCode::SWITCHING_PROTOCOLS {
+        
+        let status: u16 = response.status().into();
+        if status != StatusCode::SWITCHING_PROTOCOLS.as_u16() {
             return Err(Error::ConnectError(
-                response.status(),
+                StatusCode::from_u16(status).unwrap(),
                 response.status().to_string(),
             ));
         }

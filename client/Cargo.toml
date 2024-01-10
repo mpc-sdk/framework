@@ -20,7 +20,7 @@ async-stream = "0.3"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "sync", "macros", "time", "net"] }
-tokio-tungstenite = "0.20"
+tokio-tungstenite = "0.21"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 tokio = { version = "1", features = ["sync", "macros"] }
