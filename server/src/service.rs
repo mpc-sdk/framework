@@ -261,6 +261,7 @@ async fn handle_request(
     Ok(())
 }
 
+/*
 async fn wait_for_meeting_ready(
     interval_secs: u64,
     state: State,
@@ -299,6 +300,7 @@ async fn wait_for_meeting_ready(
         }
     }
 }
+*/
 
 async fn wait_for_session_ready(
     interval_secs: u64,
@@ -476,7 +478,7 @@ async fn service(
             let registered_participants =
                 vec![public_key.as_ref().to_vec()];
 
-            let (meeting_id, wait_interval) = {
+            let meeting_id = {
                 let mut writer = state.write().await;
                 let meeting_id = writer.meetings.new_meeting(
                     public_key.as_ref().to_vec(),
@@ -484,7 +486,7 @@ async fn service(
                     slots,
                     data.clone(),
                 );
-                (meeting_id, writer.config.session.wait_interval)
+                meeting_id
             };
 
             let response = MeetingState {
@@ -492,14 +494,6 @@ async fn service(
                 registered_participants,
                 data,
             };
-
-            tokio::task::spawn(wait_for_meeting_ready(
-                wait_interval,
-                Arc::clone(&state),
-                Arc::clone(&conn),
-                SystemTime::now(),
-                response.clone(),
-            ));
 
             Ok(Some(ServerMessage::MeetingCreated(response)))
         }
@@ -509,18 +503,49 @@ async fn service(
                 reader.public_key.clone()
             };
 
-            let mut writer = state.write().await;
-            if let Some(meeting) =
-                writer.meetings.get_meeting_mut(&meeting_id)
-            {
-                if meeting.is_full() {
-                    Err(Error::MeetingFull(meeting_id))
+            let result = {
+                let mut writer = state.write().await;
+                if let Some(meeting) =
+                    writer.meetings.get_meeting_mut(&meeting_id)
+                {
+                    if meeting.is_full() {
+                        Err(Error::MeetingFull(meeting_id))
+                    } else {
+                        meeting.join(user_id, from_public_key);
+
+                        let meeting_state = if meeting.is_full() {
+                            Some(MeetingState {
+                                meeting_id: meeting_id,
+                                registered_participants: meeting
+                                    .participants(),
+                                data: meeting.data().clone(),
+                            })
+                        } else {
+                            None
+                        };
+
+                        Ok(meeting_state)
+                    }
                 } else {
-                    meeting.join(user_id, from_public_key);
+                    Err(Error::MeetingNotFound(meeting_id))
+                }
+            };
+
+            match result {
+                Ok(meeting_state) => {
+                    if let Some(target) = meeting_state {
+                        if let Err(e) = notify_meeting_ready(
+                            Arc::clone(&state),
+                            target,
+                        )
+                        .await
+                        {
+                            tracing::error!("{:#?}", e);
+                        }
+                    }
                     Ok(None)
                 }
-            } else {
-                Err(Error::MeetingNotFound(meeting_id))
+                Err(e) => Err(e),
             }
         }
         ServerMessage::NewSession(request) => {
