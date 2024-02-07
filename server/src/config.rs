@@ -7,6 +7,9 @@ use url::Url;
 
 use crate::{Error, Result};
 
+/// Environment variable name for a keypair.
+const ENV_PEM: &str = "MPC_RELAY_KEYPAIR";
+
 /// Configuration for the web server.
 #[derive(Default, Serialize, Deserialize)]
 #[serde(default)]
@@ -138,21 +141,27 @@ impl ServerConfig {
             return Err(Error::SessionWaitConfig);
         }
 
-        if config.key == PathBuf::default() {
-            return Err(Error::KeyFileRequired);
-        }
-
         let dir = Self::directory(path.as_ref())?;
 
-        if config.key.is_relative() {
-            config.key = dir.join(&config.key).canonicalize()?;
-        }
+        let contents = if let Ok(env_keypair) = std::env::var(ENV_PEM) {
+            tracing::info!("use environmet keypair PEM");
+            env_keypair.to_owned()
+        } else {
+            if config.key == PathBuf::default() {
+                return Err(Error::KeyFileRequired);
+            }
 
-        if !fs::try_exists(&config.key).await? {
-            return Err(Error::KeyNotFound(config.key.clone()));
-        }
+            if config.key.is_relative() {
+                config.key = dir.join(&config.key).canonicalize()?;
+            }
 
-        let contents = fs::read_to_string(&config.key).await?;
+            if !fs::try_exists(&config.key).await? {
+                return Err(Error::KeyNotFound(config.key.clone()));
+            }
+
+            fs::read_to_string(&config.key).await?
+        };
+
         let keypair = decode_keypair(contents)?;
 
         if let Some(tls) = config.tls.as_mut() {

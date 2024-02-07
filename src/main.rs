@@ -29,7 +29,7 @@
 //! Start the relay websocket service:
 //!
 //! ```no_run
-//! mpc-relay start erver config.toml
+//! mpc-relay start config.toml
 //! ```
 
 #[doc(hidden)]
