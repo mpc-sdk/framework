@@ -1,1 +1,7 @@
 key = "server.pem"
+
+[cors]
+origins = [
+  "http://localhost:7070",
+  "https://tss.ac"
+]
