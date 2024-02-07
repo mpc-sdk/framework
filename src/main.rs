@@ -29,7 +29,7 @@
 //! Start the relay websocket service:
 //!
 //! ```no_run
-//! mpc-relay server config.toml
+//! mpc-relay start erver config.toml
 //! ```
 
 #[doc(hidden)]
@@ -70,7 +70,7 @@ mod cli {
         },
 
         /// Start a relay websocket service.
-        Server {
+        Start {
             /// Override the interval to poll for expired sessions in seconds.
             #[clap(long)]
             session_interval: Option<u64>,
@@ -101,13 +101,13 @@ mod cli {
                 )
                 .await?
             }
-            Command::Server {
+            Command::Start {
                 session_interval,
                 session_timeout,
                 bind,
                 config,
             } => {
-                commands::server::run(
+                commands::start::run(
                     bind,
                     config,
                     session_interval,

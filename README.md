@@ -48,7 +48,7 @@ cargo make gen-keys
 Start a server:
 
 ```
-cargo run -- server config.toml
+cargo run -- start config.toml
 ```
 
 ### Documentation
