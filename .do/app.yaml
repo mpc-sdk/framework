@@ -1,0 +1,11 @@
+name: relay.tss.ac
+services:
+- dockerfile_path: Dockerfile
+  github:
+    branch: main
+    deploy_on_push: true
+    repo: mpc-sdk/framework
+  name: relay.tss.ac
+  http_port: 8080
+  instance_count: 1
+  instance_size_slug: basic-xxs
