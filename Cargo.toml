@@ -43,8 +43,7 @@ sha3 = "0.10"
 serde_json = "1"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-mpc-relay-server = { path = "server" }
-#mpc-relay-server = "0.4"
+mpc-relay-server = { version = "0.5", path = "server" }
 clap = { version = "4", features = ["derive", "wrap_help", "env"] }
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "fs", "io-util" ] }
 axum-server = { version = "0.6", features = ["tls-rustls"] }
