@@ -25,15 +25,15 @@ exclude = [
 ]
 
 [dependencies]
-mpc-protocol = { path = "protocol" }
-#mpc-protocol = "0.4"
+# mpc-protocol = { path = "protocol" }
+mpc-protocol = "0.6.1"
 anyhow = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [dev-dependencies]
-mpc-driver = { path = "driver" }
-#mpc-driver = "0.3"
+# mpc-driver = { path = "driver" }
+mpc-driver = "0.3"
 futures = "0.3"
 tokio-stream = "0.1"
 log = "0.4"
