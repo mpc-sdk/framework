@@ -1,3 +1,12 @@
+terraform {
+  required_providers {
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 4.0"
+    }
+  }
+}
+
 resource "aws_security_group" "relay_server_security_group" {
   name        = "relay-server-security-group"
   description = "Relay server security group"
@@ -41,10 +50,11 @@ resource "aws_instance" "relay_server" {
   }
 }
 
-resource "aws_route53_record" "relay_server" {
+resource "cloudflare_record" "relay_server_dns_record" {
   zone_id = var.zone_id
-  name    = var.domain
+  name    = "relay"
   type    = "A"
-  ttl     = "300"
-  records = [aws_instance.relay_server.public_ip]
+  ttl     = 300
+  value   = aws_instance.relay_server.public_ip
+  proxied = true
 }

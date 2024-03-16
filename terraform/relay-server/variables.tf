@@ -15,5 +15,5 @@ variable "default_vpc_id" {
 
 variable "zone_id" {
   type = string
-  default = "Z04680882YUP76OSG0P2"
+  default = "08f5d9a1b16c3795e19b9304920f3335"
 }
