@@ -54,7 +54,7 @@ resource "cloudflare_record" "relay_server_dns_record" {
   zone_id = var.zone_id
   name    = "relay"
   type    = "A"
-  ttl     = 300
+  ttl     = 1
   value   = aws_instance.relay_server.public_ip
   proxied = true
 }
