@@ -4,3 +4,9 @@ target
 /stubs
 *.bak
 *.pem
+.ssh
+*.hcl
+*.tfstate
+*.tfstate.*
+.terraform
+.env

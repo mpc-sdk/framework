@@ -25,15 +25,15 @@ exclude = [
 ]
 
 [dependencies]
-mpc-protocol = { path = "protocol" }
-#mpc-protocol = "0.4"
+# mpc-protocol = { path = "protocol" }
+mpc-protocol = "0.6.1"
 anyhow = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [dev-dependencies]
-mpc-driver = { path = "driver" }
-#mpc-driver = "0.3"
+# mpc-driver = { path = "driver" }
+mpc-driver = "0.3"
 futures = "0.3"
 tokio-stream = "0.1"
 log = "0.4"
@@ -43,8 +43,7 @@ sha3 = "0.10"
 serde_json = "1"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-mpc-relay-server = { path = "server" }
-#mpc-relay-server = "0.4"
+mpc-relay-server = { version = "0.5", path = "server" }
 clap = { version = "4", features = ["derive", "wrap_help", "env"] }
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "fs", "io-util" ] }
 axum-server = { version = "0.6", features = ["tls-rustls"] }
