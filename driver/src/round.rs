@@ -7,10 +7,11 @@ use std::collections::HashMap;
 pub(crate) trait Round:
     Serialize + DeserializeOwned + Send + Sync
 {
-    /*
-    /// Determine if this round is a broadcast message.
+    /// Determine if this round includes a broadcast message.
     fn is_broadcast(&self) -> bool;
-    */
+
+    /// Determine if this round includes a direct message.
+    fn is_direct(&self) -> bool;
 
     /// Round number.
     fn round_number(&self) -> RoundNumber;
@@ -33,17 +34,21 @@ where
     pub(crate) sender: PartyNumber,
     pub(crate) receiver: Option<PartyNumber>,
     pub(crate) body: O,
+    pub(crate) is_broadcast: bool,
+    pub(crate) is_direct: bool,
 }
 
 impl<O> Round for RoundMsg<O>
 where
     O: Serialize + Send + Sync + DeserializeOwned,
 {
-    /*
     fn is_broadcast(&self) -> bool {
-        self.receiver.is_none()
+        self.is_broadcast
     }
-    */
+
+    fn is_direct(&self) -> bool {
+        self.is_direct
+    }
 
     fn round_number(&self) -> RoundNumber {
         self.round
@@ -54,6 +59,7 @@ where
     }
 }
 
+/*
 impl<O> RoundMsg<O>
 where
     O: Send + Sync,
@@ -72,10 +78,13 @@ where
                     .receiver
                     .map(|v| PartyNumber::new(v).unwrap()),
                 body: m.body,
+                is_broadcast: m.is_broadcast,
+                is_direct: m.is_direct,
             })
             .collect::<Vec<_>>()
     }
 }
+*/
 
 /// Buffers incoming messages.
 #[derive(Debug)]

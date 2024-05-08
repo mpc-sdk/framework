@@ -1,12 +1,17 @@
 //! Driver for the CGGMP protocol.
 use serde::{Deserialize, Serialize};
+use synedrion::{
+    ecdsa::{SigningKey, VerifyingKey},
+    KeyShare, ProductionParams, SchemeParams,
+};
 
 mod error;
 mod keygen;
 // mod sign;
 
 pub use error::Error;
-pub use keygen::{KeyGenDriver, KeyShare};
+pub use keygen::KeyGenDriver;
+
 // pub use sign::{
 //     OfflineResult, ParticipantDriver, PreSignDriver, Signature,
 //     SignatureDriver,
@@ -30,10 +35,13 @@ use crate::{
 };
 
 /// Run distributed key generation for the CGGMP protocol.
-pub async fn keygen(
+pub async fn keygen<P: SchemeParams + 'static>(
     options: SessionOptions,
     participants: Option<Vec<Vec<u8>>>,
-) -> crate::Result<crate::KeyShare> {
+    shared_randomness: &[u8],
+    signer: SigningKey,
+    verifiers: Vec<VerifyingKey>,
+) -> crate::Result<KeyShare<P>> {
     let is_initiator = participants.is_some();
 
     let parameters = options.parameters;
@@ -67,10 +75,16 @@ pub async fn keygen(
     let session_id = session.session_id;
 
     // Wait for key generation
-    // let keygen = KeyGenDriver::new(transport, parameters, session)?;
+    let keygen = KeyGenDriver::<P>::new(
+        transport,
+        parameters,
+        session,
+        shared_randomness,
+        signer,
+        verifiers,
+    )?;
 
-    /*
-    let (mut transport, local_key_share) =
+    let (mut transport, key_share) =
         wait_for_driver(&mut stream, keygen).await?;
 
     // Close the session and socket
@@ -82,11 +96,7 @@ pub async fn keygen(
     transport.close().await?;
     wait_for_close(&mut stream).await?;
 
-    let key_share: KeyShare = local_key_share;
-    Ok(key_share.into())
-    */
-
-    todo!();
+    Ok(key_share)
 }
 
 /*

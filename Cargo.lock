@@ -3283,7 +3283,6 @@ checksum = "2047c6ded9c721764247e62cd3b03c09ffc529b2ba5b10ec482ae507a4a70160"
 [[package]]
 name = "synedrion"
 version = "0.1.0"
-source = "git+https://github.com/entropyxyz/synedrion#43674326ce1e174de00de5dacf275138d87168fc"
 dependencies = [
  "base64",
  "bincode",

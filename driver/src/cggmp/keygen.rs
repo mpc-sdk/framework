@@ -1,6 +1,4 @@
 //! Key generation for CGGMP.
-use std::num::NonZeroU16;
-
 use async_trait::async_trait;
 use mpc_client::{Event, NetworkTransport, Transport};
 use mpc_protocol::{hex, Parameters, SessionState};
@@ -12,16 +10,14 @@ use synedrion::{
     ecdsa::{Signature, SigningKey, VerifyingKey},
     make_key_gen_session,
     sessions::{
-        FinalizeOutcome, PreprocessedMessage, RoundAccumulator,
-        Session,
+        FinalizeOutcome, MessageType, PreprocessedMessage,
+        RoundAccumulator, Session,
     },
-    CombinedMessage, KeyGenResult, ProductionParams, SchemeParams,
+    CombinedMessage, KeyGenResult, KeyShare, ProductionParams,
+    SchemeParams,
 };
 
 use crate::{Bridge, Driver, ProtocolDriver, RoundBuffer, RoundMsg};
-
-/// Key share.
-pub type KeyShare = synedrion::KeyShare<ProductionParams>;
 
 type MessageOut =
     (VerifyingKey, VerifyingKey, CombinedMessage<Signature>);
@@ -84,7 +80,7 @@ where
     P: SchemeParams + 'static,
 {
     type Error = Error;
-    type Output = KeyShare;
+    type Output = KeyShare<P>;
 
     async fn handle_event(
         &mut self,
@@ -164,7 +160,7 @@ where
     type Error = Error;
     type Incoming = Msg<MessageIn>;
     type Outgoing = RoundMsg<MessageOut>;
-    type Output = KeyShare;
+    type Output = KeyShare<P>;
 
     fn handle_incoming(
         &mut self,
@@ -227,23 +223,6 @@ where
             }
         }
 
-        /*
-        match self
-            .session
-            .finalize_round(&mut OsRng, self.accum)
-            .unwrap()
-        {
-            FinalizeOutcome::Success(res) => println!("{:#?}", res),
-            FinalizeOutcome::AnotherRound {
-                session: new_session,
-                cached_messages: new_cached_messages,
-            } => {
-                self.session = new_session;
-                self.cached_messages = new_cached_messages;
-            }
-        }
-        */
-
         todo!();
 
         /*
@@ -277,6 +256,22 @@ where
             // This will happen in a host task
             self.accum.add_artifact(artifact).unwrap();
 
+            let is_direct = match &message {
+                CombinedMessage::One(msg) => {
+                    matches!(msg.message_type(), MessageType::Direct)
+                }
+                CombinedMessage::Both { .. } => true,
+            };
+            let is_broadcast = match &message {
+                CombinedMessage::One(msg) => {
+                    matches!(
+                        msg.message_type(),
+                        MessageType::Broadcast
+                    )
+                }
+                CombinedMessage::Both { .. } => true,
+            };
+
             let body = (self.key, *destination, message);
             let sender = self
                 .verifiers
@@ -296,6 +291,8 @@ where
                 receiver: Some(((receiver + 1) as u16).try_into()?),
                 round: (self.session.current_round().0 as u16)
                     .try_into()?,
+                is_broadcast,
+                is_direct,
             };
 
             outgoing.push(msg);
@@ -305,32 +302,15 @@ where
     }
 
     fn finish(mut self) -> Result<Self::Output> {
-        /*
         match self
-            .inner
+            .session
             .finalize_round(&mut OsRng, self.accum)
             .unwrap()
         {
             FinalizeOutcome::Success(result) => Ok(result),
-            _ => panic!(),
+            _ => panic!(
+                "cannot finish protocol as another round is expected"
+            ),
         }
-        */
-
-        todo!();
     }
 }
-
-/*
-fn make_signers(
-    num_parties: usize,
-) -> (Vec<SigningKey>, Vec<VerifyingKey>) {
-    let signers = (0..num_parties)
-        .map(|_| SigningKey::random(&mut OsRng))
-        .collect::<Vec<_>>();
-    let verifiers = signers
-        .iter()
-        .map(|signer| *signer.verifying_key())
-        .collect::<Vec<_>>();
-    (signers, verifiers)
-}
-*/

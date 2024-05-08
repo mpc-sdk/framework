@@ -21,10 +21,10 @@ pub enum Error {
     #[error("meeting initiator must exist in list of identifiers")]
     MeetingInitiatorNotExist,
 
-    #[cfg(feature = "gg20")]
-    /// GG20 driver errors.
+    /// CGGMP driver errors.
+    #[cfg(feature = "cggmp")]
     #[error(transparent)]
-    GG20(#[from] crate::gg20::Error),
+    Cggmp(#[from] crate::cggmp::Error),
 
     /// Client library errors.
     #[error(transparent)]
