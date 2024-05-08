@@ -3,7 +3,6 @@ use async_trait::async_trait;
 use mpc_client::{Event, NetworkTransport, Transport};
 use mpc_protocol::{hex, Parameters, SessionState};
 use rand::rngs::OsRng;
-use round_based::Msg;
 
 use super::{Error, Result};
 use synedrion::{

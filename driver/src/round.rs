@@ -1,5 +1,4 @@
 use mpc_protocol::{PartyNumber, RoundNumber};
-use round_based::Msg;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -56,19 +55,6 @@ where
 
     fn receiver(&self) -> Option<&PartyNumber> {
         self.receiver.as_ref()
-    }
-}
-
-impl<O> From<RoundMsg<O>> for Msg<O>
-where
-    O: Send + Sync,
-{
-    fn from(value: RoundMsg<O>) -> Self {
-        Msg {
-            sender: value.sender.get(),
-            receiver: value.receiver.map(|v| v.get()),
-            body: value.body,
-        }
     }
 }
 

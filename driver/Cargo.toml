@@ -27,9 +27,6 @@ synedrion = {version = "0.1", path = "../../../forks/synedrion/synedrion" }
 k256 = { version = "0.13.2", default-features = false, features = ["pem", "serde"] }
 rand = "0.8"
 
-[dependencies.round-based]
-git = "https://github.com/webb-tools/round-based-protocol"
-
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies.curv-kzen]
 optional = true
 version = "0.10"
