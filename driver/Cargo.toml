@@ -8,7 +8,6 @@ license = "GPL-3.0"
 repository = "https://github.com/mpc-sdk/framework"
 
 [features]
-gg20 = ["dep:curv-kzen", "dep:paillier", "dep:cggmp-threshold-ecdsa"]
 cggmp = []
 
 [dependencies]
@@ -27,20 +26,6 @@ synedrion = {version = "0.1", path = "../../../forks/synedrion/synedrion" }
 k256 = { version = "0.13.2", default-features = false, features = ["pem", "serde"] }
 rand = "0.8"
 
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies.curv-kzen]
-optional = true
-version = "0.10"
-
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies.paillier]
-optional = true
-version = "0.4.3"
-package = "kzen-paillier"
-
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies.cggmp-threshold-ecdsa]
-optional = true
-git = "https://github.com/webb-tools/cggmp-threshold-ecdsa"
-version = "0.1"
-
 # WASM
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
@@ -48,24 +33,6 @@ mpc-ecdsa-getrandom-hack = {version = "*"}
 getrandom = {version = "0.1.16", features = ["wasm-bindgen"]}
 rand = { version="0.6.5", features = ["wasm-bindgen"] }
 wasm-bindgen = { version = "0.2" }
-
-[target.'cfg(target_arch = "wasm32")'.dependencies.curv-kzen]
-optional = true
-version = "0.10"
-features = ["num-bigint"]
-default-features = false
-
-[target.'cfg(target_arch = "wasm32")'.dependencies.paillier]
-optional = true
-version = "0.4.3"
-package = "kzen-paillier"
-default-features = false
-
-[target.'cfg(target_arch = "wasm32")'.dependencies.cggmp-threshold-ecdsa]
-optional = true
-git = "https://github.com/webb-tools/cggmp-threshold-ecdsa"
-default-features = false
-version = "0.1"
 
 [build-dependencies]
 rustc_version = "0.4.0"
