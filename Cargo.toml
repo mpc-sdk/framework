@@ -56,6 +56,3 @@ wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
 wasm-log = "0.3"
 getrandom = {version = "0.2", features = ["js"]}
 wasm-bindgen-futures = "0.4"
-
-[patch.crates-io]
-curv-kzen = { git = "https://github.com/tmpfs/curv", branch = "wasm-bigint" }
