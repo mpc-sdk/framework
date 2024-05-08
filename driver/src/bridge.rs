@@ -3,6 +3,7 @@ use mpc_client::{Event, EventStream, NetworkTransport, Transport};
 use mpc_protocol::{SessionId, SessionState};
 
 use crate::{Driver, Error, ProtocolDriver, Round, RoundBuffer};
+use tokio::sync::mpsc::{Receiver, Sender};
 
 /// Connects a network transport with a protocol driver.
 pub(crate) struct Bridge<D: ProtocolDriver> {
@@ -85,6 +86,7 @@ impl<D: ProtocolDriver> Bridge<D> {
         &mut self,
         mut messages: Vec<D::Outgoing>,
     ) -> Result<(), D::Error> {
+        /*
         let is_broadcast = messages.len() == 1
             && messages.get(0).as_ref().unwrap().is_broadcast();
 
@@ -115,6 +117,9 @@ impl<D: ProtocolDriver> Bridge<D> {
             }
         }
         Ok(())
+        */
+
+        todo!();
     }
 }
 

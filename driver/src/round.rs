@@ -7,12 +7,14 @@ use std::collections::HashMap;
 pub(crate) trait Round:
     Serialize + DeserializeOwned + Send + Sync
 {
+    /*
     /// Determine if this round is a broadcast message.
     fn is_broadcast(&self) -> bool;
     /// Round number.
     fn round_number(&self) -> RoundNumber;
     /// Receiver for a peer to peer message.
     fn receiver(&self) -> Option<&PartyNumber>;
+    */
 }
 
 /// Wrapper for a round `Msg` that includes the round
@@ -25,16 +27,17 @@ pub(crate) struct RoundMsg<O>
 where
     O: Send + Sync,
 {
-    round: RoundNumber,
-    sender: PartyNumber,
-    receiver: Option<PartyNumber>,
-    body: O,
+    // pub(crate) round: RoundNumber,
+    // pub(crate) sender: PartyNumber,
+    // pub(crate) receiver: Option<PartyNumber>,
+    pub(crate) body: O,
 }
 
 impl<O> Round for RoundMsg<O>
 where
     O: Serialize + Send + Sync + DeserializeOwned,
 {
+    /*
     fn is_broadcast(&self) -> bool {
         self.receiver.is_none()
     }
@@ -46,19 +49,7 @@ where
     fn receiver(&self) -> Option<&PartyNumber> {
         self.receiver.as_ref()
     }
-}
-
-impl<O> From<RoundMsg<O>> for Msg<O>
-where
-    O: Send + Sync,
-{
-    fn from(value: RoundMsg<O>) -> Self {
-        Msg {
-            sender: value.sender.get(),
-            receiver: value.receiver.map(|v| v.get()),
-            body: value.body,
-        }
-    }
+    */
 }
 
 impl<O> RoundMsg<O>
@@ -73,11 +64,13 @@ where
         messages
             .into_iter()
             .map(|m| RoundMsg {
+                /*
                 round: RoundNumber::new(round).unwrap(),
                 sender: PartyNumber::new(m.sender).unwrap(),
                 receiver: m
                     .receiver
                     .map(|v| PartyNumber::new(v).unwrap()),
+                */
                 body: m.body,
             })
             .collect::<Vec<_>>()

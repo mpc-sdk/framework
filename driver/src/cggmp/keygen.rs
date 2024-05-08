@@ -172,31 +172,6 @@ where
             message.sender,
         );
 
-        let destinations = self.session.message_destinations();
-        for destination in destinations.iter() {
-            // In production usage, this will happen in a spawned task
-            // (since it can take some time to create a message),
-            // and the artifact will be sent back to the host task
-            // to be added to the accumulator.
-            let (message, artifact) = self
-                .session
-                .make_message(&mut OsRng, destination)
-                .unwrap();
-
-            /*
-            println!(
-                "{key_str}: sending a message to {}",
-                key_to_str(destination)
-            );
-            */
-
-            let message_out = (self.key, *destination, message);
-            // tx.send((key, *destination, message)).await.unwrap();
-
-            // This will happen in a host task
-            self.accum.add_artifact(artifact).unwrap();
-        }
-
         for preprocessed in self.cached_messages.drain(..) {
             // In production usage, this will happen in a spawned task.
             // println!("{key_str}: applying a cached message");
@@ -273,13 +248,38 @@ where
     }
 
     fn proceed(&mut self) -> Result<Vec<Self::Outgoing>> {
-        /*
-        self.inner.proceed()?;
-        let messages = self.inner.message_queue().drain(..).collect();
-        let round = self.inner.current_round();
-        Ok(RoundMsg::from_round(round, messages))
-        */
-        todo!();
+        let mut outgoing = Vec::new();
+
+        let destinations = self.session.message_destinations();
+        for destination in destinations.iter() {
+            // In production usage, this will happen in a spawned task
+            // (since it can take some time to create a message),
+            // and the artifact will be sent back to the host task
+            // to be added to the accumulator.
+            let (message, artifact) = self
+                .session
+                .make_message(&mut OsRng, destination)
+                .unwrap();
+
+            /*
+            println!(
+                "{key_str}: sending a message to {}",
+                key_to_str(destination)
+            );
+            */
+
+            let body = (self.key, *destination, message);
+            // tx.send((key, *destination, message)).await.unwrap();
+
+            // This will happen in a host task
+            self.accum.add_artifact(artifact).unwrap();
+
+            let msg = RoundMsg { body };
+
+            outgoing.push(msg);
+        }
+
+        Ok(outgoing)
     }
 
     fn finish(mut self) -> Result<Self::Output> {
