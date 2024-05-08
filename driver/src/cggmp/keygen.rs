@@ -185,7 +185,7 @@ where
                 .unwrap();
         }
 
-        while !self.session.can_finalize(&self.accum).unwrap() {
+        if !self.session.can_finalize(&self.accum).unwrap() {
             // This can be checked if a timeout expired, to see which nodes have not responded yet.
             let unresponsive_parties =
                 self.session.missing_messages(&self.accum).unwrap();
@@ -223,11 +223,7 @@ where
             }
         }
 
-        todo!();
-
-        /*
         Ok(())
-        */
     }
 
     fn proceed(&mut self) -> Result<Vec<Self::Outgoing>> {

@@ -2,7 +2,7 @@
 use serde::{Deserialize, Serialize};
 use synedrion::{
     ecdsa::{SigningKey, VerifyingKey},
-    KeyShare, ProductionParams, SchemeParams,
+    KeyShare, SchemeParams,
 };
 
 mod error;
@@ -26,7 +26,6 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub struct Signature {}
 
 use mpc_client::{NetworkTransport, Transport};
-use mpc_protocol::PartyNumber;
 
 use crate::{
     new_client, wait_for_close, wait_for_driver, wait_for_session,
