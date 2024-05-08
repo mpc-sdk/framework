@@ -10,9 +10,10 @@ pub(crate) trait Round:
     /*
     /// Determine if this round is a broadcast message.
     fn is_broadcast(&self) -> bool;
+    */
+
     /// Round number.
     fn round_number(&self) -> RoundNumber;
-    */
 
     /// Receiver for a peer to peer message.
     fn receiver(&self) -> Option<&PartyNumber>;
@@ -28,7 +29,7 @@ pub(crate) struct RoundMsg<O>
 where
     O: Send + Sync,
 {
-    // pub(crate) round: RoundNumber,
+    pub(crate) round: RoundNumber,
     pub(crate) sender: PartyNumber,
     pub(crate) receiver: Option<PartyNumber>,
     pub(crate) body: O,
@@ -42,11 +43,11 @@ where
     fn is_broadcast(&self) -> bool {
         self.receiver.is_none()
     }
+    */
 
     fn round_number(&self) -> RoundNumber {
         self.round
     }
-    */
 
     fn receiver(&self) -> Option<&PartyNumber> {
         self.receiver.as_ref()
@@ -65,9 +66,7 @@ where
         messages
             .into_iter()
             .map(|m| RoundMsg {
-                /*
                 round: RoundNumber::new(round).unwrap(),
-                */
                 sender: PartyNumber::new(m.sender).unwrap(),
                 receiver: m
                     .receiver

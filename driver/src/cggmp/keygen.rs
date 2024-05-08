@@ -294,6 +294,8 @@ where
                 body,
                 sender: ((sender + 1) as u16).try_into()?,
                 receiver: Some(((receiver + 1) as u16).try_into()?),
+                round: (self.session.current_round().0 as u16)
+                    .try_into()?,
             };
 
             outgoing.push(msg);
