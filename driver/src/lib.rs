@@ -29,17 +29,6 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[cfg(feature = "cggmp")]
 pub mod cggmp;
 
-#[cfg(feature = "gg20")]
-pub mod gg20;
-
-#[cfg(feature = "gg20")]
-#[doc(hidden)]
-pub use cggmp_threshold_ecdsa::mpc_ecdsa::gg_2020;
-
-#[cfg(feature = "gg20")]
-#[doc(hidden)]
-pub use curv;
-
 /// Drives a protocol to completion bridging between
 /// the network transport and local computation.
 #[async_trait]

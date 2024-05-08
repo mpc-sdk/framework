@@ -9,7 +9,10 @@ use super::{Error, Result};
 use synedrion::{
     ecdsa::{Signature, SigningKey, VerifyingKey},
     make_key_gen_session,
-    sessions::Session,
+    sessions::{
+        FinalizeOutcome, PreprocessedMessage, RoundAccumulator,
+        Session,
+    },
     CombinedMessage, KeyGenResult, ProductionParams, SchemeParams,
 };
 
@@ -107,8 +110,12 @@ struct CggmpDriver<P>
 where
     P: SchemeParams + 'static,
 {
-    inner:
+    session:
         Session<KeyGenResult<P>, Signature, SigningKey, VerifyingKey>,
+
+    cached_messages: Vec<PreprocessedMessage<Signature>>,
+    key: VerifyingKey,
+    accum: RoundAccumulator<Signature>,
 }
 
 impl<P> CggmpDriver<P>
@@ -125,14 +132,23 @@ where
         signer: SigningKey,
         verifiers: Vec<VerifyingKey>,
     ) -> Result<Self> {
+        let session = make_key_gen_session(
+            &mut OsRng,
+            shared_randomness,
+            signer,
+            &verifiers,
+        )
+        .map_err(|e| Error::LocalError(e.to_string()))?;
+
+        let cached_messages = Vec::new();
+        let key = session.verifier();
+        let accum = session.make_accumulator();
+
         Ok(Self {
-            inner: make_key_gen_session(
-                &mut OsRng,
-                shared_randomness,
-                signer,
-                &verifiers,
-            )
-            .map_err(|e| Error::LocalError(e.to_string()))?,
+            session,
+            cached_messages,
+            key,
+            accum,
         })
     }
 }
@@ -150,16 +166,110 @@ where
         &mut self,
         message: Self::Incoming,
     ) -> Result<()> {
-        /*
         tracing::info!(
             "keygen handle incoming (round = {}, sender = {})",
-            self.inner.current_round(),
+            self.session.current_round().0,
             message.sender,
         );
-        self.inner.handle_incoming(message)?;
+
+        let destinations = self.session.message_destinations();
+        for destination in destinations.iter() {
+            // In production usage, this will happen in a spawned task
+            // (since it can take some time to create a message),
+            // and the artifact will be sent back to the host task
+            // to be added to the accumulator.
+            let (message, artifact) = self
+                .session
+                .make_message(&mut OsRng, destination)
+                .unwrap();
+
+            /*
+            println!(
+                "{key_str}: sending a message to {}",
+                key_to_str(destination)
+            );
+            */
+
+            let message_out = (self.key, *destination, message);
+            // tx.send((key, *destination, message)).await.unwrap();
+
+            // This will happen in a host task
+            self.accum.add_artifact(artifact).unwrap();
+        }
+
+        for preprocessed in self.cached_messages.drain(..) {
+            // In production usage, this will happen in a spawned task.
+            // println!("{key_str}: applying a cached message");
+            let result =
+                self.session.process_message(preprocessed).unwrap();
+
+            // This will happen in a host task.
+            self.accum
+                .add_processed_message(result)
+                .unwrap()
+                .unwrap();
+        }
+
+        while !self.session.can_finalize(&self.accum).unwrap() {
+            // This can be checked if a timeout expired, to see which nodes have not responded yet.
+            let unresponsive_parties =
+                self.session.missing_messages(&self.accum).unwrap();
+            assert!(!unresponsive_parties.is_empty());
+
+            /*
+            println!("{key_str}: waiting for a message");
+            */
+
+            let from = &message.body.0;
+            let message = message.body.1.clone();
+            // let (from, message) = rx.recv().await.unwrap();
+
+            // Perform quick checks before proceeding with the verification.
+            let preprocessed = self
+                .session
+                .preprocess_message(&mut self.accum, from, message)
+                .unwrap();
+
+            if let Some(preprocessed) = preprocessed {
+                /*
+                // In production usage, this will happen in a spawned task.
+                println!("{key_str}: applying a message from {}", key_to_str(&from));
+                */
+                let result = self
+                    .session
+                    .process_message(preprocessed)
+                    .unwrap();
+
+                // This will happen in a host task.
+                self.accum
+                    .add_processed_message(result)
+                    .unwrap()
+                    .unwrap();
+            }
+        }
+
+        /*
+        match self
+            .session
+            .finalize_round(&mut OsRng, self.accum)
+            .unwrap()
+        {
+            FinalizeOutcome::Success(res) => println!("{:#?}", res),
+            FinalizeOutcome::AnotherRound {
+                session: new_session,
+                cached_messages: new_cached_messages,
+            } => {
+                self.session = new_session;
+                self.cached_messages = new_cached_messages;
+            }
+        }
+        */
+
+        todo!();
+
+        /*
         Ok(())
         */
-        todo!();
     }
 
     fn proceed(&mut self) -> Result<Vec<Self::Outgoing>> {
@@ -169,12 +279,21 @@ where
         let round = self.inner.current_round();
         Ok(RoundMsg::from_round(round, messages))
         */
-
         todo!();
     }
 
     fn finish(mut self) -> Result<Self::Output> {
-        // Ok(self.inner.pick_output().unwrap()?)
+        /*
+        match self
+            .inner
+            .finalize_round(&mut OsRng, self.accum)
+            .unwrap()
+        {
+            FinalizeOutcome::Success(result) => Ok(result),
+            _ => panic!(),
+        }
+        */
+
         todo!();
     }
 }
