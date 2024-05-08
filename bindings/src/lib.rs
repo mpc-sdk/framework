@@ -3,6 +3,7 @@
 
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 mod bindings {
+    use mpc_driver::synedrion::ecdsa::{SigningKey, VerifyingKey};
     use mpc_driver::{
         meeting, MeetingOptions, PrivateKey, SessionOptions,
     };
@@ -42,18 +43,32 @@ mod bindings {
     pub fn keygen(
         options: JsValue,
         participants: JsValue,
+        shared_randomness: Vec<u8>,
+        signer: JsValue,
+        verifiers: JsValue,
     ) -> Result<JsValue, JsError> {
         let options: SessionOptions =
             serde_wasm_bindgen::from_value(options)?;
         let participants = parse_participants(participants)?;
+        let signer: SigningKey =
+            serde_wasm_bindgen::from_value(signer)?;
+        let verifiers: Vec<VerifyingKey> =
+            serde_wasm_bindgen::from_value(verifiers)?;
         let fut = async move {
-            let key_share =
-                mpc_driver::keygen(options, participants).await?;
+            let key_share = mpc_driver::cggmp::keygen(
+                options,
+                participants,
+                &shared_randomness,
+                signer,
+                verifiers,
+            )
+            .await?;
             Ok(serde_wasm_bindgen::to_value(&key_share)?)
         };
         Ok(future_to_promise(fut).into())
     }
 
+    /*
     /// Sign a message.
     #[wasm_bindgen]
     pub fn sign(
@@ -69,7 +84,7 @@ mod bindings {
             serde_wasm_bindgen::from_value(signing_key)?;
         let message = parse_message(message)?;
         let fut = async move {
-            let signature = mpc_driver::sign(
+            let signature = mpc_driver::cggmp::sign(
                 options,
                 participants,
                 signing_key,
@@ -80,6 +95,7 @@ mod bindings {
         };
         Ok(future_to_promise(fut).into())
     }
+    */
 
     /// Generate a PEM-encoded keypair.
     ///

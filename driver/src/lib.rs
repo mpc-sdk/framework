@@ -11,6 +11,8 @@ mod round;
 mod session;
 mod types;
 
+pub use synedrion;
+
 pub(crate) use bridge::Bridge;
 pub use bridge::{
     wait_for_close, wait_for_driver, wait_for_session_finish,
