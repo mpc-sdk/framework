@@ -12,9 +12,10 @@ pub(crate) trait Round:
     fn is_broadcast(&self) -> bool;
     /// Round number.
     fn round_number(&self) -> RoundNumber;
+    */
+
     /// Receiver for a peer to peer message.
     fn receiver(&self) -> Option<&PartyNumber>;
-    */
 }
 
 /// Wrapper for a round `Msg` that includes the round
@@ -28,8 +29,8 @@ where
     O: Send + Sync,
 {
     // pub(crate) round: RoundNumber,
-    // pub(crate) sender: PartyNumber,
-    // pub(crate) receiver: Option<PartyNumber>,
+    pub(crate) sender: PartyNumber,
+    pub(crate) receiver: Option<PartyNumber>,
     pub(crate) body: O,
 }
 
@@ -45,11 +46,11 @@ where
     fn round_number(&self) -> RoundNumber {
         self.round
     }
+    */
 
     fn receiver(&self) -> Option<&PartyNumber> {
         self.receiver.as_ref()
     }
-    */
 }
 
 impl<O> RoundMsg<O>
@@ -66,11 +67,11 @@ where
             .map(|m| RoundMsg {
                 /*
                 round: RoundNumber::new(round).unwrap(),
+                */
                 sender: PartyNumber::new(m.sender).unwrap(),
                 receiver: m
                     .receiver
                     .map(|v| PartyNumber::new(v).unwrap()),
-                */
                 body: m.body,
             })
             .collect::<Vec<_>>()

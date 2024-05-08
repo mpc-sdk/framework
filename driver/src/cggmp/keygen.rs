@@ -1,4 +1,6 @@
 //! Key generation for CGGMP.
+use std::num::NonZeroU16;
+
 use async_trait::async_trait;
 use mpc_client::{Event, NetworkTransport, Transport};
 use mpc_protocol::{hex, Parameters, SessionState};
@@ -116,6 +118,7 @@ where
     cached_messages: Vec<PreprocessedMessage<Signature>>,
     key: VerifyingKey,
     accum: RoundAccumulator<Signature>,
+    verifiers: Vec<VerifyingKey>,
 }
 
 impl<P> CggmpDriver<P>
@@ -149,6 +152,7 @@ where
             cached_messages,
             key,
             accum,
+            verifiers,
         })
     }
 }
@@ -268,13 +272,29 @@ where
             );
             */
 
-            let body = (self.key, *destination, message);
             // tx.send((key, *destination, message)).await.unwrap();
 
             // This will happen in a host task
             self.accum.add_artifact(artifact).unwrap();
 
-            let msg = RoundMsg { body };
+            let body = (self.key, *destination, message);
+            let sender = self
+                .verifiers
+                .iter()
+                .position(|i| i == &self.key)
+                .unwrap();
+
+            let receiver = self
+                .verifiers
+                .iter()
+                .position(|i| i == destination)
+                .unwrap();
+
+            let msg = RoundMsg {
+                body,
+                sender: ((sender + 1) as u16).try_into()?,
+                receiver: Some(((receiver + 1) as u16).try_into()?),
+            };
 
             outgoing.push(msg);
         }

@@ -23,6 +23,10 @@ pub enum Error {
     /// Driver library error.
     #[error(transparent)]
     Driver(#[from] Box<crate::Error>),
+
+    /// Error generated converting integers.
+    #[error(transparent)]
+    FromInt(#[from] std::num::TryFromIntError),
 }
 
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
