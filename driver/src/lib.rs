@@ -60,8 +60,6 @@ pub(crate) trait ProtocolDriver {
     type Error: std::fmt::Debug
         + From<mpc_client::Error>
         + From<Box<crate::Error>>;
-    /// Incoming message type.
-    type Incoming;
     /// Outgoing message type.
     type Outgoing: std::fmt::Debug + round::Round;
     /// Output when the protocol is completed.

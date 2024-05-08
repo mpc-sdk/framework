@@ -155,13 +155,12 @@ where
     P: SchemeParams + 'static,
 {
     type Error = Error;
-    type Incoming = RoundMsg<MessageOut>;
     type Outgoing = RoundMsg<MessageOut>;
     type Output = KeyShare<P>;
 
     fn handle_incoming(
         &mut self,
-        message: Self::Incoming,
+        message: Self::Outgoing,
     ) -> Result<()> {
         tracing::info!(
             "keygen handle incoming (round = {}, sender = {})",
