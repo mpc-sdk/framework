@@ -944,6 +944,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "displaydoc"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "487585f4d0c6655fe74905e2504d8ad6908e4db67f744eb140876906c2f3175d"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.38",
+]
+
+[[package]]
 name = "ecdsa"
 version = "0.14.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -965,6 +976,7 @@ dependencies = [
  "digest 0.10.7",
  "elliptic-curve 0.13.8",
  "rfc6979 0.4.0",
+ "serdect",
  "signature 2.2.0",
 ]
 
@@ -987,7 +999,7 @@ dependencies = [
  "ff 0.12.1",
  "generic-array 0.14.7",
  "group 0.12.1",
- "pkcs8",
+ "pkcs8 0.9.0",
  "rand_core 0.6.4",
  "sec1 0.3.0",
  "subtle",
@@ -1006,8 +1018,10 @@ dependencies = [
  "ff 0.13.0",
  "generic-array 0.14.7",
  "group 0.13.0",
+ "pkcs8 0.10.2",
  "rand_core 0.6.4",
  "sec1 0.7.3",
+ "serdect",
  "subtle",
  "zeroize",
 ]
@@ -1739,6 +1753,7 @@ dependencies = [
  "cfg-if",
  "ecdsa 0.16.9",
  "elliptic-curve 0.13.8",
+ "serdect",
  "sha2 0.10.8",
 ]
 
@@ -1947,6 +1962,7 @@ dependencies = [
  "curv-kzen",
  "futures",
  "getrandom 0.1.16",
+ "k256",
  "kzen-paillier",
  "mpc-client",
  "mpc-ecdsa-getrandom-hack",
@@ -2298,7 +2314,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9eca2c590a5f85da82668fa685c09ce2888b9430e83299debf1f34b65fd4a4ba"
 dependencies = [
  "der 0.6.1",
- "spki",
+ "spki 0.6.0",
+]
+
+[[package]]
+name = "pkcs8"
+version = "0.10.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f950b2377845cebe5cf8b5165cb3cc1a5e0fa5cfa3e1f7f55707d8fd82e0a7b7"
+dependencies = [
+ "der 0.7.9",
+ "spki 0.7.3",
 ]
 
 [[package]]
@@ -2823,7 +2849,7 @@ dependencies = [
  "base16ct 0.1.1",
  "der 0.6.1",
  "generic-array 0.14.7",
- "pkcs8",
+ "pkcs8 0.9.0",
  "subtle",
  "zeroize",
 ]
@@ -2837,6 +2863,8 @@ dependencies = [
  "base16ct 0.2.0",
  "der 0.7.9",
  "generic-array 0.14.7",
+ "pkcs8 0.10.2",
+ "serdect",
  "subtle",
  "zeroize",
 ]
@@ -3191,6 +3219,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "spki"
+version = "0.7.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d91ed6c858b01f942cd56b37a94b3e0a1798290327d1236e4d9cf4eaca44d29d"
+dependencies = [
+ "base64ct",
+ "der 0.7.9",
+]
+
+[[package]]
 name = "strsim"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3233,8 +3271,7 @@ checksum = "2047c6ded9c721764247e62cd3b03c09ffc529b2ba5b10ec482ae507a4a70160"
 [[package]]
 name = "synedrion"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "719bd87aad0150020e25ba8a91e1766c6c67aa2f1b94ce71dba13a3a1bf16b6d"
+source = "git+https://github.com/entropyxyz/synedrion#43674326ce1e174de00de5dacf275138d87168fc"
 dependencies = [
  "base64",
  "bincode",
@@ -3242,6 +3279,7 @@ dependencies = [
  "crypto-bigint 0.5.5",
  "crypto-primes",
  "digest 0.10.7",
+ "displaydoc",
  "hex",
  "k256",
  "rand_core 0.6.4",

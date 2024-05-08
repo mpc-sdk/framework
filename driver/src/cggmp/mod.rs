@@ -2,17 +2,17 @@
 use serde::{Deserialize, Serialize};
 
 mod error;
-// mod keygen;
+mod keygen;
 // mod sign;
 
 pub use error::Error;
-// pub use keygen::{KeyGenDriver, KeyShare};
+pub use keygen::{KeyGenDriver, KeyShare};
 // pub use sign::{
 //     OfflineResult, ParticipantDriver, PreSignDriver, Signature,
 //     SignatureDriver,
 // };
 
-/// Result type for the GG2020 protocol.
+/// Result type for the CGGMP protocol.
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// Generated signature.
@@ -29,12 +29,11 @@ use crate::{
     SessionInitiator, SessionOptions, SessionParticipant,
 };
 
-/// Run distributed key generation for the GG20 protocol.
+/// Run distributed key generation for the CGGMP protocol.
 pub async fn keygen(
     options: SessionOptions,
     participants: Option<Vec<Vec<u8>>>,
 ) -> crate::Result<crate::KeyShare> {
-    /*
     let is_initiator = participants.is_some();
 
     let parameters = options.parameters;
@@ -68,7 +67,9 @@ pub async fn keygen(
     let session_id = session.session_id;
 
     // Wait for key generation
-    let keygen = KeyGenDriver::new(transport, parameters, session)?;
+    // let keygen = KeyGenDriver::new(transport, parameters, session)?;
+
+    /*
     let (mut transport, local_key_share) =
         wait_for_driver(&mut stream, keygen).await?;
 
@@ -88,7 +89,7 @@ pub async fn keygen(
     todo!();
 }
 
-/// Sign a message using the GG20 protocol.
+/// Sign a message using the CGGMP protocol.
 pub async fn sign(
     options: SessionOptions,
     participants: Option<Vec<Vec<u8>>>,
