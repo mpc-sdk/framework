@@ -68,7 +68,7 @@ pub(crate) trait ProtocolDriver {
     /// Handle an incoming message.
     fn handle_incoming(
         &mut self,
-        message: Self::Incoming,
+        message: Self::Outgoing,
     ) -> std::result::Result<(), Self::Error>;
 
     /// Proceed to the next round.

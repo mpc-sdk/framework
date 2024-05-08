@@ -59,6 +59,19 @@ where
     }
 }
 
+impl<O> From<RoundMsg<O>> for Msg<O>
+where
+    O: Send + Sync,
+{
+    fn from(value: RoundMsg<O>) -> Self {
+        Msg {
+            sender: value.sender.get(),
+            receiver: value.receiver.map(|v| v.get()),
+            body: value.body,
+        }
+    }
+}
+
 /*
 impl<O> RoundMsg<O>
 where

@@ -13,15 +13,13 @@ use synedrion::{
         FinalizeOutcome, MessageType, PreprocessedMessage,
         RoundAccumulator, Session,
     },
-    CombinedMessage, KeyGenResult, KeyShare, ProductionParams,
-    SchemeParams,
+    CombinedMessage, KeyGenResult, KeyShare, SchemeParams,
 };
 
 use crate::{Bridge, Driver, ProtocolDriver, RoundBuffer, RoundMsg};
 
 type MessageOut =
     (VerifyingKey, VerifyingKey, CombinedMessage<Signature>);
-type MessageIn = (VerifyingKey, CombinedMessage<Signature>);
 
 /// CGGMP key generation.
 pub struct KeyGenDriver<P>
@@ -158,7 +156,7 @@ where
     P: SchemeParams + 'static,
 {
     type Error = Error;
-    type Incoming = Msg<MessageIn>;
+    type Incoming = RoundMsg<MessageOut>;
     type Outgoing = RoundMsg<MessageOut>;
     type Output = KeyShare<P>;
 
@@ -196,7 +194,7 @@ where
             */
 
             let from = &message.body.0;
-            let message = message.body.1.clone();
+            let message = message.body.2.clone();
             // let (from, message) = rx.recv().await.unwrap();
 
             // Perform quick checks before proceeding with the verification.

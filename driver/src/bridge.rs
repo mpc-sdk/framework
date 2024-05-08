@@ -3,12 +3,11 @@ use mpc_client::{Event, EventStream, NetworkTransport, Transport};
 use mpc_protocol::{SessionId, SessionState};
 
 use crate::{Driver, Error, ProtocolDriver, Round, RoundBuffer};
-use tokio::sync::mpsc::{Receiver, Sender};
 
 /// Connects a network transport with a protocol driver.
 pub(crate) struct Bridge<D: ProtocolDriver> {
     pub(crate) transport: Transport,
-    pub(crate) buffer: RoundBuffer<D::Incoming>,
+    pub(crate) buffer: RoundBuffer<D::Outgoing>,
     pub(crate) driver: Option<D>,
     pub(crate) session: SessionState,
 }
@@ -19,7 +18,6 @@ impl<D: ProtocolDriver> Bridge<D> {
         &mut self,
         event: Event,
     ) -> Result<Option<D::Output>, D::Error> {
-        /*
         if let Event::JsonMessage {
             message,
             session_id,
@@ -38,8 +36,7 @@ impl<D: ProtocolDriver> Bridge<D> {
 
             let message: D::Outgoing = message.deserialize()?;
             let round_number = message.round_number();
-            let incoming: D::Incoming = message.into();
-            self.buffer.add_message(round_number, incoming);
+            self.buffer.add_message(round_number, message);
 
             if self.buffer.is_ready(round_number) {
                 let messages = self.buffer.take(round_number);
@@ -70,9 +67,6 @@ impl<D: ProtocolDriver> Bridge<D> {
         }
 
         Ok(None)
-        */
-
-        todo!();
     }
 
     /// Start running the protocol.
