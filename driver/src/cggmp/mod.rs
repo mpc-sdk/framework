@@ -89,6 +89,7 @@ pub async fn keygen(
     todo!();
 }
 
+/*
 /// Sign a message using the CGGMP protocol.
 pub async fn sign(
     options: SessionOptions,
@@ -96,7 +97,6 @@ pub async fn sign(
     PrivateKey::GG20(local_key): PrivateKey,
     message: [u8; 32],
 ) -> crate::Result<Signature> {
-    /*
     let is_initiator = participants.is_some();
 
     let parameters = options.parameters;
@@ -169,7 +169,5 @@ pub async fn sign(
     wait_for_close(&mut stream).await?;
 
     Ok(signature)
-    */
-
-    todo!();
 }
+*/

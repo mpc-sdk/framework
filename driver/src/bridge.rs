@@ -18,6 +18,7 @@ impl<D: ProtocolDriver> Bridge<D> {
         &mut self,
         event: Event,
     ) -> Result<Option<D::Output>, D::Error> {
+        /*
         if let Event::JsonMessage {
             message,
             session_id,
@@ -68,6 +69,9 @@ impl<D: ProtocolDriver> Bridge<D> {
         }
 
         Ok(None)
+        */
+
+        todo!();
     }
 
     /// Start running the protocol.

@@ -11,7 +11,7 @@ tracing = ["dep:tracing", "dep:tracing-subscriber", "dep:tracing-subscriber-wasm
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-mpc-driver = { path = "../driver", features = ["gg20", "cggmp"] }
+mpc-driver = { path = "../driver", features = ["cggmp"] }
 mpc-protocol = { path = "../protocol" }
 mpc-client = { path = "../client" }
 

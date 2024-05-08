@@ -70,7 +70,7 @@ pub(crate) trait ProtocolDriver {
         + From<mpc_client::Error>
         + From<Box<crate::Error>>;
     /// Incoming message type.
-    type Incoming: From<Self::Outgoing>;
+    type Incoming;
     /// Outgoing message type.
     type Outgoing: std::fmt::Debug + round::Round;
     /// Output when the protocol is completed.
