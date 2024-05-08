@@ -2,18 +2,13 @@
 use async_trait::async_trait;
 use mpc_client::{Event, NetworkTransport, Transport};
 use mpc_protocol::{hex, Parameters, SessionState};
-use round_based::{Msg, StateMachine};
-use serde::{Deserialize, Serialize};
+use rand::rngs::OsRng;
+use round_based::Msg;
 
 use super::{Error, Result};
 use synedrion::{
-    ecdsa::{
-        signature::{
-            hazmat::{PrehashVerifier, RandomizedPrehashSigner},
-            Keypair,
-        },
-        Signature, SigningKey, VerifyingKey,
-    },
+    ecdsa::{Signature, SigningKey, VerifyingKey},
+    make_key_gen_session,
     sessions::Session,
     CombinedMessage, KeyGenResult, ProductionParams, SchemeParams,
 };
@@ -23,34 +18,31 @@ use crate::{Bridge, Driver, ProtocolDriver, RoundBuffer, RoundMsg};
 /// Key share.
 pub type KeyShare = synedrion::KeyShare<ProductionParams>;
 
-/// Type of the inner keygen driver.
-type KeygenInner<
-    P: SchemeParams + 'static,
-    Sig: Clone + Serialize + for<'de> Deserialize<'de> + PartialEq + Eq,
-    Signer: RandomizedPrehashSigner<Sig> + Keypair<VerifyingKey = Verifier>,
-    Verifier: PrehashVerifier<Sig> + std::fmt::Debug + Clone + Ord,
-> = Session<KeyGenResult<P>, Sig, Signer, Verifier>;
-
 type MessageOut =
     (VerifyingKey, VerifyingKey, CombinedMessage<Signature>);
 type MessageIn = (VerifyingKey, CombinedMessage<Signature>);
 
 /// CGGMP key generation.
-pub struct KeyGenDriver {
-    bridge: Bridge<KeygenDriver>,
+pub struct KeyGenDriver<P>
+where
+    P: SchemeParams + 'static,
+{
+    bridge: Bridge<CggmpDriver<P>>,
 }
 
-impl KeyGenDriver {
+impl<P> KeyGenDriver<P>
+where
+    P: SchemeParams + 'static,
+{
     /// Create a new CGGMP key generator.
     pub fn new(
         transport: Transport,
         parameters: Parameters,
         session: SessionState,
+        shared_randomness: &[u8],
+        signer: SigningKey,
+        verifiers: Vec<VerifyingKey>,
     ) -> Result<Self> {
-        /*
-        let buffer =
-            RoundBuffer::new_fixed(4, parameters.parties - 1);
-
         let party_number = session
             .party_number(transport.public_key())
             .ok_or_else(|| {
@@ -59,8 +51,18 @@ impl KeyGenDriver {
                 ))
             })?;
 
-        let driver =
-            KeygenDriver::new(parameters, party_number.into())?;
+        let buffer =
+            RoundBuffer::new_fixed(4, parameters.parties - 1);
+
+        let driver = CggmpDriver::new(
+            /*
+            parameters,
+            party_number.into(),
+            */
+            shared_randomness,
+            signer,
+            verifiers,
+        )?;
         let bridge = Bridge {
             transport,
             driver: Some(driver),
@@ -68,14 +70,14 @@ impl KeyGenDriver {
             session,
         };
         Ok(Self { bridge })
-        */
-
-        todo!();
     }
 }
 
 #[async_trait]
-impl Driver for KeyGenDriver {
+impl<P> Driver for KeyGenDriver<P>
+where
+    P: SchemeParams + 'static,
+{
     type Error = Error;
     type Output = KeyShare;
 
@@ -91,43 +93,54 @@ impl Driver for KeyGenDriver {
     }
 }
 
-impl From<KeyGenDriver> for Transport {
-    fn from(value: KeyGenDriver) -> Self {
+impl<P> From<KeyGenDriver<P>> for Transport
+where
+    P: SchemeParams + 'static,
+{
+    fn from(value: KeyGenDriver<P>) -> Self {
         value.bridge.transport
     }
 }
 
 /// CGGMP keygen driver.
-struct KeygenDriver {
-    inner: KeygenInner<
-        ProductionParams,
-        Signature,
-        SigningKey,
-        VerifyingKey,
-    >,
+struct CggmpDriver<P>
+where
+    P: SchemeParams + 'static,
+{
+    inner:
+        Session<KeyGenResult<P>, Signature, SigningKey, VerifyingKey>,
 }
 
-impl KeygenDriver {
+impl<P> CggmpDriver<P>
+where
+    P: SchemeParams + 'static,
+{
     /// Create a key generator.
     pub fn new(
+        /*
         parameters: Parameters,
         party_number: u16,
-    ) -> Result<KeygenDriver> {
-        /*
-        Ok(Self {
-            inner: Keygen::new(
-                party_number,
-                parameters.threshold,
-                parameters.parties,
-            )?,
-        })
         */
-
-        todo!();
+        shared_randomness: &[u8],
+        signer: SigningKey,
+        verifiers: Vec<VerifyingKey>,
+    ) -> Result<Self> {
+        Ok(Self {
+            inner: make_key_gen_session(
+                &mut OsRng,
+                shared_randomness,
+                signer,
+                &verifiers,
+            )
+            .map_err(|e| Error::LocalError(e.to_string()))?,
+        })
     }
 }
 
-impl ProtocolDriver for KeygenDriver {
+impl<P> ProtocolDriver for CggmpDriver<P>
+where
+    P: SchemeParams + 'static,
+{
     type Error = Error;
     type Incoming = Msg<MessageIn>;
     type Outgoing = RoundMsg<MessageOut>;
@@ -165,3 +178,18 @@ impl ProtocolDriver for KeygenDriver {
         todo!();
     }
 }
+
+/*
+fn make_signers(
+    num_parties: usize,
+) -> (Vec<SigningKey>, Vec<VerifyingKey>) {
+    let signers = (0..num_parties)
+        .map(|_| SigningKey::random(&mut OsRng))
+        .collect::<Vec<_>>();
+    let verifiers = signers
+        .iter()
+        .map(|signer| *signer.verifying_key())
+        .collect::<Vec<_>>();
+    (signers, verifiers)
+}
+*/

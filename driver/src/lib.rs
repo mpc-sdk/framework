@@ -82,11 +82,6 @@ pub(crate) trait ProtocolDriver {
         message: Self::Incoming,
     ) -> std::result::Result<(), Self::Error>;
 
-    /*
-    /// Determine if the protocol wants to proceed.
-    fn wants_to_proceed(&self) -> bool;
-    */
-
     /// Proceed to the next round.
     fn proceed(
         &mut self,
