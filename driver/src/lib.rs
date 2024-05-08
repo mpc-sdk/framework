@@ -26,6 +26,9 @@ pub use types::*;
 /// Result type for the driver library.
 pub type Result<T> = std::result::Result<T, Error>;
 
+#[cfg(feature = "cggmp")]
+pub mod cggmp;
+
 #[cfg(feature = "gg20")]
 pub mod gg20;
 
