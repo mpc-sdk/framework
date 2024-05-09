@@ -43,26 +43,20 @@ where
         signer: SigningKey,
         verifiers: Vec<VerifyingKey>,
     ) -> Result<Self> {
-        let party_number = session
-            .party_number(transport.public_key())
-            .ok_or_else(|| {
+        session.party_number(transport.public_key()).ok_or_else(
+            || {
                 Error::NotSessionParticipant(hex::encode(
                     transport.public_key(),
                 ))
-            })?;
+            },
+        )?;
 
         let buffer =
             RoundBuffer::new_fixed(4, parameters.parties - 1);
 
-        let driver = CggmpDriver::new(
-            /*
-            parameters,
-            party_number.into(),
-            */
-            shared_randomness,
-            signer,
-            verifiers,
-        )?;
+        let driver =
+            CggmpDriver::new(shared_randomness, signer, verifiers)?;
+
         let bridge = Bridge {
             transport,
             driver: Some(driver),
