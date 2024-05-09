@@ -1,4 +1,6 @@
 //! Key generation for CGGMP.
+use std::num::NonZeroU16;
+
 use async_trait::async_trait;
 use mpc_client::{Event, NetworkTransport, Transport};
 use mpc_protocol::{hex, Parameters, SessionState};
@@ -248,23 +250,6 @@ where
             // This will happen in a host task
             self.accum.add_artifact(artifact).unwrap();
 
-            let is_direct = match &message {
-                CombinedMessage::One(msg) => {
-                    matches!(msg.message_type(), MessageType::Direct)
-                }
-                CombinedMessage::Both { .. } => true,
-            };
-            let is_broadcast = match &message {
-                CombinedMessage::One(msg) => {
-                    matches!(
-                        msg.message_type(),
-                        MessageType::Broadcast
-                    )
-                }
-                CombinedMessage::Both { .. } => true,
-            };
-
-            let body = (self.key, *destination, message);
             let sender = self
                 .verifiers
                 .iter()
@@ -277,17 +262,71 @@ where
                 .position(|i| i == destination)
                 .unwrap();
 
-            let msg = RoundMsg {
-                body,
-                sender: ((sender + 1) as u16).try_into()?,
-                receiver: Some(((receiver + 1) as u16).try_into()?),
-                round: (self.session.current_round().0 as u16)
-                    .try_into()?,
-                is_broadcast,
-                is_direct,
-            };
+            let sender: NonZeroU16 =
+                ((sender + 1) as u16).try_into()?;
+            let receiver: NonZeroU16 =
+                ((receiver + 1) as u16).try_into()?;
+            let round: NonZeroU16 =
+                (self.session.current_round().0 as u16).try_into()?;
 
-            outgoing.push(msg);
+            // Split messages when CombinedMessage::Both so we have
+            // separate direct and broadcast messages for routing
+            match message {
+                CombinedMessage::One(body) => {
+                    match body.message_type() {
+                        MessageType::Direct => {
+                            outgoing.push(RoundMsg {
+                                body: (
+                                    self.key,
+                                    *destination,
+                                    CombinedMessage::One(body),
+                                ),
+                                sender,
+                                receiver: Some(receiver),
+                                round,
+                            });
+                        }
+                        MessageType::Broadcast => {
+                            outgoing.push(RoundMsg {
+                                body: (
+                                    self.key,
+                                    *destination,
+                                    CombinedMessage::One(body),
+                                ),
+                                sender,
+                                receiver: None,
+                                round,
+                            });
+                        }
+                        MessageType::Echo => {
+                            panic!("handle echo message");
+                        }
+                    }
+                }
+                CombinedMessage::Both { direct, broadcast } => {
+                    outgoing.push(RoundMsg {
+                        body: (
+                            self.key,
+                            *destination,
+                            CombinedMessage::One(direct),
+                        ),
+                        sender,
+                        receiver: Some(receiver),
+                        round,
+                    });
+
+                    outgoing.push(RoundMsg {
+                        body: (
+                            self.key,
+                            *destination,
+                            CombinedMessage::One(broadcast),
+                        ),
+                        sender,
+                        receiver: None,
+                        round,
+                    });
+                }
+            };
         }
 
         Ok(outgoing)
