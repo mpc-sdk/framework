@@ -280,9 +280,7 @@ where
             .unwrap()
         {
             FinalizeOutcome::Success(result) => Ok(result),
-            _ => panic!(
-                "cannot finish protocol as another round is expected"
-            ),
+            _ => Err(Error::NotFinished),
         }
     }
 }
