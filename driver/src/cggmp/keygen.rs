@@ -11,8 +11,8 @@ use synedrion::{
     ecdsa::{Signature, SigningKey, VerifyingKey},
     make_key_gen_session,
     sessions::{
-        FinalizeOutcome, MessageType, PreprocessedMessage,
-        RoundAccumulator, Session,
+        FinalizeOutcome, PreprocessedMessage, RoundAccumulator,
+        Session,
     },
     CombinedMessage, KeyGenResult, KeyShare, SchemeParams,
 };
@@ -109,7 +109,6 @@ where
 {
     session:
         Session<KeyGenResult<P>, Signature, SigningKey, VerifyingKey>,
-
     cached_messages: Vec<PreprocessedMessage<Signature>>,
     key: VerifyingKey,
     accum: RoundAccumulator<Signature>,
@@ -269,70 +268,18 @@ where
             let round: NonZeroU16 =
                 (self.session.current_round().0 as u16).try_into()?;
 
-            // Split messages when CombinedMessage::Both so we have
-            // separate direct and broadcast messages for routing
-            match message {
-                CombinedMessage::One(body) => {
-                    match body.message_type() {
-                        MessageType::Direct => {
-                            outgoing.push(RoundMsg {
-                                body: (
-                                    self.key,
-                                    *destination,
-                                    CombinedMessage::One(body),
-                                ),
-                                sender,
-                                receiver: Some(receiver),
-                                round,
-                            });
-                        }
-                        MessageType::Broadcast => {
-                            outgoing.push(RoundMsg {
-                                body: (
-                                    self.key,
-                                    *destination,
-                                    CombinedMessage::One(body),
-                                ),
-                                sender,
-                                receiver: None,
-                                round,
-                            });
-                        }
-                        MessageType::Echo => {
-                            panic!("handle echo message");
-                        }
-                    }
-                }
-                CombinedMessage::Both { direct, broadcast } => {
-                    outgoing.push(RoundMsg {
-                        body: (
-                            self.key,
-                            *destination,
-                            CombinedMessage::One(direct),
-                        ),
-                        sender,
-                        receiver: Some(receiver),
-                        round,
-                    });
-
-                    outgoing.push(RoundMsg {
-                        body: (
-                            self.key,
-                            *destination,
-                            CombinedMessage::One(broadcast),
-                        ),
-                        sender,
-                        receiver: None,
-                        round,
-                    });
-                }
-            };
+            outgoing.push(RoundMsg {
+                body: (self.key, *destination, message),
+                sender,
+                receiver,
+                round,
+            });
         }
 
         Ok(outgoing)
     }
 
-    fn finish(mut self) -> Result<Self::Output> {
+    fn finish(self) -> Result<Self::Output> {
         match self
             .session
             .finalize_round(&mut OsRng, self.accum)

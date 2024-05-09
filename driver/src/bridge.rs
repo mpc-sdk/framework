@@ -1,7 +1,6 @@
 use futures::{select, FutureExt, StreamExt};
 use mpc_client::{Event, EventStream, NetworkTransport, Transport};
 use mpc_protocol::{SessionId, SessionState};
-use synedrion::CombinedMessage;
 
 use crate::{Driver, Error, ProtocolDriver, Round, RoundBuffer};
 
@@ -82,32 +81,17 @@ impl<D: ProtocolDriver> Bridge<D> {
         messages: Vec<D::Outgoing>,
     ) -> Result<(), D::Error> {
         for message in messages {
-            if message.is_broadcast() {
-                let recipients = self
-                    .session
-                    .recipients(self.transport.public_key());
-
-                self.transport
-                    .broadcast_json(
-                        &self.session.session_id,
-                        recipients.as_slice(),
-                        &message,
-                    )
-                    .await?;
-            } else {
-                let party_number = message.receiver().unwrap();
-                let peer_key =
-                    self.session.peer_key(*party_number).unwrap();
-                self.transport
-                    .send_json(
-                        peer_key,
-                        &message,
-                        Some(self.session.session_id),
-                    )
-                    .await?;
-            }
+            let party_number = message.receiver();
+            let peer_key =
+                self.session.peer_key(*party_number).unwrap();
+            self.transport
+                .send_json(
+                    peer_key,
+                    &message,
+                    Some(self.session.session_id),
+                )
+                .await?;
         }
-
         Ok(())
     }
 }

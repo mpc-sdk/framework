@@ -6,14 +6,11 @@ use std::collections::HashMap;
 pub(crate) trait Round:
     Serialize + DeserializeOwned + Send + Sync
 {
-    /// Determine if this round is a broadcast message.
-    fn is_broadcast(&self) -> bool;
-
     /// Round number.
     fn round_number(&self) -> RoundNumber;
 
-    /// Receiver for a peer to peer message.
-    fn receiver(&self) -> Option<&PartyNumber>;
+    /// Receiver for a message.
+    fn receiver(&self) -> &PartyNumber;
 }
 
 /// Wrapper for a round `Msg` that includes the round
@@ -28,7 +25,7 @@ where
 {
     pub(crate) round: RoundNumber,
     pub(crate) sender: PartyNumber,
-    pub(crate) receiver: Option<PartyNumber>,
+    pub(crate) receiver: PartyNumber,
     pub(crate) body: O,
 }
 
@@ -36,44 +33,13 @@ impl<O> Round for RoundMsg<O>
 where
     O: Serialize + Send + Sync + DeserializeOwned,
 {
-    fn is_broadcast(&self) -> bool {
-        self.receiver.is_none()
-    }
-
     fn round_number(&self) -> RoundNumber {
         self.round
     }
 
-    fn receiver(&self) -> Option<&PartyNumber> {
-        self.receiver.as_ref()
+    fn receiver(&self) -> &PartyNumber {
+        &self.receiver
     }
-}
-
-impl<O> RoundMsg<O>
-where
-    O: Send + Sync,
-{
-    /*
-    /// Convert a collection of round messages.
-    pub fn from_round(
-        round: u16,
-        messages: Vec<Msg<O>>,
-    ) -> Vec<Self> {
-        messages
-            .into_iter()
-            .map(|m| RoundMsg {
-                round: RoundNumber::new(round).unwrap(),
-                sender: PartyNumber::new(m.sender).unwrap(),
-                receiver: m
-                    .receiver
-                    .map(|v| PartyNumber::new(v).unwrap()),
-                body: m.body,
-                is_broadcast: m.is_broadcast,
-                is_direct: m.is_direct,
-            })
-            .collect::<Vec<_>>()
-    }
-    */
 }
 
 /// Buffers incoming messages.
