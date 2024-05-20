@@ -40,7 +40,7 @@ pub async fn keygen<P: SchemeParams + 'static>(
     shared_randomness: &[u8],
     signer: SigningKey,
     verifiers: Vec<VerifyingKey>,
-) -> crate::Result<KeyShare<P>> {
+) -> crate::Result<KeyShare<P, VerifyingKey>> {
     let is_initiator = participants.is_some();
 
     let parameters = options.parameters;

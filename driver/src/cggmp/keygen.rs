@@ -73,7 +73,7 @@ where
     P: SchemeParams + 'static,
 {
     type Error = Error;
-    type Output = KeyShare<P>;
+    type Output = KeyShare<P, VerifyingKey>;
 
     async fn handle_event(
         &mut self,
@@ -151,7 +151,7 @@ where
 {
     type Error = Error;
     type Outgoing = RoundMsg<MessageOut>;
-    type Output = KeyShare<P>;
+    type Output = KeyShare<P, VerifyingKey>;
 
     fn handle_incoming(
         &mut self,
