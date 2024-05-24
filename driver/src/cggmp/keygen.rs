@@ -279,7 +279,7 @@ where
             .finalize_round(&mut OsRng, self.accum)
             .unwrap()
         {
-            FinalizeOutcome::Success(result) => Ok(result),
+            FinalizeOutcome::Success((result, _)) => Ok(result),
             _ => Err(Error::NotFinished),
         }
     }
