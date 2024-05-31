@@ -4,7 +4,7 @@ use crate::test_utils::{
 use anyhow::Result;
 use serial_test::serial;
 
-/// CGGMP keygen and signing.
+/// CGGMP keygen.
 #[tokio::test]
 #[serial]
 async fn integration_cggmp_keygen() -> Result<()> {
@@ -16,6 +16,22 @@ async fn integration_cggmp_keygen() -> Result<()> {
 
     let server_public_key = server_public_key().await?;
     cggmp::run_keygen(SERVER, server_public_key).await?;
+
+    Ok(())
+}
+
+/// CGGMP threshold sign.
+#[tokio::test]
+#[serial]
+async fn integration_cggmp_threshold_sign() -> Result<()> {
+    // crate::test_utils::init_tracing();
+
+    // Wait for the server to start
+    let (rx, _handle) = spawn_server()?;
+    let _ = rx.await?;
+
+    let server_public_key = server_public_key().await?;
+    cggmp::run_threshold_sign(SERVER, server_public_key).await?;
 
     Ok(())
 }

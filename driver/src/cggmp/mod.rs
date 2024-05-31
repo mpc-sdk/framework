@@ -17,6 +17,9 @@ mod sign;
 pub use aux_gen::AuxGenDriver;
 pub use error::Error;
 pub use key_gen::KeyGenDriver;
+pub use key_init::KeyInitDriver;
+pub use key_refresh::KeyRefreshDriver;
+pub use sign::SignatureDriver;
 
 type MessageOut = (VerifyingKey, CombinedMessage<ecdsa::Signature>);
 
@@ -29,11 +32,6 @@ pub type KeyShare =
 #[cfg(debug_assertions)]
 pub type KeyShare =
     SynedrionKeyShare<synedrion::TestParams, VerifyingKey>;
-
-pub use sign::{
-    // OfflineResult, ParticipantDriver, PreSignDriver, Signature,
-    SignatureDriver,
-};
 
 /// Result type for the CGGMP protocol.
 pub type Result<T> = std::result::Result<T, Error>;

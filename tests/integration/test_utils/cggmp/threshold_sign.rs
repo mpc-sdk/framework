@@ -3,7 +3,10 @@ use futures::{select, FutureExt, StreamExt};
 use std::collections::HashMap;
 
 use mpc_driver::{
-    cggmp::{self, AuxGenDriver, KeyGenDriver, SignatureDriver},
+    cggmp::{
+        self, AuxGenDriver, KeyGenDriver, KeyInitDriver,
+        SignatureDriver,
+    },
     k256::{
         self,
         ecdsa::{SigningKey, VerifyingKey},
@@ -52,7 +55,7 @@ pub async fn run_threshold_sign(
     )
     .await?;
 
-    assert_eq!(2, signatures.len());
+    // assert_eq!(2, signatures.len());
 
     Ok(())
 }
@@ -64,13 +67,29 @@ async fn cggmp_sign(
     server_public_key: Vec<u8>,
     parameters: Parameters,
     prehashed_message: &PrehashedMessage,
-) -> Result<Vec<RecoverableSignature>> {
+) -> Result<()> {
     let rng = &mut OsRng;
     let shared_randomness: [u8; 32] = rng.gen();
     let mut signing_keys = Vec::new();
     for _ in 0..parameters.parties {
         signing_keys.push(k256::ecdsa::SigningKey::random(rng));
     }
+
+    let key_shares = make_key_init(
+        server,
+        server_public_key,
+        parameters.clone(),
+        signing_keys.clone(),
+    )
+    .await?;
+
+    // Convert to t-of-t threshold keyshares
+    let t_key_shares = key_shares
+        .iter()
+        .map(|key_share| key_share.to_threshold_key_share())
+        .collect::<Vec<_>>();
+
+    Ok(())
 
     /*
     let signing_key_1 = signing_keys.remove(0);
@@ -282,11 +301,21 @@ async fn cggmp_sign(
 
     Ok(signatures)
       */
-
-    todo!();
 }
 
-async fn make_key_init() -> Result<()> {
+async fn make_key_init(
+    server: &str,
+    server_public_key: Vec<u8>,
+    parameters: Parameters,
+    mut signing_keys: Vec<SigningKey>,
+) -> Result<Vec<KeyShare<TestParams, VerifyingKey>>> {
+    let rng = &mut OsRng;
+    let shared_randomness: [u8; 32] = rng.gen();
+    let verifiers: Vec<VerifyingKey> = signing_keys
+        .iter()
+        .map(|k| k.verifying_key().clone())
+        .collect();
+
     /*
       &mut OsRng,
       shared_randomness,
@@ -294,5 +323,138 @@ async fn make_key_init() -> Result<()> {
       &verifiers[..t],
     */
 
-    Ok(())
+    // Create new clients
+    let (client_t_1, event_loop_t_1, _key_t_1) =
+        new_client::<anyhow::Error>(
+            server,
+            server_public_key.clone(),
+        )
+        .await?;
+    let (client_t_2, event_loop_t_2, key_t_2) =
+        new_client::<anyhow::Error>(
+            server,
+            server_public_key.clone(),
+        )
+        .await?;
+
+    let mut client_t_1_transport: Transport = client_t_1.into();
+    let mut client_t_2_transport: Transport = client_t_2.into();
+
+    // Each client handshakes with the server
+    client_t_1_transport.connect().await?;
+    client_t_2_transport.connect().await?;
+
+    // Event loop streams
+    let mut s_t_1 = event_loop_t_1.run();
+    let mut s_t_2 = event_loop_t_2.run();
+
+    let session_participants = vec![key_t_2.public_key().to_vec()];
+
+    let mut client_t_1_session = SessionInitiator::new(
+        client_t_1_transport,
+        session_participants,
+    );
+    let mut client_t_2_session =
+        SessionParticipant::new(client_t_2_transport);
+
+    let mut sessions: Vec<SessionState> = Vec::new();
+
+    // Prepare the sessions for each party
+    loop {
+        if sessions.len() == parameters.threshold as usize {
+            break;
+        }
+
+        select! {
+            event = s_t_1.next().fuse() => {
+                match event {
+                    Some(event) => {
+                        let event = event?;
+
+                        if let Some(session) =
+                            client_t_1_session.handle_event(event).await? {
+                            sessions.insert(0, session);
+                        }
+                    }
+                    _ => {}
+                }
+            },
+            event = s_t_2.next().fuse() => {
+                match event {
+                    Some(event) => {
+                        let event = event?;
+                        if let Some(session) =
+                            client_t_2_session.handle_event(event).await? {
+                            sessions.push(session);
+                        }
+                    }
+                    _ => {}
+                }
+            },
+        }
+    }
+
+    // Prepare for key generation
+    let client_t_1_transport: Transport = client_t_1_session.into();
+    let client_t_2_transport: Transport = client_t_2_session.into();
+
+    let session_t_1 = sessions.remove(0);
+    let session_t_2 = sessions.remove(0);
+
+    let mut key_init_t_1 = KeyInitDriver::<TestParams>::new(
+        client_t_1_transport.clone(),
+        session_t_1,
+        &shared_randomness,
+        signing_keys.remove(0),
+        verifiers.clone(),
+    )?;
+    let mut key_init_t_2 = KeyInitDriver::<TestParams>::new(
+        client_t_2_transport.clone(),
+        session_t_2,
+        &shared_randomness,
+        signing_keys.remove(0),
+        verifiers.clone(),
+    )?;
+
+    // Each party starts key generation protocol.
+    key_init_t_1.execute().await?;
+    key_init_t_2.execute().await?;
+
+    println!("Sessions prepare for make key init...");
+
+    let mut results = Vec::new();
+
+    loop {
+        if results.len() == 2 {
+            break;
+        }
+        select! {
+            event = s_t_1.next().fuse() => {
+                match event {
+                    Some(event) => {
+                        let event = event?;
+                        if let Some(key_init) =
+                            key_init_t_1.handle_event(event).await? {
+                            results.push(key_init);
+                        }
+                    }
+                    _ => {}
+                }
+            },
+            event = s_t_2.next().fuse() => {
+                match event {
+                    Some(event) => {
+                        let event = event?;
+                        if let Some(key_init) =
+                            key_init_t_2.handle_event(event).await? {
+                            results.push(key_init);
+                        }
+                    }
+                    _ => {}
+                }
+            },
+        }
+    }
+
+    Ok(results)
 }

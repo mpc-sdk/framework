@@ -20,14 +20,14 @@ use crate::{key_to_str, Bridge, Driver, ProtocolDriver, RoundMsg};
 use super::MessageOut;
 
 /// CGGMP key generation.
-pub struct KeyInitDriver<P>
+pub struct KeyRefreshDriver<P>
 where
     P: SchemeParams + 'static,
 {
     bridge: Bridge<CggmpDriver<P>>,
 }
 
-impl<P> KeyInitDriver<P>
+impl<P> KeyRefreshDriver<P>
 where
     P: SchemeParams + 'static,
 {
@@ -60,7 +60,7 @@ where
 }
 
 #[async_trait]
-impl<P> Driver for KeyInitDriver<P>
+impl<P> Driver for KeyRefreshDriver<P>
 where
     P: SchemeParams + 'static,
 {
@@ -80,11 +80,11 @@ where
     }
 }
 
-impl<P> From<KeyInitDriver<P>> for Transport
+impl<P> From<KeyRefreshDriver<P>> for Transport
 where
     P: SchemeParams + 'static,
 {
-    fn from(value: KeyInitDriver<P>) -> Self {
+    fn from(value: KeyRefreshDriver<P>) -> Self {
         value.bridge.transport
     }
 }
