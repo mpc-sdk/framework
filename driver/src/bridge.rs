@@ -33,7 +33,7 @@ impl<D: ProtocolDriver> Bridge<D> {
                 return Err(Box::new(Error::SessionIdRequired).into());
             }
 
-            let message: D::Outgoing = message.deserialize()?;
+            let message: D::Message = message.deserialize()?;
             let driver = self.driver.as_mut().unwrap();
             if !driver.can_finalize()? {
                 driver.handle_incoming(message)?;
@@ -62,9 +62,10 @@ impl<D: ProtocolDriver> Bridge<D> {
         Ok(())
     }
 
+    /// Send messages to peers.
     async fn dispatch_round_messages(
         &mut self,
-        messages: Vec<D::Outgoing>,
+        messages: Vec<D::Message>,
     ) -> Result<(), D::Error> {
         for message in messages {
             let party_number = message.receiver();

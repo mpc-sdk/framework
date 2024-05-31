@@ -154,16 +154,26 @@ where
     P: SchemeParams + 'static,
 {
     type Error = Error;
-    type Outgoing = RoundMsg<MessageOut>;
+    type Message = RoundMsg<MessageOut>;
     type Output = KeyShare<P, VerifyingKey>;
+
+    type Session = Option<
+        Session<KeyGenResult<P>, Signature, SigningKey, VerifyingKey>,
+    >;
+    type Accumulator = Option<RoundAccumulator<Signature>>;
+    type CachedMessages = Vec<PreprocessedMessage<Signature>>;
 
     fn can_finalize(&self) -> Result<bool> {
         // TODO: error conversion
-        Ok(self.session.as_ref().unwrap()
-           .can_finalize(self.accum.as_ref().unwrap()).unwrap())
+        Ok(self
+            .session
+            .as_ref()
+            .unwrap()
+            .can_finalize(self.accum.as_ref().unwrap())
+            .unwrap())
     }
 
-    fn proceed(&mut self) -> Result<Vec<Self::Outgoing>> {
+    fn proceed(&mut self) -> Result<Vec<Self::Message>> {
         let mut outgoing = Vec::new();
 
         let session = self.session.as_mut().unwrap();
@@ -235,10 +245,7 @@ where
                 session.process_message(preprocessed).unwrap();
 
             // This will happen in a host task.
-            accum
-                .add_processed_message(result)
-                .unwrap()
-                .unwrap();
+            accum.add_processed_message(result).unwrap().unwrap();
         }
 
         Ok(outgoing)
@@ -246,12 +253,11 @@ where
 
     fn handle_incoming(
         &mut self,
-        message: Self::Outgoing,
+        message: Self::Message,
     ) -> Result<()> {
         let session = self.session.as_mut().unwrap();
         let accum = self.accum.as_mut().unwrap();
         if !session.can_finalize(accum).unwrap() {
-
             let key_str = key_to_str(&session.verifier());
             tracing::info!(
                 "keygen handle incoming (round = {}, sender = {})",
@@ -278,15 +284,15 @@ where
                 .unwrap();
 
             if let Some(preprocessed) = preprocessed {
-                println!("{key_str}: applying a message from {}", key_to_str(&from));
+                println!(
+                    "{key_str}: applying a message from {}",
+                    key_to_str(&from)
+                );
                 let result =
                     session.process_message(preprocessed).unwrap();
 
                 // This will happen in a host task.
-                accum
-                    .add_processed_message(result)
-                    .unwrap()
-                    .unwrap();
+                accum.add_processed_message(result).unwrap().unwrap();
             }
         }
 
@@ -300,13 +306,8 @@ where
         let key_str = key_to_str(&session.verifier());
         println!("{key_str}: finalizing the round");
 
-        match session
-            .finalize_round(&mut OsRng, accum)
-            .unwrap()
-        {
-            FinalizeOutcome::Success((result, _)) => {
-                Ok(Some(result))
-            }
+        match session.finalize_round(&mut OsRng, accum).unwrap() {
+            FinalizeOutcome::Success((result, _)) => Ok(Some(result)),
             FinalizeOutcome::AnotherRound {
                 session: new_session,
                 cached_messages: new_cached_messages,

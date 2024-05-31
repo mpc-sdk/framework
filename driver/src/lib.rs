@@ -68,21 +68,30 @@ pub(crate) trait ProtocolDriver {
         + From<Box<crate::Error>>;
 
     /// Outgoing message type.
-    type Outgoing: std::fmt::Debug + round::Round;
+    type Message: std::fmt::Debug + round::Round;
 
     /// Output when the protocol is completed.
     type Output;
 
+    /// Session round object.
+    type Session;
+
+    /// Message accumulator.
+    type Accumulator;
+
+    /// Collection of cached messages.
+    type CachedMessages;
+
     /// Handle an incoming message.
     fn handle_incoming(
         &mut self,
-        message: Self::Outgoing,
+        message: Self::Message,
     ) -> std::result::Result<(), Self::Error>;
 
     /// Proceed to the next round.
     fn proceed(
         &mut self,
-    ) -> std::result::Result<Vec<Self::Outgoing>, Self::Error>;
+    ) -> std::result::Result<Vec<Self::Message>, Self::Error>;
 
     /// Whether the current round can be finalized.
     fn can_finalize(&self) -> std::result::Result<bool, Self::Error>;
