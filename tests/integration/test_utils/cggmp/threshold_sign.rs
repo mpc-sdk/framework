@@ -69,7 +69,6 @@ async fn cggmp_sign(
     prehashed_message: &PrehashedMessage,
 ) -> Result<()> {
     let rng = &mut OsRng;
-    let shared_randomness: [u8; 32] = rng.gen();
     let mut signing_keys = Vec::new();
     for _ in 0..parameters.parties {
         signing_keys.push(k256::ecdsa::SigningKey::random(rng));
@@ -412,8 +411,6 @@ async fn make_key_init(
     // Each party starts key generation protocol.
     key_init_t_1.execute().await?;
     key_init_t_2.execute().await?;
-
-    println!("Sessions prepare for make key init...");
 
     let mut results = Vec::new();
 
