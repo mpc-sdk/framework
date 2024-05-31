@@ -17,7 +17,7 @@ use synedrion::{
     CombinedMessage, KeyGenResult, KeyShare, SchemeParams,
 };
 
-use crate::{Bridge, Driver, ProtocolDriver, RoundMsg};
+use crate::{key_to_str, Bridge, Driver, ProtocolDriver, RoundMsg};
 
 type MessageOut =
     (VerifyingKey, VerifyingKey, CombinedMessage<Signature>);
@@ -43,16 +43,21 @@ where
         signer: SigningKey,
         verifiers: Vec<VerifyingKey>,
     ) -> Result<Self> {
-        session.party_number(transport.public_key()).ok_or_else(
-            || {
+        let party_number = session
+            .party_number(transport.public_key())
+            .ok_or_else(|| {
                 Error::NotSessionParticipant(hex::encode(
                     transport.public_key(),
                 ))
-            },
-        )?;
+            })?;
 
-        let driver =
-            CggmpDriver::new(shared_randomness, signer, verifiers)?;
+        let driver = CggmpDriver::new(
+            parameters,
+            party_number.into(),
+            shared_randomness,
+            signer,
+            verifiers,
+        )?;
 
         let bridge = Bridge {
             transport,
@@ -97,11 +102,14 @@ struct CggmpDriver<P>
 where
     P: SchemeParams + 'static,
 {
-    session:
+    parameters: Parameters,
+    party_number: u16,
+    session: Option<
         Session<KeyGenResult<P>, Signature, SigningKey, VerifyingKey>,
+    >,
+    accum: Option<RoundAccumulator<Signature>>,
     cached_messages: Vec<PreprocessedMessage<Signature>>,
     key: VerifyingKey,
-    accum: RoundAccumulator<Signature>,
     verifiers: Vec<VerifyingKey>,
 }
 
@@ -111,10 +119,8 @@ where
 {
     /// Create a key generator.
     pub fn new(
-        /*
         parameters: Parameters,
         party_number: u16,
-        */
         shared_randomness: &[u8],
         signer: SigningKey,
         verifiers: Vec<VerifyingKey>,
@@ -132,10 +138,12 @@ where
         let accum = session.make_accumulator();
 
         Ok(Self {
-            session,
+            parameters,
+            party_number,
+            session: Some(session),
+            accum: Some(accum),
             cached_messages,
             key,
-            accum,
             verifiers,
         })
     }
@@ -151,98 +159,47 @@ where
 
     fn can_finalize(&self) -> Result<bool> {
         // TODO: error conversion
-        Ok(self.session.can_finalize(&self.accum).unwrap())
-    }
-
-    fn handle_incoming(
-        &mut self,
-        message: Self::Outgoing,
-    ) -> Result<()> {
-        tracing::info!(
-            "keygen handle incoming (round = {}, sender = {})",
-            self.session.current_round().0,
-            message.sender,
-        );
-
-        for preprocessed in self.cached_messages.drain(..) {
-            // In production usage, this will happen in a spawned task.
-            // println!("{key_str}: applying a cached message");
-            let result =
-                self.session.process_message(preprocessed).unwrap();
-
-            // This will happen in a host task.
-            self.accum
-                .add_processed_message(result)
-                .unwrap()
-                .unwrap();
-        }
-
-        if !self.session.can_finalize(&self.accum).unwrap() {
-            // This can be checked if a timeout expired, to see which nodes have not responded yet.
-            let unresponsive_parties =
-                self.session.missing_messages(&self.accum).unwrap();
-            assert!(!unresponsive_parties.is_empty());
-
-            /*
-            println!("{key_str}: waiting for a message");
-            */
-
-            let from = &message.body.0;
-            let message = message.body.2.clone();
-            // let (from, message) = rx.recv().await.unwrap();
-
-            // Perform quick checks before proceeding with the verification.
-            let preprocessed = self
-                .session
-                .preprocess_message(&mut self.accum, from, message)
-                .unwrap();
-
-            if let Some(preprocessed) = preprocessed {
-                /*
-                // In production usage, this will happen in a spawned task.
-                println!("{key_str}: applying a message from {}", key_to_str(&from));
-                */
-                let result = self
-                    .session
-                    .process_message(preprocessed)
-                    .unwrap();
-
-                // This will happen in a host task.
-                self.accum
-                    .add_processed_message(result)
-                    .unwrap()
-                    .unwrap();
-            }
-        }
-
-        Ok(())
+        Ok(self.session.as_ref().unwrap()
+           .can_finalize(self.accum.as_ref().unwrap()).unwrap())
     }
 
     fn proceed(&mut self) -> Result<Vec<Self::Outgoing>> {
         let mut outgoing = Vec::new();
 
-        let destinations = self.session.message_destinations();
+        let session = self.session.as_mut().unwrap();
+        let accum = self.accum.as_mut().unwrap();
+
+        let destinations = session.message_destinations();
+        let key_str = key_to_str(&session.verifier());
+
+        println!(
+            "{key_str}: *** starting round {:?} ***",
+            session.current_round()
+        );
+
+        println!(
+            "proceed was called {} {} {}",
+            key_str,
+            self.party_number,
+            destinations.len(),
+        );
+
         for destination in destinations.iter() {
             // In production usage, this will happen in a spawned task
             // (since it can take some time to create a message),
             // and the artifact will be sent back to the host task
             // to be added to the accumulator.
-            let (message, artifact) = self
-                .session
+            let (message, artifact) = session
                 .make_message(&mut OsRng, destination)
                 .unwrap();
 
-            /*
             println!(
                 "{key_str}: sending a message to {}",
                 key_to_str(destination)
             );
-            */
-
-            // tx.send((key, *destination, message)).await.unwrap();
 
             // This will happen in a host task
-            self.accum.add_artifact(artifact).unwrap();
+            accum.add_artifact(artifact).unwrap();
 
             let sender = self
                 .verifiers
@@ -261,7 +218,7 @@ where
             let receiver: NonZeroU16 =
                 ((receiver + 1) as u16).try_into()?;
             let round: NonZeroU16 =
-                (self.session.current_round().0 as u16).try_into()?;
+                (session.current_round().0 as u16).try_into()?;
 
             outgoing.push(RoundMsg {
                 body: (self.key, *destination, message),
@@ -271,17 +228,94 @@ where
             });
         }
 
+        for preprocessed in self.cached_messages.drain(..) {
+            // In production usage, this will happen in a spawned task.
+            println!("{key_str}: applying a cached message");
+            let result =
+                session.process_message(preprocessed).unwrap();
+
+            // This will happen in a host task.
+            accum
+                .add_processed_message(result)
+                .unwrap()
+                .unwrap();
+        }
+
         Ok(outgoing)
     }
 
-    fn finish(self) -> Result<Self::Output> {
-        match self
-            .session
-            .finalize_round(&mut OsRng, self.accum)
+    fn handle_incoming(
+        &mut self,
+        message: Self::Outgoing,
+    ) -> Result<()> {
+        let session = self.session.as_mut().unwrap();
+        let accum = self.accum.as_mut().unwrap();
+        if !session.can_finalize(accum).unwrap() {
+
+            let key_str = key_to_str(&session.verifier());
+            tracing::info!(
+                "keygen handle incoming (round = {}, sender = {})",
+                session.current_round().0,
+                message.sender,
+            );
+
+            // This can be checked if a timeout expired, to see which nodes have not responded yet.
+            let unresponsive_parties =
+                session.missing_messages(accum).unwrap();
+            assert!(!unresponsive_parties.is_empty());
+
+            /*
+            println!("{key_str}: waiting for a message");
+            */
+
+            let from = &message.body.0;
+            let message = message.body.2.clone();
+            // let (from, message) = rx.recv().await.unwrap();
+
+            // Perform quick checks before proceeding with the verification.
+            let preprocessed = session
+                .preprocess_message(accum, from, message)
+                .unwrap();
+
+            if let Some(preprocessed) = preprocessed {
+                println!("{key_str}: applying a message from {}", key_to_str(&from));
+                let result =
+                    session.process_message(preprocessed).unwrap();
+
+                // This will happen in a host task.
+                accum
+                    .add_processed_message(result)
+                    .unwrap()
+                    .unwrap();
+            }
+        }
+
+        Ok(())
+    }
+
+    fn try_finalize_round(&mut self) -> Result<Option<Self::Output>> {
+        let session = self.session.take().unwrap();
+        let accum = self.accum.take().unwrap();
+
+        let key_str = key_to_str(&session.verifier());
+        println!("{key_str}: finalizing the round");
+
+        match session
+            .finalize_round(&mut OsRng, accum)
             .unwrap()
         {
-            FinalizeOutcome::Success((result, _)) => Ok(result),
-            _ => Err(Error::NotFinished),
+            FinalizeOutcome::Success((result, _)) => {
+                Ok(Some(result))
+            }
+            FinalizeOutcome::AnotherRound {
+                session: new_session,
+                cached_messages: new_cached_messages,
+            } => {
+                self.accum = Some(new_session.make_accumulator());
+                self.session = Some(new_session);
+                self.cached_messages = new_cached_messages;
+                Ok(None)
+            }
         }
     }
 }

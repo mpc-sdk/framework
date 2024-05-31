@@ -49,10 +49,12 @@ pub async fn run(
     )
     .await?;
 
+    println!("{}", key_shares.len());
+
     /*
     let sign_keypairs = keypairs.iter().map(|k| k.clone()).collect();
 
-    let pre_signatures = gg20_sign_offline(
+    let pre_signatures = cggmp_sign_offline(
         server,
         server_public_key.clone(),
         parameters.clone(),
@@ -66,7 +68,7 @@ pub async fn run(
         .as_slice()
         .try_into()?;
 
-    let signatures = gg20_sign_online(
+    let signatures = cggmp_sign_online(
         server,
         server_public_key.clone(),
         parameters.clone(),
@@ -209,8 +211,8 @@ async fn cggmp_keygen(
         keys.iter().map(|k| k.verifying_key().clone()).collect();
 
     let private_key_1 = keys.remove(0);
-    let private_key_2 = keys.remove(1);
-    let private_key_3 = keys.remove(2);
+    let private_key_2 = keys.remove(0);
+    let private_key_3 = keys.remove(0);
 
     let mut keygen_i = KeyGenDriver::<TestParams>::new(
         client_i_transport.clone(),

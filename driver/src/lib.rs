@@ -16,7 +16,7 @@ pub use bridge::{
     wait_for_close, wait_for_driver, wait_for_session_finish,
 };
 pub use error::Error;
-pub(crate) use round::{Round, RoundBuffer, RoundMsg};
+pub(crate) use round::{Round, RoundMsg};
 pub use session::{
     wait_for_session, SessionEventHandler, SessionHandler,
     SessionInitiator, SessionParticipant,
@@ -61,8 +61,10 @@ pub(crate) trait ProtocolDriver {
     type Error: std::fmt::Debug
         + From<mpc_client::Error>
         + From<Box<crate::Error>>;
+
     /// Outgoing message type.
     type Outgoing: std::fmt::Debug + round::Round;
+
     /// Output when the protocol is completed.
     type Output;
 
@@ -77,12 +79,16 @@ pub(crate) trait ProtocolDriver {
         &mut self,
     ) -> std::result::Result<Vec<Self::Outgoing>, Self::Error>;
 
-    /// Whether the protocol can be finalized.
+    /// Whether the current round can be finalized.
     fn can_finalize(&self) -> std::result::Result<bool, Self::Error>;
 
-    /// Complete the protocol and get the output.
-    fn finish(self)
-        -> std::result::Result<Self::Output, Self::Error>;
+    /// Try to finalize a round if the protocol is completed
+    /// the result is returned.
+    ///
+    /// Must check with `can_finalize()` first.
+    fn try_finalize_round(
+        &mut self,
+    ) -> std::result::Result<Option<Self::Output>, Self::Error>;
 }
 
 /// Run distributed key generation.
@@ -147,4 +153,10 @@ pub(crate) async fn new_client(
     };
     let url = options.url(&server_url);
     Ok(Client::new(&url, options).await?)
+}
+
+pub(crate) fn key_to_str(
+    key: &crate::k256::ecdsa::VerifyingKey,
+) -> String {
+    hex::encode(&key.to_encoded_point(true).as_bytes()[1..5])
 }

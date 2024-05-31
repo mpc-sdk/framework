@@ -1394,6 +1394,7 @@ dependencies = [
  "async-trait",
  "futures",
  "getrandom 0.2.10",
+ "hex",
  "k256",
  "mpc-client",
  "mpc-protocol",

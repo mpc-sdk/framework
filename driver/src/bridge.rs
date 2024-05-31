@@ -34,49 +34,21 @@ impl<D: ProtocolDriver> Bridge<D> {
             }
 
             let message: D::Outgoing = message.deserialize()?;
-            // let round_number = message.round_number();
-
             let driver = self.driver.as_mut().unwrap();
-            driver.handle_incoming(message)?;
-
             if !driver.can_finalize()? {
-                let messages = driver.proceed()?;
-                self.dispatch_round_messages(messages).await?;
-            } else {
-                let result = self.driver.take().unwrap().finish()?;
-                return Ok(Some(result));
-            }
-
-            /*
-            self.buffer.add_message(round_number, message);
-
-            if self.buffer.is_ready(round_number) {
-                let messages = self.buffer.take(round_number);
-                for message in messages {
-                    self.driver
-                        .as_mut()
-                        .unwrap()
-                        .handle_incoming(message)?;
-                }
-
-                // For single round drivers we mustn't call proceed again
-                if self.buffer.len() == 1 {
-                    let result =
-                        self.driver.take().unwrap().finish()?;
-                    return Ok(Some(result));
-                }
-
-                let messages =
-                    self.driver.as_mut().unwrap().proceed()?;
-                self.dispatch_round_messages(messages).await?;
-
-                if round_number.get() as usize == self.buffer.len() {
-                    let result =
-                        self.driver.take().unwrap().finish()?;
-                    return Ok(Some(result));
+                driver.handle_incoming(message)?;
+                if driver.can_finalize()? {
+                    if let Some(result) =
+                        driver.try_finalize_round()?
+                    {
+                        return Ok(Some(result));
+                    } else {
+                        let messages = driver.proceed()?;
+                        self.dispatch_round_messages(messages)
+                            .await?;
+                    }
                 }
             }
-            */
         }
 
         Ok(None)
@@ -84,7 +56,8 @@ impl<D: ProtocolDriver> Bridge<D> {
 
     /// Start running the protocol.
     pub async fn execute(&mut self) -> Result<(), D::Error> {
-        let messages = self.driver.as_mut().unwrap().proceed()?;
+        let driver = self.driver.as_mut().unwrap();
+        let messages = driver.proceed()?;
         self.dispatch_round_messages(messages).await?;
         Ok(())
     }
