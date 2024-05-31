@@ -1,3 +1,4 @@
+use k256::ecdsa::VerifyingKey;
 use mpc_protocol::{PartyNumber, RoundNumber};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
@@ -23,7 +24,7 @@ where
     O: Send + Sync,
 {
     pub(crate) round: RoundNumber,
-    pub(crate) sender: PartyNumber,
+    pub(crate) sender: VerifyingKey,
     pub(crate) receiver: PartyNumber,
     pub(crate) body: O,
 }

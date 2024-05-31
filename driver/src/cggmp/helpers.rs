@@ -66,7 +66,7 @@ where
 
         outgoing.push(RoundMsg {
             body: (key.clone(), message),
-            sender,
+            sender: key.clone(),
             receiver,
             round,
         });
@@ -96,9 +96,8 @@ where
     if !session.can_finalize(accum).unwrap() {
         let key_str = key_to_str(&session.verifier());
         tracing::info!(
-            "handle incoming (round = {}, sender = {})",
+            "handle incoming (round = {})",
             session.current_round().0,
-            message.sender,
         );
 
         // This can be checked if a timeout expired, to see which nodes have not responded yet.
