@@ -8,6 +8,7 @@ license = "GPL-3.0"
 repository = "https://github.com/mpc-sdk/framework"
 
 [features]
+default = ["cggmp"]
 cggmp = []
 
 [dependencies]

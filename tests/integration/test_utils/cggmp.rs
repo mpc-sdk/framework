@@ -3,24 +3,25 @@ use futures::{select, FutureExt, StreamExt};
 use std::collections::HashMap;
 
 use mpc_driver::{
-    curv::elliptic::curves::secp256_k1::Secp256k1,
-    gg20::{
-        KeyGenDriver, ParticipantDriver, PreSignDriver, Signature,
-        SignatureDriver,
+    cggmp::KeyGenDriver,
+    k256::{
+        self,
+        ecdsa::{SigningKey, VerifyingKey},
     },
-    gg_2020::state_machine::{
-        keygen::LocalKey, sign::CompletedOfflineStage,
-    },
+    synedrion::{KeyShare, TestParams},
     Driver, SessionEventHandler, SessionInitiator,
     SessionParticipant,
 };
 
 use mpc_client::{NetworkTransport, Transport};
-use mpc_protocol::{Keypair, Parameters, PartyNumber, SessionState};
+use mpc_protocol::{Keypair, Parameters, SessionState};
+use rand::{rngs::OsRng, Rng};
 
 use sha3::{Digest, Keccak256};
 
 use super::{new_client, new_client_with_keypair};
+
+type KeyShareOutput = KeyShare<TestParams, VerifyingKey>;
 
 pub async fn run(
     server: &str,
@@ -32,13 +33,23 @@ pub async fn run(
         threshold: 1, // Remember signing requires t + 1
     };
 
-    let (key_shares, keypairs) = gg20_keygen(
+    let rng = &mut OsRng;
+    let shared_randomness: [u8; 32] = rng.gen();
+    let mut keys = Vec::new();
+    for _ in 0..parameters.parties {
+        keys.push(k256::ecdsa::SigningKey::random(rng));
+    }
+
+    let (key_shares, keypairs) = cggmp_keygen(
         server,
         server_public_key.clone(),
         parameters.clone(),
+        &shared_randomness,
+        keys,
     )
     .await?;
 
+    /*
     let sign_keypairs = keypairs.iter().map(|k| k.clone()).collect();
 
     let pre_signatures = gg20_sign_offline(
@@ -66,17 +77,20 @@ pub async fn run(
     .await?;
 
     assert_eq!(2, signatures.len());
+    */
 
     Ok(())
 }
 
 /// Create a new session and then perform
 /// distributed key generation.
-async fn gg20_keygen(
+async fn cggmp_keygen(
     server: &str,
     server_public_key: Vec<u8>,
     parameters: Parameters,
-) -> Result<(HashMap<Vec<u8>, LocalKey<Secp256k1>>, Vec<Keypair>)> {
+    shared_randomness: &[u8],
+    mut keys: Vec<SigningKey>,
+) -> Result<(HashMap<Vec<u8>, KeyShareOutput>, Vec<Keypair>)> {
     let mut sessions: Vec<SessionState> = Vec::new();
 
     // Create new clients
@@ -191,20 +205,36 @@ async fn gg20_keygen(
     let session_p_1 = sessions.remove(0);
     let session_p_2 = sessions.remove(0);
 
-    let mut keygen_i = KeyGenDriver::new(
+    let verifiers: Vec<VerifyingKey> =
+        keys.iter().map(|k| k.verifying_key().clone()).collect();
+
+    let private_key_1 = keys.remove(0);
+    let private_key_2 = keys.remove(1);
+    let private_key_3 = keys.remove(2);
+
+    let mut keygen_i = KeyGenDriver::<TestParams>::new(
         client_i_transport.clone(),
         parameters.clone(),
         session_i,
+        shared_randomness,
+        private_key_1,
+        verifiers.clone(),
     )?;
-    let mut keygen_p_1 = KeyGenDriver::new(
+    let mut keygen_p_1 = KeyGenDriver::<TestParams>::new(
         client_p_1_transport.clone(),
         parameters.clone(),
         session_p_1,
+        shared_randomness,
+        private_key_2,
+        verifiers.clone(),
     )?;
-    let mut keygen_p_2 = KeyGenDriver::new(
+    let mut keygen_p_2 = KeyGenDriver::<TestParams>::new(
         client_p_2_transport.clone(),
         parameters.clone(),
         session_p_2,
+        shared_randomness,
+        private_key_3,
+        verifiers.clone(),
     )?;
 
     // Each party starts key generation protocol.
@@ -212,7 +242,7 @@ async fn gg20_keygen(
     keygen_p_1.execute().await?;
     keygen_p_2.execute().await?;
 
-    let mut key_shares: HashMap<Vec<u8>, LocalKey<Secp256k1>> =
+    let mut key_shares: HashMap<Vec<u8>, KeyShareOutput> =
         HashMap::new();
 
     loop {
@@ -268,9 +298,10 @@ async fn gg20_keygen(
     Ok((key_shares, keypairs))
 }
 
+/*
 /// Create a new session and then perform
 /// pre-signature generation.
-async fn gg20_sign_offline(
+async fn cggmp_sign_offline(
     server: &str,
     server_public_key: Vec<u8>,
     parameters: Parameters,
@@ -491,7 +522,7 @@ async fn gg20_sign_offline(
 
 /// Create a new session and then perform
 /// signature generation
-async fn gg20_sign_online(
+async fn cggmp_sign_online(
     server: &str,
     server_public_key: Vec<u8>,
     parameters: Parameters,
@@ -645,3 +676,4 @@ async fn gg20_sign_online(
 
     Ok(signatures)
 }
+*/

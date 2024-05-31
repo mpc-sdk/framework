@@ -29,8 +29,8 @@ use mpc_client::{NetworkTransport, Transport};
 
 use crate::{
     new_client, wait_for_close, wait_for_driver, wait_for_session,
-    wait_for_session_finish, PrivateKey, SessionHandler,
-    SessionInitiator, SessionOptions, SessionParticipant,
+    wait_for_session_finish, SessionHandler, SessionInitiator,
+    SessionOptions, SessionParticipant,
 };
 
 /// Run distributed key generation for the CGGMP protocol.

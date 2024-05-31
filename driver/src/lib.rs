@@ -11,8 +11,6 @@ mod round;
 mod session;
 mod types;
 
-pub use synedrion;
-
 pub(crate) use bridge::Bridge;
 pub use bridge::{
     wait_for_close, wait_for_driver, wait_for_session_finish,
@@ -30,6 +28,9 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[cfg(feature = "cggmp")]
 pub mod cggmp;
+
+pub use synedrion;
+pub use synedrion::k256;
 
 /// Drives a protocol to completion bridging between
 /// the network transport and local computation.

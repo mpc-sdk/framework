@@ -2,7 +2,7 @@
 mod test_utils;
 
 #[cfg(not(target_arch = "wasm32"))]
-mod gg20;
+mod cggmp;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod meeting_point;
