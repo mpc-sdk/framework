@@ -1,4 +1,4 @@
-//! Signature generation for CGGMP.
+//! Aux info generation for CGGMP.
 use std::num::NonZeroU16;
 
 use async_trait::async_trait;
@@ -9,13 +9,13 @@ use rand::rngs::OsRng;
 use super::{Error, Result};
 use synedrion::{
     ecdsa::{Signature, SigningKey, VerifyingKey},
-    make_interactive_signing_session,
+    make_aux_gen_session,
     sessions::{
         FinalizeOutcome, PreprocessedMessage, RoundAccumulator,
         Session,
     },
-    AuxInfo, CombinedMessage, InteractiveSigningResult, KeyShare,
-    PrehashedMessage, RecoverableSignature, SchemeParams,
+    CombinedMessage, AuxGenResult, KeyShare, SchemeParams,
+    AuxInfo,
 };
 
 use crate::{key_to_str, Bridge, Driver, ProtocolDriver, RoundMsg};
@@ -23,14 +23,14 @@ use crate::{key_to_str, Bridge, Driver, ProtocolDriver, RoundMsg};
 use super::MessageOut;
 
 /// CGGMP key generation.
-pub struct SignatureDriver<P>
+pub struct AuxGenDriver<P>
 where
     P: SchemeParams + 'static,
 {
     bridge: Bridge<CggmpDriver<P>>,
 }
 
-impl<P> SignatureDriver<P>
+impl<P> AuxGenDriver<P>
 where
     P: SchemeParams + 'static,
 {
@@ -42,9 +42,6 @@ where
         shared_randomness: &[u8],
         signer: SigningKey,
         verifiers: Vec<VerifyingKey>,
-        key_share: &KeyShare<P, VerifyingKey>,
-        aux_info: &AuxInfo<P, VerifyingKey>,
-        prehashed_message: &PrehashedMessage,
     ) -> Result<Self> {
         let party_number = session
             .party_number(transport.public_key())
@@ -60,9 +57,6 @@ where
             shared_randomness,
             signer,
             verifiers,
-            key_share,
-            aux_info,
-            prehashed_message,
         )?;
 
         let bridge = Bridge {
@@ -75,12 +69,12 @@ where
 }
 
 #[async_trait]
-impl<P> Driver for SignatureDriver<P>
+impl<P> Driver for AuxGenDriver<P>
 where
     P: SchemeParams + 'static,
 {
     type Error = Error;
-    type Output = RecoverableSignature;
+    type Output = AuxInfo<P, VerifyingKey>;
 
     async fn handle_event(
         &mut self,
@@ -94,11 +88,11 @@ where
     }
 }
 
-impl<P> From<SignatureDriver<P>> for Transport
+impl<P> From<AuxGenDriver<P>> for Transport
 where
     P: SchemeParams + 'static,
 {
-    fn from(value: SignatureDriver<P>) -> Self {
+    fn from(value: AuxGenDriver<P>) -> Self {
         value.bridge.transport
     }
 }
@@ -111,12 +105,7 @@ where
     parameters: Parameters,
     party_number: u16,
     session: Option<
-        Session<
-            InteractiveSigningResult<P>,
-            Signature,
-            SigningKey,
-            VerifyingKey,
-        >,
+        Session<AuxGenResult<P>, Signature, SigningKey, VerifyingKey>,
     >,
     accum: Option<RoundAccumulator<Signature>>,
     cached_messages: Vec<PreprocessedMessage<Signature>>,
@@ -128,25 +117,19 @@ impl<P> CggmpDriver<P>
 where
     P: SchemeParams + 'static,
 {
-    /// Create a key generator.
+    /// Create an aux generator.
     pub fn new(
         parameters: Parameters,
         party_number: u16,
         shared_randomness: &[u8],
         signer: SigningKey,
         verifiers: Vec<VerifyingKey>,
-        key_share: &KeyShare<P, VerifyingKey>,
-        aux_info: &AuxInfo<P, VerifyingKey>,
-        prehashed_message: &PrehashedMessage,
     ) -> Result<Self> {
-        let session = make_interactive_signing_session(
+        let session = make_aux_gen_session(
             &mut OsRng,
             shared_randomness,
             signer,
             &verifiers,
-            key_share,
-            aux_info,
-            prehashed_message,
         )
         .map_err(|e| Error::LocalError(e.to_string()))?;
 
@@ -172,7 +155,7 @@ where
 {
     type Error = Error;
     type Message = RoundMsg<MessageOut>;
-    type Output = RecoverableSignature;
+    type Output = AuxInfo<P, VerifyingKey>;
 
     fn can_finalize(&self) -> Result<bool> {
         // TODO: error conversion

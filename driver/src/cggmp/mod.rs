@@ -1,16 +1,22 @@
 //! Driver for the CGGMP protocol.
 use serde::{Deserialize, Serialize};
 use synedrion::{
-    ecdsa::{SigningKey, VerifyingKey},
-    KeyShare as SynedrionKeyShare, SchemeParams,
+    ecdsa::{self, SigningKey, VerifyingKey},
+    AuxInfo, KeyShare as SynedrionKeyShare, PrehashedMessage,
+    RecoverableSignature, SchemeParams,
+    CombinedMessage,
 };
 
+mod aux_gen;
 mod error;
 mod keygen;
 mod sign;
 
 pub use error::Error;
 pub use keygen::KeyGenDriver;
+
+type MessageOut =
+    (VerifyingKey, VerifyingKey, CombinedMessage<ecdsa::Signature>);
 
 /// Key share.
 #[cfg(not(debug_assertions))]
@@ -22,10 +28,10 @@ pub type KeyShare =
 pub type KeyShare =
     SynedrionKeyShare<synedrion::TestParams, VerifyingKey>;
 
-// pub use sign::{
-//     OfflineResult, ParticipantDriver, PreSignDriver, Signature,
-//     SignatureDriver,
-// };
+pub use sign::{
+    // OfflineResult, ParticipantDriver, PreSignDriver, Signature,
+    SignatureDriver,
+};
 
 /// Result type for the CGGMP protocol.
 pub type Result<T> = std::result::Result<T, Error>;
@@ -108,14 +114,17 @@ pub async fn keygen<P: SchemeParams + 'static>(
     Ok(key_share)
 }
 
-/*
 /// Sign a message using the CGGMP protocol.
-pub async fn sign(
+pub async fn sign<P: SchemeParams + 'static>(
     options: SessionOptions,
     participants: Option<Vec<Vec<u8>>>,
-    PrivateKey::GG20(local_key): PrivateKey,
-    message: [u8; 32],
-) -> crate::Result<Signature> {
+    shared_randomness: &[u8],
+    signer: SigningKey,
+    verifiers: Vec<VerifyingKey>,
+    key_share: &SynedrionKeyShare<P, VerifyingKey>,
+    aux_info: &AuxInfo<P, VerifyingKey>,
+    prehashed_message: &PrehashedMessage,
+) -> crate::Result<RecoverableSignature> {
     let is_initiator = participants.is_some();
 
     let parameters = options.parameters;
@@ -147,6 +156,7 @@ pub async fn sign(
 
     let session_id = session.session_id;
 
+    /*
     // Wait for participant party numbers
     let driver = ParticipantDriver::new(
         transport,
@@ -156,7 +166,9 @@ pub async fn sign(
     )?;
     let (transport, participants) =
         wait_for_driver(&mut stream, driver).await?;
+    */
 
+    /*
     // Wait for offline stage to complete
     let driver = PreSignDriver::new(
         transport,
@@ -167,14 +179,19 @@ pub async fn sign(
     )?;
     let (transport, offline_result) =
         wait_for_driver(&mut stream, driver).await?;
+    */
 
     // Wait for message to be signed
     let driver = SignatureDriver::new(
         transport,
         parameters,
         session,
-        offline_result,
-        message,
+        shared_randomness,
+        signer,
+        verifiers,
+        key_share,
+        aux_info,
+        prehashed_message,
     )?;
     let (mut transport, signature) =
         wait_for_driver(&mut stream, driver).await?;
@@ -189,4 +206,3 @@ pub async fn sign(
 
     Ok(signature)
 }
-*/

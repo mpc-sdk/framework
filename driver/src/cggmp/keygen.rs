@@ -19,8 +19,7 @@ use synedrion::{
 
 use crate::{key_to_str, Bridge, Driver, ProtocolDriver, RoundMsg};
 
-type MessageOut =
-    (VerifyingKey, VerifyingKey, CombinedMessage<Signature>);
+use super::MessageOut;
 
 /// CGGMP key generation.
 pub struct KeyGenDriver<P>
