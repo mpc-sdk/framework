@@ -50,6 +50,8 @@ where
                 ))
             })?;
 
+        println!("Aux gen party number: {}", party_number);
+
         let driver = CggmpDriver::new(
             parameters,
             party_number.into(),

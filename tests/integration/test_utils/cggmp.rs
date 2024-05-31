@@ -51,7 +51,7 @@ pub async fn run(
     )
     .await?;
 
-    println!("{}", key_shares.len());
+    println!("Keygen completed with shares: {}", key_shares.len());
 
     let sign_transport_keypairs = transport_keypairs.clone();
     let message = "this is the message that is sent out";
@@ -306,13 +306,13 @@ async fn cggmp_sign_online(
     key_shares: Vec<cggmp::KeyShare>,
     prehashed_message: &PrehashedMessage,
 ) -> Result<Vec<RecoverableSignature>> {
-    let verifiers: Vec<VerifyingKey> = signing_keys
-        .iter()
-        .map(|k| k.verifying_key().clone())
-        .collect();
     let signing_key_1 = signing_keys.remove(0);
-    // let signing_key_2 = signing_keys.remove(0);
     let signing_key_3 = signing_keys.remove(0);
+
+    let verifiers: Vec<VerifyingKey> = vec![
+        signing_key_1.verifying_key().clone(),
+        signing_key_3.verifying_key().clone(),
+    ];
 
     let initiator_key = keypairs.remove(0);
     let participant_key_2 = keypairs.pop().unwrap();
@@ -455,10 +455,6 @@ async fn cggmp_sign_online(
 
     let key_share_i = key_shares.get(0).unwrap();
     let key_share_p_2 = key_shares.get(2).unwrap();
-
-    // key_share: &KeyShare<P, VerifyingKey>,
-    // aux_info: &AuxInfo<P, VerifyingKey>,
-    // prehashed_message: &PrehashedMessage,
 
     let mut sign_i = SignatureDriver::new(
         client_i_transport.clone(),
