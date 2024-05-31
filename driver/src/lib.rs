@@ -3,6 +3,7 @@
 #![cfg_attr(all(doc, CHANNEL_NIGHTLY), feature(doc_auto_cfg))]
 use async_trait::async_trait;
 use mpc_client::{Client, ClientOptions, Event, EventLoop};
+use mpc_protocol::hex;
 
 mod bridge;
 mod error;
@@ -132,7 +133,6 @@ pub async fn sign(
 #[doc(hidden)]
 /// Compute the address of an uncompressed public key (65 bytes).
 pub fn address(public_key: &[u8]) -> String {
-    use mpc_protocol::hex;
     use sha3::{Digest, Keccak256};
     // Remove the leading 0x04
     let bytes = &public_key[1..];

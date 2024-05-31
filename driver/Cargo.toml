@@ -26,7 +26,6 @@ synedrion = {version = "0.1", git = "https://github.com/entropyxyz/synedrion" , 
 # synedrion = {version = "0.1", path = "../../../forks/synedrion/synedrion" }
 k256 = { version = "0.13.2", default-features = false, features = ["pem", "serde"] }
 rand = "0.8"
-hex = "0.4"
 
 # WASM
 
