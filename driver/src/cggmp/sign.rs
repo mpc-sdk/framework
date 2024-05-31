@@ -1,4 +1,4 @@
-//! Key generation for CGGMP.
+//! Signature generation for CGGMP.
 use std::num::NonZeroU16;
 
 use async_trait::async_trait;
@@ -9,12 +9,13 @@ use rand::rngs::OsRng;
 use super::{Error, Result};
 use synedrion::{
     ecdsa::{Signature, SigningKey, VerifyingKey},
-    make_key_gen_session,
+    make_interactive_signing_session,
     sessions::{
         FinalizeOutcome, PreprocessedMessage, RoundAccumulator,
         Session,
     },
-    CombinedMessage, KeyGenResult, KeyShare, SchemeParams,
+    AuxInfo, CombinedMessage, InteractiveSigningResult, KeyShare,
+    PrehashedMessage, RecoverableSignature, SchemeParams,
 };
 
 use crate::{key_to_str, Bridge, Driver, ProtocolDriver, RoundMsg};
@@ -23,14 +24,14 @@ type MessageOut =
     (VerifyingKey, VerifyingKey, CombinedMessage<Signature>);
 
 /// CGGMP key generation.
-pub struct KeyGenDriver<P>
+pub struct SignatureDriver<P>
 where
     P: SchemeParams + 'static,
 {
     bridge: Bridge<CggmpDriver<P>>,
 }
 
-impl<P> KeyGenDriver<P>
+impl<P> SignatureDriver<P>
 where
     P: SchemeParams + 'static,
 {
@@ -42,6 +43,9 @@ where
         shared_randomness: &[u8],
         signer: SigningKey,
         verifiers: Vec<VerifyingKey>,
+        key_share: &KeyShare<P, VerifyingKey>,
+        aux_info: &AuxInfo<P, VerifyingKey>,
+        prehashed_message: &PrehashedMessage,
     ) -> Result<Self> {
         let party_number = session
             .party_number(transport.public_key())
@@ -57,6 +61,9 @@ where
             shared_randomness,
             signer,
             verifiers,
+            key_share,
+            aux_info,
+            prehashed_message,
         )?;
 
         let bridge = Bridge {
@@ -69,12 +76,12 @@ where
 }
 
 #[async_trait]
-impl<P> Driver for KeyGenDriver<P>
+impl<P> Driver for SignatureDriver<P>
 where
     P: SchemeParams + 'static,
 {
     type Error = Error;
-    type Output = KeyShare<P, VerifyingKey>;
+    type Output = RecoverableSignature;
 
     async fn handle_event(
         &mut self,
@@ -88,11 +95,11 @@ where
     }
 }
 
-impl<P> From<KeyGenDriver<P>> for Transport
+impl<P> From<SignatureDriver<P>> for Transport
 where
     P: SchemeParams + 'static,
 {
-    fn from(value: KeyGenDriver<P>) -> Self {
+    fn from(value: SignatureDriver<P>) -> Self {
         value.bridge.transport
     }
 }
@@ -105,7 +112,12 @@ where
     parameters: Parameters,
     party_number: u16,
     session: Option<
-        Session<KeyGenResult<P>, Signature, SigningKey, VerifyingKey>,
+        Session<
+            InteractiveSigningResult<P>,
+            Signature,
+            SigningKey,
+            VerifyingKey,
+        >,
     >,
     accum: Option<RoundAccumulator<Signature>>,
     cached_messages: Vec<PreprocessedMessage<Signature>>,
@@ -124,12 +136,18 @@ where
         shared_randomness: &[u8],
         signer: SigningKey,
         verifiers: Vec<VerifyingKey>,
+        key_share: &KeyShare<P, VerifyingKey>,
+        aux_info: &AuxInfo<P, VerifyingKey>,
+        prehashed_message: &PrehashedMessage,
     ) -> Result<Self> {
-        let session = make_key_gen_session(
+        let session = make_interactive_signing_session(
             &mut OsRng,
             shared_randomness,
             signer,
             &verifiers,
+            key_share,
+            aux_info,
+            prehashed_message,
         )
         .map_err(|e| Error::LocalError(e.to_string()))?;
 
@@ -155,7 +173,7 @@ where
 {
     type Error = Error;
     type Message = RoundMsg<MessageOut>;
-    type Output = KeyShare<P, VerifyingKey>;
+    type Output = RecoverableSignature;
 
     fn can_finalize(&self) -> Result<bool> {
         // TODO: error conversion
@@ -294,7 +312,7 @@ where
         println!("{key_str}: finalizing the round");
 
         match session.finalize_round(&mut OsRng, accum).unwrap() {
-            FinalizeOutcome::Success((result, _)) => Ok(Some(result)),
+            FinalizeOutcome::Success(result) => Ok(Some(result)),
             FinalizeOutcome::AnotherRound {
                 session: new_session,
                 cached_messages: new_cached_messages,

@@ -73,15 +73,6 @@ pub(crate) trait ProtocolDriver {
     /// Output when the protocol is completed.
     type Output;
 
-    /// Session round object.
-    type Session;
-
-    /// Message accumulator.
-    type Accumulator;
-
-    /// Collection of cached messages.
-    type CachedMessages;
-
     /// Handle an incoming message.
     fn handle_incoming(
         &mut self,

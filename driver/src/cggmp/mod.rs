@@ -7,7 +7,7 @@ use synedrion::{
 
 mod error;
 mod keygen;
-// mod sign;
+mod sign;
 
 pub use error::Error;
 pub use keygen::KeyGenDriver;
