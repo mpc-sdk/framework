@@ -12,6 +12,7 @@ use synedrion::{
         FinalizeOutcome, PreprocessedMessage, RoundAccumulator,
         Session,
     },
+    signature::Keypair,
     KeyInitResult, KeyShare, SchemeParams,
 };
 

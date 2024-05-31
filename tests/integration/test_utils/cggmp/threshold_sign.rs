@@ -311,17 +311,10 @@ async fn make_key_init(
 ) -> Result<Vec<KeyShare<TestParams, VerifyingKey>>> {
     let rng = &mut OsRng;
     let shared_randomness: [u8; 32] = rng.gen();
-    let verifiers: Vec<VerifyingKey> = signing_keys
-        .iter()
-        .map(|k| k.verifying_key().clone())
-        .collect();
-
-    /*
-      &mut OsRng,
-      shared_randomness,
-      signer.clone(),
-      &verifiers[..t],
-    */
+    let verifiers = vec![
+        signing_keys.get(0).unwrap().verifying_key().clone(),
+        signing_keys.get(1).unwrap().verifying_key().clone(),
+    ];
 
     // Create new clients
     let (client_t_1, event_loop_t_1, _key_t_1) =

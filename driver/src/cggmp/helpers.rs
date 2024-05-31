@@ -58,11 +58,15 @@ where
         let receiver =
             verifiers.iter().position(|i| i == destination).unwrap();
 
-        let sender: NonZeroU16 = ((sender + 1) as u16).try_into()?;
+        println!("receiver pos: {}", receiver);
+
         let receiver: NonZeroU16 =
             ((receiver + 1) as u16).try_into()?;
+
         let round: NonZeroU16 =
             (session.current_round().0 as u16).try_into()?;
+
+        println!("receiver num: {}", receiver);
 
         outgoing.push(RoundMsg {
             body: message,

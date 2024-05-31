@@ -712,6 +712,12 @@ impl SessionState {
         &self,
         party_number: PartyNumber,
     ) -> Option<&[u8]> {
+        println!(
+            "num = {}, len = {}",
+            party_number,
+            self.all_participants.len()
+        );
+
         for (index, key) in self.all_participants.iter().enumerate() {
             if index + 1 == party_number.get() as usize {
                 return Some(key.as_slice());
