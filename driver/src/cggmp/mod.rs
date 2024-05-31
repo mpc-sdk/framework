@@ -14,6 +14,7 @@ mod sign;
 
 pub use error::Error;
 pub use keygen::KeyGenDriver;
+pub use aux_gen::AuxGenDriver;
 
 type MessageOut =
     (VerifyingKey, VerifyingKey, CombinedMessage<ecdsa::Signature>);
@@ -39,6 +40,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// Generated signature.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[deprecated]
 pub struct Signature {}
 
 use mpc_client::{NetworkTransport, Transport};
@@ -122,7 +124,6 @@ pub async fn sign<P: SchemeParams + 'static>(
     signer: SigningKey,
     verifiers: Vec<VerifyingKey>,
     key_share: &SynedrionKeyShare<P, VerifyingKey>,
-    aux_info: &AuxInfo<P, VerifyingKey>,
     prehashed_message: &PrehashedMessage,
 ) -> crate::Result<RecoverableSignature> {
     let is_initiator = participants.is_some();
@@ -168,18 +169,18 @@ pub async fn sign<P: SchemeParams + 'static>(
         wait_for_driver(&mut stream, driver).await?;
     */
 
-    /*
-    // Wait for offline stage to complete
-    let driver = PreSignDriver::new(
+
+    // Wait for aux gen protocol to complete
+    let driver = AuxGenDriver::new(
         transport,
         parameters,
         session.clone(),
-        local_key,
-        participants,
+        shared_randomness,
+        signer.clone(),
+        verifiers.clone(),
     )?;
-    let (transport, offline_result) =
+    let (transport, aux_info) =
         wait_for_driver(&mut stream, driver).await?;
-    */
 
     // Wait for message to be signed
     let driver = SignatureDriver::new(
@@ -190,7 +191,7 @@ pub async fn sign<P: SchemeParams + 'static>(
         signer,
         verifiers,
         key_share,
-        aux_info,
+        &aux_info,
         prehashed_message,
     )?;
     let (mut transport, signature) =
