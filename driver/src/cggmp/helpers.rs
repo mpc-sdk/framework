@@ -9,7 +9,7 @@ use synedrion::{
     MappedResult, ProtocolResult,
 };
 
-use crate::{key_to_str, RoundMsg};
+use crate::{key_to_str, Round, RoundMsg};
 
 use super::MessageOut;
 
@@ -65,7 +65,7 @@ where
             (session.current_round().0 as u16).try_into()?;
 
         outgoing.push(RoundMsg {
-            body: (key.clone(), message),
+            body: message,
             sender: key.clone(),
             receiver,
             round,
@@ -109,8 +109,8 @@ where
         println!("{key_str}: waiting for a message");
         */
 
-        let from = &message.body.0;
-        let message = message.body.1.clone();
+        let from = message.sender();
+        let message = message.body.clone();
         // let (from, message) = rx.recv().await.unwrap();
 
         // Perform quick checks before proceeding with the verification.

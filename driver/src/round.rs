@@ -9,6 +9,9 @@ pub(crate) trait Round:
     /// Round number.
     fn round_number(&self) -> RoundNumber;
 
+    /// Sender of a message.
+    fn sender(&self) -> &VerifyingKey;
+
     /// Receiver for a message.
     fn receiver(&self) -> &PartyNumber;
 }
@@ -35,6 +38,10 @@ where
 {
     fn round_number(&self) -> RoundNumber {
         self.round
+    }
+
+    fn sender(&self) -> &VerifyingKey {
+        &self.sender
     }
 
     fn receiver(&self) -> &PartyNumber {

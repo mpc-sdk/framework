@@ -21,7 +21,7 @@ pub use key_init::KeyInitDriver;
 pub use key_refresh::KeyRefreshDriver;
 pub use sign::SignatureDriver;
 
-type MessageOut = (VerifyingKey, CombinedMessage<ecdsa::Signature>);
+type MessageOut = CombinedMessage<ecdsa::Signature>;
 
 /// Key share.
 #[cfg(not(debug_assertions))]
