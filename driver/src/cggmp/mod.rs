@@ -10,6 +10,7 @@ mod aux_gen;
 mod error;
 mod helpers;
 mod key_gen;
+mod key_init;
 mod sign;
 
 pub use aux_gen::AuxGenDriver;
