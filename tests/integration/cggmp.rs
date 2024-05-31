@@ -7,7 +7,7 @@ use serial_test::serial;
 /// CGGMP keygen and signing.
 #[tokio::test]
 #[serial]
-async fn integration_cggmp() -> Result<()> {
+async fn integration_cggmp_keygen() -> Result<()> {
     // crate::test_utils::init_tracing();
 
     // Wait for the server to start
@@ -15,7 +15,7 @@ async fn integration_cggmp() -> Result<()> {
     let _ = rx.await?;
 
     let server_public_key = server_public_key().await?;
-    cggmp::run(SERVER, server_public_key).await?;
+    cggmp::run_keygen(SERVER, server_public_key).await?;
 
     Ok(())
 }
