@@ -1,9 +1,7 @@
 //! Key generation for CGGMP.
-use std::num::NonZeroU16;
-
 use async_trait::async_trait;
 use mpc_client::{Event, NetworkTransport, Transport};
-use mpc_protocol::{hex, Parameters, SessionState};
+use mpc_protocol::{hex, SessionState};
 use rand::rngs::OsRng;
 
 use super::{Error, Result};
@@ -36,13 +34,12 @@ where
     /// Create a new CGGMP key generator.
     pub fn new(
         transport: Transport,
-        parameters: Parameters,
         session: SessionState,
         shared_randomness: &[u8],
         signer: SigningKey,
         verifiers: Vec<VerifyingKey>,
     ) -> Result<Self> {
-        let party_number = session
+        let _party_number = session
             .party_number(transport.public_key())
             .ok_or_else(|| {
                 Error::NotSessionParticipant(hex::encode(
@@ -50,13 +47,8 @@ where
                 ))
             })?;
 
-        let driver = CggmpDriver::new(
-            parameters,
-            party_number.into(),
-            shared_randomness,
-            signer,
-            verifiers,
-        )?;
+        let driver =
+            CggmpDriver::new(shared_randomness, signer, verifiers)?;
 
         let bridge = Bridge {
             transport,
@@ -101,8 +93,6 @@ struct CggmpDriver<P>
 where
     P: SchemeParams + 'static,
 {
-    parameters: Parameters,
-    party_number: u16,
     session: Option<
         Session<KeyGenResult<P>, Signature, SigningKey, VerifyingKey>,
     >,
@@ -118,8 +108,6 @@ where
 {
     /// Create a key generator.
     pub fn new(
-        parameters: Parameters,
-        party_number: u16,
         shared_randomness: &[u8],
         signer: SigningKey,
         verifiers: Vec<VerifyingKey>,
@@ -137,8 +125,6 @@ where
         let accum = session.make_accumulator();
 
         Ok(Self {
-            parameters,
-            party_number,
             session: Some(session),
             accum: Some(accum),
             cached_messages,

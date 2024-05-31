@@ -1,7 +1,7 @@
 //! Signature generation for CGGMP.
 use async_trait::async_trait;
 use mpc_client::{Event, NetworkTransport, Transport};
-use mpc_protocol::{hex, Parameters, SessionState};
+use mpc_protocol::{hex, SessionState};
 use rand::rngs::OsRng;
 
 use super::{Error, Result};

@@ -16,11 +16,7 @@ pub use aux_gen::AuxGenDriver;
 pub use error::Error;
 pub use keygen::KeyGenDriver;
 
-type MessageOut = (
-    VerifyingKey,
-    VerifyingKey,
-    CombinedMessage<ecdsa::Signature>,
-);
+type MessageOut = (VerifyingKey, CombinedMessage<ecdsa::Signature>);
 
 /// Key share.
 #[cfg(not(debug_assertions))]
@@ -64,8 +60,6 @@ pub async fn keygen<P: SchemeParams + 'static>(
 ) -> crate::Result<SynedrionKeyShare<P, VerifyingKey>> {
     let is_initiator = participants.is_some();
 
-    let parameters = options.parameters;
-
     // Create the client
     let (client, event_loop) = new_client(options).await?;
 
@@ -97,7 +91,6 @@ pub async fn keygen<P: SchemeParams + 'static>(
     // Wait for key generation
     let keygen = KeyGenDriver::<P>::new(
         transport,
-        parameters,
         session,
         shared_randomness,
         signer,
@@ -175,7 +168,6 @@ pub async fn sign<P: SchemeParams + 'static>(
     // Wait for aux gen protocol to complete
     let driver = AuxGenDriver::new(
         transport,
-        parameters,
         session.clone(),
         shared_randomness,
         signer.clone(),

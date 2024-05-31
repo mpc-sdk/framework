@@ -210,7 +210,6 @@ async fn cggmp_keygen(
 
     let mut keygen_i = KeyGenDriver::<TestParams>::new(
         client_i_transport.clone(),
-        parameters.clone(),
         session_i,
         shared_randomness,
         signing_key_1,
@@ -218,7 +217,6 @@ async fn cggmp_keygen(
     )?;
     let mut keygen_p_1 = KeyGenDriver::<TestParams>::new(
         client_p_1_transport.clone(),
-        parameters.clone(),
         session_p_1,
         shared_randomness,
         signing_key_2,
@@ -226,7 +224,6 @@ async fn cggmp_keygen(
     )?;
     let mut keygen_p_2 = KeyGenDriver::<TestParams>::new(
         client_p_2_transport.clone(),
-        parameters.clone(),
         session_p_2,
         shared_randomness,
         signing_key_3,
@@ -396,7 +393,6 @@ async fn cggmp_sign_online(
 
     let mut aux_i = AuxGenDriver::<TestParams>::new(
         client_i_transport.clone(),
-        parameters.clone(),
         session_i.clone(),
         shared_randomness,
         signing_key_1.clone(),
@@ -404,7 +400,6 @@ async fn cggmp_sign_online(
     )?;
     let mut aux_p_2 = AuxGenDriver::<TestParams>::new(
         client_p_2_transport.clone(),
-        parameters.clone(),
         session_p_2.clone(),
         shared_randomness,
         signing_key_3.clone(),
@@ -458,7 +453,6 @@ async fn cggmp_sign_online(
 
     let mut sign_i = SignatureDriver::new(
         client_i_transport.clone(),
-        parameters.clone(),
         session_i,
         shared_randomness,
         signing_key_1.clone(),
@@ -469,7 +463,6 @@ async fn cggmp_sign_online(
     )?;
     let mut sign_p_2 = SignatureDriver::new(
         client_p_2_transport.clone(),
-        parameters.clone(),
         session_p_2,
         shared_randomness,
         signing_key_3.clone(),

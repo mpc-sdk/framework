@@ -1,24 +1,15 @@
 //! Key generation for CGGMP.
+use rand::rngs::OsRng;
 use std::num::NonZeroU16;
 
-use async_trait::async_trait;
-use mpc_client::{Event, NetworkTransport, Transport};
-use mpc_protocol::{hex, Parameters, SessionState};
-use rand::rngs::OsRng;
-
-use super::{Error, Result};
+use super::Result;
 use synedrion::{
     ecdsa::{Signature, SigningKey, VerifyingKey},
-    make_key_gen_session,
-    sessions::{
-        FinalizeOutcome, PreprocessedMessage, RoundAccumulator,
-        Session,
-    },
-    KeyGenResult, KeyShare, MappedResult, ProtocolResult,
-    SchemeParams,
+    sessions::{PreprocessedMessage, RoundAccumulator, Session},
+    MappedResult, ProtocolResult,
 };
 
-use crate::{key_to_str, Bridge, Driver, ProtocolDriver, RoundMsg};
+use crate::{key_to_str, RoundMsg};
 
 use super::MessageOut;
 
@@ -74,7 +65,7 @@ where
             (session.current_round().0 as u16).try_into()?;
 
         outgoing.push(RoundMsg {
-            body: (key.clone(), *destination, message),
+            body: (key.clone(), message),
             sender,
             receiver,
             round,
@@ -120,7 +111,7 @@ where
         */
 
         let from = &message.body.0;
-        let message = message.body.2.clone();
+        let message = message.body.1.clone();
         // let (from, message) = rx.recv().await.unwrap();
 
         // Perform quick checks before proceeding with the verification.

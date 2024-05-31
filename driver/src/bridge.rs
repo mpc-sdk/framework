@@ -69,9 +69,6 @@ impl<D: ProtocolDriver> Bridge<D> {
     ) -> Result<(), D::Error> {
         for message in messages {
             let party_number = message.receiver();
-
-            println!("party_number: {}", party_number);
-
             let peer_key =
                 self.session.peer_key(*party_number).unwrap();
             self.transport
