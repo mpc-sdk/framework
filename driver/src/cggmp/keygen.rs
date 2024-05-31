@@ -167,74 +167,15 @@ where
     }
 
     fn proceed(&mut self) -> Result<Vec<Self::Message>> {
-        let mut outgoing = Vec::new();
-
         let session = self.session.as_mut().unwrap();
         let accum = self.accum.as_mut().unwrap();
-
-        let destinations = session.message_destinations();
-        let key_str = key_to_str(&session.verifier());
-
-        println!(
-            "{key_str}: *** starting round {:?} ***",
-            session.current_round()
-        );
-
-        for destination in destinations.iter() {
-            // In production usage, this will happen in a spawned task
-            // (since it can take some time to create a message),
-            // and the artifact will be sent back to the host task
-            // to be added to the accumulator.
-            let (message, artifact) = session
-                .make_message(&mut OsRng, destination)
-                .unwrap();
-
-            println!(
-                "{key_str}: sending a message to {}",
-                key_to_str(destination)
-            );
-
-            // This will happen in a host task
-            accum.add_artifact(artifact).unwrap();
-
-            let sender = self
-                .verifiers
-                .iter()
-                .position(|i| i == &self.key)
-                .unwrap();
-
-            let receiver = self
-                .verifiers
-                .iter()
-                .position(|i| i == destination)
-                .unwrap();
-
-            let sender: NonZeroU16 =
-                ((sender + 1) as u16).try_into()?;
-            let receiver: NonZeroU16 =
-                ((receiver + 1) as u16).try_into()?;
-            let round: NonZeroU16 =
-                (session.current_round().0 as u16).try_into()?;
-
-            outgoing.push(RoundMsg {
-                body: (self.key, *destination, message),
-                sender,
-                receiver,
-                round,
-            });
-        }
-
-        for preprocessed in self.cached_messages.drain(..) {
-            // In production usage, this will happen in a spawned task.
-            println!("{key_str}: applying a cached message");
-            let result =
-                session.process_message(preprocessed).unwrap();
-
-            // This will happen in a host task.
-            accum.add_processed_message(result).unwrap().unwrap();
-        }
-
-        Ok(outgoing)
+        super::helpers::proceed(
+            session,
+            accum,
+            &self.verifiers,
+            &mut self.cached_messages,
+            &self.key,
+        )
     }
 
     fn handle_incoming(

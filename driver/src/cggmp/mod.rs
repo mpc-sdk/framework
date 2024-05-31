@@ -2,22 +2,25 @@
 use serde::{Deserialize, Serialize};
 use synedrion::{
     ecdsa::{self, SigningKey, VerifyingKey},
-    AuxInfo, KeyShare as SynedrionKeyShare, PrehashedMessage,
+    CombinedMessage, KeyShare as SynedrionKeyShare, PrehashedMessage,
     RecoverableSignature, SchemeParams,
-    CombinedMessage,
 };
 
 mod aux_gen;
 mod error;
+mod helpers;
 mod keygen;
 mod sign;
 
+pub use aux_gen::AuxGenDriver;
 pub use error::Error;
 pub use keygen::KeyGenDriver;
-pub use aux_gen::AuxGenDriver;
 
-type MessageOut =
-    (VerifyingKey, VerifyingKey, CombinedMessage<ecdsa::Signature>);
+type MessageOut = (
+    VerifyingKey,
+    VerifyingKey,
+    CombinedMessage<ecdsa::Signature>,
+);
 
 /// Key share.
 #[cfg(not(debug_assertions))]
@@ -168,7 +171,6 @@ pub async fn sign<P: SchemeParams + 'static>(
     let (transport, participants) =
         wait_for_driver(&mut stream, driver).await?;
     */
-
 
     // Wait for aux gen protocol to complete
     let driver = AuxGenDriver::new(
