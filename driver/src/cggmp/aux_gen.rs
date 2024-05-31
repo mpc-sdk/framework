@@ -14,15 +14,14 @@ use synedrion::{
         FinalizeOutcome, PreprocessedMessage, RoundAccumulator,
         Session,
     },
-    CombinedMessage, AuxGenResult, KeyShare, SchemeParams,
-    AuxInfo,
+    AuxGenResult, AuxInfo, SchemeParams,
 };
 
 use crate::{key_to_str, Bridge, Driver, ProtocolDriver, RoundMsg};
 
 use super::MessageOut;
 
-/// CGGMP key generation.
+/// CGGMP aux info generation.
 pub struct AuxGenDriver<P>
 where
     P: SchemeParams + 'static,

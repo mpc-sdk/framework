@@ -14,7 +14,7 @@ use synedrion::{
         FinalizeOutcome, PreprocessedMessage, RoundAccumulator,
         Session,
     },
-    CombinedMessage, KeyGenResult, KeyShare, SchemeParams,
+    KeyGenResult, KeyShare, SchemeParams,
 };
 
 use crate::{key_to_str, Bridge, Driver, ProtocolDriver, RoundMsg};

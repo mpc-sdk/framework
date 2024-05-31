@@ -14,15 +14,15 @@ use synedrion::{
         FinalizeOutcome, PreprocessedMessage, RoundAccumulator,
         Session,
     },
-    AuxInfo, CombinedMessage, InteractiveSigningResult, KeyShare,
-    PrehashedMessage, RecoverableSignature, SchemeParams,
+    AuxInfo, InteractiveSigningResult, KeyShare, PrehashedMessage,
+    RecoverableSignature, SchemeParams,
 };
 
 use crate::{key_to_str, Bridge, Driver, ProtocolDriver, RoundMsg};
 
 use super::MessageOut;
 
-/// CGGMP key generation.
+/// CGGMP signature generation.
 pub struct SignatureDriver<P>
 where
     P: SchemeParams + 'static,
