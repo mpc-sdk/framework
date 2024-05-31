@@ -29,9 +29,13 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[cfg(feature = "cggmp")]
 pub mod cggmp;
-
+#[cfg(feature = "cggmp")]
 pub use synedrion;
+#[cfg(feature = "cggmp")]
 pub use synedrion::k256;
+
+#[cfg(feature = "cggmp")]
+use synedrion::k256::ecdsa::{SigningKey, VerifyingKey};
 
 /// Drives a protocol to completion bridging between
 /// the network transport and local computation.
@@ -93,27 +97,38 @@ pub(crate) trait ProtocolDriver {
 }
 
 /// Run distributed key generation.
-#[cfg(feature = "gg20")]
+#[cfg(feature = "cggmp")]
 pub async fn keygen(
     options: SessionOptions,
     participants: Option<Vec<Vec<u8>>>,
+    shared_randomness: &[u8],
+    signer: SigningKey,
+    verifiers: Vec<VerifyingKey>,
 ) -> Result<KeyShare> {
     match &options.protocol {
-        Protocol::GG20 => {
-            Ok(crate::gg20::keygen(options, participants).await?)
-        }
-        _ => todo!("drive CGGMP protocol"),
+        Protocol::Cggmp => Ok(crate::cggmp::keygen(
+            options,
+            participants,
+            shared_randomness,
+            signer,
+            verifiers,
+        )
+        .await?
+        .into()),
     }
 }
 
 /// Sign a message.
-#[cfg(feature = "gg20")]
+#[cfg(feature = "cggmp")]
 pub async fn sign(
     options: SessionOptions,
     participants: Option<Vec<Vec<u8>>>,
     signing_key: PrivateKey,
     message: [u8; 32],
 ) -> Result<Signature> {
+    todo!();
+
+    /*
     match &options.protocol {
         Protocol::GG20 => {
             assert!(matches!(signing_key, PrivateKey::GG20(_)));
@@ -128,6 +143,7 @@ pub async fn sign(
         }
         _ => todo!("drive CGGMP protocol"),
     }
+    */
 }
 
 #[doc(hidden)]
@@ -155,6 +171,7 @@ pub(crate) async fn new_client(
     Ok(Client::new(&url, options).await?)
 }
 
+#[cfg(feature = "cggmp")]
 pub(crate) fn key_to_str(
     key: &crate::k256::ecdsa::VerifyingKey,
 ) -> String {

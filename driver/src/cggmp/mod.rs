@@ -2,7 +2,7 @@
 use serde::{Deserialize, Serialize};
 use synedrion::{
     ecdsa::{SigningKey, VerifyingKey},
-    KeyShare, SchemeParams,
+    KeyShare as SynedrionKeyShare, SchemeParams,
 };
 
 mod error;
@@ -11,6 +11,16 @@ mod keygen;
 
 pub use error::Error;
 pub use keygen::KeyGenDriver;
+
+/// Key share.
+#[cfg(not(debug_assertions))]
+pub type KeyShare =
+    SynedrionKeyShare<synedrion::ProductionParams, VerifyingKey>;
+
+/// Key share.
+#[cfg(debug_assertions)]
+pub type KeyShare =
+    SynedrionKeyShare<synedrion::TestParams, VerifyingKey>;
 
 // pub use sign::{
 //     OfflineResult, ParticipantDriver, PreSignDriver, Signature,
@@ -40,7 +50,7 @@ pub async fn keygen<P: SchemeParams + 'static>(
     shared_randomness: &[u8],
     signer: SigningKey,
     verifiers: Vec<VerifyingKey>,
-) -> crate::Result<KeyShare<P, VerifyingKey>> {
+) -> crate::Result<SynedrionKeyShare<P, VerifyingKey>> {
     let is_initiator = participants.is_some();
 
     let parameters = options.parameters;
