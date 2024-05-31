@@ -11,6 +11,7 @@ mod error;
 mod helpers;
 mod key_gen;
 mod key_init;
+mod key_refresh;
 mod sign;
 
 pub use aux_gen::AuxGenDriver;
@@ -110,7 +111,7 @@ pub async fn keygen<P: SchemeParams + 'static>(
     transport.close().await?;
     wait_for_close(&mut stream).await?;
 
-    Ok(key_share)
+    Ok(key_share.0)
 }
 
 /// Sign a message using the CGGMP protocol.

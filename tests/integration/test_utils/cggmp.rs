@@ -251,7 +251,7 @@ async fn cggmp_keygen(
                             keygen_i.handle_event(event).await? {
                             key_shares.insert(
                                 client_i_transport.public_key().to_vec(),
-                                key_share);
+                                key_share.0);
                         }
                     }
                     _ => {}
@@ -265,7 +265,7 @@ async fn cggmp_keygen(
                             keygen_p_1.handle_event(event).await? {
                             key_shares.insert(
                                 client_p_1_transport.public_key().to_vec(),
-                                key_share);
+                                key_share.0);
                         }
                     }
                     _ => {}
@@ -279,7 +279,7 @@ async fn cggmp_keygen(
                             keygen_p_2.handle_event(event).await? {
                             key_shares.insert(
                                 client_p_2_transport.public_key().to_vec(),
-                                key_share);
+                                key_share.0);
                         }
                     }
                     _ => {}

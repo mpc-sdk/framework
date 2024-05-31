@@ -1,4 +1,4 @@
-//! Key generation for CGGMP.
+//! Key refresh for CGGMP.
 use async_trait::async_trait;
 use mpc_client::{Event, NetworkTransport, Transport};
 use mpc_protocol::{hex, SessionState};
@@ -7,12 +7,12 @@ use rand::rngs::OsRng;
 use super::{Error, Result};
 use synedrion::{
     ecdsa::{Signature, SigningKey, VerifyingKey},
-    make_key_gen_session,
+    make_key_refresh_session,
     sessions::{
         FinalizeOutcome, PreprocessedMessage, RoundAccumulator,
         Session,
     },
-    AuxInfo, KeyGenResult, KeyShare, SchemeParams,
+    AuxInfo, KeyRefreshResult, KeyShareChange, SchemeParams,
 };
 
 use crate::{key_to_str, Bridge, Driver, ProtocolDriver, RoundMsg};
@@ -20,18 +20,18 @@ use crate::{key_to_str, Bridge, Driver, ProtocolDriver, RoundMsg};
 use super::MessageOut;
 
 /// CGGMP key generation.
-pub struct KeyGenDriver<P>
+pub struct KeyInitDriver<P>
 where
     P: SchemeParams + 'static,
 {
     bridge: Bridge<CggmpDriver<P>>,
 }
 
-impl<P> KeyGenDriver<P>
+impl<P> KeyInitDriver<P>
 where
     P: SchemeParams + 'static,
 {
-    /// Create a new CGGMP key generator.
+    /// Create a new CGGMP refresh.
     pub fn new(
         transport: Transport,
         session: SessionState,
@@ -60,13 +60,13 @@ where
 }
 
 #[async_trait]
-impl<P> Driver for KeyGenDriver<P>
+impl<P> Driver for KeyInitDriver<P>
 where
     P: SchemeParams + 'static,
 {
     type Error = Error;
     type Output =
-        (KeyShare<P, VerifyingKey>, AuxInfo<P, VerifyingKey>);
+        (KeyShareChange<P, VerifyingKey>, AuxInfo<P, VerifyingKey>);
 
     async fn handle_event(
         &mut self,
@@ -80,11 +80,11 @@ where
     }
 }
 
-impl<P> From<KeyGenDriver<P>> for Transport
+impl<P> From<KeyInitDriver<P>> for Transport
 where
     P: SchemeParams + 'static,
 {
-    fn from(value: KeyGenDriver<P>) -> Self {
+    fn from(value: KeyInitDriver<P>) -> Self {
         value.bridge.transport
     }
 }
@@ -95,7 +95,12 @@ where
     P: SchemeParams + 'static,
 {
     session: Option<
-        Session<KeyGenResult<P>, Signature, SigningKey, VerifyingKey>,
+        Session<
+            KeyRefreshResult<P>,
+            Signature,
+            SigningKey,
+            VerifyingKey,
+        >,
     >,
     accum: Option<RoundAccumulator<Signature>>,
     cached_messages: Vec<PreprocessedMessage<Signature>>,
@@ -107,13 +112,13 @@ impl<P> CggmpDriver<P>
 where
     P: SchemeParams + 'static,
 {
-    /// Create a key generator.
+    /// Create a key init generator.
     pub fn new(
         shared_randomness: &[u8],
         signer: SigningKey,
         verifiers: Vec<VerifyingKey>,
     ) -> Result<Self> {
-        let session = make_key_gen_session(
+        let session = make_key_refresh_session(
             &mut OsRng,
             shared_randomness,
             signer,
@@ -142,7 +147,7 @@ where
     type Error = Error;
     type Message = RoundMsg<MessageOut>;
     type Output =
-        (KeyShare<P, VerifyingKey>, AuxInfo<P, VerifyingKey>);
+        (KeyShareChange<P, VerifyingKey>, AuxInfo<P, VerifyingKey>);
 
     fn can_finalize(&self) -> Result<bool> {
         // TODO: error conversion
