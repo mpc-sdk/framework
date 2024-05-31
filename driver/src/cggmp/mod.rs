@@ -9,12 +9,12 @@ use synedrion::{
 mod aux_gen;
 mod error;
 mod helpers;
-mod keygen;
+mod key_gen;
 mod sign;
 
 pub use aux_gen::AuxGenDriver;
 pub use error::Error;
-pub use keygen::KeyGenDriver;
+pub use key_gen::KeyGenDriver;
 
 type MessageOut = (VerifyingKey, CombinedMessage<ecdsa::Signature>);
 
