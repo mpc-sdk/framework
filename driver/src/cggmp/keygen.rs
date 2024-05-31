@@ -17,7 +17,7 @@ use synedrion::{
     CombinedMessage, KeyGenResult, KeyShare, SchemeParams,
 };
 
-use crate::{Bridge, Driver, ProtocolDriver, RoundBuffer, RoundMsg};
+use crate::{Bridge, Driver, ProtocolDriver, RoundMsg};
 
 type MessageOut =
     (VerifyingKey, VerifyingKey, CombinedMessage<Signature>);
@@ -51,16 +51,12 @@ where
             },
         )?;
 
-        let buffer =
-            RoundBuffer::new_fixed(4, parameters.parties - 1);
-
         let driver =
             CggmpDriver::new(shared_randomness, signer, verifiers)?;
 
         let bridge = Bridge {
             transport,
             driver: Some(driver),
-            buffer,
             session,
         };
         Ok(Self { bridge })
@@ -152,6 +148,11 @@ where
     type Error = Error;
     type Outgoing = RoundMsg<MessageOut>;
     type Output = KeyShare<P, VerifyingKey>;
+
+    fn can_finalize(&self) -> Result<bool> {
+        // TODO: error conversion
+        Ok(self.session.can_finalize(&self.accum).unwrap())
+    }
 
     fn handle_incoming(
         &mut self,

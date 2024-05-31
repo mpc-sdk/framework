@@ -2,12 +2,11 @@ use futures::{select, FutureExt, StreamExt};
 use mpc_client::{Event, EventStream, NetworkTransport, Transport};
 use mpc_protocol::{SessionId, SessionState};
 
-use crate::{Driver, Error, ProtocolDriver, Round, RoundBuffer};
+use crate::{Driver, Error, ProtocolDriver, Round};
 
 /// Connects a network transport with a protocol driver.
 pub(crate) struct Bridge<D: ProtocolDriver> {
     pub(crate) transport: Transport,
-    pub(crate) buffer: RoundBuffer<D::Outgoing>,
     pub(crate) driver: Option<D>,
     pub(crate) session: SessionState,
 }
@@ -35,7 +34,20 @@ impl<D: ProtocolDriver> Bridge<D> {
             }
 
             let message: D::Outgoing = message.deserialize()?;
-            let round_number = message.round_number();
+            // let round_number = message.round_number();
+
+            let driver = self.driver.as_mut().unwrap();
+            driver.handle_incoming(message)?;
+
+            if !driver.can_finalize()? {
+                let messages = driver.proceed()?;
+                self.dispatch_round_messages(messages).await?;
+            } else {
+                let result = self.driver.take().unwrap().finish()?;
+                return Ok(Some(result));
+            }
+
+            /*
             self.buffer.add_message(round_number, message);
 
             if self.buffer.is_ready(round_number) {
@@ -64,6 +76,7 @@ impl<D: ProtocolDriver> Bridge<D> {
                     return Ok(Some(result));
                 }
             }
+            */
         }
 
         Ok(None)

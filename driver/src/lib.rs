@@ -77,6 +77,9 @@ pub(crate) trait ProtocolDriver {
         &mut self,
     ) -> std::result::Result<Vec<Self::Outgoing>, Self::Error>;
 
+    /// Whether the protocol can be finalized.
+    fn can_finalize(&self) -> std::result::Result<bool, Self::Error>;
+
     /// Complete the protocol and get the output.
     fn finish(self)
         -> std::result::Result<Self::Output, Self::Error>;
