@@ -1,6 +1,4 @@
 //! Signature generation for CGGMP.
-use std::num::NonZeroU16;
-
 use async_trait::async_trait;
 use mpc_client::{Event, NetworkTransport, Transport};
 use mpc_protocol::{hex, Parameters, SessionState};
@@ -37,7 +35,6 @@ where
     /// Create a new CGGMP key generator.
     pub fn new(
         transport: Transport,
-        parameters: Parameters,
         session: SessionState,
         shared_randomness: &[u8],
         signer: SigningKey,
@@ -46,7 +43,7 @@ where
         aux_info: &AuxInfo<P, VerifyingKey>,
         prehashed_message: &PrehashedMessage,
     ) -> Result<Self> {
-        let party_number = session
+        let _party_number = session
             .party_number(transport.public_key())
             .ok_or_else(|| {
                 Error::NotSessionParticipant(hex::encode(
@@ -55,8 +52,6 @@ where
             })?;
 
         let driver = CggmpDriver::new(
-            parameters,
-            party_number.into(),
             shared_randomness,
             signer,
             verifiers,
@@ -108,8 +103,6 @@ struct CggmpDriver<P>
 where
     P: SchemeParams + 'static,
 {
-    parameters: Parameters,
-    party_number: u16,
     session: Option<
         Session<
             InteractiveSigningResult<P>,
@@ -130,8 +123,6 @@ where
 {
     /// Create a key generator.
     pub fn new(
-        parameters: Parameters,
-        party_number: u16,
         shared_randomness: &[u8],
         signer: SigningKey,
         verifiers: Vec<VerifyingKey>,
@@ -155,8 +146,6 @@ where
         let accum = session.make_accumulator();
 
         Ok(Self {
-            parameters,
-            party_number,
             session: Some(session),
             accum: Some(accum),
             cached_messages,
@@ -202,46 +191,7 @@ where
     ) -> Result<()> {
         let session = self.session.as_mut().unwrap();
         let accum = self.accum.as_mut().unwrap();
-        if !session.can_finalize(accum).unwrap() {
-            let key_str = key_to_str(&session.verifier());
-            tracing::info!(
-                "keygen handle incoming (round = {}, sender = {})",
-                session.current_round().0,
-                message.sender,
-            );
-
-            // This can be checked if a timeout expired, to see which nodes have not responded yet.
-            let unresponsive_parties =
-                session.missing_messages(accum).unwrap();
-            assert!(!unresponsive_parties.is_empty());
-
-            /*
-            println!("{key_str}: waiting for a message");
-            */
-
-            let from = &message.body.0;
-            let message = message.body.2.clone();
-            // let (from, message) = rx.recv().await.unwrap();
-
-            // Perform quick checks before proceeding with the verification.
-            let preprocessed = session
-                .preprocess_message(accum, from, message)
-                .unwrap();
-
-            if let Some(preprocessed) = preprocessed {
-                println!(
-                    "{key_str}: applying a message from {}",
-                    key_to_str(&from)
-                );
-                let result =
-                    session.process_message(preprocessed).unwrap();
-
-                // This will happen in a host task.
-                accum.add_processed_message(result).unwrap().unwrap();
-            }
-        }
-
-        Ok(())
+        super::helpers::handle_incoming(session, accum, message)
     }
 
     fn try_finalize_round(&mut self) -> Result<Option<Self::Output>> {

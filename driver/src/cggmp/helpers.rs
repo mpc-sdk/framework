@@ -93,17 +93,19 @@ where
     Ok(outgoing)
 }
 
-/*
-fn handle_incoming(
-    &mut self,
-    message: Self::Message,
-) -> Result<()> {
-    let session = self.session.as_mut().unwrap();
-    let accum = self.accum.as_mut().unwrap();
+pub fn handle_incoming<Res>(
+    session: &mut Session<Res, Signature, SigningKey, VerifyingKey>,
+    accum: &mut RoundAccumulator<Signature>,
+    message: RoundMsg<MessageOut>,
+) -> Result<()>
+where
+    Res: MappedResult<VerifyingKey>,
+    Res: ProtocolResult,
+{
     if !session.can_finalize(accum).unwrap() {
         let key_str = key_to_str(&session.verifier());
         tracing::info!(
-            "keygen handle incoming (round = {}, sender = {})",
+            "handle incoming (round = {}, sender = {})",
             session.current_round().0,
             message.sender,
         );
@@ -122,9 +124,8 @@ fn handle_incoming(
         // let (from, message) = rx.recv().await.unwrap();
 
         // Perform quick checks before proceeding with the verification.
-        let preprocessed = session
-            .preprocess_message(accum, from, message)
-            .unwrap();
+        let preprocessed =
+            session.preprocess_message(accum, from, message).unwrap();
 
         if let Some(preprocessed) = preprocessed {
             println!(
@@ -141,4 +142,3 @@ fn handle_incoming(
 
     Ok(())
 }
-*/

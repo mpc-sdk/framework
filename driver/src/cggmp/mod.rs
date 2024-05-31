@@ -187,7 +187,7 @@ pub async fn sign<P: SchemeParams + 'static>(
     // Wait for message to be signed
     let driver = SignatureDriver::new(
         transport,
-        parameters,
+        // parameters,
         session,
         shared_randomness,
         signer,

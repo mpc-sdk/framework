@@ -184,46 +184,7 @@ where
     ) -> Result<()> {
         let session = self.session.as_mut().unwrap();
         let accum = self.accum.as_mut().unwrap();
-        if !session.can_finalize(accum).unwrap() {
-            let key_str = key_to_str(&session.verifier());
-            tracing::info!(
-                "keygen handle incoming (round = {}, sender = {})",
-                session.current_round().0,
-                message.sender,
-            );
-
-            // This can be checked if a timeout expired, to see which nodes have not responded yet.
-            let unresponsive_parties =
-                session.missing_messages(accum).unwrap();
-            assert!(!unresponsive_parties.is_empty());
-
-            /*
-            println!("{key_str}: waiting for a message");
-            */
-
-            let from = &message.body.0;
-            let message = message.body.2.clone();
-            // let (from, message) = rx.recv().await.unwrap();
-
-            // Perform quick checks before proceeding with the verification.
-            let preprocessed = session
-                .preprocess_message(accum, from, message)
-                .unwrap();
-
-            if let Some(preprocessed) = preprocessed {
-                println!(
-                    "{key_str}: applying a message from {}",
-                    key_to_str(&from)
-                );
-                let result =
-                    session.process_message(preprocessed).unwrap();
-
-                // This will happen in a host task.
-                accum.add_processed_message(result).unwrap().unwrap();
-            }
-        }
-
-        Ok(())
+        super::helpers::handle_incoming(session, accum, message)
     }
 
     fn try_finalize_round(&mut self) -> Result<Option<Self::Output>> {
