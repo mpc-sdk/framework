@@ -5,19 +5,22 @@ use std::collections::HashMap;
 use mpc_driver::{
     cggmp::{
         self, AuxGenDriver, KeyGenDriver, KeyInitDriver,
-        SignatureDriver,
+        KeyResharingDriver, SignatureDriver,
     },
     k256::{
         self,
         ecdsa::{SigningKey, VerifyingKey},
     },
     synedrion::{
-        KeyShare, PrehashedMessage, RecoverableSignature, TestParams,
+        KeyResharingInputs, KeyShare, NewHolder, OldHolder,
+        PrehashedMessage, RecoverableSignature, TestParams,
+        ThresholdKeyShare,
     },
     Driver, SessionEventHandler, SessionInitiator,
     SessionParticipant,
 };
 
+use super::make_signers;
 use mpc_client::{NetworkTransport, Transport};
 use mpc_protocol::{Keypair, Parameters, SessionState};
 use rand::{rngs::OsRng, Rng};
@@ -68,17 +71,16 @@ async fn cggmp_sign(
     parameters: Parameters,
     prehashed_message: &PrehashedMessage,
 ) -> Result<()> {
-    let rng = &mut OsRng;
-    let mut signing_keys = Vec::new();
-    for _ in 0..parameters.parties {
-        signing_keys.push(k256::ecdsa::SigningKey::random(rng));
-    }
+    let n = parameters.parties as usize;
+    let t = parameters.threshold as usize;
+
+    let (signers, verifiers) = make_signers(n);
 
     let key_shares = make_key_init(
         server,
-        server_public_key,
+        &server_public_key,
         parameters.clone(),
-        signing_keys.clone(),
+        signers.clone(),
     )
     .await?;
 
@@ -88,223 +90,22 @@ async fn cggmp_sign(
         .map(|key_share| key_share.to_threshold_key_share())
         .collect::<Vec<_>>();
 
+    let new_key_shares = make_key_resharing(
+        server,
+        &server_public_key,
+        parameters.clone(),
+        signers.clone(),
+        verifiers.clone(),
+        t_key_shares,
+    )
+    .await?;
+
     Ok(())
-
-    /*
-    let signing_key_1 = signing_keys.remove(0);
-    let signing_key_3 = signing_keys.remove(0);
-
-    let verifiers: Vec<VerifyingKey> = vec![
-        signing_key_1.verifying_key().clone(),
-        signing_key_3.verifying_key().clone(),
-    ];
-
-    let initiator_key = keypairs.remove(0);
-    let participant_key_2 = keypairs.pop().unwrap();
-    let sign_participants =
-        vec![participant_key_2.public_key().to_vec()];
-
-    // Create new clients for signature generation
-    let (client_i, event_loop_i) =
-        new_client_with_keypair::<anyhow::Error>(
-            server,
-            server_public_key.clone(),
-            initiator_key,
-        )
-        .await?;
-    let (client_p_2, event_loop_p_2) =
-        new_client_with_keypair::<anyhow::Error>(
-            server,
-            server_public_key.clone(),
-            participant_key_2,
-        )
-        .await?;
-
-    let mut client_i_transport: Transport = client_i.into();
-    let mut client_p_2_transport: Transport = client_p_2.into();
-
-    // Each client handshakes with the server
-    client_i_transport.connect().await?;
-    client_p_2_transport.connect().await?;
-
-    let mut s_i = event_loop_i.run();
-    let mut s_p_2 = event_loop_p_2.run();
-
-    let mut sessions: Vec<SessionState> = Vec::new();
-
-    let mut client_i_session =
-        SessionInitiator::new(client_i_transport, sign_participants);
-    let mut client_p_2_session =
-        SessionParticipant::new(client_p_2_transport);
-
-    // Prepare the sessions for each party
-    loop {
-        if sessions.len() == 2 {
-            break;
-        }
-
-        select! {
-            event = s_i.next().fuse() => {
-                match event {
-                    Some(event) => {
-                        let event = event?;
-
-                        if let Some(session) =
-                            client_i_session.handle_event(event).await? {
-                            sessions.push(session);
-                        }
-                    }
-                    _ => {}
-                }
-            },
-            event = s_p_2.next().fuse() => {
-                match event {
-                    Some(event) => {
-                        let event = event?;
-                        if let Some(session) =
-                            client_p_2_session.handle_event(event).await? {
-                            sessions.push(session);
-                        }
-                    }
-                    _ => {}
-                }
-            },
-        }
-    }
-
-    // Prepare for aux info generation
-    let client_i_transport: Transport = client_i_session.into();
-    let client_p_2_transport: Transport = client_p_2_session.into();
-
-    let session_i = sessions.remove(0);
-    let session_p_2 = sessions.remove(0);
-
-    let mut aux_i = AuxGenDriver::<TestParams>::new(
-        client_i_transport.clone(),
-        session_i.clone(),
-        shared_randomness,
-        signing_key_1.clone(),
-        verifiers.clone(),
-    )?;
-    let mut aux_p_2 = AuxGenDriver::<TestParams>::new(
-        client_p_2_transport.clone(),
-        session_p_2.clone(),
-        shared_randomness,
-        signing_key_3.clone(),
-        verifiers.clone(),
-    )?;
-
-    // Each party starts aux info generation.
-    aux_i.execute().await?;
-    aux_p_2.execute().await?;
-
-    let mut aux_infos = Vec::new();
-
-    loop {
-        if aux_infos.len() == 2 {
-            break;
-        }
-        select! {
-            event = s_i.next().fuse() => {
-                match event {
-                    Some(event) => {
-                        let event = event?;
-                        if let Some(aux) =
-                            aux_i.handle_event(event).await? {
-                            aux_infos.insert(0, aux);
-
-                        }
-                    }
-                    _ => {}
-                }
-            },
-            event = s_p_2.next().fuse() => {
-                match event {
-                    Some(event) => {
-                        let event = event?;
-                        if let Some(aux) =
-                            aux_p_2.handle_event(event).await? {
-                            aux_infos.push(aux);
-                        }
-                    }
-                    _ => {}
-                }
-            },
-        }
-    }
-
-    let aux_info_i = aux_infos.remove(0);
-    let aux_info_p_2 = aux_infos.remove(0);
-
-    let key_share_i = key_shares.get(0).unwrap();
-    let key_share_p_2 = key_shares.get(2).unwrap();
-
-    let mut sign_i = SignatureDriver::new(
-        client_i_transport.clone(),
-        session_i,
-        shared_randomness,
-        signing_key_1.clone(),
-        verifiers.clone(),
-        key_share_i,
-        &aux_info_i,
-        prehashed_message,
-    )?;
-    let mut sign_p_2 = SignatureDriver::new(
-        client_p_2_transport.clone(),
-        session_p_2,
-        shared_randomness,
-        signing_key_3.clone(),
-        verifiers.clone(),
-        key_share_p_2,
-        &aux_info_p_2,
-        prehashed_message,
-    )?;
-
-    // Each party starts signature generation.
-    sign_i.execute().await?;
-    sign_p_2.execute().await?;
-
-    let mut signatures = Vec::new();
-
-    loop {
-        if signatures.len() == 2 {
-            break;
-        }
-        select! {
-            event = s_i.next().fuse() => {
-                match event {
-                    Some(event) => {
-                        let event = event?;
-                        if let Some(signature) =
-                            sign_i.handle_event(event).await? {
-                            signatures.push(signature);
-                        }
-                    }
-                    _ => {}
-                }
-            },
-            event = s_p_2.next().fuse() => {
-                match event {
-                    Some(event) => {
-                        let event = event?;
-                        if let Some(signature) =
-                            sign_p_2.handle_event(event).await? {
-                            signatures.push(signature);
-                        }
-                    }
-                    _ => {}
-                }
-            },
-        }
-    }
-
-    Ok(signatures)
-      */
 }
 
 async fn make_key_init(
     server: &str,
-    server_public_key: Vec<u8>,
+    server_public_key: &[u8],
     parameters: Parameters,
     mut signing_keys: Vec<SigningKey>,
 ) -> Result<Vec<KeyShare<TestParams, VerifyingKey>>> {
@@ -319,13 +120,13 @@ async fn make_key_init(
     let (client_t_1, event_loop_t_1, _key_t_1) =
         new_client::<anyhow::Error>(
             server,
-            server_public_key.clone(),
+            server_public_key.to_vec(),
         )
         .await?;
     let (client_t_2, event_loop_t_2, key_t_2) =
         new_client::<anyhow::Error>(
             server,
-            server_public_key.clone(),
+            server_public_key.to_vec(),
         )
         .await?;
 
@@ -447,4 +248,181 @@ async fn make_key_init(
     }
 
     Ok(results)
+}
+
+async fn make_key_resharing(
+    server: &str,
+    server_public_key: &[u8],
+    parameters: Parameters,
+    mut signers: Vec<SigningKey>,
+    verifiers: Vec<VerifyingKey>,
+    t_key_shares: Vec<ThresholdKeyShare<TestParams, VerifyingKey>>,
+) -> Result<Vec<KeyShare<TestParams, VerifyingKey>>> {
+    let n = parameters.parties as usize;
+    let t = parameters.threshold as usize;
+
+    let rng = &mut OsRng;
+    let shared_randomness: [u8; 32] = rng.gen();
+
+    // Create new clients
+    let (client_t_1, event_loop_t_1, _key_t_1) =
+        new_client::<anyhow::Error>(
+            server,
+            server_public_key.to_vec(),
+        )
+        .await?;
+    let (client_t_2, event_loop_t_2, key_t_2) =
+        new_client::<anyhow::Error>(
+            server,
+            server_public_key.to_vec(),
+        )
+        .await?;
+    let (client_t_3, event_loop_t_3, key_t_3) =
+        new_client::<anyhow::Error>(
+            server,
+            server_public_key.to_vec(),
+        )
+        .await?;
+
+    let mut client_t_1_transport: Transport = client_t_1.into();
+    let mut client_t_2_transport: Transport = client_t_2.into();
+    let mut client_t_3_transport: Transport = client_t_3.into();
+
+    // Each client handshakes with the server
+    client_t_1_transport.connect().await?;
+    client_t_2_transport.connect().await?;
+    client_t_3_transport.connect().await?;
+
+    // Event loop streams
+    let mut s_t_1 = event_loop_t_1.run();
+    let mut s_t_2 = event_loop_t_2.run();
+    let mut s_t_3 = event_loop_t_3.run();
+
+    let session_participants = vec![
+        key_t_2.public_key().to_vec(),
+        key_t_3.public_key().to_vec(),
+    ];
+
+    let mut client_t_1_session = SessionInitiator::new(
+        client_t_1_transport,
+        session_participants,
+    );
+    let mut client_t_2_session =
+        SessionParticipant::new(client_t_2_transport);
+    let mut client_t_3_session =
+        SessionParticipant::new(client_t_3_transport);
+
+    let mut sessions: Vec<SessionState> = Vec::new();
+
+    // Prepare the sessions for each party
+    loop {
+        if sessions.len() == parameters.parties as usize {
+            break;
+        }
+
+        select! {
+            event = s_t_1.next().fuse() => {
+                match event {
+                    Some(event) => {
+                        let event = event?;
+
+                        if let Some(session) =
+                            client_t_1_session.handle_event(event).await? {
+                            sessions.insert(0, session);
+                        }
+                    }
+                    _ => {}
+                }
+            },
+            event = s_t_2.next().fuse() => {
+                match event {
+                    Some(event) => {
+                        let event = event?;
+                        if let Some(session) =
+                            client_t_2_session.handle_event(event).await? {
+                            sessions.push(session);
+                        }
+                    }
+                    _ => {}
+                }
+            },
+            event = s_t_3.next().fuse() => {
+                match event {
+                    Some(event) => {
+                        let event = event?;
+                        if let Some(session) =
+                            client_t_3_session.handle_event(event).await? {
+                            sessions.push(session);
+                        }
+                    }
+                    _ => {}
+                }
+            },
+        }
+    }
+
+    // Prepare for key generation
+    let mut transports = vec![
+        client_t_1_session.into(),
+        client_t_2_session.into(),
+        client_t_3_session.into(),
+    ];
+
+    let new_holder = NewHolder {
+        verifying_key: t_key_shares[0].verifying_key(),
+        old_threshold: t_key_shares[0].threshold(),
+        old_holders: verifiers[..t].to_vec(),
+    };
+
+    // Old holders' sessions (which will also hold the newly reshared parts)
+    let mut old_holder_sessions = (0..t)
+        .map(|idx| {
+            let inputs = KeyResharingInputs {
+                old_holder: Some(OldHolder {
+                    key_share: t_key_shares[idx].clone(),
+                }),
+                new_holder: Some(new_holder.clone()),
+                new_holders: verifiers.clone(),
+                new_threshold: t,
+            };
+
+            let transport = transports.remove(0);
+            let session = sessions.remove(0);
+            KeyResharingDriver::new(
+                transport,
+                session,
+                &shared_randomness,
+                signers[idx].clone(),
+                verifiers.clone(),
+                &inputs,
+            )
+        })
+        .collect::<Vec<_>>();
+
+    // New holders' sessions
+    let new_holder_sessions = (t..n)
+        .map(|idx| {
+            let inputs = KeyResharingInputs {
+                old_holder: None,
+                new_holder: Some(new_holder.clone()),
+                new_holders: verifiers.clone(),
+                new_threshold: t,
+            };
+
+            let transport = transports.remove(0);
+            let session = sessions.remove(0);
+            KeyResharingDriver::new(
+                transport,
+                session,
+                &shared_randomness,
+                signers[idx].clone(),
+                verifiers.clone(),
+                &inputs,
+            )
+        })
+        .collect::<Vec<_>>();
+
+    old_holder_sessions.extend(new_holder_sessions.into_iter());
+
+    todo!();
 }
