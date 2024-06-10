@@ -12,6 +12,7 @@ mod helpers;
 mod key_gen;
 mod key_init;
 mod key_refresh;
+mod key_resharing;
 mod sign;
 
 pub use aux_gen::AuxGenDriver;
@@ -19,6 +20,7 @@ pub use error::Error;
 pub use key_gen::KeyGenDriver;
 pub use key_init::KeyInitDriver;
 pub use key_refresh::KeyRefreshDriver;
+pub use key_resharing::KeyResharingDriver;
 pub use sign::SignatureDriver;
 
 type MessageOut = CombinedMessage<ecdsa::Signature>;
