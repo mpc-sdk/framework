@@ -1,10 +1,13 @@
 use anyhow::Result;
 
 use mpc_driver::{
-    cggmp::{KeyInitDriver, KeyResharingDriver},
+    cggmp::{
+        AuxGenDriver, KeyInitDriver, KeyResharingDriver,
+        SignatureDriver,
+    },
     k256::ecdsa::{SigningKey, VerifyingKey},
     synedrion::{
-        KeyResharingInputs, KeyShare, NewHolder, OldHolder,
+        AuxInfo, KeyResharingInputs, KeyShare, NewHolder, OldHolder,
         PrehashedMessage, RecoverableSignature, TestParams,
         ThresholdKeyShare,
     },
@@ -57,6 +60,7 @@ async fn cggmp_sign(
     prehashed_message: &PrehashedMessage,
 ) -> Result<()> {
     let n = parameters.parties as usize;
+    let t = parameters.threshold as usize;
 
     let (signers, verifiers) = make_signers(n);
 
@@ -74,7 +78,8 @@ async fn cggmp_sign(
         .map(|key_share| key_share.to_threshold_key_share())
         .collect::<Vec<_>>();
 
-    let new_key_shares = make_key_resharing(
+    // Reshare to `n` nodes
+    let new_t_key_shares = make_key_resharing(
         server,
         &server_public_key,
         parameters.clone(),
@@ -84,6 +89,41 @@ async fn cggmp_sign(
     )
     .await?;
 
+    // Generate auxiliary data
+    let aux_infos = make_aux_infos(
+        server,
+        &server_public_key,
+        parameters.clone(),
+        signers.clone(),
+        verifiers.clone(),
+    )
+    .await?;
+
+    let selected_signers =
+        vec![signers[0].clone(), signers[2].clone()];
+    let selected_parties = vec![verifiers[0], verifiers[2]];
+    let selected_key_shares = vec![
+        new_t_key_shares[0].to_key_share(&selected_parties),
+        new_t_key_shares[2].to_key_share(&selected_parties),
+    ];
+    let selected_aux_infos =
+        vec![aux_infos[0].clone(), aux_infos[2].clone()];
+
+    // Generate signatures
+    let signatures = make_signatures(
+        server,
+        &server_public_key,
+        parameters.clone(),
+        selected_signers,
+        selected_parties,
+        selected_key_shares,
+        selected_aux_infos,
+        prehashed_message,
+    )
+    .await?;
+
+    assert_eq!(t, signatures.len());
+
     Ok(())
 }
 
@@ -91,14 +131,14 @@ async fn make_key_init(
     server: &str,
     server_public_key: &[u8],
     parameters: Parameters,
-    mut signing_keys: Vec<SigningKey>,
+    mut signers: Vec<SigningKey>,
 ) -> Result<Vec<KeyShare<TestParams, VerifyingKey>>> {
     let rng = &mut OsRng;
     let shared_randomness: [u8; 32] = rng.gen();
 
     let verifiers = vec![
-        signing_keys.get(0).unwrap().verifying_key().clone(),
-        signing_keys.get(1).unwrap().verifying_key().clone(),
+        signers.get(0).unwrap().verifying_key().clone(),
+        signers.get(1).unwrap().verifying_key().clone(),
     ];
 
     let mut results = make_client_sessions(
@@ -119,14 +159,14 @@ async fn make_key_init(
             client_t_1_transport.clone(),
             session_t_1,
             &shared_randomness,
-            signing_keys.remove(0),
+            signers.remove(0),
             verifiers.clone(),
         )?,
         KeyInitDriver::<TestParams>::new(
             client_t_2_transport.clone(),
             session_t_2,
             &shared_randomness,
-            signing_keys.remove(0),
+            signers.remove(0),
             verifiers.clone(),
         )?,
     ];
@@ -148,12 +188,8 @@ async fn make_key_resharing(
     let rng = &mut OsRng;
     let shared_randomness: [u8; 32] = rng.gen();
 
-    let mut results = make_client_sessions(
-        server,
-        server_public_key,
-        parameters.parties as usize,
-    )
-    .await?;
+    let mut results =
+        make_client_sessions(server, server_public_key, n).await?;
 
     let (client_t_1_transport, session_t_1, s_t_1) =
         results.remove(0);
@@ -231,6 +267,106 @@ async fn make_key_resharing(
 
     let streams = vec![s_t_1, s_t_2, s_t_3];
     let drivers = old_holder_sessions;
+
+    execute_drivers(streams, drivers).await
+}
+
+async fn make_aux_infos(
+    server: &str,
+    server_public_key: &[u8],
+    parameters: Parameters,
+    mut signers: Vec<SigningKey>,
+    verifiers: Vec<VerifyingKey>,
+) -> Result<Vec<AuxInfo<TestParams, VerifyingKey>>> {
+    let n = parameters.parties as usize;
+
+    let rng = &mut OsRng;
+    let shared_randomness: [u8; 32] = rng.gen();
+
+    let mut results =
+        make_client_sessions(server, server_public_key, n).await?;
+
+    let (client_t_1_transport, session_t_1, s_t_1) =
+        results.remove(0);
+    let (client_t_2_transport, session_t_2, s_t_2) =
+        results.remove(0);
+    let (client_t_3_transport, session_t_3, s_t_3) =
+        results.remove(0);
+
+    let streams = vec![s_t_1, s_t_2, s_t_3];
+    let drivers = vec![
+        AuxGenDriver::<TestParams>::new(
+            client_t_1_transport.clone(),
+            session_t_1,
+            &shared_randomness,
+            signers.remove(0),
+            verifiers.clone(),
+        )?,
+        AuxGenDriver::<TestParams>::new(
+            client_t_2_transport.clone(),
+            session_t_2,
+            &shared_randomness,
+            signers.remove(0),
+            verifiers.clone(),
+        )?,
+        AuxGenDriver::<TestParams>::new(
+            client_t_3_transport.clone(),
+            session_t_3,
+            &shared_randomness,
+            signers.remove(0),
+            verifiers.clone(),
+        )?,
+    ];
+
+    execute_drivers(streams, drivers).await
+}
+
+async fn make_signatures(
+    server: &str,
+    server_public_key: &[u8],
+    parameters: Parameters,
+    mut signers: Vec<SigningKey>,
+    verifiers: Vec<VerifyingKey>,
+    key_shares: Vec<KeyShare<TestParams, VerifyingKey>>,
+    aux_info: Vec<AuxInfo<TestParams, VerifyingKey>>,
+    prehashed_message: &PrehashedMessage,
+) -> Result<Vec<RecoverableSignature>> {
+    let t = parameters.threshold as usize;
+
+    let rng = &mut OsRng;
+    let shared_randomness: [u8; 32] = rng.gen();
+
+    let mut results =
+        make_client_sessions(server, server_public_key, t).await?;
+
+    let (client_t_1_transport, session_t_1, s_t_1) =
+        results.remove(0);
+    let (client_t_2_transport, session_t_2, s_t_2) =
+        results.remove(0);
+
+    let streams = vec![s_t_1, s_t_2];
+    let drivers = vec![
+        SignatureDriver::<TestParams>::new(
+            client_t_1_transport.clone(),
+            session_t_1,
+            &shared_randomness,
+            signers.remove(0),
+            verifiers.clone(),
+            key_shares.get(0).unwrap(),
+            aux_info.get(0).unwrap(),
+            prehashed_message,
+        )?,
+        SignatureDriver::<TestParams>::new(
+            client_t_2_transport.clone(),
+            session_t_2,
+            &shared_randomness,
+            signers.remove(0),
+            verifiers.clone(),
+            key_shares.get(1).unwrap(),
+            aux_info.get(1).unwrap(),
+            prehashed_message,
+        )?,
+    ];
 
     execute_drivers(streams, drivers).await
 }
