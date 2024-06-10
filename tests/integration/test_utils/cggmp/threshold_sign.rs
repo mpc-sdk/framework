@@ -199,109 +199,28 @@ async fn make_key_resharing(
     let rng = &mut OsRng;
     let shared_randomness: [u8; 32] = rng.gen();
 
-    // Create new clients
-    let (client_t_1, event_loop_t_1, _key_t_1) =
-        new_client::<anyhow::Error>(
-            server,
-            server_public_key.to_vec(),
-        )
-        .await?;
-    let (client_t_2, event_loop_t_2, key_t_2) =
-        new_client::<anyhow::Error>(
-            server,
-            server_public_key.to_vec(),
-        )
-        .await?;
-    let (client_t_3, event_loop_t_3, key_t_3) =
-        new_client::<anyhow::Error>(
-            server,
-            server_public_key.to_vec(),
-        )
-        .await?;
+    let mut results = make_client_sessions(
+        server,
+        server_public_key,
+        parameters.parties as usize,
+    )
+    .await?;
 
-    let mut client_t_1_transport: Transport = client_t_1.into();
-    let mut client_t_2_transport: Transport = client_t_2.into();
-    let mut client_t_3_transport: Transport = client_t_3.into();
-
-    // Each client handshakes with the server
-    client_t_1_transport.connect().await?;
-    client_t_2_transport.connect().await?;
-    client_t_3_transport.connect().await?;
-
-    // Event loop streams
-    let mut s_t_1 = event_loop_t_1.run();
-    let mut s_t_2 = event_loop_t_2.run();
-    let mut s_t_3 = event_loop_t_3.run();
-
-    let session_participants = vec![
-        key_t_2.public_key().to_vec(),
-        key_t_3.public_key().to_vec(),
-    ];
-
-    let mut client_t_1_session = SessionInitiator::new(
-        client_t_1_transport,
-        session_participants,
-    );
-    let mut client_t_2_session =
-        SessionParticipant::new(client_t_2_transport);
-    let mut client_t_3_session =
-        SessionParticipant::new(client_t_3_transport);
-
-    let mut sessions: Vec<SessionState> = Vec::new();
-
-    // Prepare the sessions for each party
-    loop {
-        if sessions.len() == parameters.parties as usize {
-            break;
-        }
-
-        select! {
-            event = s_t_1.next().fuse() => {
-                match event {
-                    Some(event) => {
-                        let event = event?;
-
-                        if let Some(session) =
-                            client_t_1_session.handle_event(event).await? {
-                            sessions.insert(0, session);
-                        }
-                    }
-                    _ => {}
-                }
-            },
-            event = s_t_2.next().fuse() => {
-                match event {
-                    Some(event) => {
-                        let event = event?;
-                        if let Some(session) =
-                            client_t_2_session.handle_event(event).await? {
-                            sessions.push(session);
-                        }
-                    }
-                    _ => {}
-                }
-            },
-            event = s_t_3.next().fuse() => {
-                match event {
-                    Some(event) => {
-                        let event = event?;
-                        if let Some(session) =
-                            client_t_3_session.handle_event(event).await? {
-                            sessions.push(session);
-                        }
-                    }
-                    _ => {}
-                }
-            },
-        }
-    }
+    let (client_t_1_transport, session_t_1, mut s_t_1) =
+        results.remove(0);
+    let (client_t_2_transport, session_t_2, mut s_t_2) =
+        results.remove(0);
+    let (client_t_3_transport, session_t_3, mut s_t_3) =
+        results.remove(0);
 
     // Prepare for key generation
     let mut transports = vec![
-        client_t_1_session.into(),
-        client_t_2_session.into(),
-        client_t_3_session.into(),
+        client_t_1_transport,
+        client_t_2_transport,
+        client_t_3_transport,
     ];
+
+    let mut sessions = vec![session_t_1, session_t_2, session_t_3];
 
     let new_holder = NewHolder {
         verifying_key: t_key_shares[0].verifying_key(),
