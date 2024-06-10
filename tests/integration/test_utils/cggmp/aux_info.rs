@@ -31,7 +31,7 @@ pub async fn run_aux_info(
     }
 
     let results = execute_drivers(streams, drivers).await?;
-    assert_eq!(3, results.len());
+    assert_eq!(n, results.len());
 
     Ok(())
 }

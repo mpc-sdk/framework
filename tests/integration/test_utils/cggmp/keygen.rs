@@ -31,7 +31,7 @@ pub async fn run_keygen(
     }
 
     let key_shares = execute_drivers(streams, drivers).await?;
-    assert_eq!(3, key_shares.len());
+    assert_eq!(n, key_shares.len());
 
     Ok(())
 }

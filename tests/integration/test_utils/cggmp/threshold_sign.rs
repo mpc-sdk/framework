@@ -60,12 +60,16 @@ async fn run_full_sequence(
 
     let (signers, verifiers) = make_signers(n);
 
+    let rng = &mut OsRng;
+    let shared_randomness: [u8; 32] = rng.gen();
+
     println!("*** KEY INIT ***");
 
     let key_shares = make_key_init(
         server,
         &server_public_key,
         parameters.clone(),
+        &shared_randomness,
         signers.clone(),
     )
     .await?;
@@ -83,6 +87,7 @@ async fn run_full_sequence(
         server,
         &server_public_key,
         parameters.clone(),
+        &shared_randomness,
         signers.clone(),
         verifiers.clone(),
         t_key_shares.clone(),
@@ -101,6 +106,7 @@ async fn run_full_sequence(
         server,
         &server_public_key,
         parameters.clone(),
+        &shared_randomness,
         signers.clone(),
         verifiers.clone(),
     )
@@ -123,6 +129,7 @@ async fn run_full_sequence(
         server,
         &server_public_key,
         parameters.clone(),
+        &shared_randomness,
         selected_signers,
         selected_parties,
         selected_key_shares,
@@ -140,11 +147,9 @@ async fn make_key_init(
     server: &str,
     server_public_key: &[u8],
     parameters: Parameters,
+    shared_randomness: &[u8],
     mut signers: Vec<SigningKey>,
 ) -> Result<Vec<KeyShare<TestParams, VerifyingKey>>> {
-    let rng = &mut OsRng;
-    let shared_randomness: [u8; 32] = rng.gen();
-
     let verifiers = vec![
         signers.get(0).unwrap().verifying_key().clone(),
         signers.get(1).unwrap().verifying_key().clone(),
@@ -178,15 +183,13 @@ async fn make_key_resharing(
     server: &str,
     server_public_key: &[u8],
     parameters: Parameters,
+    shared_randomness: &[u8],
     signers: Vec<SigningKey>,
     verifiers: Vec<VerifyingKey>,
     t_key_shares: Vec<ThresholdKeyShare<TestParams, VerifyingKey>>,
 ) -> Result<Vec<ThresholdKeyShare<TestParams, VerifyingKey>>> {
     let n = parameters.parties as usize;
     let t = parameters.threshold as usize;
-
-    let rng = &mut OsRng;
-    let shared_randomness: [u8; 32] = rng.gen();
 
     let mut results =
         make_client_sessions(server, server_public_key, n).await?;
@@ -275,13 +278,11 @@ async fn make_aux_infos(
     server: &str,
     server_public_key: &[u8],
     parameters: Parameters,
+    shared_randomness: &[u8],
     mut signers: Vec<SigningKey>,
     verifiers: Vec<VerifyingKey>,
 ) -> Result<Vec<AuxInfo<TestParams, VerifyingKey>>> {
     let n = parameters.parties as usize;
-
-    let rng = &mut OsRng;
-    let shared_randomness: [u8; 32] = rng.gen();
 
     let results =
         make_client_sessions(server, server_public_key, n).await?;
@@ -307,6 +308,7 @@ async fn make_signatures(
     server: &str,
     server_public_key: &[u8],
     parameters: Parameters,
+    shared_randomness: &[u8],
     mut signers: Vec<SigningKey>,
     verifiers: Vec<VerifyingKey>,
     key_shares: Vec<KeyShare<TestParams, VerifyingKey>>,
@@ -314,9 +316,6 @@ async fn make_signatures(
     prehashed_message: &PrehashedMessage,
 ) -> Result<Vec<RecoverableSignature>> {
     let t = parameters.threshold as usize;
-
-    let rng = &mut OsRng;
-    let shared_randomness: [u8; 32] = rng.gen();
 
     let results =
         make_client_sessions(server, server_public_key, t).await?;
