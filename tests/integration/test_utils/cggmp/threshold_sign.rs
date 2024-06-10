@@ -1,35 +1,20 @@
 use anyhow::Result;
-use futures::{select, FutureExt, StreamExt};
-use std::collections::HashMap;
 
 use mpc_driver::{
-    cggmp::{
-        self, AuxGenDriver, KeyGenDriver, KeyInitDriver,
-        KeyResharingDriver, SignatureDriver,
-    },
-    k256::{
-        self,
-        ecdsa::{SigningKey, VerifyingKey},
-    },
+    cggmp::{KeyInitDriver, KeyResharingDriver},
+    k256::ecdsa::{SigningKey, VerifyingKey},
     synedrion::{
         KeyResharingInputs, KeyShare, NewHolder, OldHolder,
         PrehashedMessage, RecoverableSignature, TestParams,
         ThresholdKeyShare,
     },
-    Driver, SessionEventHandler, SessionInitiator,
-    SessionParticipant,
 };
 
-use super::{make_client_sessions, make_signers};
-use mpc_client::{NetworkTransport, Transport};
-use mpc_protocol::{Keypair, Parameters, SessionState};
+use super::{execute_drivers, make_client_sessions, make_signers};
+use mpc_protocol::Parameters;
 use rand::{rngs::OsRng, Rng};
 
 use sha3::{Digest, Keccak256};
-
-use crate::test_utils::{new_client, new_client_with_keypair};
-
-type KeyShareOutput = KeyShare<TestParams, VerifyingKey>;
 
 pub async fn run_threshold_sign(
     server: &str,
@@ -72,7 +57,6 @@ async fn cggmp_sign(
     prehashed_message: &PrehashedMessage,
 ) -> Result<()> {
     let n = parameters.parties as usize;
-    let t = parameters.threshold as usize;
 
     let (signers, verifiers) = make_signers(n);
 
@@ -129,70 +113,35 @@ async fn make_key_init(
     let (client_t_2_transport, session_t_2, mut s_t_2) =
         results.remove(0);
 
-    let mut key_init_t_1 = KeyInitDriver::<TestParams>::new(
-        client_t_1_transport.clone(),
-        session_t_1,
-        &shared_randomness,
-        signing_keys.remove(0),
-        verifiers.clone(),
-    )?;
-    let mut key_init_t_2 = KeyInitDriver::<TestParams>::new(
-        client_t_2_transport.clone(),
-        session_t_2,
-        &shared_randomness,
-        signing_keys.remove(0),
-        verifiers.clone(),
-    )?;
+    let streams = vec![s_t_1, s_t_2];
+    let drivers = vec![
+        KeyInitDriver::<TestParams>::new(
+            client_t_1_transport.clone(),
+            session_t_1,
+            &shared_randomness,
+            signing_keys.remove(0),
+            verifiers.clone(),
+        )?,
+        KeyInitDriver::<TestParams>::new(
+            client_t_2_transport.clone(),
+            session_t_2,
+            &shared_randomness,
+            signing_keys.remove(0),
+            verifiers.clone(),
+        )?,
+    ];
 
-    // Each party starts key generation protocol.
-    key_init_t_1.execute().await?;
-    key_init_t_2.execute().await?;
-
-    let mut results = Vec::new();
-
-    loop {
-        if results.len() == 2 {
-            break;
-        }
-        select! {
-            event = s_t_1.next().fuse() => {
-                match event {
-                    Some(event) => {
-                        let event = event?;
-                        if let Some(key_init) =
-                            key_init_t_1.handle_event(event).await? {
-                            results.push(key_init);
-                        }
-                    }
-                    _ => {}
-                }
-            },
-            event = s_t_2.next().fuse() => {
-                match event {
-                    Some(event) => {
-                        let event = event?;
-                        if let Some(key_init) =
-                            key_init_t_2.handle_event(event).await? {
-                            results.push(key_init);
-                        }
-                    }
-                    _ => {}
-                }
-            },
-        }
-    }
-
-    Ok(results)
+    execute_drivers(streams, drivers).await
 }
 
 async fn make_key_resharing(
     server: &str,
     server_public_key: &[u8],
     parameters: Parameters,
-    mut signers: Vec<SigningKey>,
+    signers: Vec<SigningKey>,
     verifiers: Vec<VerifyingKey>,
     t_key_shares: Vec<ThresholdKeyShare<TestParams, VerifyingKey>>,
-) -> Result<Vec<KeyShare<TestParams, VerifyingKey>>> {
+) -> Result<Vec<ThresholdKeyShare<TestParams, VerifyingKey>>> {
     let n = parameters.parties as usize;
     let t = parameters.threshold as usize;
 
@@ -206,11 +155,11 @@ async fn make_key_resharing(
     )
     .await?;
 
-    let (client_t_1_transport, session_t_1, mut s_t_1) =
+    let (client_t_1_transport, session_t_1, s_t_1) =
         results.remove(0);
-    let (client_t_2_transport, session_t_2, mut s_t_2) =
+    let (client_t_2_transport, session_t_2, s_t_2) =
         results.remove(0);
-    let (client_t_3_transport, session_t_3, mut s_t_3) =
+    let (client_t_3_transport, session_t_3, s_t_3) =
         results.remove(0);
 
     // Prepare for key generation
@@ -242,7 +191,7 @@ async fn make_key_resharing(
 
             let transport = transports.remove(0);
             let session = sessions.remove(0);
-            KeyResharingDriver::new(
+            KeyResharingDriver::<TestParams>::new(
                 transport,
                 session,
                 &shared_randomness,
@@ -250,6 +199,7 @@ async fn make_key_resharing(
                 verifiers.clone(),
                 &inputs,
             )
+            .unwrap()
         })
         .collect::<Vec<_>>();
 
@@ -265,7 +215,7 @@ async fn make_key_resharing(
 
             let transport = transports.remove(0);
             let session = sessions.remove(0);
-            KeyResharingDriver::new(
+            KeyResharingDriver::<TestParams>::new(
                 transport,
                 session,
                 &shared_randomness,
@@ -273,10 +223,14 @@ async fn make_key_resharing(
                 verifiers.clone(),
                 &inputs,
             )
+            .unwrap()
         })
         .collect::<Vec<_>>();
 
     old_holder_sessions.extend(new_holder_sessions.into_iter());
 
-    todo!();
+    let streams = vec![s_t_1, s_t_2, s_t_3];
+    let drivers = old_holder_sessions;
+
+    execute_drivers(streams, drivers).await
 }
