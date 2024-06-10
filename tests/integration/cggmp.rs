@@ -20,6 +20,22 @@ async fn integration_cggmp_keygen() -> Result<()> {
     Ok(())
 }
 
+/// CGGMP auxiliary info.
+#[tokio::test]
+#[serial]
+async fn integration_cggmp_aux_info() -> Result<()> {
+    // crate::test_utils::init_tracing();
+
+    // Wait for the server to start
+    let (rx, _handle) = spawn_server()?;
+    let _ = rx.await?;
+
+    let server_public_key = server_public_key().await?;
+    cggmp::run_aux_info(SERVER, server_public_key).await?;
+
+    Ok(())
+}
+
 /// CGGMP threshold sign.
 #[tokio::test]
 #[serial]

@@ -38,7 +38,7 @@ pub async fn run_threshold_sign(
             .as_slice()
             .try_into()?;
 
-    let signatures = cggmp_sign(
+    run_full_sequence(
         server,
         server_public_key.clone(),
         parameters.clone(),
@@ -46,14 +46,10 @@ pub async fn run_threshold_sign(
     )
     .await?;
 
-    // assert_eq!(2, signatures.len());
-
     Ok(())
 }
 
-/// Create a new session and then perform
-/// signature generation
-async fn cggmp_sign(
+async fn run_full_sequence(
     server: &str,
     server_public_key: Vec<u8>,
     parameters: Parameters,
@@ -63,6 +59,8 @@ async fn cggmp_sign(
     let t = parameters.threshold as usize;
 
     let (signers, verifiers) = make_signers(n);
+
+    println!("*** KEY INIT ***");
 
     let key_shares = make_key_init(
         server,
@@ -78,6 +76,8 @@ async fn cggmp_sign(
         .map(|key_share| key_share.to_threshold_key_share())
         .collect::<Vec<_>>();
 
+    println!("*** KEY RESHARING ***");
+
     // Reshare to `n` nodes
     let new_t_key_shares = make_key_resharing(
         server,
@@ -85,9 +85,16 @@ async fn cggmp_sign(
         parameters.clone(),
         signers.clone(),
         verifiers.clone(),
-        t_key_shares,
+        t_key_shares.clone(),
     )
     .await?;
+
+    assert_eq!(
+        new_t_key_shares[0].verifying_key(),
+        t_key_shares[0].verifying_key()
+    );
+
+    println!("*** AUX INFOS ***");
 
     // Generate auxiliary data
     let aux_infos = make_aux_infos(
@@ -108,6 +115,8 @@ async fn cggmp_sign(
     ];
     let selected_aux_infos =
         vec![aux_infos[0].clone(), aux_infos[2].clone()];
+
+    println!("*** SIGN ***");
 
     // Generate signatures
     let signatures = make_signatures(
@@ -141,35 +150,26 @@ async fn make_key_init(
         signers.get(1).unwrap().verifying_key().clone(),
     ];
 
-    let mut results = make_client_sessions(
+    let results = make_client_sessions(
         server,
         server_public_key,
         parameters.threshold as usize,
     )
     .await?;
 
-    let (client_t_1_transport, session_t_1, mut s_t_1) =
-        results.remove(0);
-    let (client_t_2_transport, session_t_2, mut s_t_2) =
-        results.remove(0);
-
-    let streams = vec![s_t_1, s_t_2];
-    let drivers = vec![
-        KeyInitDriver::<TestParams>::new(
-            client_t_1_transport.clone(),
-            session_t_1,
+    let mut streams = Vec::new();
+    let mut drivers = Vec::new();
+    for result in results {
+        let (transport, session, stream) = result;
+        streams.push(stream);
+        drivers.push(KeyInitDriver::<TestParams>::new(
+            transport,
+            session,
             &shared_randomness,
             signers.remove(0),
             verifiers.clone(),
-        )?,
-        KeyInitDriver::<TestParams>::new(
-            client_t_2_transport.clone(),
-            session_t_2,
-            &shared_randomness,
-            signers.remove(0),
-            verifiers.clone(),
-        )?,
-    ];
+        )?);
+    }
 
     execute_drivers(streams, drivers).await
 }
@@ -283,40 +283,22 @@ async fn make_aux_infos(
     let rng = &mut OsRng;
     let shared_randomness: [u8; 32] = rng.gen();
 
-    let mut results =
+    let results =
         make_client_sessions(server, server_public_key, n).await?;
 
-    let (client_t_1_transport, session_t_1, s_t_1) =
-        results.remove(0);
-    let (client_t_2_transport, session_t_2, s_t_2) =
-        results.remove(0);
-    let (client_t_3_transport, session_t_3, s_t_3) =
-        results.remove(0);
-
-    let streams = vec![s_t_1, s_t_2, s_t_3];
-    let drivers = vec![
-        AuxGenDriver::<TestParams>::new(
-            client_t_1_transport.clone(),
-            session_t_1,
+    let mut streams = Vec::new();
+    let mut drivers = Vec::new();
+    for result in results {
+        let (transport, session, stream) = result;
+        streams.push(stream);
+        drivers.push(AuxGenDriver::<TestParams>::new(
+            transport,
+            session,
             &shared_randomness,
             signers.remove(0),
             verifiers.clone(),
-        )?,
-        AuxGenDriver::<TestParams>::new(
-            client_t_2_transport.clone(),
-            session_t_2,
-            &shared_randomness,
-            signers.remove(0),
-            verifiers.clone(),
-        )?,
-        AuxGenDriver::<TestParams>::new(
-            client_t_3_transport.clone(),
-            session_t_3,
-            &shared_randomness,
-            signers.remove(0),
-            verifiers.clone(),
-        )?,
-    ];
+        )?);
+    }
 
     execute_drivers(streams, drivers).await
 }
@@ -336,37 +318,25 @@ async fn make_signatures(
     let rng = &mut OsRng;
     let shared_randomness: [u8; 32] = rng.gen();
 
-    let mut results =
+    let results =
         make_client_sessions(server, server_public_key, t).await?;
 
-    let (client_t_1_transport, session_t_1, s_t_1) =
-        results.remove(0);
-    let (client_t_2_transport, session_t_2, s_t_2) =
-        results.remove(0);
-
-    let streams = vec![s_t_1, s_t_2];
-    let drivers = vec![
-        SignatureDriver::<TestParams>::new(
-            client_t_1_transport.clone(),
-            session_t_1,
+    let mut streams = Vec::new();
+    let mut drivers = Vec::new();
+    for (idx, result) in results.into_iter().enumerate() {
+        let (transport, session, stream) = result;
+        streams.push(stream);
+        drivers.push(SignatureDriver::<TestParams>::new(
+            transport,
+            session,
             &shared_randomness,
             signers.remove(0),
             verifiers.clone(),
-            key_shares.get(0).unwrap(),
-            aux_info.get(0).unwrap(),
+            key_shares.get(idx).unwrap(),
+            aux_info.get(idx).unwrap(),
             prehashed_message,
-        )?,
-        SignatureDriver::<TestParams>::new(
-            client_t_2_transport.clone(),
-            session_t_2,
-            &shared_randomness,
-            signers.remove(0),
-            verifiers.clone(),
-            key_shares.get(1).unwrap(),
-            aux_info.get(1).unwrap(),
-            prehashed_message,
-        )?,
-    ];
+        )?);
+    }
 
     execute_drivers(streams, drivers).await
 }

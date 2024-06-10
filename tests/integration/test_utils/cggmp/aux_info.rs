@@ -1,9 +1,9 @@
 use super::{execute_drivers, make_client_sessions, make_signers};
 use anyhow::Result;
-use mpc_driver::{cggmp::KeyGenDriver, synedrion::TestParams};
+use mpc_driver::{cggmp::AuxGenDriver, synedrion::TestParams};
 use rand::{rngs::OsRng, Rng};
 
-pub async fn run_keygen(
+pub async fn run_aux_info(
     server: &str,
     server_public_key: Vec<u8>,
 ) -> Result<()> {
@@ -21,7 +21,7 @@ pub async fn run_keygen(
     for result in results {
         let (transport, session, stream) = result;
         streams.push(stream);
-        drivers.push(KeyGenDriver::<TestParams>::new(
+        drivers.push(AuxGenDriver::<TestParams>::new(
             transport,
             session,
             &shared_randomness,
@@ -30,8 +30,8 @@ pub async fn run_keygen(
         )?);
     }
 
-    let key_shares = execute_drivers(streams, drivers).await?;
-    assert_eq!(3, key_shares.len());
+    let results = execute_drivers(streams, drivers).await?;
+    assert_eq!(3, results.len());
 
     Ok(())
 }
