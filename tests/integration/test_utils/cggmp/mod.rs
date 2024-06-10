@@ -1,8 +1,12 @@
+use crate::test_utils::new_client;
 use anyhow::Result;
 use futures::{Stream, StreamExt};
-use mpc_client::Transport;
+use mpc_client::{NetworkTransport, Transport};
 use mpc_driver::k256::ecdsa::{SigningKey, VerifyingKey};
-use mpc_driver::{SessionEventHandler, SessionHandler};
+use mpc_driver::{
+    SessionEventHandler, SessionHandler, SessionInitiator,
+    SessionParticipant,
+};
 use mpc_protocol::SessionState;
 use rand::rngs::OsRng;
 use std::pin::Pin;
@@ -74,4 +78,65 @@ pub async fn drive_stream_sessions(
     }
 
     Ok(states)
+}
+
+/// Create clients and prepare the sessions.
+pub async fn make_client_sessions(
+    server: &str,
+    server_public_key: &[u8],
+    n: usize,
+) -> Result<Vec<(Transport, SessionState, SessionStream)>> {
+    // Create the clients
+    let mut clients = Vec::new();
+    let mut event_loops = Vec::new();
+    let mut keypairs = Vec::new();
+    for _ in 0..n {
+        let (client, event_loop, keypair) =
+            new_client::<anyhow::Error>(
+                server,
+                server_public_key.to_vec(),
+            )
+            .await?;
+
+        clients.push(client);
+        event_loops.push(event_loop);
+        keypairs.push(keypair);
+    }
+
+    // Each client handshakes with the server
+    let mut transports = Vec::new();
+    for client in clients {
+        let mut transport: Transport = client.into();
+        transport.connect().await?;
+        transports.push(transport);
+    }
+
+    // Event loop streams
+    let mut streams = Vec::new();
+    for event_loop in event_loops {
+        streams.push(event_loop.run());
+    }
+
+    // Public keys of the participants
+    let session_participants = keypairs
+        .iter()
+        .skip(1)
+        .map(|k| k.public_key().to_vec())
+        .collect::<Vec<_>>();
+
+    // First handler is the initiator
+    let mut handlers =
+        vec![SessionHandler::Initiator(SessionInitiator::new(
+            transports.remove(0),
+            session_participants,
+        ))];
+
+    // Remaining transports become participants
+    for transport in transports {
+        handlers.push(SessionHandler::Participant(
+            SessionParticipant::new(transport),
+        ));
+    }
+
+    drive_stream_sessions(streams, handlers).await
 }

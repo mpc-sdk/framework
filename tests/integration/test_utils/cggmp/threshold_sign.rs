@@ -20,7 +20,7 @@ use mpc_driver::{
     SessionParticipant,
 };
 
-use super::make_signers;
+use super::{make_client_sessions, make_signers};
 use mpc_client::{NetworkTransport, Transport};
 use mpc_protocol::{Keypair, Parameters, SessionState};
 use rand::{rngs::OsRng, Rng};
@@ -111,88 +111,23 @@ async fn make_key_init(
 ) -> Result<Vec<KeyShare<TestParams, VerifyingKey>>> {
     let rng = &mut OsRng;
     let shared_randomness: [u8; 32] = rng.gen();
+
     let verifiers = vec![
         signing_keys.get(0).unwrap().verifying_key().clone(),
         signing_keys.get(1).unwrap().verifying_key().clone(),
     ];
 
-    // Create new clients
-    let (client_t_1, event_loop_t_1, _key_t_1) =
-        new_client::<anyhow::Error>(
-            server,
-            server_public_key.to_vec(),
-        )
-        .await?;
-    let (client_t_2, event_loop_t_2, key_t_2) =
-        new_client::<anyhow::Error>(
-            server,
-            server_public_key.to_vec(),
-        )
-        .await?;
+    let mut results = make_client_sessions(
+        server,
+        server_public_key,
+        parameters.threshold as usize,
+    )
+    .await?;
 
-    let mut client_t_1_transport: Transport = client_t_1.into();
-    let mut client_t_2_transport: Transport = client_t_2.into();
-
-    // Each client handshakes with the server
-    client_t_1_transport.connect().await?;
-    client_t_2_transport.connect().await?;
-
-    // Event loop streams
-    let mut s_t_1 = event_loop_t_1.run();
-    let mut s_t_2 = event_loop_t_2.run();
-
-    let session_participants = vec![key_t_2.public_key().to_vec()];
-
-    let mut client_t_1_session = SessionInitiator::new(
-        client_t_1_transport,
-        session_participants,
-    );
-    let mut client_t_2_session =
-        SessionParticipant::new(client_t_2_transport);
-
-    let mut sessions: Vec<SessionState> = Vec::new();
-
-    // Prepare the sessions for each party
-    loop {
-        if sessions.len() == parameters.threshold as usize {
-            break;
-        }
-
-        select! {
-            event = s_t_1.next().fuse() => {
-                match event {
-                    Some(event) => {
-                        let event = event?;
-
-                        if let Some(session) =
-                            client_t_1_session.handle_event(event).await? {
-                            sessions.insert(0, session);
-                        }
-                    }
-                    _ => {}
-                }
-            },
-            event = s_t_2.next().fuse() => {
-                match event {
-                    Some(event) => {
-                        let event = event?;
-                        if let Some(session) =
-                            client_t_2_session.handle_event(event).await? {
-                            sessions.push(session);
-                        }
-                    }
-                    _ => {}
-                }
-            },
-        }
-    }
-
-    // Prepare for key generation
-    let client_t_1_transport: Transport = client_t_1_session.into();
-    let client_t_2_transport: Transport = client_t_2_session.into();
-
-    let session_t_1 = sessions.remove(0);
-    let session_t_2 = sessions.remove(0);
+    let (client_t_1_transport, session_t_1, mut s_t_1) =
+        results.remove(0);
+    let (client_t_2_transport, session_t_2, mut s_t_2) =
+        results.remove(0);
 
     let mut key_init_t_1 = KeyInitDriver::<TestParams>::new(
         client_t_1_transport.clone(),

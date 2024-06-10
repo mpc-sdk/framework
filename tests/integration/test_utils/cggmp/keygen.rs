@@ -9,7 +9,9 @@ use mpc_driver::{
     Driver, SessionHandler, SessionInitiator, SessionParticipant,
 };
 
-use super::{drive_stream_sessions, make_signers};
+use super::{
+    drive_stream_sessions, make_client_sessions, make_signers,
+};
 use crate::test_utils::new_client;
 use mpc_client::{NetworkTransport, Transport};
 use mpc_protocol::Keypair;
@@ -25,9 +27,9 @@ pub async fn run_keygen(
     let rng = &mut OsRng;
     let shared_randomness: [u8; 32] = rng.gen();
 
-    let (key_shares, _transport_keypairs) = cggmp_keygen(
+    let key_shares = cggmp_keygen(
         server,
-        server_public_key.clone(),
+        &server_public_key,
         &shared_randomness,
         n,
     )
@@ -41,125 +43,14 @@ pub async fn run_keygen(
 /// Create a new session and then perform distributed key generation.
 async fn cggmp_keygen(
     server: &str,
-    server_public_key: Vec<u8>,
+    server_public_key: &[u8],
     shared_randomness: &[u8],
     n: usize,
-) -> Result<(HashMap<Vec<u8>, KeyShareOutput>, Vec<Keypair>)> {
+) -> Result<HashMap<Vec<u8>, KeyShareOutput>> {
     let (mut signers, verifiers) = make_signers(n);
 
-    // Create new clients
-    let (client_i, event_loop_i, initiator_key) =
-        new_client::<anyhow::Error>(
-            server,
-            server_public_key.clone(),
-        )
-        .await?;
-    let (client_p_1, event_loop_p_1, participant_key_1) =
-        new_client::<anyhow::Error>(
-            server,
-            server_public_key.clone(),
-        )
-        .await?;
-
-    let (client_p_2, event_loop_p_2, participant_key_2) =
-        new_client::<anyhow::Error>(
-            server,
-            server_public_key.clone(),
-        )
-        .await?;
-
-    let keypairs = vec![
-        initiator_key.clone(),
-        participant_key_1.clone(),
-        participant_key_2.clone(),
-    ];
-
-    let mut client_i_transport: Transport = client_i.into();
-    let mut client_p_1_transport: Transport = client_p_1.into();
-    let mut client_p_2_transport: Transport = client_p_2.into();
-
-    // Each client handshakes with the server
-    client_i_transport.connect().await?;
-    client_p_1_transport.connect().await?;
-    client_p_2_transport.connect().await?;
-
-    // Event loop streams
-    let s_i = event_loop_i.run();
-    let s_p_1 = event_loop_p_1.run();
-    let s_p_2 = event_loop_p_2.run();
-
-    let session_participants = vec![
-        participant_key_1.public_key().to_vec(),
-        participant_key_2.public_key().to_vec(),
-    ];
-
-    let client_i_session = SessionInitiator::new(
-        client_i_transport,
-        session_participants,
-    );
-    let client_p_1_session =
-        SessionParticipant::new(client_p_1_transport);
-    let client_p_2_session =
-        SessionParticipant::new(client_p_2_transport);
-
-    let mut results = drive_stream_sessions(
-        vec![s_i, s_p_1, s_p_2],
-        vec![
-            SessionHandler::Initiator(client_i_session),
-            SessionHandler::Participant(client_p_1_session),
-            SessionHandler::Participant(client_p_2_session),
-        ],
-    )
-    .await?;
-
-    /*
-    // Prepare the sessions for each party
-    loop {
-        if sessions.len() == 3 {
-            break;
-        }
-
-        select! {
-            event = s_i.next().fuse() => {
-                match event {
-                    Some(event) => {
-                        let event = event?;
-
-                        if let Some(session) =
-                            client_i_session.handle_event(event).await? {
-                            sessions.push(session);
-                        }
-                    }
-                    _ => {}
-                }
-            },
-            event = s_p_1.next().fuse() => {
-                match event {
-                    Some(event) => {
-                        let event = event?;
-                        if let Some(session) =
-                            client_p_1_session.handle_event(event).await? {
-                            sessions.push(session);
-                        }
-                    }
-                    _ => {}
-                }
-            },
-            event = s_p_2.next().fuse() => {
-                match event {
-                    Some(event) => {
-                        let event = event?;
-                        if let Some(session) =
-                            client_p_2_session.handle_event(event).await? {
-                            sessions.push(session);
-                        }
-                    }
-                    _ => {}
-                }
-            },
-        }
-    }
-    */
+    let mut results =
+        make_client_sessions(server, server_public_key, n).await?;
 
     // Prepare for key generation
     let (client_i_transport, session_i, mut s_i) = results.remove(0);
@@ -248,5 +139,5 @@ async fn cggmp_keygen(
         }
     }
 
-    Ok((key_shares, keypairs))
+    Ok(key_shares)
 }
