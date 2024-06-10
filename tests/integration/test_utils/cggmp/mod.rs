@@ -2,9 +2,9 @@ use crate::test_utils::new_client;
 use anyhow::Result;
 use futures::{Stream, StreamExt};
 use mpc_client::{NetworkTransport, Transport};
-use mpc_driver::k256::ecdsa::{SigningKey, VerifyingKey};
 use mpc_driver::{
-    SessionEventHandler, SessionHandler, SessionInitiator,
+    k256::ecdsa::{SigningKey, VerifyingKey},
+    Driver, SessionEventHandler, SessionHandler, SessionInitiator,
     SessionParticipant,
 };
 use mpc_protocol::SessionState;
@@ -70,7 +70,6 @@ pub async fn drive_stream_sessions(
     }
 
     let results = futures::future::try_join_all(jhs).await.unwrap();
-
     let mut states = Vec::new();
     for result in results {
         let result = result?;
@@ -139,4 +138,49 @@ pub async fn make_client_sessions(
     }
 
     drive_stream_sessions(streams, handlers).await
+}
+
+/// Execute a collection of drivers.
+pub async fn execute_drivers<D>(
+    streams: Vec<SessionStream>,
+    mut drivers: Vec<D>,
+) -> Result<Vec<D::Output>>
+where
+    D: Driver + Send + 'static,
+    D::Output: Send,
+{
+    // Execute the driver protocols
+    for driver in &mut drivers {
+        driver.execute().await.unwrap();
+    }
+
+    let mut jhs = Vec::new();
+    for (mut stream, mut driver) in streams.into_iter().zip(drivers) {
+        let jh = tokio::task::spawn(async move {
+            let mut output: Option<D::Output> = None;
+            while let Some(event) = stream.next().await {
+                let event = event?;
+
+                if let Some(result) =
+                    driver.handle_event(event).await.unwrap()
+                {
+                    output = Some(result);
+                    break;
+                }
+            }
+
+            Ok::<_, anyhow::Error>(output)
+        });
+
+        jhs.push(jh);
+    }
+
+    let results = futures::future::try_join_all(jhs).await.unwrap();
+    let mut output = Vec::new();
+    for result in results {
+        let result = result?;
+        output.push(result.unwrap());
+    }
+
+    Ok(output)
 }
