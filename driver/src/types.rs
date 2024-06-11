@@ -1,6 +1,7 @@
 //! Types passed across the Javascript/Webassembly boundary.
 use serde::{Deserialize, Serialize};
 
+use crate::{k256::ecdsa, synedrion::RecoverableSignature};
 use mpc_protocol::{hex, Keypair, Parameters};
 
 /// Supported multi-party computation protocols.
@@ -15,18 +16,20 @@ pub enum Protocol {
 /// Signature for different protocols.
 #[derive(Serialize, Deserialize)]
 pub enum Signature {
-    /*
     #[cfg(feature = "cggmp")]
-    /// The CGGMP protocol.
+    /// Signature for the CGGMP protocol.
+    ///
+    /// Note that we must convert the `RecoveryId` to `u8`
+    /// for serde support.
     #[serde(rename = "cggmp")]
-    CGGMP,
-    */
+    Cggmp(ecdsa::Signature, u8),
 }
 
-#[cfg(feature = "gg20")]
-impl From<crate::gg20::Signature> for Signature {
-    fn from(value: crate::gg20::Signature) -> Self {
-        Signature::GG20(value)
+#[cfg(feature = "cggmp")]
+impl From<RecoverableSignature> for Signature {
+    fn from(value: RecoverableSignature) -> Self {
+        let (sig, recovery_id) = value.to_backend();
+        Signature::Cggmp(sig, recovery_id.into())
     }
 }
 
