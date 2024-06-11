@@ -1,6 +1,9 @@
 use super::{execute_drivers, make_client_sessions, make_signers};
 use anyhow::Result;
-use mpc_driver::{cggmp::AuxGenDriver, synedrion::TestParams};
+use mpc_client::NetworkTransport;
+use mpc_driver::{
+    cggmp::AuxGenDriver, synedrion::TestParams, wait_for_close,
+};
 use rand::{rngs::OsRng, Rng};
 
 pub async fn run_aux_info(
@@ -31,7 +34,19 @@ pub async fn run_aux_info(
     }
 
     let results = execute_drivers(streams, drivers).await?;
-    assert_eq!(n, results.len());
+    let mut aux_info = Vec::new();
+    let mut transports = Vec::new();
+    for result in results {
+        let (output, transport, stream) = result;
+        aux_info.push(output);
+        transports.push((transport, stream));
+    }
+    assert_eq!(n, aux_info.len());
+
+    for (transport, mut stream) in transports {
+        transport.close().await?;
+        wait_for_close(&mut stream).await?;
+    }
 
     Ok(())
 }

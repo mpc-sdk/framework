@@ -1,6 +1,9 @@
 use super::{execute_drivers, make_client_sessions, make_signers};
 use anyhow::Result;
-use mpc_driver::{cggmp::KeyGenDriver, synedrion::TestParams};
+use mpc_client::NetworkTransport;
+use mpc_driver::{
+    cggmp::KeyGenDriver, synedrion::TestParams, wait_for_close,
+};
 use rand::{rngs::OsRng, Rng};
 
 pub async fn run_keygen(
@@ -30,8 +33,21 @@ pub async fn run_keygen(
         )?);
     }
 
-    let key_shares = execute_drivers(streams, drivers).await?;
+    let results = execute_drivers(streams, drivers).await?;
+
+    let mut key_shares = Vec::new();
+    let mut transports = Vec::new();
+    for result in results {
+        let (output, transport, stream) = result;
+        key_shares.push(output);
+        transports.push((transport, stream));
+    }
     assert_eq!(n, key_shares.len());
+
+    for (transport, mut stream) in transports {
+        transport.close().await?;
+        wait_for_close(&mut stream).await?;
+    }
 
     Ok(())
 }

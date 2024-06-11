@@ -4,7 +4,7 @@ use crate::test_utils::{
 use anyhow::Result;
 use serial_test::serial;
 
-/// CGGMP keygen.
+/// CGGMP distributed key generation.
 #[tokio::test]
 #[serial]
 async fn integration_cggmp_keygen() -> Result<()> {
@@ -24,7 +24,7 @@ async fn integration_cggmp_keygen() -> Result<()> {
 #[tokio::test]
 #[serial]
 async fn integration_cggmp_aux_info() -> Result<()> {
-    crate::test_utils::init_tracing();
+    // crate::test_utils::init_tracing();
 
     // Wait for the server to start
     let (rx, _handle) = spawn_server()?;

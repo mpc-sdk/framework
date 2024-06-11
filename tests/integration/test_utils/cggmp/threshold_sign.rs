@@ -1,5 +1,6 @@
 use anyhow::Result;
 
+use mpc_client::{NetworkTransport, Transport};
 use mpc_driver::{
     cggmp::{
         AuxGenDriver, KeyInitDriver, KeyResharingDriver,
@@ -11,13 +12,19 @@ use mpc_driver::{
         PrehashedMessage, RecoverableSignature, TestParams,
         ThresholdKeyShare,
     },
+    wait_for_close,
 };
+use mpc_protocol::{Parameters, SessionState};
 
-use super::{execute_drivers, make_client_sessions, make_signers};
-use mpc_protocol::Parameters;
+use super::{
+    execute_drivers, make_client_sessions, make_signers,
+    SessionStream,
+};
 use rand::{rngs::OsRng, Rng};
 
 use sha3::{Digest, Keccak256};
+
+type ClientTransport = (Transport, SessionState, SessionStream);
 
 pub async fn run_threshold_sign(
     server: &str,
@@ -63,14 +70,17 @@ async fn run_full_sequence(
     let rng = &mut OsRng;
     let shared_randomness: [u8; 32] = rng.gen();
 
+    // Create the collection of network clients
+    let clients =
+        make_client_sessions(server, &server_public_key, n).await?;
+
     println!("*** KEY INIT ***");
 
-    let key_shares = make_key_init(
-        server,
-        &server_public_key,
+    let (key_shares, clients) = make_key_init(
         parameters.clone(),
         &shared_randomness,
         signers.clone(),
+        clients,
     )
     .await?;
 
@@ -83,14 +93,13 @@ async fn run_full_sequence(
     println!("*** KEY RESHARING ***");
 
     // Reshare to `n` nodes
-    let new_t_key_shares = make_key_resharing(
-        server,
-        &server_public_key,
+    let (new_t_key_shares, clients) = make_key_resharing(
         parameters.clone(),
         &shared_randomness,
         signers.clone(),
         verifiers.clone(),
         t_key_shares.clone(),
+        clients,
     )
     .await?;
 
@@ -102,13 +111,12 @@ async fn run_full_sequence(
     println!("*** AUX INFOS ***");
 
     // Generate auxiliary data
-    let aux_infos = make_aux_infos(
-        server,
-        &server_public_key,
+    let (aux_infos, mut clients) = make_aux_infos(
         parameters.clone(),
         &shared_randomness,
         signers.clone(),
         verifiers.clone(),
+        clients,
     )
     .await?;
 
@@ -122,12 +130,12 @@ async fn run_full_sequence(
     let selected_aux_infos =
         vec![aux_infos[0].clone(), aux_infos[2].clone()];
 
+    let selected_clients = vec![clients.remove(0), clients.remove(1)];
+
     println!("*** SIGN ***");
 
     // Generate signatures
-    let signatures = make_signatures(
-        server,
-        &server_public_key,
+    let (signatures, clients) = make_signatures(
         parameters.clone(),
         &shared_randomness,
         selected_signers,
@@ -135,86 +143,100 @@ async fn run_full_sequence(
         selected_key_shares,
         selected_aux_infos,
         prehashed_message,
+        selected_clients,
     )
     .await?;
 
     assert_eq!(t, signatures.len());
 
+    for client in clients {
+        let (transport, _, mut stream) = client;
+        transport.close().await?;
+        wait_for_close(&mut stream).await?;
+    }
+
     Ok(())
 }
 
 async fn make_key_init(
-    server: &str,
-    server_public_key: &[u8],
     parameters: Parameters,
     shared_randomness: &[u8],
     mut signers: Vec<SigningKey>,
-) -> Result<Vec<KeyShare<TestParams, VerifyingKey>>> {
+    clients: Vec<ClientTransport>,
+) -> Result<(
+    Vec<KeyShare<TestParams, VerifyingKey>>,
+    Vec<ClientTransport>,
+)> {
+    let t = parameters.threshold as usize;
     let verifiers = vec![
         signers.get(0).unwrap().verifying_key().clone(),
         signers.get(1).unwrap().verifying_key().clone(),
     ];
 
-    let results = make_client_sessions(
-        server,
-        server_public_key,
-        parameters.threshold as usize,
-    )
-    .await?;
+    let mut t_clients = Vec::new();
+    let mut o_clients = Vec::new();
+    for (index, client) in clients.into_iter().enumerate() {
+        if index < t {
+            t_clients.push(client);
+        } else {
+            o_clients.push(client);
+        }
+    }
 
+    let mut t_sessions = Vec::new();
     let mut streams = Vec::new();
     let mut drivers = Vec::new();
-    for result in results {
+    for result in t_clients {
         let (transport, session, stream) = result;
         streams.push(stream);
         drivers.push(KeyInitDriver::<TestParams>::new(
             transport,
-            session,
+            session.clone(),
             &shared_randomness,
             signers.remove(0),
             verifiers.clone(),
         )?);
+
+        t_sessions.push(session);
     }
 
-    execute_drivers(streams, drivers).await
+    let results = execute_drivers(streams, drivers).await?;
+
+    let mut session_output = Vec::new();
+    let mut out_clients = Vec::new();
+    for result in results {
+        let (output, transport, stream) = result;
+        session_output.push(output);
+        out_clients.push((transport, t_sessions.remove(0), stream));
+    }
+
+    out_clients.extend(o_clients);
+
+    Ok((session_output, out_clients))
 }
 
 async fn make_key_resharing(
-    server: &str,
-    server_public_key: &[u8],
     parameters: Parameters,
     shared_randomness: &[u8],
     signers: Vec<SigningKey>,
     verifiers: Vec<VerifyingKey>,
     t_key_shares: Vec<ThresholdKeyShare<TestParams, VerifyingKey>>,
-) -> Result<Vec<ThresholdKeyShare<TestParams, VerifyingKey>>> {
+    mut clients: Vec<ClientTransport>,
+) -> Result<(
+    Vec<ThresholdKeyShare<TestParams, VerifyingKey>>,
+    Vec<ClientTransport>,
+)> {
     let n = parameters.parties as usize;
     let t = parameters.threshold as usize;
-
-    let mut results =
-        make_client_sessions(server, server_public_key, n).await?;
-
-    let (client_t_1_transport, session_t_1, s_t_1) =
-        results.remove(0);
-    let (client_t_2_transport, session_t_2, s_t_2) =
-        results.remove(0);
-    let (client_t_3_transport, session_t_3, s_t_3) =
-        results.remove(0);
-
-    // Prepare for key generation
-    let mut transports = vec![
-        client_t_1_transport,
-        client_t_2_transport,
-        client_t_3_transport,
-    ];
-
-    let mut sessions = vec![session_t_1, session_t_2, session_t_3];
 
     let new_holder = NewHolder {
         verifying_key: t_key_shares[0].verifying_key(),
         old_threshold: t_key_shares[0].threshold(),
         old_holders: verifiers[..t].to_vec(),
     };
+
+    let mut streams = Vec::new();
+    let mut sessions = Vec::new();
 
     // Old holders' sessions (which will also hold the newly reshared parts)
     let mut old_holder_sessions = (0..t)
@@ -228,8 +250,10 @@ async fn make_key_resharing(
                 new_threshold: t,
             };
 
-            let transport = transports.remove(0);
-            let session = sessions.remove(0);
+            let (transport, session, stream) = clients.remove(0);
+            sessions.push(session.clone());
+            streams.push(stream);
+
             KeyResharingDriver::<TestParams>::new(
                 transport,
                 session,
@@ -252,8 +276,10 @@ async fn make_key_resharing(
                 new_threshold: t,
             };
 
-            let transport = transports.remove(0);
-            let session = sessions.remove(0);
+            let (transport, session, stream) = clients.remove(0);
+            sessions.push(session.clone());
+            streams.push(stream);
+
             KeyResharingDriver::<TestParams>::new(
                 transport,
                 session,
@@ -268,30 +294,38 @@ async fn make_key_resharing(
 
     old_holder_sessions.extend(new_holder_sessions.into_iter());
 
-    let streams = vec![s_t_1, s_t_2, s_t_3];
     let drivers = old_holder_sessions;
 
-    execute_drivers(streams, drivers).await
+    let results = execute_drivers(streams, drivers).await?;
+
+    let mut session_output = Vec::new();
+    let mut out_clients = Vec::new();
+    for result in results {
+        let (output, transport, stream) = result;
+        session_output.push(output);
+        out_clients.push((transport, sessions.remove(0), stream));
+    }
+
+    Ok((session_output, out_clients))
 }
 
 async fn make_aux_infos(
-    server: &str,
-    server_public_key: &[u8],
-    parameters: Parameters,
+    _parameters: Parameters,
     shared_randomness: &[u8],
     mut signers: Vec<SigningKey>,
     verifiers: Vec<VerifyingKey>,
-) -> Result<Vec<AuxInfo<TestParams, VerifyingKey>>> {
-    let n = parameters.parties as usize;
-
-    let results =
-        make_client_sessions(server, server_public_key, n).await?;
-
+    clients: Vec<ClientTransport>,
+) -> Result<(
+    Vec<AuxInfo<TestParams, VerifyingKey>>,
+    Vec<ClientTransport>,
+)> {
     let mut streams = Vec::new();
     let mut drivers = Vec::new();
-    for result in results {
+    let mut sessions = Vec::new();
+    for result in clients {
         let (transport, session, stream) = result;
         streams.push(stream);
+        sessions.push(session.clone());
         drivers.push(AuxGenDriver::<TestParams>::new(
             transport,
             session,
@@ -301,30 +335,36 @@ async fn make_aux_infos(
         )?);
     }
 
-    execute_drivers(streams, drivers).await
+    let results = execute_drivers(streams, drivers).await?;
+
+    let mut session_output = Vec::new();
+    let mut out_clients = Vec::new();
+    for result in results {
+        let (output, transport, stream) = result;
+        session_output.push(output);
+        out_clients.push((transport, sessions.remove(0), stream));
+    }
+
+    Ok((session_output, out_clients))
 }
 
 async fn make_signatures(
-    server: &str,
-    server_public_key: &[u8],
-    parameters: Parameters,
+    _parameters: Parameters,
     shared_randomness: &[u8],
     mut signers: Vec<SigningKey>,
     verifiers: Vec<VerifyingKey>,
     key_shares: Vec<KeyShare<TestParams, VerifyingKey>>,
     aux_info: Vec<AuxInfo<TestParams, VerifyingKey>>,
     prehashed_message: &PrehashedMessage,
-) -> Result<Vec<RecoverableSignature>> {
-    let t = parameters.threshold as usize;
-
-    let results =
-        make_client_sessions(server, server_public_key, t).await?;
-
+    clients: Vec<ClientTransport>,
+) -> Result<(Vec<RecoverableSignature>, Vec<ClientTransport>)> {
     let mut streams = Vec::new();
     let mut drivers = Vec::new();
-    for (idx, result) in results.into_iter().enumerate() {
+    let mut sessions = Vec::new();
+    for (idx, result) in clients.into_iter().enumerate() {
         let (transport, session, stream) = result;
         streams.push(stream);
+        sessions.push(session.clone());
         drivers.push(SignatureDriver::<TestParams>::new(
             transport,
             session,
@@ -337,5 +377,15 @@ async fn make_signatures(
         )?);
     }
 
-    execute_drivers(streams, drivers).await
+    let results = execute_drivers(streams, drivers).await?;
+
+    let mut session_output = Vec::new();
+    let mut out_clients = Vec::new();
+    for result in results {
+        let (output, transport, stream) = result;
+        session_output.push(output);
+        out_clients.push((transport, sessions.remove(0), stream));
+    }
+
+    Ok((session_output, out_clients))
 }

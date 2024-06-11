@@ -146,7 +146,7 @@ pub async fn make_client_sessions(
 pub async fn execute_drivers<D>(
     streams: Vec<SessionStream>,
     mut drivers: Vec<D>,
-) -> Result<Vec<D::Output>>
+) -> Result<Vec<(D::Output, Transport, SessionStream)>>
 where
     D: Driver + Send + 'static,
     D::Output: Send,
@@ -183,13 +183,15 @@ where
     for result in results {
         let result = result?;
 
-        let (result, driver, mut stream) = result.unwrap();
+        let (result, driver, stream) = result.unwrap();
 
+        /*
         let transport = driver.into_transport();
         transport.close().await?;
         wait_for_close(&mut stream).await?;
+        */
 
-        output.push(result);
+        output.push((result, driver.into_transport(), stream));
     }
 
     Ok(output)
