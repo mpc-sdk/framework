@@ -116,9 +116,6 @@ impl<D: ProtocolDriver> Bridge<D> {
                     Some(self.session.session_id),
                 )
                 .await?;
-
-            tokio::time::sleep(std::time::Duration::from_millis(100))
-                .await;
         }
         Ok(())
     }

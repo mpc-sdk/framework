@@ -120,6 +120,18 @@ async fn run_full_sequence(
     )
     .await?;
 
+    for client in clients {
+        let (transport, _, mut stream) = client;
+        transport.close().await?;
+        wait_for_close(&mut stream).await?;
+    }
+
+    println!("*** SIGN ***");
+
+    // Create new clients for signing
+    let clients =
+        make_client_sessions(server, &server_public_key, t).await?;
+
     let selected_signers =
         vec![signers[0].clone(), signers[2].clone()];
     let selected_parties = vec![verifiers[0], verifiers[2]];
@@ -130,10 +142,6 @@ async fn run_full_sequence(
     let selected_aux_infos =
         vec![aux_infos[0].clone(), aux_infos[2].clone()];
 
-    let selected_clients = vec![clients.remove(0), clients.remove(1)];
-
-    println!("*** SIGN ***");
-
     // Generate signatures
     let (signatures, clients) = make_signatures(
         parameters.clone(),
@@ -143,7 +151,7 @@ async fn run_full_sequence(
         selected_key_shares,
         selected_aux_infos,
         prehashed_message,
-        selected_clients,
+        clients,
     )
     .await?;
 

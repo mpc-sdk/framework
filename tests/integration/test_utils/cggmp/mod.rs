@@ -4,8 +4,8 @@ use futures::{Stream, StreamExt};
 use mpc_client::{NetworkTransport, Transport};
 use mpc_driver::{
     k256::ecdsa::{SigningKey, VerifyingKey},
-    wait_for_close, Driver, SessionEventHandler, SessionHandler,
-    SessionInitiator, SessionParticipant,
+    Driver, SessionEventHandler, SessionHandler, SessionInitiator,
+    SessionParticipant,
 };
 use mpc_protocol::SessionState;
 use rand::rngs::OsRng;
@@ -182,15 +182,7 @@ where
     let mut output = Vec::new();
     for result in results {
         let result = result?;
-
         let (result, driver, stream) = result.unwrap();
-
-        /*
-        let transport = driver.into_transport();
-        transport.close().await?;
-        wait_for_close(&mut stream).await?;
-        */
-
         output.push((result, driver.into_transport(), stream));
     }
 
