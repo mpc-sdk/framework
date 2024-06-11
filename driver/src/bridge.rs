@@ -42,10 +42,12 @@ impl<D: ProtocolDriver> Bridge<D> {
 
             let driver = self.driver.as_mut().unwrap();
             let round_info = driver.round_info()?;
-            /*
             let current_round: NonZeroU16 =
                 (round_info.round_number as u16).try_into().unwrap();
-                */
+
+            if message.round_number() != current_round {
+                println!("GOT OUT OF ORDER MESSAGE!");
+            }
 
             /*
             println!(

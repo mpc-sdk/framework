@@ -32,6 +32,16 @@ where
     pub(crate) body: O,
 }
 
+impl<O> RoundMsg<O>
+where
+    O: Serialize + Send + Sync + DeserializeOwned,
+{
+    /// Consume this message into the sender and body.
+    pub fn into_body(self) -> (VerifyingKey, O) {
+        (self.sender, self.body)
+    }
+}
+
 impl<O> Round for RoundMsg<O>
 where
     O: Serialize + Send + Sync + DeserializeOwned,

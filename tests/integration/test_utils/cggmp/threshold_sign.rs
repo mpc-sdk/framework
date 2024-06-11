@@ -32,28 +32,47 @@ pub async fn run_threshold_sign(
     server: &str,
     server_public_key: Vec<u8>,
 ) -> Result<()> {
-    let t = 2;
-    let n = 3;
+    let t = 2usize;
+    let n = 3usize;
 
     // 2 of 3
     let parameters = Parameters {
-        parties: n,
-        threshold: t,
+        parties: n as u16,
+        threshold: t as u16,
     };
 
     let message = "this is the message that is sent out";
-    let message: PrehashedMessage =
+    let prehashed_message: PrehashedMessage =
         Keccak256::digest(message.as_bytes())
             .as_slice()
             .try_into()?;
 
-    run_full_sequence(
+    let (key_shares, signatures) = run_full_sequence(
         server,
         server_public_key.clone(),
         parameters.clone(),
-        &message,
+        &prehashed_message,
     )
     .await?;
+
+    assert_eq!(t, signatures.len());
+
+    for signature in signatures {
+        let (sig, rec_id) = signature.to_backend();
+        let vkey = key_shares[0].verifying_key();
+
+        // Check that the signature can be verified
+        vkey.verify_prehash(&prehashed_message, &sig).unwrap();
+
+        // Check that the key can be recovered
+        let recovered_key = VerifyingKey::recover_from_prehash(
+            &prehashed_message,
+            &sig,
+            rec_id,
+        )
+        .unwrap();
+        assert_eq!(recovered_key, vkey);
+    }
 
     Ok(())
 }
@@ -63,7 +82,10 @@ async fn run_full_sequence(
     server_public_key: Vec<u8>,
     parameters: Parameters,
     prehashed_message: &PrehashedMessage,
-) -> Result<()> {
+) -> Result<(
+    Vec<KeyShare<TestParams, VerifyingKey>>,
+    Vec<RecoverableSignature>,
+)> {
     let n = parameters.parties as usize;
     let t = parameters.threshold as usize;
 
@@ -157,32 +179,13 @@ async fn run_full_sequence(
     )
     .await?;
 
-    assert_eq!(t, signatures.len());
-
     for client in clients {
         let (transport, _, mut stream) = client;
         transport.close().await?;
         wait_for_close(&mut stream).await?;
     }
 
-    for signature in signatures {
-        let (sig, rec_id) = signature.to_backend();
-        let vkey = key_shares[0].verifying_key();
-
-        // Check that the signature can be verified
-        vkey.verify_prehash(prehashed_message, &sig).unwrap();
-
-        // Check that the key can be recovered
-        let recovered_key = VerifyingKey::recover_from_prehash(
-            prehashed_message,
-            &sig,
-            rec_id,
-        )
-        .unwrap();
-        assert_eq!(recovered_key, vkey);
-    }
-
-    Ok(())
+    Ok((key_shares, signatures))
 }
 
 async fn make_key_init(
@@ -200,6 +203,9 @@ async fn make_key_init(
         signers.get(1).unwrap().verifying_key().clone(),
     ];
 
+    // Key init only needs to run for `t` clients but we
+    // need to pass back the entire clients list for the
+    // execution of the other drivers in the sequence.
     let mut t_clients = Vec::new();
     let mut o_clients = Vec::new();
     for (index, client) in clients.into_iter().enumerate() {
@@ -216,15 +222,14 @@ async fn make_key_init(
     for result in t_clients {
         let (transport, session, stream) = result;
         streams.push(stream);
+        t_sessions.push(session.clone());
         drivers.push(KeyInitDriver::<TestParams>::new(
             transport,
-            session.clone(),
+            session,
             &shared_randomness,
             signers.remove(0),
             verifiers.clone(),
         )?);
-
-        t_sessions.push(session);
     }
 
     let results = execute_drivers(streams, drivers).await?;

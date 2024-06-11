@@ -119,26 +119,23 @@ where
             "handle_incoming",
         );
 
-        // This can be checked if a timeout expired, to see which nodes have not responded yet.
+        // This can be checked if a timeout expired, to see
+        // which nodes have not responded yet.
         let unresponsive_parties = session.missing_messages(accum)?;
         assert!(!unresponsive_parties.is_empty());
 
-        /*
-        println!("{key_str}: waiting for a message");
-        */
-
-        let from = message.sender();
-        let message = message.body.clone();
-        // let (from, message) = rx.recv().await.unwrap();
+        let message_round_number = message.round_number();
+        let (from, body) = message.into_body();
 
         // Perform quick checks before proceeding with the verification.
         let preprocessed =
-            session.preprocess_message(accum, from, message).unwrap();
+            session.preprocess_message(accum, &from, body).unwrap();
 
         if let Some(preprocessed) = preprocessed {
             println!(
-                "{key_str}: applying a message from {}",
-                key_to_str(&from)
+                "{key_str}: applying a message from {} (round {})",
+                key_to_str(&from),
+                message_round_number,
             );
             let result =
                 session.process_message(preprocessed).unwrap();
