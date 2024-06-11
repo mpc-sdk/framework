@@ -210,7 +210,7 @@ async fn read(
                 }
             },
             Err(e) => {
-                tracing::error!(error = %e, "ws_server::read_error");
+                tracing::warn!(error = %e, "ws_server::read_error");
                 disconnect(state, Arc::clone(&conn)).await;
                 return Err(e.into());
             }
@@ -227,7 +227,7 @@ async fn write(
 ) -> Result<()> {
     while let Some(message) = outgoing_rx.recv().await {
         if let Err(error) = sender.send(message).await {
-            tracing::error!(error = %error, "ws_server::write_error");
+            tracing::warn!(error = %error, "ws_server::write_error");
             disconnect(state, Arc::clone(&conn)).await;
             return Ok(());
         }

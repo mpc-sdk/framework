@@ -8,7 +8,7 @@ use serial_test::serial;
 #[tokio::test]
 #[serial]
 async fn integration_cggmp_keygen() -> Result<()> {
-    // crate::test_utils::init_tracing();
+    crate::test_utils::init_tracing();
 
     // Wait for the server to start
     let (rx, _handle) = spawn_server()?;
