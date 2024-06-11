@@ -46,7 +46,11 @@ impl<D: ProtocolDriver> Bridge<D> {
                 (round_info.round_number as u16).try_into().unwrap();
 
             if message.round_number() != current_round {
-                println!("GOT OUT OF ORDER MESSAGE!");
+                panic!(
+                    "out of order message message_round = {}, current_round = {}",
+                    message.round_number(),
+                    current_round,
+                );
             }
 
             /*

@@ -6,22 +6,22 @@ use mpc_protocol::{hex, Keypair, Parameters};
 
 /// Supported multi-party computation protocols.
 #[derive(Copy, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Protocol {
-    #[cfg(feature = "cggmp")]
     /// The CGGMP protocol.
-    #[serde(rename = "cggmp")]
+    #[cfg(feature = "cggmp")]
     Cggmp,
 }
 
 /// Signature for different protocols.
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Signature {
-    #[cfg(feature = "cggmp")]
     /// Signature for the CGGMP protocol.
     ///
     /// Note that we must convert the `RecoveryId` to `u8`
     /// for serde support.
-    #[serde(rename = "cggmp")]
+    #[cfg(feature = "cggmp")]
     Cggmp(ecdsa::Signature, u8),
 }
 
@@ -48,16 +48,47 @@ pub struct KeyShare {
 
 /// Key share variants by protocol.
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum PrivateKey {
-    #[cfg(feature = "cggmp")]
-    /// Key share for the GG20 protocol.
-    #[serde(rename = "cggmp")]
-    Cggmp(crate::cggmp::KeyShare),
+    /// Key share for the CGGMP protocol.
+    #[cfg(all(feature = "cggmp", not(debug_assertions)))]
+    Cggmp(crate::cggmp::KeyShare<crate::synedrion::ProductionParams>),
+    /// Key share for the CGGMP protocol.
+    #[cfg(all(feature = "cggmp", debug_assertions))]
+    Cggmp(crate::cggmp::KeyShare<crate::synedrion::TestParams>),
 }
 
-#[cfg(feature = "cggmp")]
-impl From<crate::cggmp::KeyShare> for KeyShare {
-    fn from(local_key: crate::cggmp::KeyShare) -> Self {
+#[cfg(all(feature = "cggmp", debug_assertions))]
+impl From<crate::cggmp::KeyShare<crate::synedrion::TestParams>>
+    for KeyShare
+{
+    fn from(
+        local_key: crate::cggmp::KeyShare<
+            crate::synedrion::TestParams,
+        >,
+    ) -> Self {
+        let public_key = local_key
+            .verifying_key()
+            .to_encoded_point(true)
+            .as_bytes()
+            .to_vec();
+        Self {
+            private_key: PrivateKey::Cggmp(local_key),
+            address: crate::address(&public_key),
+            public_key,
+        }
+    }
+}
+
+#[cfg(all(feature = "cggmp", not(debug_assertions)))]
+impl From<crate::cggmp::KeyShare<crate::synedrion::ProductionParams>>
+    for KeyShare
+{
+    fn from(
+        local_key: crate::cggmp::KeyShare<
+            crate::synedrion::ProductionParams,
+        >,
+    ) -> Self {
         let public_key = local_key
             .verifying_key()
             .to_encoded_point(true)

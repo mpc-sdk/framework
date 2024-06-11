@@ -21,7 +21,7 @@ use crate::{
 
 use super::MessageOut;
 
-/// CGGMP key generation.
+/// CGGMP key refresh driver.
 pub struct KeyRefreshDriver<P>
 where
     P: SchemeParams + 'static,

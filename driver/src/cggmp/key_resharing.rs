@@ -22,7 +22,7 @@ use crate::{
 
 use super::MessageOut;
 
-/// CGGMP key generation.
+/// CGGMP key resharing driver.
 pub struct KeyResharingDriver<P>
 where
     P: SchemeParams + 'static,

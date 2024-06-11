@@ -21,7 +21,7 @@ use crate::{
 
 use super::MessageOut;
 
-/// CGGMP aux info generation.
+/// CGGMP aux info driver.
 pub struct AuxGenDriver<P>
 where
     P: SchemeParams + 'static,

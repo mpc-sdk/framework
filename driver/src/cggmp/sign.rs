@@ -22,7 +22,7 @@ use crate::{
 
 use super::MessageOut;
 
-/// CGGMP signature generation.
+/// CGGMP signing driver.
 pub struct SignatureDriver<P>
 where
     P: SchemeParams + 'static,

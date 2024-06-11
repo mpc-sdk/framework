@@ -37,7 +37,10 @@ pub use synedrion;
 pub use synedrion::k256;
 
 #[cfg(feature = "cggmp")]
-use synedrion::k256::ecdsa::{SigningKey, VerifyingKey};
+use synedrion::{
+    k256::ecdsa::{SigningKey, VerifyingKey},
+    PrehashedMessage,
+};
 
 /// Information about the current found which
 /// can be retrieved from a driver.
@@ -141,27 +144,27 @@ pub async fn keygen(
 pub async fn sign(
     options: SessionOptions,
     participants: Option<Vec<Vec<u8>>>,
-    signing_key: PrivateKey,
-    message: [u8; 32],
+    shared_randomness: &[u8],
+    signer: SigningKey,
+    verifiers: Vec<VerifyingKey>,
+    key_share: PrivateKey,
+    message: &PrehashedMessage,
 ) -> Result<Signature> {
-    todo!();
-
-    /*
-    match &options.protocol {
-        Protocol::GG20 => {
-            assert!(matches!(signing_key, PrivateKey::GG20(_)));
-            Ok(gg20::sign(
+    match (&options.protocol, &key_share) {
+        (Protocol::Cggmp, PrivateKey::Cggmp(key_share)) => {
+            Ok(cggmp::sign(
                 options,
                 participants,
-                signing_key,
+                shared_randomness,
+                signer,
+                verifiers,
+                key_share,
                 message,
             )
             .await?
             .into())
         }
-        _ => todo!("drive CGGMP protocol"),
     }
-    */
 }
 
 #[doc(hidden)]

@@ -1,5 +1,4 @@
 //! Driver for the CGGMP protocol.
-use serde::{Deserialize, Serialize};
 use synedrion::{
     ecdsa::{self, SigningKey, VerifyingKey},
     CombinedMessage, KeyShare as SynedrionKeyShare, PrehashedMessage,
@@ -26,23 +25,10 @@ pub use sign::SignatureDriver;
 type MessageOut = CombinedMessage<ecdsa::Signature>;
 
 /// Key share.
-#[cfg(not(debug_assertions))]
-pub type KeyShare =
-    SynedrionKeyShare<synedrion::ProductionParams, VerifyingKey>;
-
-/// Key share.
-#[cfg(debug_assertions)]
-pub type KeyShare =
-    SynedrionKeyShare<synedrion::TestParams, VerifyingKey>;
+pub type KeyShare<P> = SynedrionKeyShare<P, VerifyingKey>;
 
 /// Result type for the CGGMP protocol.
 pub type Result<T> = std::result::Result<T, Error>;
-
-/// Generated signature.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-#[deprecated]
-pub struct Signature {}
 
 use mpc_client::{NetworkTransport, Transport};
 
