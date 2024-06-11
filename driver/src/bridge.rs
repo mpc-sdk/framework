@@ -34,19 +34,32 @@ impl<D: ProtocolDriver> Bridge<D> {
             }
 
             let message: D::Message = message.deserialize()?;
+
             let driver = self.driver.as_mut().unwrap();
-            if !driver.can_finalize()? {
+            let round_info = driver.round_info()?;
+
+            /*
+            println!(
+                "Message round: {}, session round: {} {} {}",
+                message.round_number(),
+                round_info.round_number,
+                round_info.is_echo,
+                round_info.can_finalize,
+            );
+            */
+
+            if !round_info.can_finalize {
                 driver.handle_incoming(message)?;
-                if driver.can_finalize()? {
+                let round_info = driver.round_info()?;
+                if round_info.can_finalize {
                     if let Some(result) =
                         driver.try_finalize_round()?
                     {
                         return Ok(Some(result));
-                    } else {
-                        let messages = driver.proceed()?;
-                        self.dispatch_round_messages(messages)
-                            .await?;
                     }
+
+                    let messages = driver.proceed()?;
+                    self.dispatch_round_messages(messages).await?;
                 }
             }
         }
@@ -69,9 +82,6 @@ impl<D: ProtocolDriver> Bridge<D> {
     ) -> Result<(), D::Error> {
         for message in messages {
             let party_number = message.receiver();
-
-            println!("{}", party_number);
-
             let peer_key =
                 self.session.peer_key(*party_number).unwrap();
             self.transport

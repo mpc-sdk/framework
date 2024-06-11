@@ -37,6 +37,17 @@ pub use synedrion::k256;
 #[cfg(feature = "cggmp")]
 use synedrion::k256::ecdsa::{SigningKey, VerifyingKey};
 
+/// Information about the current found which
+/// can be retrieved from a driver.
+pub struct RoundInfo {
+    /// Whether the round is ready to be finalized.
+    pub can_finalize: bool,
+    /// Whether the round is an echo round.
+    pub is_echo: bool,
+    /// Round number.
+    pub round_number: u8,
+}
+
 /// Drives a protocol to completion bridging between
 /// the network transport and local computation.
 #[async_trait]
@@ -84,8 +95,10 @@ pub(crate) trait ProtocolDriver {
         &mut self,
     ) -> std::result::Result<Vec<Self::Message>, Self::Error>;
 
-    /// Whether the current round can be finalized.
-    fn can_finalize(&self) -> std::result::Result<bool, Self::Error>;
+    /// Information about the current round for the driver.
+    fn round_info(
+        &self,
+    ) -> std::result::Result<RoundInfo, Self::Error>;
 
     /// Try to finalize a round if the protocol is completed
     /// the result is returned.

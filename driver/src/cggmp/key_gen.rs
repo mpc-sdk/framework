@@ -15,7 +15,9 @@ use synedrion::{
     AuxInfo, KeyGenResult, KeyShare, SchemeParams,
 };
 
-use crate::{key_to_str, Bridge, Driver, ProtocolDriver, RoundMsg};
+use crate::{
+    key_to_str, Bridge, Driver, ProtocolDriver, RoundInfo, RoundMsg,
+};
 
 use super::MessageOut;
 
@@ -144,14 +146,10 @@ where
     type Output =
         (KeyShare<P, VerifyingKey>, AuxInfo<P, VerifyingKey>);
 
-    fn can_finalize(&self) -> Result<bool> {
-        // TODO: error conversion
-        Ok(self
-            .session
-            .as_ref()
-            .unwrap()
-            .can_finalize(self.accum.as_ref().unwrap())
-            .unwrap())
+    fn round_info(&self) -> Result<RoundInfo> {
+        let session = self.session.as_ref().unwrap();
+        let accum = self.accum.as_ref().unwrap();
+        super::helpers::round_info(session, accum)
     }
 
     fn proceed(&mut self) -> Result<Vec<Self::Message>> {

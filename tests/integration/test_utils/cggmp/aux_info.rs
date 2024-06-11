@@ -7,7 +7,7 @@ pub async fn run_aux_info(
     server: &str,
     server_public_key: Vec<u8>,
 ) -> Result<()> {
-    let n = 3;
+    let n = 5;
     let rng = &mut OsRng;
     let shared_randomness: [u8; 32] = rng.gen();
 

@@ -1,4 +1,4 @@
-//! Key generation for CGGMP.
+//! Helper functions for the CGGMP protocol drivers.
 use rand::rngs::OsRng;
 use std::num::NonZeroU16;
 
@@ -9,9 +9,26 @@ use synedrion::{
     MappedResult, ProtocolResult,
 };
 
-use crate::{key_to_str, Round, RoundMsg};
+use crate::{key_to_str, Round, RoundInfo, RoundMsg};
 
 use super::MessageOut;
+
+pub fn round_info<Res>(
+    session: &Session<Res, Signature, SigningKey, VerifyingKey>,
+    accum: &RoundAccumulator<Signature>,
+) -> Result<RoundInfo>
+where
+    Res: MappedResult<VerifyingKey>,
+    Res: ProtocolResult,
+{
+    let (round_number, is_echo) = session.current_round();
+    let can_finalize = session.can_finalize(accum)?;
+    Ok(RoundInfo {
+        round_number,
+        is_echo,
+        can_finalize,
+    })
+}
 
 pub fn proceed<Res>(
     session: &mut Session<Res, Signature, SigningKey, VerifyingKey>,
@@ -43,7 +60,7 @@ where
         // and the artifact will be sent back to the host task
         // to be added to the accumulator.
         let (message, artifact) =
-            session.make_message(&mut OsRng, destination).unwrap();
+            session.make_message(&mut OsRng, destination)?;
 
         println!(
             "{key_str}: sending a message to {}",
@@ -51,7 +68,7 @@ where
         );
 
         // This will happen in a host task
-        accum.add_artifact(artifact).unwrap();
+        accum.add_artifact(artifact)?;
 
         // let sender = verifiers.iter().position(|i| i == key).unwrap();
 
@@ -78,7 +95,7 @@ where
         let result = session.process_message(preprocessed).unwrap();
 
         // This will happen in a host task.
-        accum.add_processed_message(result).unwrap().unwrap();
+        accum.add_processed_message(result)??;
     }
 
     Ok(outgoing)
@@ -93,7 +110,7 @@ where
     Res: MappedResult<VerifyingKey>,
     Res: ProtocolResult,
 {
-    if !session.can_finalize(accum).unwrap() {
+    if !session.can_finalize(accum)? {
         let key_str = key_to_str(&session.verifier());
         tracing::info!(
             "handle incoming (round = {})",
@@ -101,8 +118,7 @@ where
         );
 
         // This can be checked if a timeout expired, to see which nodes have not responded yet.
-        let unresponsive_parties =
-            session.missing_messages(accum).unwrap();
+        let unresponsive_parties = session.missing_messages(accum)?;
         assert!(!unresponsive_parties.is_empty());
 
         /*
@@ -126,7 +142,7 @@ where
                 session.process_message(preprocessed).unwrap();
 
             // This will happen in a host task.
-            accum.add_processed_message(result).unwrap().unwrap();
+            accum.add_processed_message(result)??;
         }
     }
 
