@@ -6,10 +6,6 @@ use mpc_protocol::{hex, Keypair, Parameters};
 /// Supported multi-party computation protocols.
 #[derive(Copy, Clone, Serialize, Deserialize)]
 pub enum Protocol {
-    #[cfg(feature = "gg20")]
-    /// The GG2020 protocol.
-    #[serde(rename = "gg20")]
-    GG20,
     #[cfg(feature = "cggmp")]
     /// The CGGMP protocol.
     #[serde(rename = "cggmp")]
@@ -19,10 +15,6 @@ pub enum Protocol {
 /// Signature for different protocols.
 #[derive(Serialize, Deserialize)]
 pub enum Signature {
-    #[cfg(feature = "gg20")]
-    /// The GG2020 protocol.
-    #[serde(rename = "gg20")]
-    GG20(crate::gg20::Signature),
     /*
     #[cfg(feature = "cggmp")]
     /// The CGGMP protocol.
