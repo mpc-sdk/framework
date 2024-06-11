@@ -1,6 +1,6 @@
 use std::num::NonZeroU16;
 
-use futures::{select, FutureExt, StreamExt};
+use futures::StreamExt;
 use mpc_client::{Event, EventStream, NetworkTransport, Transport};
 use mpc_protocol::{SessionId, SessionState};
 
@@ -42,6 +42,8 @@ impl<D: ProtocolDriver> Bridge<D> {
 
             let driver = self.driver.as_mut().unwrap();
             let round_info = driver.round_info()?;
+
+            /*
             let current_round: NonZeroU16 =
                 (round_info.round_number as u16).try_into().unwrap();
 
@@ -52,6 +54,7 @@ impl<D: ProtocolDriver> Bridge<D> {
                     current_round,
                 );
             }
+            */
 
             /*
             println!(
@@ -139,18 +142,11 @@ where
 
     #[allow(unused_assignments)]
     let mut output: Option<D::Output> = None;
-    loop {
-        select! {
-            event = stream.next().fuse() => {
-                if let Some(event) = event {
-                    let event = event?;
-                    if let Some(result) =
-                        driver.handle_event(event).await? {
-                        output = Some(result);
-                        break;
-                    }
-                }
-            },
+    while let Some(event) = stream.next().await {
+        let event = event?;
+        if let Some(result) = driver.handle_event(event).await? {
+            output = Some(result);
+            break;
         }
     }
     Ok((driver.into(), output.take().unwrap()))
@@ -164,16 +160,10 @@ where
 pub async fn wait_for_close(
     stream: &mut EventStream,
 ) -> crate::Result<()> {
-    loop {
-        select! {
-            event = stream.next().fuse() => {
-                if let Some(event) = event {
-                    let event = event?;
-                    if let Event::Close = event {
-                        break;
-                    }
-                }
-            },
+    while let Some(event) = stream.next().await {
+        let event = event?;
+        if let Event::Close = event {
+            break;
         }
     }
     Ok(())
@@ -184,18 +174,12 @@ pub async fn wait_for_session_finish(
     stream: &mut EventStream,
     session_id: SessionId,
 ) -> crate::Result<()> {
-    loop {
-        select! {
-            event = stream.next().fuse() => {
-                if let Some(event) = event {
-                    let event = event?;
-                    if let Event::SessionFinished(id)= event {
-                        if session_id == id {
-                            break;
-                        }
-                    }
-                }
-            },
+    while let Some(event) = stream.next().await {
+        let event = event?;
+        if let Event::SessionFinished(id) = event {
+            if session_id == id {
+                break;
+            }
         }
     }
     Ok(())

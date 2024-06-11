@@ -1,6 +1,6 @@
 use crate::Result;
 use async_trait::async_trait;
-use futures::{select, FutureExt, StreamExt};
+use futures::StreamExt;
 use mpc_client::{Event, EventStream, NetworkTransport, Transport};
 use mpc_protocol::SessionState;
 use tokio::sync::Mutex;
@@ -241,18 +241,13 @@ where
 {
     #[allow(unused_assignments)]
     let mut session: Option<SessionState> = None;
-    loop {
-        select! {
-            event = stream.next().fuse() => {
-                if let Some(event) = event {
-                    let event = event?;
-                    if let Some(active_session) =
-                        client_session.handle_event(event).await? {
-                        session = Some(active_session);
-                        break;
-                    }
-                }
-            },
+    while let Some(event) = stream.next().await {
+        let event = event?;
+        if let Some(active_session) =
+            client_session.handle_event(event).await?
+        {
+            session = Some(active_session);
+            break;
         }
     }
     Ok((client_session.into(), session.take().unwrap()))

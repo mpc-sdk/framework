@@ -20,9 +20,9 @@ macro_rules! client_impl {
                     session_id,
                 )
                 .await?;
+
                 self.outbound_tx
-                    .send(InternalMessage::Request(request))
-                    .await?;
+                    .send(InternalMessage::Request(request))?;
                 Ok(())
             } else {
                 Err(Error::PeerNotFound(hex::encode(
@@ -56,8 +56,7 @@ macro_rules! client_impl {
                     OpaqueMessage::ServerMessage(envelope),
                 );
                 self.outbound_tx
-                    .send(InternalMessage::Request(request))
-                    .await?;
+                    .send(InternalMessage::Request(request))?;
                 Ok(())
             } else {
                 unreachable!()
@@ -120,7 +119,7 @@ macro_rules! client_transport_impl {
                     )
                 };
 
-                self.outbound_tx.send(InternalMessage::Request(request)).await?;
+                self.outbound_tx.send(InternalMessage::Request(request))?;
 
                 Ok(())
             }
@@ -180,7 +179,7 @@ macro_rules! client_transport_impl {
                     },
                 );
 
-                self.outbound_tx.send(InternalMessage::Request(request)).await?;
+                self.outbound_tx.send(InternalMessage::Request(request))?;
 
                 Ok(())
             }
@@ -312,7 +311,7 @@ macro_rules! client_transport_impl {
 
             #[cfg(not(target_arch="wasm32"))]
             async fn close(&self) -> Result<()> {
-                self.outbound_tx.send(InternalMessage::Close).await?;
+                self.outbound_tx.send(InternalMessage::Close)?;
                 Ok(())
             }
 

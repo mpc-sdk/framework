@@ -1,5 +1,5 @@
 use anyhow::Result;
-use futures::{select, FutureExt, StreamExt};
+use futures::StreamExt;
 use mpc_client::{Client, Event, EventLoop, NetworkTransport};
 use tokio::sync::mpsc;
 
@@ -92,8 +92,14 @@ pub async fn participant_client<E: From<mpc_client::Error>>(
 
     let mut s = event_loop.run();
     loop {
-        select! {
-            event = s.next().fuse() => {
+        tokio::select! {
+            biased;
+            shutdown = shutdown_rx.recv() => {
+                if shutdown.is_some() {
+                    break;
+                }
+            }
+            event = s.next() => {
                 match event {
                     Some(event) => {
                         let event = event?;
@@ -120,11 +126,6 @@ pub async fn participant_client<E: From<mpc_client::Error>>(
                         }
                     }
                     _ => {}
-                }
-            }
-            shutdown = shutdown_rx.recv().fuse() => {
-                if shutdown.is_some() {
-                    break;
                 }
             }
         }

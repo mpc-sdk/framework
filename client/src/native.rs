@@ -1,9 +1,8 @@
 use async_stream::stream;
 use futures::{
-    select,
     sink::SinkExt,
     stream::{SplitSink, SplitStream},
-    FutureExt, StreamExt,
+    StreamExt,
 };
 use serde::Serialize;
 use serde_json::Value;
@@ -52,7 +51,7 @@ pub type NativeEventLoop =
 #[derive(Clone)]
 pub struct NativeClient {
     options: Arc<ClientOptions>,
-    outbound_tx: mpsc::Sender<InternalMessage>,
+    outbound_tx: mpsc::UnboundedSender<InternalMessage>,
     server: Server,
     peers: Peers,
 }
@@ -84,7 +83,7 @@ impl NativeClient {
         // Channel for writing outbound messages to send
         // to the server
         let (outbound_tx, outbound_rx) =
-            mpsc::channel::<InternalMessage>(32);
+            mpsc::unbounded_channel::<InternalMessage>();
 
         // State for the server transport
         let server = Arc::new(RwLock::new(Some(
@@ -102,7 +101,7 @@ impl NativeClient {
 
         // Decoded socket messages are sent over this channel
         let (inbound_tx, inbound_rx) =
-            mpsc::channel::<ResponseMessage>(32);
+            mpsc::unbounded_channel::<ResponseMessage>();
 
         let event_loop = EventLoop {
             options,
@@ -129,12 +128,12 @@ impl EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream> {
     /// the messages channel.
     pub(crate) async fn read_message(
         incoming: Message,
-        event_proxy: &mut mpsc::Sender<ResponseMessage>,
+        event_proxy: &mut mpsc::UnboundedSender<ResponseMessage>,
     ) -> Result<()> {
         if let Message::Binary(buffer) = incoming {
             let inflated = zlib::inflate(&buffer)?;
             let response: ResponseMessage = decode(inflated).await?;
-            event_proxy.send(response).await?;
+            event_proxy.send(response)?;
         }
         Ok(())
     }
@@ -146,6 +145,13 @@ impl EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream> {
     ) -> Result<()> {
         let encoded = encode(&message).await?;
         let deflated = zlib::deflate(&encoded)?;
+
+        tracing::debug!(
+            encoded_length = encoded.len(),
+            deflated_length = deflated.len(),
+            "send_message"
+        );
+
         let message = Message::Binary(deflated);
 
         self.ws_writer

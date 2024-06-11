@@ -129,10 +129,10 @@ where
     pub(crate) options: Arc<ClientOptions>,
     pub(crate) ws_reader: R,
     pub(crate) ws_writer: W,
-    pub(crate) inbound_tx: mpsc::Sender<ResponseMessage>,
-    pub(crate) inbound_rx: mpsc::Receiver<ResponseMessage>,
-    pub(crate) outbound_tx: mpsc::Sender<InternalMessage>,
-    pub(crate) outbound_rx: mpsc::Receiver<InternalMessage>,
+    pub(crate) inbound_tx: mpsc::UnboundedSender<ResponseMessage>,
+    pub(crate) inbound_rx: mpsc::UnboundedReceiver<ResponseMessage>,
+    pub(crate) outbound_tx: mpsc::UnboundedSender<InternalMessage>,
+    pub(crate) outbound_rx: mpsc::UnboundedReceiver<InternalMessage>,
     pub(crate) server: Server,
     pub(crate) peers: Peers,
 }
@@ -149,7 +149,7 @@ where
         server: Server,
         peers: Peers,
         incoming: ResponseMessage,
-        outbound_tx: mpsc::Sender<InternalMessage>,
+        outbound_tx: mpsc::UnboundedSender<InternalMessage>,
     ) -> Result<Option<Event>> {
         match incoming {
             ResponseMessage::Transparent(
@@ -211,7 +211,8 @@ where
                             response
                         }
                         _ => {
-                            panic!("unexpected encoding received from server")
+                            panic!(
+                                "unexpected encoding received from server")
                         }
                     };
                     Ok(Self::handle_server_channel_message(message)
@@ -287,7 +288,7 @@ where
     async fn peer_handshake_responder(
         options: Arc<ClientOptions>,
         peers: Peers,
-        outbound_tx: mpsc::Sender<InternalMessage>,
+        outbound_tx: mpsc::UnboundedSender<InternalMessage>,
         public_key: impl AsRef<[u8]>,
         len: usize,
         buf: Vec<u8>,
@@ -330,9 +331,7 @@ where
                 },
             );
 
-            outbound_tx
-                .send(InternalMessage::Request(request))
-                .await?;
+            outbound_tx.send(InternalMessage::Request(request))?;
 
             Ok(Some(Event::PeerConnected {
                 peer_key: public_key.as_ref().to_vec(),
@@ -415,77 +414,68 @@ macro_rules! event_loop_run_impl {
     () => {
         /// Stream of events from the event loop.
         pub fn run(mut self) -> EventStream {
-            let options = Arc::clone(&self.options);
-            let server = Arc::clone(&self.server);
-            let peers = Arc::clone(&self.peers);
+            let options = self.options.clone();
+            let server = self.server.clone();
+            let peers = self.peers.clone();
 
             let s = stream! {
                 loop {
-                    select!(
-                        message_in =
-                            self.ws_reader.next().fuse()
-                                => match message_in {
-                            Some(message) => {
-                                match message {
-                                    Ok(message) => {
-                                        if let Err(e) = Self::read_message(
-                                            message,
-                                            &mut self.inbound_tx,
-                                        ).await {
-                                            yield Err(e);
-                                        }
-                                    }
-                                    Err(e) => {
-                                        yield Err(e.into())
-                                    }
-                                }
-                            }
-                            _ => {}
-                        },
-                        message_out =
-                            self.outbound_rx.recv().fuse()
-                                => match message_out {
-                            Some(message) => {
-                                match message {
-                                    InternalMessage::Request(request) => {
-                                        if let Err(e) = self.send_message(request).await {
-                                            yield Err(e)
-                                        }
-                                    }
-                                    InternalMessage::Close => {
-                                        if let Err(e) = self.handle_close_message().await {
-                                            yield Err(e)
-                                        }
-                                        yield Ok(Event::Close);
-                                        break;
-                                    }
-                                }
-
-                            }
-                            _ => {}
-                        },
-                        event_message =
-                            self.inbound_rx.recv().fuse()
-                                => match event_message {
-                            Some(event_message) => {
-                                match Self::handle_incoming_message(
-                                    Arc::clone(&options),
-                                    Arc::clone(&server),
-                                    Arc::clone(&peers),
-                                    event_message,
-                                    self.outbound_tx.clone(),
-                                ).await {
-
-                                    Ok(Some(event)) => {
-                                        yield Ok(event);
-                                    }
-                                    Err(e) => {
+                    tokio::select!(
+                        // biased;
+                        Some(message_out) =
+                            self.outbound_rx.recv() => {
+                            match message_out {
+                                InternalMessage::Request(request) => {
+                                    if let Err(e) = self.send_message(request).await {
+                                        tracing::warn!(error = %e);
                                         yield Err(e)
                                     }
-                                    _ => {}
+                                }
+                                InternalMessage::Close => {
+                                    if let Err(e) = self.handle_close_message().await {
+                                        yield Err(e)
+                                    }
+                                    yield Ok(Event::Close);
+                                    break;
                                 }
                             }
-                            _ => {}
+                        },
+                        Some(message_in) =
+                            self.ws_reader.next()
+                                => {
+                            match message_in {
+                                Ok(message) => {
+                                    if let Err(e) = Self::read_message(
+                                        message,
+                                        &mut self.inbound_tx,
+                                    ).await {
+                                        yield Err(e);
+                                    }
+                                }
+                                Err(e) => {
+                                    yield Err(e.into())
+                                }
+                            }
+                        },
+                        Some(event_message) =
+                            self.inbound_rx.recv()
+                                => {
+                            match Self::handle_incoming_message(
+                                options.clone(),
+                                server.clone(),
+                                peers.clone(),
+                                event_message,
+                                self.outbound_tx.clone(),
+                            ).await {
+
+                                Ok(Some(event)) => {
+                                    yield Ok(event);
+                                }
+                                Err(e) => {
+                                    yield Err(e)
+                                }
+                                _ => {}
+                            }
                         },
                     );
                 }
