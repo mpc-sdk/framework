@@ -113,8 +113,10 @@ where
     if !session.can_finalize(accum)? {
         let key_str = key_to_str(&session.verifier());
         tracing::info!(
-            "handle incoming (round = {})",
-            session.current_round().0,
+            key = %key_str,
+            current_round = session.current_round().0,
+            message_round = message.round_number(),
+            "handle_incoming",
         );
 
         // This can be checked if a timeout expired, to see which nodes have not responded yet.

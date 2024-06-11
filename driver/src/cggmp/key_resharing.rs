@@ -43,7 +43,7 @@ where
         verifiers: Vec<VerifyingKey>,
         inputs: &KeyResharingInputs<P, VerifyingKey>,
     ) -> Result<Self> {
-        let _party_number = session
+        let party_number = session
             .party_number(transport.public_key())
             .ok_or_else(|| {
                 Error::NotSessionParticipant(hex::encode(
@@ -62,6 +62,7 @@ where
             transport,
             driver: Some(driver),
             session,
+            party_number,
         };
         Ok(Self { bridge })
     }
@@ -84,6 +85,10 @@ where
 
     async fn execute(&mut self) -> Result<()> {
         self.bridge.execute().await
+    }
+
+    fn into_transport(self) -> Transport {
+        self.bridge.transport
     }
 }
 

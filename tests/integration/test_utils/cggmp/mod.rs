@@ -4,8 +4,8 @@ use futures::{Stream, StreamExt};
 use mpc_client::{NetworkTransport, Transport};
 use mpc_driver::{
     k256::ecdsa::{SigningKey, VerifyingKey},
-    Driver, SessionEventHandler, SessionHandler, SessionInitiator,
-    SessionParticipant,
+    wait_for_close, Driver, SessionEventHandler, SessionHandler,
+    SessionInitiator, SessionParticipant,
 };
 use mpc_protocol::SessionState;
 use rand::rngs::OsRng;
@@ -159,14 +159,15 @@ where
     let mut jhs = Vec::new();
     for (mut stream, mut driver) in streams.into_iter().zip(drivers) {
         let jh = tokio::task::spawn(async move {
-            let mut output: Option<D::Output> = None;
+            let mut output: Option<(D::Output, D, SessionStream)> =
+                None;
             while let Some(event) = stream.next().await {
                 let event = event?;
 
                 if let Some(result) =
                     driver.handle_event(event).await.unwrap()
                 {
-                    output = Some(result);
+                    output = Some((result, driver, stream));
                     break;
                 }
             }
@@ -181,7 +182,14 @@ where
     let mut output = Vec::new();
     for result in results {
         let result = result?;
-        output.push(result.unwrap());
+
+        let (result, driver, mut stream) = result.unwrap();
+
+        let transport = driver.into_transport();
+        transport.close().await?;
+        wait_for_close(&mut stream).await?;
+
+        output.push(result);
     }
 
     Ok(output)

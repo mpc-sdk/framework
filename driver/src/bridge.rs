@@ -1,14 +1,19 @@
+use std::num::NonZeroU16;
+
 use futures::{select, FutureExt, StreamExt};
 use mpc_client::{Event, EventStream, NetworkTransport, Transport};
 use mpc_protocol::{SessionId, SessionState};
 
-use crate::{Driver, Error, ProtocolDriver, Round};
+use crate::{
+    public_key_to_str, Driver, Error, ProtocolDriver, Round,
+};
 
 /// Connects a network transport with a protocol driver.
 pub(crate) struct Bridge<D: ProtocolDriver> {
     pub(crate) transport: Transport,
     pub(crate) driver: Option<D>,
     pub(crate) session: SessionState,
+    pub(crate) party_number: NonZeroU16,
 }
 
 impl<D: ProtocolDriver> Bridge<D> {
@@ -37,6 +42,10 @@ impl<D: ProtocolDriver> Bridge<D> {
 
             let driver = self.driver.as_mut().unwrap();
             let round_info = driver.round_info()?;
+            /*
+            let current_round: NonZeroU16 =
+                (round_info.round_number as u16).try_into().unwrap();
+                */
 
             /*
             println!(
@@ -59,6 +68,12 @@ impl<D: ProtocolDriver> Bridge<D> {
                     }
 
                     let messages = driver.proceed()?;
+
+                    println!(
+                        "*** DISPATCH MESSAGES ({}) ***",
+                        messages.len()
+                    );
+
                     self.dispatch_round_messages(messages).await?;
                 }
             }
@@ -82,8 +97,18 @@ impl<D: ProtocolDriver> Bridge<D> {
     ) -> Result<(), D::Error> {
         for message in messages {
             let party_number = message.receiver();
+
+            let owner_key =
+                self.session.peer_key(self.party_number).unwrap();
             let peer_key =
                 self.session.peer_key(*party_number).unwrap();
+
+            tracing::info!(
+                to = public_key_to_str(peer_key),
+                from = public_key_to_str(owner_key),
+                "dispatch_message"
+            );
+
             self.transport
                 .send_json(
                     peer_key,
@@ -91,6 +116,9 @@ impl<D: ProtocolDriver> Bridge<D> {
                     Some(self.session.session_id),
                 )
                 .await?;
+
+            tokio::time::sleep(std::time::Duration::from_millis(100))
+                .await;
         }
         Ok(())
     }

@@ -2,7 +2,9 @@
 #![deny(missing_docs)]
 #![cfg_attr(all(doc, CHANNEL_NIGHTLY), feature(doc_auto_cfg))]
 use async_trait::async_trait;
-use mpc_client::{Client, ClientOptions, Event, EventLoop};
+use mpc_client::{
+    Client, ClientOptions, Event, EventLoop, Transport,
+};
 use mpc_protocol::hex;
 
 mod bridge;
@@ -68,6 +70,9 @@ pub trait Driver {
     async fn execute(
         &mut self,
     ) -> std::result::Result<(), Self::Error>;
+
+    /// Consume this driver into the underlying transport.
+    fn into_transport(self) -> Transport;
 }
 
 /// Trait for implementations that drive
@@ -189,4 +194,9 @@ pub(crate) fn key_to_str(
     key: &crate::k256::ecdsa::VerifyingKey,
 ) -> String {
     hex::encode(&key.to_encoded_point(true).as_bytes()[1..5])
+}
+
+#[cfg(feature = "cggmp")]
+pub(crate) fn public_key_to_str(public_key: &[u8]) -> String {
+    hex::encode(&public_key[0..6])
 }

@@ -41,7 +41,7 @@ where
         signer: SigningKey,
         verifiers: Vec<VerifyingKey>,
     ) -> Result<Self> {
-        let _party_number = session
+        let party_number = session
             .party_number(transport.public_key())
             .ok_or_else(|| {
                 Error::NotSessionParticipant(hex::encode(
@@ -56,6 +56,7 @@ where
             transport,
             driver: Some(driver),
             session,
+            party_number,
         };
         Ok(Self { bridge })
     }
@@ -78,6 +79,10 @@ where
 
     async fn execute(&mut self) -> Result<()> {
         self.bridge.execute().await
+    }
+
+    fn into_transport(self) -> Transport {
+        self.bridge.transport
     }
 }
 
@@ -176,7 +181,10 @@ where
         let accum = self.accum.take().unwrap();
 
         let key_str = key_to_str(&session.verifier());
-        println!("{key_str}: finalizing the round");
+        println!(
+            "{key_str}: finalizing the round {}",
+            session.current_round().0
+        );
 
         match session.finalize_round(&mut OsRng, accum).unwrap() {
             FinalizeOutcome::Success(result) => Ok(Some(result)),

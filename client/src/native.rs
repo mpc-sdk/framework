@@ -165,6 +165,7 @@ impl EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream> {
             .ws_reader
             .reunite(self.ws_writer)
             .map_err(|_| Error::StreamReunite)?;
+
         websocket.close(None).await?;
         Ok(())
     }

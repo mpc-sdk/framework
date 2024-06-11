@@ -24,7 +24,7 @@ async fn integration_cggmp_keygen() -> Result<()> {
 #[tokio::test]
 #[serial]
 async fn integration_cggmp_aux_info() -> Result<()> {
-    // crate::test_utils::init_tracing();
+    crate::test_utils::init_tracing();
 
     // Wait for the server to start
     let (rx, _handle) = spawn_server()?;
@@ -40,7 +40,7 @@ async fn integration_cggmp_aux_info() -> Result<()> {
 #[tokio::test]
 #[serial]
 async fn integration_cggmp_threshold_sign() -> Result<()> {
-    // crate::test_utils::init_tracing();
+    crate::test_utils::init_tracing();
 
     // Wait for the server to start
     let (rx, _handle) = spawn_server()?;
