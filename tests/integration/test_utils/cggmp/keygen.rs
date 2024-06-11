@@ -44,6 +44,7 @@ pub async fn run_keygen(
     }
     assert_eq!(n, key_shares.len());
 
+    // Close the client sockets
     for (transport, mut stream) in transports {
         transport.close().await?;
         wait_for_close(&mut stream).await?;

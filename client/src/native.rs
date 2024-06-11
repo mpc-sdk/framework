@@ -93,10 +93,10 @@ impl NativeClient {
         let peers = Arc::new(RwLock::new(Default::default()));
         let options = Arc::new(options);
         let client = Self {
-            options: Arc::clone(&options),
+            options: options.clone(),
             outbound_tx: outbound_tx.clone(),
-            server: Arc::clone(&server),
-            peers: Arc::clone(&peers),
+            server: server.clone(),
+            peers: peers.clone(),
         };
 
         // Decoded socket messages are sent over this channel

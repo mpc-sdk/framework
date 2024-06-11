@@ -421,9 +421,8 @@ macro_rules! event_loop_run_impl {
             let s = stream! {
                 loop {
                     tokio::select!(
-                        // biased;
-                        Some(message_out) =
-                            self.outbound_rx.recv() => {
+                        biased;
+                        Some(message_out) = self.outbound_rx.recv() => {
                             match message_out {
                                 InternalMessage::Request(request) => {
                                     if let Err(e) = self.send_message(request).await {
@@ -440,9 +439,7 @@ macro_rules! event_loop_run_impl {
                                 }
                             }
                         },
-                        Some(message_in) =
-                            self.ws_reader.next()
-                                => {
+                        Some(message_in) = self.ws_reader.next() => {
                             match message_in {
                                 Ok(message) => {
                                     if let Err(e) = Self::read_message(
@@ -457,9 +454,7 @@ macro_rules! event_loop_run_impl {
                                 }
                             }
                         },
-                        Some(event_message) =
-                            self.inbound_rx.recv()
-                                => {
+                        Some(event_message) = self.inbound_rx.recv() => {
                             match Self::handle_incoming_message(
                                 options.clone(),
                                 server.clone(),
@@ -467,7 +462,6 @@ macro_rules! event_loop_run_impl {
                                 event_message,
                                 self.outbound_tx.clone(),
                             ).await {
-
                                 Ok(Some(event)) => {
                                     yield Ok(event);
                                 }
