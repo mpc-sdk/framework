@@ -153,18 +153,6 @@ pub async fn sign<P: SchemeParams + 'static>(
 
     let session_id = session.session_id;
 
-    /*
-    // Wait for participant party numbers
-    let driver = ParticipantDriver::new(
-        transport,
-        parameters,
-        session.clone(),
-        PartyNumber::new(local_key.i).unwrap(),
-    )?;
-    let (transport, participants) =
-        wait_for_driver(&mut stream, driver).await?;
-    */
-
     // Wait for aux gen protocol to complete
     let driver = AuxGenDriver::new(
         transport,

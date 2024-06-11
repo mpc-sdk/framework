@@ -43,9 +43,6 @@ where
 {
     let mut outgoing = Vec::new();
 
-    // let session = self.session.as_mut().unwrap();
-    // let accum = self.accum.as_mut().unwrap();
-
     let destinations = session.message_destinations();
     let key_str = key_to_str(&session.verifier());
 
@@ -63,14 +60,13 @@ where
             session.make_message(&mut OsRng, destination)?;
 
         println!(
-            "{key_str}: sending a message to {}",
-            key_to_str(destination)
+            "{key_str}: sending a message to {} (round = {})",
+            key_to_str(destination),
+            session.current_round().0,
         );
 
         // This will happen in a host task
         accum.add_artifact(artifact)?;
-
-        // let sender = verifiers.iter().position(|i| i == key).unwrap();
 
         let receiver =
             verifiers.iter().position(|i| i == destination).unwrap();
