@@ -6,7 +6,9 @@ use mpc_driver::{
         AuxGenDriver, KeyInitDriver, KeyResharingDriver,
         SignatureDriver,
     },
-    k256::ecdsa::{SigningKey, VerifyingKey},
+    k256::ecdsa::{
+        signature::hazmat::PrehashVerifier, SigningKey, VerifyingKey,
+    },
     synedrion::{
         AuxInfo, KeyResharingInputs, KeyShare, NewHolder, OldHolder,
         PrehashedMessage, RecoverableSignature, TestParams,
@@ -161,6 +163,23 @@ async fn run_full_sequence(
         let (transport, _, mut stream) = client;
         transport.close().await?;
         wait_for_close(&mut stream).await?;
+    }
+
+    for signature in signatures {
+        let (sig, rec_id) = signature.to_backend();
+        let vkey = key_shares[0].verifying_key();
+
+        // Check that the signature can be verified
+        vkey.verify_prehash(prehashed_message, &sig).unwrap();
+
+        // Check that the key can be recovered
+        let recovered_key = VerifyingKey::recover_from_prehash(
+            prehashed_message,
+            &sig,
+            rec_id,
+        )
+        .unwrap();
+        assert_eq!(recovered_key, vkey);
     }
 
     Ok(())
