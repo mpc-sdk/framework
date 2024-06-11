@@ -44,16 +44,11 @@ impl From<crate::gg20::Signature> for Signature {
 pub struct KeyShare {
     /// Private key share information.
     pub private_key: PrivateKey,
-    /*
     /// The public key.
     #[serde(with = "hex::serde")]
     pub public_key: Vec<u8>,
-    */
-
-    /*
     /// Address generated from the public key.
     pub address: String,
-    */
 }
 
 /// Key share variants by protocol.
@@ -68,12 +63,15 @@ pub enum PrivateKey {
 #[cfg(feature = "cggmp")]
 impl From<crate::cggmp::KeyShare> for KeyShare {
     fn from(local_key: crate::cggmp::KeyShare) -> Self {
-        // let public_key =
-        //     local_key.public_key().to_bytes(false).to_vec();
+        let public_key = local_key
+            .verifying_key()
+            .to_encoded_point(true)
+            .as_bytes()
+            .to_vec();
         Self {
             private_key: PrivateKey::Cggmp(local_key),
-            // address: crate::address(&public_key),
-            // public_key,
+            address: crate::address(&public_key),
+            public_key,
         }
     }
 }
