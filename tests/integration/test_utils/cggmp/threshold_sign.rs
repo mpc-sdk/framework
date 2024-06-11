@@ -111,7 +111,7 @@ async fn run_full_sequence(
     println!("*** AUX INFOS ***");
 
     // Generate auxiliary data
-    let (aux_infos, mut clients) = make_aux_infos(
+    let (aux_infos, clients) = make_aux_infos(
         parameters.clone(),
         &shared_randomness,
         signers.clone(),

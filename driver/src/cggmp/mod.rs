@@ -126,8 +126,6 @@ pub async fn sign<P: SchemeParams + 'static>(
 ) -> crate::Result<RecoverableSignature> {
     let is_initiator = participants.is_some();
 
-    let parameters = options.parameters;
-
     // Create the client
     let (client, event_loop) = new_client(options).await?;
 
