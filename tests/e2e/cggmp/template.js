@@ -8,7 +8,7 @@ const message = "${MESSAGE}";
 const participants = ${PARTICIPANTS};
 const signingParticipants = ${SIGNING_PARTICIPANTS};
 const options = {
-  protocol: "gg20",
+  protocol: "cggmp",
   keypair: `${KEYPAIR}`,
   server: {
     serverUrl: "${SERVER_URL}",
@@ -16,7 +16,7 @@ const options = {
   },
   parameters: {
     parties: 3,
-    threshold: 1,
+    threshold: 2,
   },
 };
 
@@ -30,7 +30,7 @@ try {
   const keyShareElement = document.getElementById("key-share");
   keyShareElement.innerHTML = `
     <p class="address">Address: ${keyShare.address}</p>
-    <p class="party-number">Party number: ${keyShare.privateKey.gg20.i}</p>`;
+    <p class="party-number">Party number: ${keyShare.privateKey.cggmp.i}</p>`;
   // First and third parties perform signing
   if (partyIndex == 0 || partyIndex == 2) {
 
@@ -44,8 +44,8 @@ try {
 
     const signatureElement = document.getElementById("signature");
     signatureElement.innerHTML = `
-      <p class="signature-address">Address: ${result.gg20.address}</p>
-      <p>${JSON.stringify(result.gg20.signature)}</p>`;
+      <p class="signature-address">Address: ${result.cggmp.address}</p>
+      <p>${JSON.stringify(result.cggmp.signature)}</p>`;
 
     console.log("signing completed");
   }

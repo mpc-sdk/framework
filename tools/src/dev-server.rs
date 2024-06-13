@@ -1,13 +1,10 @@
-use axum::{
-    Router,
-};
-use std::net::SocketAddr;
-use tower_http::{
-    services::ServeDir,
-    trace::TraceLayer,
-};
+use axum::Router;
 use axum_server::Handle;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use std::net::SocketAddr;
+use tower_http::{services::ServeDir, trace::TraceLayer};
+use tracing_subscriber::{
+    layer::SubscriberExt, util::SubscriberInitExt,
+};
 
 #[tokio::main]
 async fn main() {
@@ -26,16 +23,19 @@ async fn main() {
 
 fn router() -> Router {
     let bindings = ServeDir::new("../bindings/pkg");
-    let gg20 = ServeDir::new("../tests/e2e/gg20");
+    let cggmp = ServeDir::new("../tests/e2e/cggmp");
     Router::new()
         .nest_service("/pkg", bindings)
-        .nest_service("/gg20", gg20)
+        .nest_service("/cggmp", cggmp)
 }
 
 async fn serve(handle: Handle, app: Router, port: u16) {
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
     axum_server::bind(addr)
         .handle(handle)
-        .serve(app.layer(TraceLayer::new_for_http()).into_make_service())
-        .await.unwrap();
+        .serve(
+            app.layer(TraceLayer::new_for_http()).into_make_service(),
+        )
+        .await
+        .unwrap();
 }

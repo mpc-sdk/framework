@@ -137,7 +137,7 @@ Or use the [playwright][] UI:
 npm run test-ui
 ```
 
-If you need to debug the test specs you can also just open the pages manually in a browser, first open the initiator `/gg20/p1.html` and then open the participant pages `/gg20/p2.html` and `/gg20/p3.html` on the `http://localhost:9009` development server.
+If you need to debug the test specs you can also just open the pages manually in a browser, first open the initiator `/cggmp/p1.html` and then open the participant pages `/cggmp/p2.html` and `/cggmp/p3.html` on the `http://localhost:9009` development server.
 
 ## License
 

@@ -1,7 +1,7 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
 
-const GG20_URL = process.env.TEST_URL || "http://localhost:9009/gg20";
+const URL = process.env.TEST_URL || "http://localhost:9009/cggmp";
 
 function proxyConsoleError(id, page) {
   // Proxy browser console.error()
@@ -23,7 +23,7 @@ function proxyConsoleError(id, page) {
   });
 }
 
-test("GG20: keygen and sign message", async ({ context, page }) => {
+test("CGGMP: keygen and sign message", async ({ context, page }) => {
   // The default timeout is 90 seconds which fails on Firefox
   // (Chromium and Webkit are ok) so we increase the timeout here.
   //
@@ -32,15 +32,15 @@ test("GG20: keygen and sign message", async ({ context, page }) => {
   // Firefox can be up to 5x slower, here is an example
   // from a successful test run:
   //
-  // Slow test file: [firefox] › gg20.spec.js (10.6m)
-  // Slow test file: [webkit] › gg20.spec.js (2.3m)
-  // Slow test file: [chromium] › gg20.spec.js (1.2m)
+  // Slow test file: [firefox] › cggmp.spec.js (10.6m)
+  // Slow test file: [webkit] › cggmp.spec.js (2.3m)
+  // Slow test file: [chromium] › cggmp.spec.js (1.2m)
   //
   test.setTimeout(60 * 1000 * 15);
 
-  const p1 = `${GG20_URL}/p1.html`;
-  const p2 = `${GG20_URL}/p2.html`;
-  const p3 = `${GG20_URL}/p3.html`;
+  const p1 = `${URL}/p1.html`;
+  const p2 = `${URL}/p2.html`;
+  const p3 = `${URL}/p3.html`;
 
   proxyConsoleError("p1", page);
   await page.goto(p1);

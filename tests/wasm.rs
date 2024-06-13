@@ -8,7 +8,7 @@ mod wasm_tests {
     use wasm_bindgen_test::*;
 
     use super::integration::test_utils::{
-        gg20, meeting_point, peer_channel, session_broadcast,
+        meeting_point, peer_channel, session_broadcast,
         session_handshake, session_timeout, socket_close,
     };
     use mpc_protocol::hex;
@@ -88,18 +88,6 @@ mod wasm_tests {
         assert_eq!(expected_participants, connected_participants);
         Ok(())
     }
-
-    /*
-    /// GG20 keygen and signing.
-    #[wasm_bindgen_test]
-    async fn gg20() -> Result<(), JsValue> {
-        let _ = wasm_log::try_init(wasm_log::Config::default());
-        let server_public_key =
-            hex::decode(SERVER_PUBLIC_KEY.trim()).unwrap();
-        gg20::run(SERVER, server_public_key).await.unwrap();
-        Ok(())
-    }
-    */
 
     /// Creates two clients that handshake with the server.
     ///
