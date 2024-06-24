@@ -1,6 +1,6 @@
 //! Helper functions for the CGGMP protocol drivers.
 use rand::rngs::OsRng;
-use std::{collections::BTreeSet, num::NonZeroU16};
+use std::num::NonZeroU16;
 
 use super::Result;
 use synedrion::{
@@ -32,7 +32,7 @@ where
 pub fn proceed<Res>(
     session: &mut Session<Res, Signature, SigningKey, VerifyingKey>,
     accum: &mut RoundAccumulator<Signature, VerifyingKey>,
-    verifiers: &BTreeSet<VerifyingKey>,
+    verifiers: &[VerifyingKey],
     cached_messages: &mut Vec<
         PreprocessedMessage<Signature, VerifyingKey>,
     >,

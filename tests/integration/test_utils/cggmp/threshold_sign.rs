@@ -17,6 +17,7 @@ use mpc_driver::{
     wait_for_close,
 };
 use mpc_protocol::{Parameters, SessionState};
+use std::collections::BTreeSet;
 
 use super::{
     execute_drivers, make_client_sessions, make_signers,
@@ -111,7 +112,7 @@ async fn run_full_sequence(
     // Convert to t-of-t threshold keyshares
     let t_key_shares = key_shares
         .iter()
-        .map(|key_share| key_share.to_threshold_key_share())
+        .map(ThresholdKeyShare::from_key_share)
         .collect::<Vec<_>>();
 
     println!("*** KEY RESHARING ***");
@@ -159,9 +160,11 @@ async fn run_full_sequence(
     let selected_signers =
         vec![signers[0].clone(), signers[2].clone()];
     let selected_parties = vec![verifiers[0], verifiers[2]];
+    let selected_parties_set =
+        BTreeSet::from([verifiers[0], verifiers[2]]);
     let selected_key_shares = vec![
-        new_t_key_shares[0].to_key_share(&selected_parties),
-        new_t_key_shares[2].to_key_share(&selected_parties),
+        new_t_key_shares[0].to_key_share(&selected_parties_set),
+        new_t_key_shares[2].to_key_share(&selected_parties_set),
     ];
     let selected_aux_infos =
         vec![aux_infos[0].clone(), aux_infos[2].clone()];
@@ -261,10 +264,13 @@ async fn make_key_resharing(
     let n = parameters.parties as usize;
     let t = parameters.threshold as usize;
 
+    let old_holders =
+        BTreeSet::from_iter(verifiers.iter().cloned().take(t));
+
     let new_holder = NewHolder {
         verifying_key: t_key_shares[0].verifying_key(),
         old_threshold: t_key_shares[0].threshold(),
-        old_holders: verifiers[..t].to_vec(),
+        old_holders,
     };
 
     let mut streams = Vec::new();
@@ -278,7 +284,10 @@ async fn make_key_resharing(
                     key_share: t_key_shares[idx].clone(),
                 }),
                 new_holder: Some(new_holder.clone()),
-                new_holders: verifiers.clone(),
+                new_holders: verifiers
+                    .clone()
+                    .into_iter()
+                    .collect::<BTreeSet<_>>(),
                 new_threshold: t,
             };
 
@@ -292,7 +301,7 @@ async fn make_key_resharing(
                 &shared_randomness,
                 signers[idx].clone(),
                 verifiers.clone(),
-                &inputs,
+                inputs,
             )
             .unwrap()
         })
@@ -304,7 +313,10 @@ async fn make_key_resharing(
             let inputs = KeyResharingInputs {
                 old_holder: None,
                 new_holder: Some(new_holder.clone()),
-                new_holders: verifiers.clone(),
+                new_holders: verifiers
+                    .clone()
+                    .into_iter()
+                    .collect::<BTreeSet<_>>(),
                 new_threshold: t,
             };
 
@@ -318,7 +330,7 @@ async fn make_key_resharing(
                 &shared_randomness,
                 signers[idx].clone(),
                 verifiers.clone(),
-                &inputs,
+                inputs,
             )
             .unwrap()
         })

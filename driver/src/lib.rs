@@ -6,7 +6,6 @@ use mpc_client::{
     Client, ClientOptions, Event, EventLoop, Transport,
 };
 use mpc_protocol::hex;
-use std::collections::BTreeSet;
 
 mod bridge;
 mod error;
@@ -125,7 +124,7 @@ pub async fn keygen(
     participants: Option<Vec<Vec<u8>>>,
     shared_randomness: &[u8],
     signer: SigningKey,
-    verifiers: BTreeSet<VerifyingKey>,
+    verifiers: Vec<VerifyingKey>,
 ) -> Result<KeyShare> {
     match &options.protocol {
         Protocol::Cggmp => Ok(crate::cggmp::keygen(
@@ -147,7 +146,7 @@ pub async fn sign(
     participants: Option<Vec<Vec<u8>>>,
     shared_randomness: &[u8],
     signer: SigningKey,
-    verifiers: BTreeSet<VerifyingKey>,
+    verifiers: Vec<VerifyingKey>,
     key_share: PrivateKey,
     message: &PrehashedMessage,
 ) -> Result<Signature> {

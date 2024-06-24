@@ -1,5 +1,4 @@
 //! Driver for the CGGMP protocol.
-use std::collections::BTreeSet;
 use synedrion::{
     ecdsa::{self, SigningKey, VerifyingKey},
     CombinedMessage, KeyShare as SynedrionKeyShare, PrehashedMessage,
@@ -45,7 +44,7 @@ pub async fn keygen<P: SchemeParams + 'static>(
     participants: Option<Vec<Vec<u8>>>,
     shared_randomness: &[u8],
     signer: SigningKey,
-    verifiers: BTreeSet<VerifyingKey>,
+    verifiers: Vec<VerifyingKey>,
 ) -> crate::Result<SynedrionKeyShare<P, VerifyingKey>> {
     let is_initiator = participants.is_some();
 
@@ -107,7 +106,7 @@ pub async fn sign<P: SchemeParams + 'static>(
     participants: Option<Vec<Vec<u8>>>,
     shared_randomness: &[u8],
     signer: SigningKey,
-    verifiers: BTreeSet<VerifyingKey>,
+    verifiers: Vec<VerifyingKey>,
     key_share: &SynedrionKeyShare<P, VerifyingKey>,
     prehashed_message: &PrehashedMessage,
 ) -> crate::Result<RecoverableSignature> {

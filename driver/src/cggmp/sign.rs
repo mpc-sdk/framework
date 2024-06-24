@@ -41,7 +41,7 @@ where
         session: SessionState,
         shared_randomness: &[u8],
         signer: SigningKey,
-        verifiers: BTreeSet<VerifyingKey>,
+        verifiers: Vec<VerifyingKey>,
         key_share: &KeyShare<P, VerifyingKey>,
         aux_info: &AuxInfo<P, VerifyingKey>,
         prehashed_message: &PrehashedMessage,
@@ -123,7 +123,7 @@ where
     cached_messages:
         Vec<PreprocessedMessage<Signature, VerifyingKey>>,
     key: VerifyingKey,
-    verifiers: BTreeSet<VerifyingKey>,
+    verifiers: Vec<VerifyingKey>,
 }
 
 impl<P> CggmpDriver<P>
@@ -134,16 +134,19 @@ where
     pub fn new(
         shared_randomness: &[u8],
         signer: SigningKey,
-        verifiers: BTreeSet<VerifyingKey>,
+        verifiers: Vec<VerifyingKey>,
         key_share: &KeyShare<P, VerifyingKey>,
         aux_info: &AuxInfo<P, VerifyingKey>,
         prehashed_message: &PrehashedMessage,
     ) -> Result<Self> {
+        let verifiers_set =
+            verifiers.clone().into_iter().collect::<BTreeSet<_>>();
+
         let session = make_interactive_signing_session(
             &mut OsRng,
             shared_randomness,
             signer,
-            &verifiers,
+            &verifiers_set,
             key_share,
             aux_info,
             prehashed_message,

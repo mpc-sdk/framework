@@ -40,7 +40,7 @@ where
         session: SessionState,
         shared_randomness: &[u8],
         signer: SigningKey,
-        verifiers: BTreeSet<VerifyingKey>,
+        verifiers: Vec<VerifyingKey>,
     ) -> Result<Self> {
         let party_number = session
             .party_number(transport.public_key())
@@ -114,7 +114,7 @@ where
     cached_messages:
         Vec<PreprocessedMessage<Signature, VerifyingKey>>,
     key: VerifyingKey,
-    verifiers: BTreeSet<VerifyingKey>,
+    verifiers: Vec<VerifyingKey>,
 }
 
 impl<P> CggmpDriver<P>
@@ -125,13 +125,15 @@ where
     pub fn new(
         shared_randomness: &[u8],
         signer: SigningKey,
-        verifiers: BTreeSet<VerifyingKey>,
+        verifiers: Vec<VerifyingKey>,
     ) -> Result<Self> {
+        let verifiers_set =
+            verifiers.clone().into_iter().collect::<BTreeSet<_>>();
         let session = make_key_gen_session(
             &mut OsRng,
             shared_randomness,
             signer,
-            &verifiers,
+            &verifiers_set,
         )
         .map_err(|e| Error::LocalError(e.to_string()))?;
 
