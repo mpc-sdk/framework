@@ -22,7 +22,7 @@ tracing = "0.1"
 tokio = { version = "1", features = ["sync"] }
 async-trait = "0.1"
 futures = "0.3"
-synedrion = {version = "0.1", git = "https://github.com/entropyxyz/synedrion" , rev = "c7e6c4fdea8b406ba653e52be4f66c7c5932b7a3"}
+synedrion = {version = "0.1", git = "https://github.com/entropyxyz/synedrion" , rev = "a45617c86c2416c2148dc3e34171148e1cb3d0b6"}
 # synedrion = {version = "0.1", path = "../../../forks/synedrion/synedrion" }
 k256 = { version = "0.13.2", default-features = false, features = ["pem", "serde"] }
 rand = "0.8"

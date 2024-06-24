@@ -3,6 +3,7 @@ use async_trait::async_trait;
 use mpc_client::{Event, NetworkTransport, Transport};
 use mpc_protocol::{hex, SessionState};
 use rand::rngs::OsRng;
+use std::collections::BTreeSet;
 
 use super::{Error, Result};
 use synedrion::{
@@ -40,7 +41,7 @@ where
         session: SessionState,
         shared_randomness: &[u8],
         signer: SigningKey,
-        verifiers: Vec<VerifyingKey>,
+        verifiers: BTreeSet<VerifyingKey>,
         key_share: &KeyShare<P, VerifyingKey>,
         aux_info: &AuxInfo<P, VerifyingKey>,
         prehashed_message: &PrehashedMessage,
@@ -112,16 +113,17 @@ where
 {
     session: Option<
         Session<
-            InteractiveSigningResult<P>,
+            InteractiveSigningResult<P, VerifyingKey>,
             Signature,
             SigningKey,
             VerifyingKey,
         >,
     >,
-    accum: Option<RoundAccumulator<Signature>>,
-    cached_messages: Vec<PreprocessedMessage<Signature>>,
+    accum: Option<RoundAccumulator<Signature, VerifyingKey>>,
+    cached_messages:
+        Vec<PreprocessedMessage<Signature, VerifyingKey>>,
     key: VerifyingKey,
-    verifiers: Vec<VerifyingKey>,
+    verifiers: BTreeSet<VerifyingKey>,
 }
 
 impl<P> CggmpDriver<P>
@@ -132,7 +134,7 @@ where
     pub fn new(
         shared_randomness: &[u8],
         signer: SigningKey,
-        verifiers: Vec<VerifyingKey>,
+        verifiers: BTreeSet<VerifyingKey>,
         key_share: &KeyShare<P, VerifyingKey>,
         aux_info: &AuxInfo<P, VerifyingKey>,
         prehashed_message: &PrehashedMessage,

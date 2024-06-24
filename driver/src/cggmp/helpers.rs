@@ -1,12 +1,12 @@
 //! Helper functions for the CGGMP protocol drivers.
 use rand::rngs::OsRng;
-use std::num::NonZeroU16;
+use std::{collections::BTreeSet, num::NonZeroU16};
 
 use super::Result;
 use synedrion::{
     ecdsa::{Signature, SigningKey, VerifyingKey},
     sessions::{PreprocessedMessage, RoundAccumulator, Session},
-    MappedResult, ProtocolResult,
+    ProtocolResult,
 };
 
 use crate::{key_to_str, Round, RoundInfo, RoundMsg};
@@ -15,11 +15,10 @@ use super::MessageOut;
 
 pub fn round_info<Res>(
     session: &Session<Res, Signature, SigningKey, VerifyingKey>,
-    accum: &RoundAccumulator<Signature>,
+    accum: &RoundAccumulator<Signature, VerifyingKey>,
 ) -> Result<RoundInfo>
 where
-    Res: MappedResult<VerifyingKey>,
-    Res: ProtocolResult,
+    Res: ProtocolResult + Send + 'static,
 {
     let (round_number, is_echo) = session.current_round();
     let can_finalize = session.can_finalize(accum)?;
@@ -32,14 +31,15 @@ where
 
 pub fn proceed<Res>(
     session: &mut Session<Res, Signature, SigningKey, VerifyingKey>,
-    accum: &mut RoundAccumulator<Signature>,
-    verifiers: &[VerifyingKey],
-    cached_messages: &mut Vec<PreprocessedMessage<Signature>>,
+    accum: &mut RoundAccumulator<Signature, VerifyingKey>,
+    verifiers: &BTreeSet<VerifyingKey>,
+    cached_messages: &mut Vec<
+        PreprocessedMessage<Signature, VerifyingKey>,
+    >,
     key: &VerifyingKey,
 ) -> Result<Vec<RoundMsg<MessageOut>>>
 where
-    Res: MappedResult<VerifyingKey>,
-    Res: ProtocolResult,
+    Res: ProtocolResult + Send + 'static,
 {
     let mut outgoing = Vec::new();
 
@@ -99,12 +99,11 @@ where
 
 pub fn handle_incoming<Res>(
     session: &mut Session<Res, Signature, SigningKey, VerifyingKey>,
-    accum: &mut RoundAccumulator<Signature>,
+    accum: &mut RoundAccumulator<Signature, VerifyingKey>,
     message: RoundMsg<MessageOut>,
 ) -> Result<()>
 where
-    Res: MappedResult<VerifyingKey>,
-    Res: ProtocolResult,
+    Res: ProtocolResult + Send + 'static,
 {
     if !session.can_finalize(accum)? {
         let key_str = key_to_str(&session.verifier());

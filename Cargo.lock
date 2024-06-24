@@ -1085,6 +1085,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5274423e17b7c9fc20b6e7e208532f9b19825d82dfd615708b70edd83df41f1"
 
 [[package]]
+name = "hashing-serializer"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "66c9b1a5e47c3bf40ae0f5705e84daa4cd6d8a74b2bdba43c06eb01dbc236f6e"
+dependencies = [
+ "digest",
+ "serde",
+]
+
+[[package]]
 name = "heck"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2049,6 +2059,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "secrecy"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9bd1c54ea06cfd2f6b63219704de0b9b4f72dcc2b8fdef820be6cd799780e91e"
+dependencies = [
+ "serde",
+ "zeroize",
+]
+
+[[package]]
 name = "semver"
 version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2319,22 +2339,24 @@ checksum = "a7065abeca94b6a8a577f9bd45aa0867a2238b74e8eb67cf10d492bc39351394"
 [[package]]
 name = "synedrion"
 version = "0.1.0"
-source = "git+https://github.com/entropyxyz/synedrion?rev=c7e6c4fdea8b406ba653e52be4f66c7c5932b7a3#c7e6c4fdea8b406ba653e52be4f66c7c5932b7a3"
+source = "git+https://github.com/entropyxyz/synedrion?rev=a45617c86c2416c2148dc3e34171148e1cb3d0b6#a45617c86c2416c2148dc3e34171148e1cb3d0b6"
 dependencies = [
  "base64 0.21.7",
  "bincode",
- "cfg-if",
  "crypto-bigint",
  "crypto-primes",
  "digest",
  "displaydoc",
+ "hashing-serializer",
  "hex",
  "k256",
  "rand_core 0.6.4",
+ "secrecy",
  "serde",
  "sha2",
  "sha3",
  "signature",
+ "zeroize",
 ]
 
 [[package]]
@@ -3027,3 +3049,17 @@ name = "zeroize"
 version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ced3678a2879b30306d323f4542626697a464a97c0a07c9aebf7ebca65cd4dde"
+dependencies = [
+ "zeroize_derive",
+]
+
+[[package]]
+name = "zeroize_derive"
+version = "1.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ce36e65b0d2999d2aafac989fb249189a141aee1f53c612c1f37d72631959f69"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]

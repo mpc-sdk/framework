@@ -46,6 +46,7 @@ pub async fn keygen<P: SchemeParams + 'static>(
     signer: SigningKey,
     verifiers: Vec<VerifyingKey>,
 ) -> crate::Result<SynedrionKeyShare<P, VerifyingKey>> {
+    /*
     let is_initiator = participants.is_some();
 
     // Create the client
@@ -98,6 +99,9 @@ pub async fn keygen<P: SchemeParams + 'static>(
     wait_for_close(&mut stream).await?;
 
     Ok(key_share.0)
+    */
+
+    todo!();
 }
 
 /// Sign a message using the CGGMP protocol.
@@ -110,6 +114,7 @@ pub async fn sign<P: SchemeParams + 'static>(
     key_share: &SynedrionKeyShare<P, VerifyingKey>,
     prehashed_message: &PrehashedMessage,
 ) -> crate::Result<RecoverableSignature> {
+    /*
     let is_initiator = participants.is_some();
 
     // Create the client
@@ -140,7 +145,7 @@ pub async fn sign<P: SchemeParams + 'static>(
     let session_id = session.session_id;
 
     // Wait for aux gen protocol to complete
-    let driver = AuxGenDriver::new(
+    let driver = AuxGenDriver::<P>::new(
         transport,
         session.clone(),
         shared_randomness,
@@ -151,7 +156,7 @@ pub async fn sign<P: SchemeParams + 'static>(
         wait_for_driver(&mut stream, driver).await?;
 
     // Wait for message to be signed
-    let driver = SignatureDriver::new(
+    let driver = SignatureDriver::<P>::new(
         transport,
         // parameters,
         session,
@@ -174,4 +179,7 @@ pub async fn sign<P: SchemeParams + 'static>(
     wait_for_close(&mut stream).await?;
 
     Ok(signature)
+    */
+
+    todo!();
 }
