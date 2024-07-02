@@ -11,8 +11,8 @@ use mpc_driver::{
     },
     synedrion::{
         AuxInfo, KeyResharingInputs, KeyShare, NewHolder, OldHolder,
-        PrehashedMessage, RecoverableSignature, TestParams,
-        ThresholdKeyShare,
+        PrehashedMessage, RecoverableSignature, SessionId,
+        TestParams, ThresholdKeyShare,
     },
     wait_for_close,
 };
@@ -93,7 +93,8 @@ async fn run_full_sequence(
     let (signers, verifiers) = make_signers(n);
 
     let rng = &mut OsRng;
-    let shared_randomness: [u8; 32] = rng.gen();
+    let session_id: [u8; 32] = rng.gen();
+    let session_id = SessionId::from_seed(&session_id);
 
     // Create the collection of network clients
     let clients =
@@ -103,7 +104,7 @@ async fn run_full_sequence(
 
     let (key_shares, clients) = make_key_init(
         parameters.clone(),
-        &shared_randomness,
+        session_id,
         signers.clone(),
         clients,
     )
@@ -120,7 +121,7 @@ async fn run_full_sequence(
     // Reshare to `n` nodes
     let (new_t_key_shares, clients) = make_key_resharing(
         parameters.clone(),
-        &shared_randomness,
+        session_id,
         signers.clone(),
         verifiers.clone(),
         t_key_shares.clone(),
@@ -138,7 +139,7 @@ async fn run_full_sequence(
     // Generate auxiliary data
     let (aux_infos, clients) = make_aux_infos(
         parameters.clone(),
-        &shared_randomness,
+        session_id,
         signers.clone(),
         verifiers.clone(),
         clients,
@@ -172,7 +173,7 @@ async fn run_full_sequence(
     // Generate signatures
     let (signatures, clients) = make_signatures(
         parameters.clone(),
-        &shared_randomness,
+        session_id,
         selected_signers,
         selected_parties,
         selected_key_shares,
@@ -193,7 +194,7 @@ async fn run_full_sequence(
 
 async fn make_key_init(
     parameters: Parameters,
-    shared_randomness: &[u8],
+    session_id: SessionId,
     mut signers: Vec<SigningKey>,
     clients: Vec<ClientTransport>,
 ) -> Result<(
@@ -229,7 +230,7 @@ async fn make_key_init(
         drivers.push(KeyInitDriver::<TestParams>::new(
             transport,
             session,
-            &shared_randomness,
+            session_id,
             signers.remove(0),
             verifiers.clone(),
         )?);
@@ -252,7 +253,7 @@ async fn make_key_init(
 
 async fn make_key_resharing(
     parameters: Parameters,
-    shared_randomness: &[u8],
+    session_id: SessionId,
     signers: Vec<SigningKey>,
     verifiers: Vec<VerifyingKey>,
     t_key_shares: Vec<ThresholdKeyShare<TestParams, VerifyingKey>>,
@@ -298,7 +299,7 @@ async fn make_key_resharing(
             KeyResharingDriver::<TestParams>::new(
                 transport,
                 session,
-                &shared_randomness,
+                session_id,
                 signers[idx].clone(),
                 verifiers.clone(),
                 inputs,
@@ -327,7 +328,7 @@ async fn make_key_resharing(
             KeyResharingDriver::<TestParams>::new(
                 transport,
                 session,
-                &shared_randomness,
+                session_id,
                 signers[idx].clone(),
                 verifiers.clone(),
                 inputs,
@@ -355,7 +356,7 @@ async fn make_key_resharing(
 
 async fn make_aux_infos(
     _parameters: Parameters,
-    shared_randomness: &[u8],
+    session_id: SessionId,
     mut signers: Vec<SigningKey>,
     verifiers: Vec<VerifyingKey>,
     clients: Vec<ClientTransport>,
@@ -373,7 +374,7 @@ async fn make_aux_infos(
         drivers.push(AuxGenDriver::<TestParams>::new(
             transport,
             session,
-            &shared_randomness,
+            session_id,
             signers.remove(0),
             verifiers.clone(),
         )?);
@@ -394,7 +395,7 @@ async fn make_aux_infos(
 
 async fn make_signatures(
     _parameters: Parameters,
-    shared_randomness: &[u8],
+    session_id: SessionId,
     mut signers: Vec<SigningKey>,
     verifiers: Vec<VerifyingKey>,
     key_shares: Vec<KeyShare<TestParams, VerifyingKey>>,
@@ -412,7 +413,7 @@ async fn make_signatures(
         drivers.push(SignatureDriver::<TestParams>::new(
             transport,
             session,
-            &shared_randomness,
+            session_id,
             signers.remove(0),
             verifiers.clone(),
             key_shares.get(idx).unwrap(),

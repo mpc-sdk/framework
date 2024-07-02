@@ -14,6 +14,7 @@ use synedrion::{
         Session,
     },
     AuxInfo, KeyRefreshResult, KeyShareChange, SchemeParams,
+    SessionId,
 };
 
 use crate::{
@@ -38,7 +39,7 @@ where
     pub fn new(
         transport: Transport,
         session: SessionState,
-        shared_randomness: &[u8],
+        session_id: SessionId,
         signer: SigningKey,
         verifiers: Vec<VerifyingKey>,
     ) -> Result<Self> {
@@ -50,8 +51,7 @@ where
                 ))
             })?;
 
-        let driver =
-            CggmpDriver::new(shared_randomness, signer, verifiers)?;
+        let driver = CggmpDriver::new(session_id, signer, verifiers)?;
 
         let bridge = Bridge {
             transport,
@@ -123,7 +123,7 @@ where
 {
     /// Create a key init generator.
     pub fn new(
-        shared_randomness: &[u8],
+        session_id: SessionId,
         signer: SigningKey,
         verifiers: Vec<VerifyingKey>,
     ) -> Result<Self> {
@@ -132,7 +132,7 @@ where
 
         let session = make_key_refresh_session(
             &mut OsRng,
-            shared_randomness,
+            session_id,
             signer,
             &verifiers_set,
         )

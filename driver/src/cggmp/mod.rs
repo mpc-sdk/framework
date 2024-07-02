@@ -1,8 +1,8 @@
 //! Driver for the CGGMP protocol.
 use synedrion::{
     ecdsa::{self, SigningKey, VerifyingKey},
-    CombinedMessage, KeyShare as SynedrionKeyShare, PrehashedMessage,
-    RecoverableSignature, SchemeParams,
+    KeyShare as SynedrionKeyShare, MessageBundle, PrehashedMessage,
+    RecoverableSignature, SchemeParams, SessionId,
 };
 
 mod aux_gen;
@@ -22,7 +22,7 @@ pub use key_refresh::KeyRefreshDriver;
 pub use key_resharing::KeyResharingDriver;
 pub use sign::SignatureDriver;
 
-type MessageOut = CombinedMessage<ecdsa::Signature>;
+type MessageOut = MessageBundle<ecdsa::Signature>;
 
 /// Key share.
 pub type KeyShare<P> = SynedrionKeyShare<P, VerifyingKey>;
@@ -42,7 +42,7 @@ use crate::{
 pub async fn keygen<P: SchemeParams + 'static>(
     options: SessionOptions,
     participants: Option<Vec<Vec<u8>>>,
-    shared_randomness: &[u8],
+    session_id: SessionId,
     signer: SigningKey,
     verifiers: Vec<VerifyingKey>,
 ) -> crate::Result<SynedrionKeyShare<P, VerifyingKey>> {
@@ -74,15 +74,11 @@ pub async fn keygen<P: SchemeParams + 'static>(
     let (transport, session) =
         wait_for_session(&mut stream, client_session).await?;
 
-    let session_id = session.session_id;
+    let protocol_session_id = session.session_id;
 
     // Wait for key generation
     let keygen = KeyGenDriver::<P>::new(
-        transport,
-        session,
-        shared_randomness,
-        signer,
-        verifiers,
+        transport, session, session_id, signer, verifiers,
     )?;
 
     let (mut transport, key_share) =
@@ -90,8 +86,9 @@ pub async fn keygen<P: SchemeParams + 'static>(
 
     // Close the session and socket
     if is_initiator {
-        transport.close_session(session_id).await?;
-        wait_for_session_finish(&mut stream, session_id).await?;
+        transport.close_session(protocol_session_id).await?;
+        wait_for_session_finish(&mut stream, protocol_session_id)
+            .await?;
     }
 
     transport.close().await?;
@@ -104,7 +101,7 @@ pub async fn keygen<P: SchemeParams + 'static>(
 pub async fn sign<P: SchemeParams + 'static>(
     options: SessionOptions,
     participants: Option<Vec<Vec<u8>>>,
-    shared_randomness: &[u8],
+    session_id: SessionId,
     signer: SigningKey,
     verifiers: Vec<VerifyingKey>,
     key_share: &SynedrionKeyShare<P, VerifyingKey>,
@@ -137,13 +134,13 @@ pub async fn sign<P: SchemeParams + 'static>(
     let (transport, session) =
         wait_for_session(&mut stream, client_session).await?;
 
-    let session_id = session.session_id;
+    let protocol_session_id = session.session_id;
 
     // Wait for aux gen protocol to complete
     let driver = AuxGenDriver::<P>::new(
         transport,
         session.clone(),
-        shared_randomness,
+        session_id,
         signer.clone(),
         verifiers.clone(),
     )?;
@@ -155,7 +152,7 @@ pub async fn sign<P: SchemeParams + 'static>(
         transport,
         // parameters,
         session,
-        shared_randomness,
+        session_id,
         signer,
         verifiers,
         key_share,
@@ -167,8 +164,9 @@ pub async fn sign<P: SchemeParams + 'static>(
 
     // Close the session and socket
     if is_initiator {
-        transport.close_session(session_id).await?;
-        wait_for_session_finish(&mut stream, session_id).await?;
+        transport.close_session(protocol_session_id).await?;
+        wait_for_session_finish(&mut stream, protocol_session_id)
+            .await?;
     }
     transport.close().await?;
     wait_for_close(&mut stream).await?;

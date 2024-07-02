@@ -13,7 +13,7 @@ use synedrion::{
         FinalizeOutcome, PreprocessedMessage, RoundAccumulator,
         Session,
     },
-    KeyResharingInputs, KeyResharingResult, SchemeParams,
+    KeyResharingInputs, KeyResharingResult, SchemeParams, SessionId,
     ThresholdKeyShare,
 };
 
@@ -39,7 +39,7 @@ where
     pub fn new(
         transport: Transport,
         session: SessionState,
-        shared_randomness: &[u8],
+        session_id: SessionId,
         signer: SigningKey,
         verifiers: Vec<VerifyingKey>,
         inputs: KeyResharingInputs<P, VerifyingKey>,
@@ -52,12 +52,8 @@ where
                 ))
             })?;
 
-        let driver = CggmpDriver::new(
-            shared_randomness,
-            signer,
-            verifiers,
-            inputs,
-        )?;
+        let driver =
+            CggmpDriver::new(session_id, signer, verifiers, inputs)?;
 
         let bridge = Bridge {
             transport,
@@ -128,7 +124,7 @@ where
 {
     /// Create a key init generator.
     pub fn new(
-        shared_randomness: &[u8],
+        session_id: SessionId,
         signer: SigningKey,
         verifiers: Vec<VerifyingKey>,
         inputs: KeyResharingInputs<P, VerifyingKey>,
@@ -138,7 +134,7 @@ where
 
         let session = make_key_resharing_session(
             &mut OsRng,
-            shared_randomness,
+            session_id,
             signer,
             &verifiers_set,
             inputs,

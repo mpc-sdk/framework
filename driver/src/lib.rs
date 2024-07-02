@@ -32,14 +32,12 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[cfg(feature = "cggmp")]
 pub mod cggmp;
 #[cfg(feature = "cggmp")]
-pub use synedrion;
-#[cfg(feature = "cggmp")]
-pub use synedrion::k256;
+pub use synedrion::{self, k256};
 
 #[cfg(feature = "cggmp")]
 use synedrion::{
     k256::ecdsa::{SigningKey, VerifyingKey},
-    PrehashedMessage,
+    PrehashedMessage, SessionId,
 };
 
 /// Information about the current found which
@@ -122,7 +120,7 @@ pub(crate) trait ProtocolDriver {
 pub async fn keygen(
     options: SessionOptions,
     participants: Option<Vec<Vec<u8>>>,
-    shared_randomness: &[u8],
+    session_id: SessionId,
     signer: SigningKey,
     verifiers: Vec<VerifyingKey>,
 ) -> Result<KeyShare> {
@@ -130,7 +128,7 @@ pub async fn keygen(
         Protocol::Cggmp => Ok(crate::cggmp::keygen(
             options,
             participants,
-            shared_randomness,
+            session_id,
             signer,
             verifiers,
         )
@@ -144,7 +142,7 @@ pub async fn keygen(
 pub async fn sign(
     options: SessionOptions,
     participants: Option<Vec<Vec<u8>>>,
-    shared_randomness: &[u8],
+    session_id: SessionId,
     signer: SigningKey,
     verifiers: Vec<VerifyingKey>,
     key_share: PrivateKey,
@@ -155,7 +153,7 @@ pub async fn sign(
             Ok(cggmp::sign(
                 options,
                 participants,
-                shared_randomness,
+                session_id,
                 signer,
                 verifiers,
                 key_share,

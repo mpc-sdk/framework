@@ -2,7 +2,8 @@ use super::{execute_drivers, make_client_sessions, make_signers};
 use anyhow::Result;
 use mpc_client::NetworkTransport;
 use mpc_driver::{
-    cggmp::KeyGenDriver, synedrion::TestParams, wait_for_close,
+    cggmp::KeyGenDriver, synedrion::SessionId, synedrion::TestParams,
+    wait_for_close,
 };
 use rand::{rngs::OsRng, Rng};
 
@@ -12,7 +13,8 @@ pub async fn run_keygen(
 ) -> Result<()> {
     let n = 5;
     let rng = &mut OsRng;
-    let shared_randomness: [u8; 32] = rng.gen();
+    let session_id: [u8; 32] = rng.gen();
+    let session_id = SessionId::from_seed(&session_id);
 
     let (mut signers, verifiers) = make_signers(n);
     let results =
@@ -27,7 +29,7 @@ pub async fn run_keygen(
         drivers.push(KeyGenDriver::<TestParams>::new(
             transport,
             session,
-            &shared_randomness,
+            session_id,
             signers.remove(0),
             verifiers.clone(),
         )?);

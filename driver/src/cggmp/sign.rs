@@ -14,7 +14,7 @@ use synedrion::{
         Session,
     },
     AuxInfo, InteractiveSigningResult, KeyShare, PrehashedMessage,
-    RecoverableSignature, SchemeParams,
+    RecoverableSignature, SchemeParams, SessionId,
 };
 
 use crate::{
@@ -39,7 +39,7 @@ where
     pub fn new(
         transport: Transport,
         session: SessionState,
-        shared_randomness: &[u8],
+        session_id: SessionId,
         signer: SigningKey,
         verifiers: Vec<VerifyingKey>,
         key_share: &KeyShare<P, VerifyingKey>,
@@ -55,7 +55,7 @@ where
             })?;
 
         let driver = CggmpDriver::new(
-            shared_randomness,
+            session_id,
             signer,
             verifiers,
             key_share,
@@ -132,7 +132,7 @@ where
 {
     /// Create a key generator.
     pub fn new(
-        shared_randomness: &[u8],
+        session_id: SessionId,
         signer: SigningKey,
         verifiers: Vec<VerifyingKey>,
         key_share: &KeyShare<P, VerifyingKey>,
@@ -144,7 +144,7 @@ where
 
         let session = make_interactive_signing_session(
             &mut OsRng,
-            shared_randomness,
+            session_id,
             signer,
             &verifiers_set,
             key_share,
