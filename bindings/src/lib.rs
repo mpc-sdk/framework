@@ -15,12 +15,6 @@ mod bindings {
     use wasm_bindgen::prelude::*;
     use wasm_bindgen_futures::future_to_promise;
 
-    #[cfg(feature = "debug_assertions")]
-    type Params = mpc_driver::synedrion::TestParams;
-
-    #[cfg(not(feature = "debug_assertions"))]
-    type Params = mpc_driver::synedrion::ProductionParams;
-
     /// Initialize the panic hook and logging.
     #[doc(hidden)]
     #[wasm_bindgen(start)]
@@ -65,7 +59,7 @@ mod bindings {
         let verifiers: Vec<VerifyingKey> =
             serde_wasm_bindgen::from_value(verifiers)?;
         let fut = async move {
-            let key_share = mpc_driver::cggmp::keygen::<Params>(
+            let key_share = mpc_driver::keygen(
                 options,
                 participants,
                 SessionId::from_seed(&session_id_seed),
@@ -100,24 +94,15 @@ mod bindings {
         let private_key: PrivateKey =
             serde_wasm_bindgen::from_value(private_key)?;
 
-        let key_share = if let PrivateKey::Cggmp(share) = private_key
-        {
-            share
-        } else {
-            return Err(JsError::new("invalid private key type"));
-        };
-
-        key_share.foo();
-
         let message = parse_message(message)?;
         let fut = async move {
-            let signature = mpc_driver::cggmp::sign::<Params>(
+            let signature = mpc_driver::sign(
                 options,
                 participants,
                 SessionId::from_seed(&session_id_seed),
                 signer,
                 verifiers,
-                &key_share,
+                private_key,
                 &message,
             )
             .await?;
