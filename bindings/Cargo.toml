@@ -18,7 +18,7 @@ mpc-client = { path = "../client" }
 mpc-ecdsa-getrandom-hack = "*"
 getrandom = {version = "0.2", features = ["js"]}
 wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
-serde-wasm-bindgen = "0.5"
+serde-wasm-bindgen = "0.6"
 wasm-bindgen-futures = "0.4"
 rand = { version="0.8" }
 console_error_panic_hook = "0.1"
