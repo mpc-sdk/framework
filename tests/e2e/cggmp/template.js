@@ -28,24 +28,24 @@ const options = {
   },
 };
 
-// Start key generation
 try {
-  // Get the promise for key generation
+
+  // Start key generation
   const keyShare = await module.keygen(
     options, participants, fromHexString(sessionIdSeed), fromHexString(signer), verifiers);
 
   console.log("keygen completed");
 
   const keyShareElement = document.getElementById("key-share");
-  keyShareElement.innerHTML = `
-    <p class="address">Address: ${keyShare.address}</p>
-    <p class="party-number">Party number: ${keyShare.privateKey.cggmp.i}</p>`;
+  keyShareElement.innerHTML = `<p class="address">Address: ${keyShare.address}</p>`;
   // First and third parties perform signing
   if (partyIndex == 0 || partyIndex == 2) {
-
     const result = await module.sign(
       options,
       signingParticipants,
+      fromHexString(sessionIdSeed),
+      fromHexString(signer),
+      verifiers,
       keyShare.privateKey,
       message,
     );
