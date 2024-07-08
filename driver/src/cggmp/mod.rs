@@ -136,6 +136,20 @@ pub async fn sign<P: SchemeParams + 'static>(
 
     let protocol_session_id = session.session_id;
 
+    /*
+    let selected_signers =
+        vec![signers[0].clone(), signers[2].clone()];
+    let selected_parties = vec![verifiers[0], verifiers[2]];
+    let selected_parties_set =
+        BTreeSet::from([verifiers[0], verifiers[2]]);
+    let selected_key_shares = vec![
+        new_t_key_shares[0].to_key_share(&selected_parties_set),
+        new_t_key_shares[2].to_key_share(&selected_parties_set),
+    ];
+    let selected_aux_infos =
+        vec![aux_infos[0].clone(), aux_infos[2].clone()];
+    */
+
     // Wait for aux gen protocol to complete
     let driver = AuxGenDriver::<P>::new(
         transport,

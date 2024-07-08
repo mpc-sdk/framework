@@ -27,7 +27,8 @@ fn main() {
         base_path.join("tests").join("e2e").join("cggmp");
 
     let rng = &mut OsRng;
-    let session_id_seed: [u8; 32] = rng.gen();
+    let keygen_session_id_seed: [u8; 32] = rng.gen();
+    let sign_session_id_seed: [u8; 32] = rng.gen();
 
     let file_names = vec!["p1", "p2", "p3"];
     let keypairs = vec![KEYPAIR_P1, KEYPAIR_P2, KEYPAIR_P3];
@@ -86,9 +87,16 @@ fn main() {
             .replace("${PARTICIPANTS}", &participants)
             .replace("${SIGNING_PARTICIPANTS}", &signing_participants)
             .replace(
-                "${SESSION_ID_SEED}",
+                "${KEYGEN_SESSION_ID_SEED}",
                 &serde_json::to_string(&hex::encode(
-                    &session_id_seed,
+                    &keygen_session_id_seed,
+                ))
+                .unwrap(),
+            )
+            .replace(
+                "${SIGN_SESSION_ID_SEED}",
+                &serde_json::to_string(&hex::encode(
+                    &sign_session_id_seed,
                 ))
                 .unwrap(),
             )

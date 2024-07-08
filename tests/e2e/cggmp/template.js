@@ -12,7 +12,8 @@ const partyIndex = ${INDEX};
 const message = "${MESSAGE}";
 const participants = ${PARTICIPANTS};
 const signingParticipants = ${SIGNING_PARTICIPANTS};
-const sessionIdSeed = ${SESSION_ID_SEED};
+const keygenSessionIdSeed = ${KEYGEN_SESSION_ID_SEED};
+const signSessionIdSeed = ${SIGN_SESSION_ID_SEED};
 const signer = ${SIGNER};
 const verifiers = ${VERIFIERS};
 const options = {
@@ -32,18 +33,25 @@ try {
 
   // Start key generation
   const keyShare = await module.keygen(
-    options, participants, fromHexString(sessionIdSeed), fromHexString(signer), verifiers);
+    options,
+    participants,
+    fromHexString(keygenSessionIdSeed),
+    fromHexString(signer),
+    verifiers,
+  );
 
   console.log("keygen completed");
 
   const keyShareElement = document.getElementById("key-share");
   keyShareElement.innerHTML = `<p class="address">Address: ${keyShare.address}</p>`;
+
+  /*
   // First and third parties perform signing
   if (partyIndex == 0 || partyIndex == 2) {
     const result = await module.sign(
       options,
       signingParticipants,
-      fromHexString(sessionIdSeed),
+      fromHexString(signsessionIdSeed),
       fromHexString(signer),
       verifiers,
       keyShare.privateKey,
@@ -59,6 +67,7 @@ try {
 
     console.log("signing completed");
   }
+  */
 } catch (e) {
   console.error(e);
 }
