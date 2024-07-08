@@ -34,7 +34,12 @@ type MessageOut = MessageBundle<ecdsa::Signature>;
 /// notify clients that are not participating
 /// that their key init phase is completed.
 #[derive(Serialize, Deserialize)]
-pub struct KeyInitAck;
+pub struct KeyInitAck {
+    /// Index of the party.
+    pub party_index: usize,
+    /// Verifying key from the generated threshold key share.
+    pub key_share_verifying_key: VerifyingKey,
+}
 
 /// Key share.
 pub type KeyShare<P> = SynedrionKeyShare<P, VerifyingKey>;
@@ -158,7 +163,7 @@ pub async fn threshold_keygen<P: SchemeParams + 'static>(
 
     let protocol_session_id = session.session_id;
 
-    let (transport, stream, t_key_share) = make_key_init::<P>(
+    let (transport, stream, t_key_share, acks) = make_dkg_init::<P>(
         t,
         party_index,
         transport,
@@ -172,10 +177,13 @@ pub async fn threshold_keygen<P: SchemeParams + 'static>(
     )
     .await?;
 
+    println!("START DKG RESHARE {}", party_index);
+
     let (mut transport, mut stream, t_key_share) =
-        make_key_resharing::<P>(
+        make_dkg_reshare::<P>(
             t,
             t_key_share,
+            acks,
             transport,
             stream,
             session,
@@ -185,6 +193,9 @@ pub async fn threshold_keygen<P: SchemeParams + 'static>(
         )
         .await?;
 
+    println!("DKG RESHARE COMPLETED: {}", party_index);
+
+    /*
     // WARN: this is a temporary hack to ensure the streams
     // WARN: are not dropped immediately which would prevent
     // WARN: the key init other participants from receiving the
@@ -192,6 +203,7 @@ pub async fn threshold_keygen<P: SchemeParams + 'static>(
     while let Some(event) = stream.next().await {
         let event = event?;
     }
+    */
 
     /*
     // Wait for the session to become active
@@ -248,7 +260,7 @@ pub async fn threshold_keygen<P: SchemeParams + 'static>(
 }
 
 /// Make initialize key share for threshold DKG.
-async fn make_key_init<P: SchemeParams + 'static>(
+async fn make_dkg_init<P: SchemeParams + 'static>(
     t: usize,
     party_index: usize,
     transport: Transport,
@@ -263,6 +275,7 @@ async fn make_key_init<P: SchemeParams + 'static>(
     Transport,
     EventStream,
     Option<ThresholdKeyShare<P, VerifyingKey>>,
+    Vec<KeyInitAck>,
 )> {
     let init_verifiers =
         verifiers.iter().take(t).cloned().collect::<Vec<_>>();
@@ -280,6 +293,13 @@ async fn make_key_init<P: SchemeParams + 'static>(
         let (mut transport, key_share) =
             wait_for_driver(&mut stream, key_init).await?;
 
+        let ack = KeyInitAck {
+            party_index,
+            key_share_verifying_key: key_share
+                .verifying_key()
+                .clone(),
+        };
+
         // Notify participants not involved in key init
         // that we are done
         let other_participants = &participants[t..];
@@ -287,20 +307,15 @@ async fn make_key_init<P: SchemeParams + 'static>(
             transport
                 .send_json(
                     other_public_key,
-                    &KeyInitAck,
+                    &ack,
                     Some(protocol_session_id),
                 )
                 .await?;
         }
 
-        let t_key_share =
-            ThresholdKeyShare::from_key_share(&key_share);
+        let mut acks = vec![ack];
 
-        Ok((transport, stream, Some(t_key_share)))
-    } else {
-        // If we are not participating in key init then wait
-        // so we know when to proceed to the key resharing phase
-        let mut completed_key_init = 0;
+        /*
         while let Some(event) = stream.next().await {
             let event = event?;
             if let Event::JsonMessage {
@@ -310,24 +325,56 @@ async fn make_key_init<P: SchemeParams + 'static>(
             } = event
             {
                 if session_id.as_ref() == Some(&protocol_session_id) {
-                    if message.deserialize::<KeyInitAck>().is_ok() {
-                        completed_key_init += 1;
-                        if completed_key_init == t {
+                    if let Ok(ack) =
+                        message.deserialize::<KeyInitAck>()
+                    {
+                        acks.push(ack);
+                        if acks.len() == t {
                             break;
                         }
                     }
                 }
             }
         }
-        println!("All key init completed...");
-        Ok((transport, stream, None))
+        */
+
+        let t_key_share =
+            ThresholdKeyShare::from_key_share(&key_share);
+
+        Ok((transport, stream, Some(t_key_share), acks))
+    } else {
+        // If we are not participating in key init then wait
+        // so we know when to proceed to the key resharing phase
+        let mut acks = Vec::new();
+        while let Some(event) = stream.next().await {
+            let event = event?;
+            if let Event::JsonMessage {
+                message,
+                session_id,
+                ..
+            } = event
+            {
+                if session_id.as_ref() == Some(&protocol_session_id) {
+                    if let Ok(ack) =
+                        message.deserialize::<KeyInitAck>()
+                    {
+                        acks.push(ack);
+                        if acks.len() == t {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        Ok((transport, stream, None, acks))
     }
 }
 
 /// Drive the key resharing phase of threshold DKG.
-async fn make_key_resharing<P: SchemeParams + 'static>(
+async fn make_dkg_reshare<P: SchemeParams + 'static>(
     t: usize,
     t_key_share: Option<ThresholdKeyShare<P, VerifyingKey>>,
+    acks: Vec<KeyInitAck>,
     transport: Transport,
     mut stream: EventStream,
     session: SessionState,
@@ -342,13 +389,13 @@ async fn make_key_resharing<P: SchemeParams + 'static>(
     let old_holders =
         BTreeSet::from_iter(verifiers.iter().cloned().take(t));
 
-    let new_holder = NewHolder {
-        verifying_key: verifiers.get(0).unwrap().clone(),
-        old_threshold: t,
-        old_holders,
-    };
-
     let inputs = if let Some(t_key_share) = t_key_share {
+        let new_holder = NewHolder {
+            verifying_key: t_key_share.verifying_key().clone(),
+            old_threshold: t,
+            old_holders,
+        };
+
         KeyResharingInputs {
             old_holder: Some(OldHolder {
                 key_share: t_key_share.clone(),
@@ -361,6 +408,13 @@ async fn make_key_resharing<P: SchemeParams + 'static>(
             new_threshold: t,
         }
     } else {
+        let ack = acks.iter().find(|a| a.party_index == 0).unwrap();
+        let new_holder = NewHolder {
+            verifying_key: ack.key_share_verifying_key.clone(),
+            old_threshold: t,
+            old_holders,
+        };
+
         KeyResharingInputs {
             old_holder: None,
             new_holder: Some(new_holder.clone()),
