@@ -5,7 +5,7 @@
 mod bindings {
     use mpc_driver::synedrion::{
         ecdsa::{SigningKey, VerifyingKey},
-        SessionId,
+        ProductionParams, SessionId,
     };
     use mpc_driver::{
         meeting, MeetingOptions, PrivateKey, SessionOptions,
@@ -47,25 +47,27 @@ mod bindings {
         options: JsValue,
         participants: JsValue,
         shared_randomness: Vec<u8>,
-        signer: JsValue,
+        signer: Vec<u8>,
         verifiers: JsValue,
     ) -> Result<JsValue, JsError> {
         let options: SessionOptions =
             serde_wasm_bindgen::from_value(options)?;
         let participants = parse_participants(participants)?;
+
         let signer: SigningKey =
-            serde_wasm_bindgen::from_value(signer)?;
+            signer.as_slice().try_into().map_err(JsError::from)?;
         let verifiers: Vec<VerifyingKey> =
             serde_wasm_bindgen::from_value(verifiers)?;
         let fut = async move {
-            let key_share = mpc_driver::cggmp::keygen(
-                options,
-                participants,
-                SessionId::from_seed(&shared_randomness),
-                signer,
-                verifiers,
-            )
-            .await?;
+            let key_share =
+                mpc_driver::cggmp::keygen::<ProductionParams>(
+                    options,
+                    participants,
+                    SessionId::from_seed(&shared_randomness),
+                    signer,
+                    verifiers,
+                )
+                .await?;
             Ok(serde_wasm_bindgen::to_value(&key_share)?)
         };
         Ok(future_to_promise(fut).into())
@@ -87,7 +89,7 @@ mod bindings {
             serde_wasm_bindgen::from_value(signing_key)?;
         let message = parse_message(message)?;
         let fut = async move {
-            let signature = mpc_driver::cggmp::sign(
+            let signature = mpc_driver::cggmp::sign::<ProductionParams>(
                 options,
                 participants,
                 signing_key,
