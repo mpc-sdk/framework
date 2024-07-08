@@ -3,10 +3,18 @@ const module = await import("/pkg/mpc_bindings.js");
 // Initialize the webassembly
 await module.default();
 
+// Convert from a hex-encoded string.
+function fromHexString(hex) {
+  return new Uint8Array(hex.match(/.{1,2}/g).map((byte) => parseInt(byte, 16)));
+}
+
 const partyIndex = ${INDEX};
 const message = "${MESSAGE}";
 const participants = ${PARTICIPANTS};
 const signingParticipants = ${SIGNING_PARTICIPANTS};
+const sessionIdSeed = ${SESSION_ID_SEED};
+const signer = ${SIGNER};
+const verifiers = ${VERIFIERS};
 const options = {
   protocol: "cggmp",
   keypair: `${KEYPAIR}`,
@@ -23,7 +31,8 @@ const options = {
 // Start key generation
 try {
   // Get the promise for key generation
-  const keyShare = await module.keygen(options, participants);
+  const keyShare = await module.keygen(
+    options, participants, fromHexString(sessionIdSeed), fromHexString(signer), verifiers);
 
   console.log("keygen completed");
 
@@ -38,7 +47,8 @@ try {
       options,
       signingParticipants,
       keyShare.privateKey,
-      message);
+      message,
+    );
 
     console.log("signature: ", result);
 

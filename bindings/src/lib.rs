@@ -46,7 +46,7 @@ mod bindings {
     pub fn keygen(
         options: JsValue,
         participants: JsValue,
-        shared_randomness: Vec<u8>,
+        session_id_seed: Vec<u8>,
         signer: Vec<u8>,
         verifiers: JsValue,
     ) -> Result<JsValue, JsError> {
@@ -63,7 +63,7 @@ mod bindings {
                 mpc_driver::cggmp::keygen::<ProductionParams>(
                     options,
                     participants,
-                    SessionId::from_seed(&shared_randomness),
+                    SessionId::from_seed(&session_id_seed),
                     signer,
                     verifiers,
                 )

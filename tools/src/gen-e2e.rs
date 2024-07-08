@@ -1,4 +1,6 @@
+use mpc_driver::k256::ecdsa::SigningKey;
 use mpc_protocol::{decode_keypair, hex};
+use rand::{rngs::OsRng, Rng};
 use sha3::{Digest, Keccak256};
 use std::{fs, path::PathBuf};
 
@@ -24,8 +26,22 @@ fn main() {
     let output_dir =
         base_path.join("tests").join("e2e").join("cggmp");
 
+    let rng = &mut OsRng;
+    let session_id_seed: [u8; 32] = rng.gen();
+
     let file_names = vec!["p1", "p2", "p3"];
     let keypairs = vec![KEYPAIR_P1, KEYPAIR_P2, KEYPAIR_P3];
+
+    let signing_keys = vec![
+        SigningKey::random(&mut OsRng),
+        SigningKey::random(&mut OsRng),
+        SigningKey::random(&mut OsRng),
+    ];
+
+    let verifiers = signing_keys
+        .iter()
+        .map(|k| k.verifying_key().clone())
+        .collect::<Vec<_>>();
 
     let message = Keccak256::digest(MSG.as_bytes());
     let message = hex::encode(&message);
@@ -46,8 +62,11 @@ fn main() {
         })
         .collect();
 
-    for (index, (keypair, file_name)) in
-        keypairs.iter().zip(file_names.iter()).enumerate()
+    for (index, ((keypair, signing_key), file_name)) in keypairs
+        .into_iter()
+        .zip(signing_keys.into_iter())
+        .zip(file_names.into_iter())
+        .enumerate()
     {
         let participants = if index == 0 {
             format!("{:#?}", joiners)
@@ -66,6 +85,24 @@ fn main() {
             .replace("${MESSAGE}", &message)
             .replace("${PARTICIPANTS}", &participants)
             .replace("${SIGNING_PARTICIPANTS}", &signing_participants)
+            .replace(
+                "${SESSION_ID_SEED}",
+                &serde_json::to_string(&hex::encode(
+                    &session_id_seed,
+                ))
+                .unwrap(),
+            )
+            .replace(
+                "${SIGNER}",
+                &serde_json::to_string(&hex::encode(
+                    signing_key.to_bytes(),
+                ))
+                .unwrap(),
+            )
+            .replace(
+                "${VERIFIERS}",
+                &serde_json::to_string(&verifiers).unwrap(),
+            )
             .replace("${KEYPAIR}", keypair)
             .replace("${SERVER_URL}", SERVER_URL)
             .replace("${SERVER_PUBLIC_KEY}", SERVER_PUBLIC_KEY);
