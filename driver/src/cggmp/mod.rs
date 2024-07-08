@@ -1,14 +1,14 @@
 //! Driver for the CGGMP protocol.
 use futures::StreamExt;
 use mpc_client::{Event, EventStream};
-use mpc_protocol::{
-    hex, SessionId as ProtocolSessionId, SessionState,
-};
+use mpc_protocol::{SessionId as ProtocolSessionId, SessionState};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeSet;
 use synedrion::{
     ecdsa::{self, SigningKey, VerifyingKey},
-    KeyShare as SynedrionKeyShare, MessageBundle, PrehashedMessage,
-    RecoverableSignature, SchemeParams, SessionId, ThresholdKeyShare,
+    KeyResharingInputs, KeyShare as SynedrionKeyShare, MessageBundle,
+    NewHolder, OldHolder, PrehashedMessage, RecoverableSignature,
+    SchemeParams, SessionId, ThresholdKeyShare,
 };
 
 mod aux_gen;
@@ -120,9 +120,12 @@ pub async fn threshold_keygen<P: SchemeParams + 'static>(
     verifiers: Vec<VerifyingKey>,
     // ) -> crate::Result<ThresholdKeyShare<P, VerifyingKey>> {
 ) -> crate::Result<()> {
-    // let is_initiator = participants.is_some();
+    let party_index = verifiers
+        .iter()
+        .position(|v| v == signer.verifying_key())
+        .ok_or(Error::NotVerifyingParty)?;
 
-    // let n = options.parameters.parties as usize;
+    let n = options.parameters.parties as usize;
     let t = options.parameters.threshold as usize;
 
     // Create the client
@@ -155,14 +158,26 @@ pub async fn threshold_keygen<P: SchemeParams + 'static>(
 
     let protocol_session_id = session.session_id;
 
+    let (transport, stream, t_key_share) = make_key_init::<P>(
+        t,
+        party_index,
+        transport,
+        stream,
+        participants.as_slice(),
+        protocol_session_id,
+        session.clone(),
+        session_id,
+        &signer,
+        &verifiers,
+    )
+    .await?;
+
     let (mut transport, mut stream, t_key_share) =
-        make_key_init::<P>(
+        make_key_resharing::<P>(
             t,
+            t_key_share,
             transport,
             stream,
-            public_key.as_slice(),
-            participants.as_slice(),
-            protocol_session_id,
             session,
             session_id,
             signer,
@@ -235,25 +250,20 @@ pub async fn threshold_keygen<P: SchemeParams + 'static>(
 /// Make initialize key share for threshold DKG.
 async fn make_key_init<P: SchemeParams + 'static>(
     t: usize,
+    party_index: usize,
     transport: Transport,
     mut stream: EventStream,
-    public_key: &[u8],
     participants: &[Vec<u8>],
     protocol_session_id: ProtocolSessionId,
     session: SessionState,
     session_id: SessionId,
-    signer: SigningKey,
-    verifiers: Vec<VerifyingKey>,
+    signer: &SigningKey,
+    verifiers: &[VerifyingKey],
 ) -> crate::Result<(
     Transport,
     EventStream,
     Option<ThresholdKeyShare<P, VerifyingKey>>,
 )> {
-    let party_index = verifiers
-        .iter()
-        .position(|v| v == signer.verifying_key())
-        .ok_or(Error::NotVerifyingParty)?;
-
     let init_verifiers =
         verifiers.iter().take(t).cloned().collect::<Vec<_>>();
 
@@ -263,7 +273,7 @@ async fn make_key_init<P: SchemeParams + 'static>(
             transport,
             session,
             session_id,
-            signer,
+            signer.to_owned(),
             init_verifiers,
         )?;
 
@@ -312,6 +322,69 @@ async fn make_key_init<P: SchemeParams + 'static>(
         println!("All key init completed...");
         Ok((transport, stream, None))
     }
+}
+
+/// Drive the key resharing phase of threshold DKG.
+async fn make_key_resharing<P: SchemeParams + 'static>(
+    t: usize,
+    t_key_share: Option<ThresholdKeyShare<P, VerifyingKey>>,
+    transport: Transport,
+    mut stream: EventStream,
+    session: SessionState,
+    session_id: SessionId,
+    signer: SigningKey,
+    verifiers: Vec<VerifyingKey>,
+) -> Result<(
+    Transport,
+    EventStream,
+    ThresholdKeyShare<P, VerifyingKey>,
+)> {
+    let old_holders =
+        BTreeSet::from_iter(verifiers.iter().cloned().take(t));
+
+    let new_holder = NewHolder {
+        verifying_key: verifiers.get(0).unwrap().clone(),
+        old_threshold: t,
+        old_holders,
+    };
+
+    let inputs = if let Some(t_key_share) = t_key_share {
+        KeyResharingInputs {
+            old_holder: Some(OldHolder {
+                key_share: t_key_share.clone(),
+            }),
+            new_holder: Some(new_holder.clone()),
+            new_holders: verifiers
+                .clone()
+                .into_iter()
+                .collect::<BTreeSet<_>>(),
+            new_threshold: t,
+        }
+    } else {
+        KeyResharingInputs {
+            old_holder: None,
+            new_holder: Some(new_holder.clone()),
+            new_holders: verifiers
+                .clone()
+                .into_iter()
+                .collect::<BTreeSet<_>>(),
+            new_threshold: t,
+        }
+    };
+
+    let driver = KeyResharingDriver::<P>::new(
+        transport,
+        session,
+        session_id,
+        signer,
+        verifiers.clone(),
+        inputs,
+    )?;
+
+    let (transport, key_share) =
+        wait_for_driver(&mut stream, driver).await?;
+
+    Ok((transport, stream, key_share))
 }
 
 /// Sign a message using the CGGMP protocol.
