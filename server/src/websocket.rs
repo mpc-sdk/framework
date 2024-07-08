@@ -210,7 +210,7 @@ async fn read(
                 }
             },
             Err(e) => {
-                tracing::warn!(error = %e, "ws_server::read_error");
+                tracing::warn!(error = %e,"ws_server::read_error");
                 disconnect(state, Arc::clone(&conn)).await;
                 return Err(e.into());
             }
