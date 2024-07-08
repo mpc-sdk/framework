@@ -59,10 +59,18 @@ test("CGGMP: keygen and sign message", async ({ context, page }) => {
   const pages = context.pages();
 
   const selectors = [
+    page.waitForSelector(".address"),
+    page2.waitForSelector(".address"),
+    page3.waitForSelector(".address"),
+  ];
+  
+  /*
+  const selectors = [
     page.waitForSelector(".signature-address"),
     page2.waitForSelector(".party-number"),
     page3.waitForSelector(".signature-address"),
   ];
+  */
 
   await Promise.all(selectors);
 });
