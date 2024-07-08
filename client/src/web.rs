@@ -3,9 +3,7 @@ use wasm_bindgen_futures::spawn_local;
 use web_sys::{ErrorEvent, MessageEvent, WebSocket};
 
 use async_stream::stream;
-use futures::{
-    select, stream::BoxStream, FutureExt, Sink, SinkExt, StreamExt,
-};
+use futures::{stream::BoxStream, Sink, SinkExt, StreamExt};
 use serde::Serialize;
 use serde_json::Value;
 use std::{collections::HashSet, pin::Pin, sync::Arc};
