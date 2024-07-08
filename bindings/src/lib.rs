@@ -5,7 +5,7 @@
 mod bindings {
     use mpc_driver::synedrion::{
         ecdsa::{SigningKey, VerifyingKey},
-        ProductionParams, SessionId,
+        SessionId,
     };
     use mpc_driver::{
         meeting, MeetingOptions, PrivateKey, SessionOptions,
@@ -14,6 +14,12 @@ mod bindings {
     use serde_json::Value;
     use wasm_bindgen::prelude::*;
     use wasm_bindgen_futures::future_to_promise;
+
+    #[cfg(feature = "debug_assertions")]
+    type Params = mpc_driver::synedrion::TestParams;
+
+    #[cfg(not(feature = "debug_assertions"))]
+    type Params = mpc_driver::synedrion::ProductionParams;
 
     /// Initialize the panic hook and logging.
     #[doc(hidden)]
@@ -42,8 +48,8 @@ mod bindings {
     }
 
     /// Distributed key generation.
-    #[wasm_bindgen]
-    pub fn keygen(
+    #[wasm_bindgen(js_name = "keygen")]
+    pub fn keygen_cggmp(
         options: JsValue,
         participants: JsValue,
         session_id_seed: Vec<u8>,
@@ -59,48 +65,66 @@ mod bindings {
         let verifiers: Vec<VerifyingKey> =
             serde_wasm_bindgen::from_value(verifiers)?;
         let fut = async move {
-            let key_share =
-                mpc_driver::cggmp::keygen::<ProductionParams>(
-                    options,
-                    participants,
-                    SessionId::from_seed(&session_id_seed),
-                    signer,
-                    verifiers,
-                )
-                .await?;
+            let key_share = mpc_driver::cggmp::keygen::<Params>(
+                options,
+                participants,
+                SessionId::from_seed(&session_id_seed),
+                signer,
+                verifiers,
+            )
+            .await?;
             Ok(serde_wasm_bindgen::to_value(&key_share)?)
         };
         Ok(future_to_promise(fut).into())
     }
 
-    /*
     /// Sign a message.
-    #[wasm_bindgen]
-    pub fn sign(
+    #[wasm_bindgen(js_name = "sign")]
+    pub fn sign_cggmp(
         options: JsValue,
         participants: JsValue,
-        signing_key: JsValue,
+        session_id_seed: Vec<u8>,
+        signer: Vec<u8>,
+        verifiers: JsValue,
+        private_key: JsValue,
         message: JsValue,
     ) -> Result<JsValue, JsError> {
         let options: SessionOptions =
             serde_wasm_bindgen::from_value(options)?;
         let participants = parse_participants(participants)?;
-        let signing_key: PrivateKey =
-            serde_wasm_bindgen::from_value(signing_key)?;
+        let signer: SigningKey =
+            signer.as_slice().try_into().map_err(JsError::from)?;
+        let verifiers: Vec<VerifyingKey> =
+            serde_wasm_bindgen::from_value(verifiers)?;
+
+        let private_key: PrivateKey =
+            serde_wasm_bindgen::from_value(private_key)?;
+
+        let key_share = if let PrivateKey::Cggmp(share) = private_key
+        {
+            share
+        } else {
+            return Err(JsError::new("invalid private key type"));
+        };
+
+        key_share.foo();
+
         let message = parse_message(message)?;
         let fut = async move {
-            let signature = mpc_driver::cggmp::sign::<ProductionParams>(
+            let signature = mpc_driver::cggmp::sign::<Params>(
                 options,
                 participants,
-                signing_key,
-                message,
+                SessionId::from_seed(&session_id_seed),
+                signer,
+                verifiers,
+                &key_share,
+                &message,
             )
             .await?;
             Ok(serde_wasm_bindgen::to_value(&signature)?)
         };
         Ok(future_to_promise(fut).into())
     }
-    */
 
     /// Generate a PEM-encoded keypair.
     ///
