@@ -2,7 +2,7 @@
 use synedrion::{
     ecdsa::{self, SigningKey, VerifyingKey},
     KeyShare as SynedrionKeyShare, MessageBundle, PrehashedMessage,
-    RecoverableSignature, SchemeParams, SessionId,
+    RecoverableSignature, SchemeParams, SessionId, ThresholdKeyShare,
 };
 
 mod aux_gen;
@@ -38,7 +38,7 @@ use crate::{
     SessionOptions, SessionParticipant,
 };
 
-/// Run distributed key generation for the CGGMP protocol.
+/// Run DKG for the CGGMP protocol.
 pub async fn keygen<P: SchemeParams + 'static>(
     options: SessionOptions,
     participants: Option<Vec<Vec<u8>>>,
@@ -95,6 +95,65 @@ pub async fn keygen<P: SchemeParams + 'static>(
     wait_for_close(&mut stream).await?;
 
     Ok(key_share.0)
+}
+
+/// Run threshold DKG for the CGGMP protocol.
+pub async fn threshold_keygen<P: SchemeParams + 'static>(
+    options: SessionOptions,
+    participants: Option<Vec<Vec<u8>>>,
+    session_id: SessionId,
+    signer: SigningKey,
+    verifiers: Vec<VerifyingKey>,
+) -> crate::Result<ThresholdKeyShare<P, VerifyingKey>> {
+    let is_initiator = participants.is_some();
+
+    // Create the client
+    let (client, event_loop) = new_client(options).await?;
+
+    let mut transport: Transport = client.into();
+
+    // Handshake with the server
+    transport.connect().await?;
+
+    // Start the event stream
+    let mut stream = event_loop.run();
+
+    // Wait for the session to become active
+    let client_session = if let Some(participants) = participants {
+        SessionHandler::Initiator(SessionInitiator::new(
+            transport,
+            participants,
+        ))
+    } else {
+        SessionHandler::Participant(SessionParticipant::new(
+            transport,
+        ))
+    };
+
+    let (transport, session) =
+        wait_for_session(&mut stream, client_session).await?;
+
+    let protocol_session_id = session.session_id;
+
+    // Wait for key generation
+    let keygen = KeyInitDriver::<P>::new(
+        transport, session, session_id, signer, verifiers,
+    )?;
+
+    let (mut transport, key_share) =
+        wait_for_driver(&mut stream, keygen).await?;
+
+    // Close the session and socket
+    if is_initiator {
+        transport.close_session(protocol_session_id).await?;
+        wait_for_session_finish(&mut stream, protocol_session_id)
+            .await?;
+    }
+
+    transport.close().await?;
+    wait_for_close(&mut stream).await?;
+
+    Ok(ThresholdKeyShare::from_key_share(&key_share))
 }
 
 /// Sign a message using the CGGMP protocol.

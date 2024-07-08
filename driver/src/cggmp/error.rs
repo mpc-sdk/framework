@@ -23,6 +23,10 @@ pub enum Error {
     #[error("failed to verify generated signature")]
     VerifySignature,
 
+    /// Signing key does not exist in list of verifying keys.
+    #[error("signer is not a verifying party")]
+    NotVerifyingParty,
+
     /// Attempt to finish a protocol when another round is expected.
     #[error("protocol is not finished, another round is available")]
     NotFinished,
