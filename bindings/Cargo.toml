@@ -20,7 +20,7 @@ getrandom = {version = "0.1.16", features = ["wasm-bindgen"]}
 wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
 serde-wasm-bindgen = "0.5"
 wasm-bindgen-futures = "0.4"
-rand = { version="0.6.5", features = ["wasm-bindgen"] }
+rand = { version="0.8" }
 console_error_panic_hook = "0.1"
 serde = { version = "1", features = ["derive"] }
 log = "0.4"
