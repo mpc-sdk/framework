@@ -41,7 +41,7 @@ pub type WebEventLoop =
 pub struct WebClient {
     ws: WebSocket,
     options: Arc<ClientOptions>,
-    outbound_tx: mpsc::Sender<InternalMessage>,
+    outbound_tx: mpsc::UnboundedSender<InternalMessage>,
     server: Server,
     peers: Peers,
     ptr: *mut mpsc::Sender<Result<Vec<u8>>>,
@@ -132,7 +132,7 @@ impl WebClient {
         // Channel for writing outbound messages to send
         // to the server
         let (outbound_tx, outbound_rx) =
-            mpsc::channel::<InternalMessage>(32);
+            mpsc::unbounded_channel::<InternalMessage>();
 
         let builder = Builder::new(options.params()?);
         let handshake = builder
@@ -169,7 +169,7 @@ impl WebClient {
 
         // Decoded socket messages are sent over this channel
         let (inbound_tx, inbound_rx) =
-            mpsc::channel::<ResponseMessage>(32);
+            mpsc::unbounded_channel::<ResponseMessage>();
 
         let event_loop: WebEventLoop = EventLoop {
             options,
@@ -216,11 +216,11 @@ impl EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream> {
     /// the messages channel.
     pub(crate) async fn read_message(
         incoming: WsMessage,
-        event_proxy: &mut mpsc::Sender<ResponseMessage>,
+        event_proxy: &mut mpsc::UnboundedSender<ResponseMessage>,
     ) -> Result<()> {
         let inflated = zlib::inflate(&incoming)?;
         let response: ResponseMessage = decode(&inflated).await?;
-        event_proxy.send(response).await?;
+        event_proxy.send(response)?;
         Ok(())
     }
 

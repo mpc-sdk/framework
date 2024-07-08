@@ -3,7 +3,10 @@
 
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 mod bindings {
-    use mpc_driver::synedrion::ecdsa::{SigningKey, VerifyingKey};
+    use mpc_driver::synedrion::{
+        ecdsa::{SigningKey, VerifyingKey},
+        SessionId,
+    };
     use mpc_driver::{
         meeting, MeetingOptions, PrivateKey, SessionOptions,
     };
@@ -58,7 +61,7 @@ mod bindings {
             let key_share = mpc_driver::cggmp::keygen(
                 options,
                 participants,
-                &shared_randomness,
+                SessionId::from_seed(&shared_randomness),
                 signer,
                 verifiers,
             )

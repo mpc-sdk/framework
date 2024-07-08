@@ -326,7 +326,7 @@ macro_rules! client_transport_impl {
                 self.ws.close()?;
 
                 // Must also dispatch the close event for the driver
-                self.outbound_tx.send(InternalMessage::Close).await?;
+                self.outbound_tx.send(InternalMessage::Close)?;
 
                 Ok(())
             }
