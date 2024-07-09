@@ -21,6 +21,15 @@ pub enum Error {
     #[error("meeting initiator must exist in list of identifiers")]
     MeetingInitiatorNotExist,
 
+    /// Signing key does not exist in list of verifying keys.
+    #[error("signer is not a verifying party")]
+    NotVerifyingParty,
+
+    /// Error when noise protocol participants list does not match
+    /// the number of verifying keys.
+    #[error("number of participants '{0}' does not match number of verifying keys '{1}'")]
+    ParticipantVerifierLength(usize, usize),
+
     /// CGGMP driver errors.
     #[cfg(feature = "cggmp")]
     #[error(transparent)]

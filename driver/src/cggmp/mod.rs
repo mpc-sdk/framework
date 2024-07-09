@@ -51,8 +51,8 @@ use mpc_client::{NetworkTransport, Transport};
 
 use crate::{
     new_client, wait_for_close, wait_for_driver, wait_for_session,
-    wait_for_session_finish, SessionHandler, SessionInitiator,
-    SessionOptions, SessionParticipant,
+    wait_for_session_finish, PartyOptions, SessionHandler,
+    SessionInitiator, SessionOptions, SessionParticipant,
 };
 
 /*
@@ -119,18 +119,10 @@ pub async fn keygen<P: SchemeParams + 'static>(
 /// Run threshold DKG for the CGGMP protocol.
 pub async fn keygen<P: SchemeParams + 'static>(
     options: SessionOptions,
-    public_key: Vec<u8>,
-    participants: Vec<Vec<u8>>,
-    is_initiator: bool,
+    party: PartyOptions,
     session_id: SessionId,
     signer: SigningKey,
-    verifiers: Vec<VerifyingKey>,
 ) -> crate::Result<ThresholdKeyShare<P, VerifyingKey>> {
-    let party_index = verifiers
-        .iter()
-        .position(|v| v == signer.verifying_key())
-        .ok_or(Error::NotVerifyingParty)?;
-
     let n = options.parameters.parties as usize;
     let t = options.parameters.threshold as usize;
 
@@ -146,9 +138,9 @@ pub async fn keygen<P: SchemeParams + 'static>(
     let mut stream = event_loop.run();
 
     // Wait for the session to become active
-    let client_session = if is_initiator {
-        let mut other_participants = participants.clone();
-        other_participants.retain(|p| p != &public_key);
+    let client_session = if party.is_initiator() {
+        let mut other_participants = party.participants().to_vec();
+        other_participants.retain(|p| p != party.public_key());
         SessionHandler::Initiator(SessionInitiator::new(
             transport,
             other_participants,
@@ -166,16 +158,15 @@ pub async fn keygen<P: SchemeParams + 'static>(
 
     let (transport, stream, t_key_share, acks) = make_dkg_init::<P>(
         t,
-        party_index,
+        party.party_index(),
         transport,
         stream,
-        public_key.as_slice(),
-        participants.as_slice(),
+        &party,
         protocol_session_id,
         session.clone(),
         session_id,
         &signer,
-        &verifiers,
+        party.verifiers(),
     )
     .await?;
 
@@ -202,7 +193,7 @@ pub async fn keygen<P: SchemeParams + 'static>(
             session,
             session_id,
             signer,
-            verifiers,
+            party.verifiers(),
         )
         .await?
     } else {
@@ -210,7 +201,7 @@ pub async fn keygen<P: SchemeParams + 'static>(
     };
 
     // Close the session and socket
-    if is_initiator {
+    if party.is_initiator() {
         transport.close_session(protocol_session_id).await?;
         wait_for_session_finish(&mut stream, protocol_session_id)
             .await?;
@@ -228,8 +219,7 @@ async fn make_dkg_init<P: SchemeParams + 'static>(
     party_index: usize,
     transport: Transport,
     mut stream: EventStream,
-    public_key: &[u8],
-    participants: &[Vec<u8>],
+    party: &PartyOptions,
     protocol_session_id: ProtocolSessionId,
     session: SessionState,
     session_id: SessionId,
@@ -267,9 +257,10 @@ async fn make_dkg_init<P: SchemeParams + 'static>(
         // Notify participants not involved in key init
         // that we are done
         // let other_participants = &participants[t..];
-        let other_participants = participants
+        let other_participants = party
+            .participants()
             .iter()
-            .filter(|p| p.as_slice() != public_key)
+            .filter(|p| p.as_slice() != party.public_key())
             .collect::<Vec<_>>();
         for other_public_key in other_participants {
             transport
@@ -345,7 +336,7 @@ async fn make_dkg_reshare<P: SchemeParams + 'static>(
     session: SessionState,
     session_id: SessionId,
     signer: SigningKey,
-    verifiers: Vec<VerifyingKey>,
+    verifiers: &[VerifyingKey],
 ) -> Result<(
     Transport,
     EventStream,
@@ -368,7 +359,7 @@ async fn make_dkg_reshare<P: SchemeParams + 'static>(
             }),
             new_holder: Some(new_holder.clone()),
             new_holders: verifiers
-                .clone()
+                .to_vec()
                 .into_iter()
                 .collect::<BTreeSet<_>>(),
             new_threshold,
@@ -384,7 +375,7 @@ async fn make_dkg_reshare<P: SchemeParams + 'static>(
             old_holder: None,
             new_holder: Some(new_holder.clone()),
             new_holders: verifiers
-                .clone()
+                .to_vec()
                 .into_iter()
                 .collect::<BTreeSet<_>>(),
             new_threshold,
@@ -396,7 +387,7 @@ async fn make_dkg_reshare<P: SchemeParams + 'static>(
         session,
         session_id,
         signer,
-        verifiers.clone(),
+        verifiers.to_vec(),
         inputs,
     )?;
 

@@ -120,22 +120,13 @@ pub(crate) trait ProtocolDriver {
 #[cfg(feature = "cggmp")]
 pub async fn keygen(
     options: SessionOptions,
-    public_key: Vec<u8>,
-    participants: Vec<Vec<u8>>,
-    is_initiator: bool,
+    party: PartyOptions,
     session_id: SessionId,
     signer: SigningKey,
-    verifiers: Vec<VerifyingKey>,
 ) -> Result<KeyShare> {
     match &options.protocol {
         Protocol::Cggmp => Ok(crate::cggmp::keygen(
-            options,
-            public_key,
-            participants,
-            is_initiator,
-            session_id,
-            signer,
-            verifiers,
+            options, party, session_id, signer,
         )
         .await?
         .into()),

@@ -1,8 +1,8 @@
 use anyhow::Result;
 use mpc_driver::{
-    cggmp::keygen,
+    cggmp::{keygen, sign},
     synedrion::{SessionId, TestParams},
-    Protocol, ServerOptions, SessionOptions,
+    PartyOptions, Protocol, ServerOptions, SessionOptions,
 };
 use mpc_protocol::{generate_keypair, Parameters};
 use rand::{rngs::OsRng, Rng};
@@ -56,16 +56,20 @@ pub async fn run_keygen_sign(
         let is_initiator = index == 0;
         let public_key = participants.get(index).unwrap().to_vec();
 
-        let verifying_keys = verifiers.clone();
+        let party = PartyOptions::new(
+            public_key,
+            participants,
+            is_initiator,
+            verifiers.clone(),
+        )?;
+
         tasks.push(tokio::task::spawn(async move {
             let key_share = keygen::<TestParams>(
                 opts,
-                public_key,
-                participants,
-                is_initiator,
+                party,
                 keygen_session_id.clone(),
                 signer,
-                verifying_keys,
+                // verifying_keys,
             )
             .await?;
             Ok::<_, anyhow::Error>(key_share)

@@ -1,8 +1,85 @@
 //! Types passed across the Javascript/Webassembly boundary.
 use serde::{Deserialize, Serialize};
 
-use crate::{k256::ecdsa, synedrion::RecoverableSignature};
+use crate::{
+    k256::ecdsa::{self, VerifyingKey},
+    synedrion::RecoverableSignature,
+    Error, Result,
+};
 use mpc_protocol::{hex, Keypair, Parameters};
+
+/// Options for a party participating in a protocol.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PartyOptions {
+    /// Public key of this party.
+    public_key: Vec<u8>,
+    /// Public keys of all participants including this one.
+    participants: Vec<Vec<u8>>,
+    /// Whether this party is the session initiator.
+    ///
+    /// The initiator is reponsible for disposing of a
+    /// session once a protocol completes.
+    is_initiator: bool,
+    /// Index of the party in the participants list.
+    party_index: usize,
+    /// Verifying keys for all participants.
+    verifiers: Vec<VerifyingKey>,
+}
+
+impl PartyOptions {
+    /// Create new party participant options.
+    pub fn new(
+        public_key: Vec<u8>,
+        participants: Vec<Vec<u8>>,
+        is_initiator: bool,
+        verifiers: Vec<VerifyingKey>,
+    ) -> Result<Self> {
+        let party_index = participants
+            .iter()
+            .position(|v| v == &public_key)
+            .ok_or(Error::NotVerifyingParty)?;
+
+        if participants.len() != verifiers.len() {
+            return Err(Error::ParticipantVerifierLength(
+                participants.len(),
+                verifiers.len(),
+            ));
+        }
+
+        Ok(Self {
+            public_key,
+            participants,
+            is_initiator,
+            party_index,
+            verifiers,
+        })
+    }
+
+    /// Public key of this participant.
+    pub fn public_key(&self) -> &[u8] {
+        &self.public_key
+    }
+
+    /// Participant public keys.
+    pub fn participants(&self) -> &[Vec<u8>] {
+        self.participants.as_slice()
+    }
+
+    /// Index of this participant.
+    pub fn party_index(&self) -> usize {
+        self.party_index
+    }
+
+    /// Whether this party is the session initator.
+    pub fn is_initiator(&self) -> bool {
+        self.is_initiator
+    }
+
+    /// Participant verifying keys.
+    pub fn verifiers(&self) -> &[VerifyingKey] {
+        self.verifiers.as_slice()
+    }
+}
 
 /// Supported multi-party computation protocols.
 #[derive(Copy, Clone, Serialize, Deserialize)]

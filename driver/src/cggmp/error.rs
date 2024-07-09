@@ -23,10 +23,6 @@ pub enum Error {
     #[error("failed to verify generated signature")]
     VerifySignature,
 
-    /// Signing key does not exist in list of verifying keys.
-    #[error("signer is not a verifying party")]
-    NotVerifyingParty,
-
     /// Could not locate ack for key init phase.
     #[error("could not find an ACK for key init phase")]
     NoKeyInitAck,
