@@ -1,17 +1,19 @@
-use super::{execute_drivers, make_client_sessions, make_signers};
+use super::super::{
+    execute_drivers, make_client_sessions, make_signers,
+};
 use anyhow::Result;
 use mpc_client::NetworkTransport;
 use mpc_driver::{
-    cggmp::AuxGenDriver, synedrion::SessionId, synedrion::TestParams,
+    cggmp::KeyGenDriver, synedrion::SessionId, synedrion::TestParams,
     wait_for_close,
 };
 use rand::{rngs::OsRng, Rng};
 
-pub async fn run_aux_info(
+pub async fn run_keygen(
     server: &str,
     server_public_key: Vec<u8>,
 ) -> Result<()> {
-    let n = 3;
+    let n = 5;
     let rng = &mut OsRng;
     let session_id: [u8; 32] = rng.gen();
     let session_id = SessionId::from_seed(&session_id);
@@ -26,7 +28,7 @@ pub async fn run_aux_info(
     for result in results {
         let (transport, session, stream) = result;
         streams.push(stream);
-        drivers.push(AuxGenDriver::<TestParams>::new(
+        drivers.push(KeyGenDriver::<TestParams>::new(
             transport,
             session,
             session_id,
@@ -36,15 +38,17 @@ pub async fn run_aux_info(
     }
 
     let results = execute_drivers(streams, drivers).await?;
-    let mut aux_info = Vec::new();
+
+    let mut key_shares = Vec::new();
     let mut transports = Vec::new();
     for result in results {
         let (output, transport, stream) = result;
-        aux_info.push(output);
+        key_shares.push(output);
         transports.push((transport, stream));
     }
-    assert_eq!(n, aux_info.len());
+    assert_eq!(n, key_shares.len());
 
+    // Close the client sockets
     for (transport, mut stream) in transports {
         transport.close().await?;
         wait_for_close(&mut stream).await?;

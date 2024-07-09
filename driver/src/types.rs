@@ -2,7 +2,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    k256::ecdsa::{self, VerifyingKey},
+    k256::ecdsa::{self, RecoveryId, VerifyingKey},
     synedrion::RecoverableSignature,
     Error, Result,
 };
@@ -82,7 +82,7 @@ impl PartyOptions {
 }
 
 /// Supported multi-party computation protocols.
-#[derive(Copy, Clone, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Protocol {
     /// The CGGMP protocol.
@@ -107,6 +107,20 @@ impl From<RecoverableSignature> for Signature {
     fn from(value: RecoverableSignature) -> Self {
         let (sig, recovery_id) = value.to_backend();
         Signature::Cggmp(sig, recovery_id.into())
+    }
+}
+
+#[cfg(feature = "cggmp")]
+impl TryFrom<Signature> for (ecdsa::Signature, RecoveryId) {
+    type Error = crate::Error;
+
+    fn try_from(value: Signature) -> Result<Self> {
+        match value {
+            Signature::Cggmp(backend_signature, recovery_id) => {
+                let rec_id: RecoveryId = recovery_id.try_into()?;
+                Ok((backend_signature, rec_id))
+            } // _ => Err(Error::InvalidSignature(Protocol::Cggmp)),
+        }
     }
 }
 

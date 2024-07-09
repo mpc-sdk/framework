@@ -1,19 +1,31 @@
 use anyhow::Result;
 use mpc_driver::{
-    keygen, sign, synedrion::SessionId, PartyOptions, Protocol,
-    ServerOptions, SessionOptions,
+    k256::ecdsa::{self, signature::hazmat::PrehashVerifier},
+    keygen, sign,
+    synedrion::SessionId,
+    PartyOptions, PrivateKey, Protocol, ServerOptions,
+    SessionOptions,
 };
 use mpc_protocol::{generate_keypair, Parameters};
 use rand::{rngs::OsRng, Rng};
 
 use super::{make_signers, make_signing_message};
 
-pub async fn run_keygen_sign(
+pub async fn run_dkg_sign_2_3(
     server: &str,
     server_public_key: Vec<u8>,
 ) -> Result<()> {
     let n = 3;
     let t = 2;
+    run_dkg_sign(n, t, server, server_public_key).await
+}
+
+async fn run_dkg_sign(
+    n: u16,
+    t: u16,
+    server: &str,
+    server_public_key: Vec<u8>,
+) -> Result<()> {
     let params = Parameters {
         parties: n,
         threshold: t,
@@ -95,10 +107,13 @@ pub async fn run_keygen_sign(
         .iter()
         .map(|s| s.verifying_key().clone())
         .collect::<Vec<_>>();
-    let selected_key_shares = vec![
-        key_shares.remove(0),
-        key_shares.remove(key_shares.len() - 1),
-    ];
+
+    let first_share = key_shares.remove(0);
+    let PrivateKey::Cggmp(first_private) = &first_share.private_key;
+    let vkey = first_private.verifying_key().clone();
+
+    let selected_key_shares =
+        vec![first_share, key_shares.remove(key_shares.len() - 1)];
     let public_keys = vec![
         keypairs.get(0).unwrap().public_key().to_owned(),
         keypairs.get(2).unwrap().public_key().to_owned(),
@@ -150,6 +165,35 @@ pub async fn run_keygen_sign(
             .await?;
             Ok::<_, anyhow::Error>(signature)
         }));
+    }
+
+    // Gather the signatures
+    let mut signatures = Vec::new();
+    let results = futures::future::try_join_all(tasks).await?;
+    for result in results {
+        signatures.push(result?);
+    }
+
+    assert_eq!(t as usize, signatures.len());
+
+    let mut ecdsa_signatures: Vec<(
+        ecdsa::Signature,
+        ecdsa::RecoveryId,
+    )> = Vec::with_capacity(signatures.len());
+    for sig in signatures {
+        ecdsa_signatures.push(sig.try_into()?);
+    }
+    for (sig, rec_id) in ecdsa_signatures {
+        // Check that the signature can be verified
+        vkey.verify_prehash(&message, &sig).unwrap();
+
+        // Check that the key can be recovered
+        let recovered_key =
+            ecdsa::VerifyingKey::recover_from_prehash(
+                &message, &sig, rec_id,
+            )
+            .unwrap();
+        assert_eq!(recovered_key, vkey);
     }
 
     Ok(())

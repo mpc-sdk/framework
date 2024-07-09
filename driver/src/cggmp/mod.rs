@@ -400,7 +400,6 @@ async fn make_dkg_reshare<P: SchemeParams + 'static>(
 /// Sign a message using the CGGMP protocol.
 pub async fn sign<P: SchemeParams + 'static>(
     options: SessionOptions,
-    // participants: Option<Vec<Vec<u8>>>,
     party: PartyOptions,
     session_id: SessionId,
     signer: SigningKey,
@@ -451,7 +450,6 @@ pub async fn sign<P: SchemeParams + 'static>(
     // Wait for message to be signed
     let driver = SignatureDriver::<P>::new(
         transport,
-        // parameters,
         session,
         session_id,
         signer,

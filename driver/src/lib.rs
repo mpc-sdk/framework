@@ -37,8 +37,7 @@ pub use synedrion::{self, k256};
 
 #[cfg(feature = "cggmp")]
 use synedrion::{
-    k256::ecdsa::{SigningKey, VerifyingKey},
-    PrehashedMessage, SessionId,
+    k256::ecdsa::SigningKey, PrehashedMessage, SessionId,
 };
 
 /// Information about the current found which

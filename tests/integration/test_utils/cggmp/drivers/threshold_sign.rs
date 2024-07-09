@@ -19,13 +19,11 @@ use mpc_driver::{
 use mpc_protocol::{Parameters, SessionState};
 use std::collections::BTreeSet;
 
-use super::{
+use super::super::{
     execute_drivers, make_client_sessions, make_signers,
-    SessionStream,
+    make_signing_message, SessionStream,
 };
 use rand::{rngs::OsRng, Rng};
-
-use sha3::{Digest, Keccak256};
 
 type ClientTransport = (Transport, SessionState, SessionStream);
 
@@ -41,12 +39,7 @@ pub async fn run_threshold_sign(
         parties: n as u16,
         threshold: t as u16,
     };
-
-    let message = "this is the message that is sent out";
-    let prehashed_message: PrehashedMessage =
-        Keccak256::digest(message.as_bytes())
-            .as_slice()
-            .try_into()?;
+    let prehashed_message = make_signing_message()?;
 
     let (key_shares, signatures) = run_full_sequence(
         server,

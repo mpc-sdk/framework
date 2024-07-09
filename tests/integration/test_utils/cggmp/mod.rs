@@ -13,15 +13,11 @@ use rand::rngs::OsRng;
 use sha3::{Digest, Keccak256};
 use std::pin::Pin;
 
-mod aux_info;
-mod keygen;
-mod keygen_sign;
-mod threshold_sign;
+mod dkg_sign;
+mod drivers;
 
-pub use aux_info::run_aux_info;
-pub use keygen::run_keygen;
-pub use keygen_sign::run_keygen_sign;
-pub use threshold_sign::run_threshold_sign;
+pub use dkg_sign::*;
+pub use drivers::*;
 
 pub fn make_signing_message() -> Result<PrehashedMessage> {
     let message = "this is the message that is sent out";
