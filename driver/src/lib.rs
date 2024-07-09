@@ -6,6 +6,7 @@ use mpc_client::{
     Client, ClientOptions, Event, EventLoop, Transport,
 };
 use mpc_protocol::hex;
+use std::collections::BTreeSet;
 
 mod bridge;
 mod error;
@@ -119,7 +120,9 @@ pub(crate) trait ProtocolDriver {
 #[cfg(feature = "cggmp")]
 pub async fn keygen(
     options: SessionOptions,
-    participants: Option<Vec<Vec<u8>>>,
+    public_key: Vec<u8>,
+    participants: Vec<Vec<u8>>,
+    is_initiator: bool,
     session_id: SessionId,
     signer: SigningKey,
     verifiers: Vec<VerifyingKey>,
@@ -127,7 +130,9 @@ pub async fn keygen(
     match &options.protocol {
         Protocol::Cggmp => Ok(crate::cggmp::keygen(
             options,
+            public_key,
             participants,
+            is_initiator,
             session_id,
             signer,
             verifiers,
@@ -144,10 +149,13 @@ pub async fn sign(
     participants: Option<Vec<Vec<u8>>>,
     session_id: SessionId,
     signer: SigningKey,
-    verifiers: Vec<VerifyingKey>,
+    selected_participants: Vec<VerifyingKey>,
     key_share: PrivateKey,
     message: &PrehashedMessage,
 ) -> Result<Signature> {
+    let mut selected_parties = BTreeSet::new();
+    selected_parties.extend(selected_participants.iter());
+
     match (&options.protocol, &key_share) {
         (Protocol::Cggmp, PrivateKey::Cggmp(key_share)) => {
             Ok(cggmp::sign(
@@ -155,8 +163,8 @@ pub async fn sign(
                 participants,
                 session_id,
                 signer,
-                verifiers,
-                key_share,
+                selected_participants,
+                &key_share.to_key_share(&selected_parties),
                 message,
             )
             .await?

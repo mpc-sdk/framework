@@ -1,12 +1,11 @@
 use anyhow::Result;
 use mpc_driver::{
-    cggmp::threshold_keygen,
+    cggmp::keygen,
     synedrion::{SessionId, TestParams},
     Protocol, ServerOptions, SessionOptions,
 };
 use mpc_protocol::{generate_keypair, Parameters};
 use rand::{rngs::OsRng, Rng};
-// use std::collections::BTreeSet;
 
 use super::make_signers;
 
@@ -59,7 +58,7 @@ pub async fn run_keygen_sign(
 
         let verifying_keys = verifiers.clone();
         tasks.push(tokio::task::spawn(async move {
-            let key_share = threshold_keygen::<TestParams>(
+            let key_share = keygen::<TestParams>(
                 opts,
                 public_key,
                 participants,

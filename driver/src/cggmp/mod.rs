@@ -6,9 +6,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use synedrion::{
     ecdsa::{self, SigningKey, VerifyingKey},
-    KeyResharingInputs, KeyShare as SynedrionKeyShare, MessageBundle,
-    NewHolder, OldHolder, PrehashedMessage, RecoverableSignature,
-    SchemeParams, SessionId, ThresholdKeyShare,
+    KeyResharingInputs, MessageBundle, NewHolder, OldHolder,
+    PrehashedMessage, RecoverableSignature, SchemeParams, SessionId,
+    ThresholdKeyShare,
 };
 
 mod aux_gen;
@@ -42,7 +42,7 @@ pub struct KeyInitAck {
 }
 
 /// Key share.
-pub type KeyShare<P> = SynedrionKeyShare<P, VerifyingKey>;
+pub type KeyShare<P> = ThresholdKeyShare<P, VerifyingKey>;
 
 /// Result type for the CGGMP protocol.
 pub type Result<T> = std::result::Result<T, Error>;
@@ -55,6 +55,7 @@ use crate::{
     SessionOptions, SessionParticipant,
 };
 
+/*
 /// Run DKG for the CGGMP protocol.
 pub async fn keygen<P: SchemeParams + 'static>(
     options: SessionOptions,
@@ -62,7 +63,7 @@ pub async fn keygen<P: SchemeParams + 'static>(
     session_id: SessionId,
     signer: SigningKey,
     verifiers: Vec<VerifyingKey>,
-) -> crate::Result<SynedrionKeyShare<P, VerifyingKey>> {
+) -> crate::Result<ThresholdKeyShare<P, VerifyingKey>> {
     let is_initiator = participants.is_some();
 
     // Create the client
@@ -113,9 +114,10 @@ pub async fn keygen<P: SchemeParams + 'static>(
 
     Ok(key_share.0)
 }
+*/
 
 /// Run threshold DKG for the CGGMP protocol.
-pub async fn threshold_keygen<P: SchemeParams + 'static>(
+pub async fn keygen<P: SchemeParams + 'static>(
     options: SessionOptions,
     public_key: Vec<u8>,
     participants: Vec<Vec<u8>>,
@@ -411,7 +413,7 @@ pub async fn sign<P: SchemeParams + 'static>(
     session_id: SessionId,
     signer: SigningKey,
     verifiers: Vec<VerifyingKey>,
-    key_share: &SynedrionKeyShare<P, VerifyingKey>,
+    key_share: &synedrion::KeyShare<P, VerifyingKey>,
     prehashed_message: &PrehashedMessage,
 ) -> crate::Result<RecoverableSignature> {
     let is_initiator = participants.is_some();
@@ -442,20 +444,6 @@ pub async fn sign<P: SchemeParams + 'static>(
         wait_for_session(&mut stream, client_session).await?;
 
     let protocol_session_id = session.session_id;
-
-    /*
-    let selected_signers =
-        vec![signers[0].clone(), signers[2].clone()];
-    let selected_parties = vec![verifiers[0], verifiers[2]];
-    let selected_parties_set =
-        BTreeSet::from([verifiers[0], verifiers[2]]);
-    let selected_key_shares = vec![
-        new_t_key_shares[0].to_key_share(&selected_parties_set),
-        new_t_key_shares[2].to_key_share(&selected_parties_set),
-    ];
-    let selected_aux_infos =
-        vec![aux_infos[0].clone(), aux_infos[2].clone()];
-    */
 
     // Wait for aux gen protocol to complete
     let driver = AuxGenDriver::<P>::new(
