@@ -189,7 +189,7 @@ pub struct MeetingOptions {
 }
 
 /// Server options.
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ServerOptions {
     /// URL for the server.

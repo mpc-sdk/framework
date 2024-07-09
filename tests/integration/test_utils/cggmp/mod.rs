@@ -4,11 +4,13 @@ use futures::{Stream, StreamExt};
 use mpc_client::{NetworkTransport, Transport};
 use mpc_driver::{
     k256::ecdsa::{SigningKey, VerifyingKey},
+    synedrion::PrehashedMessage,
     Driver, SessionEventHandler, SessionHandler, SessionInitiator,
     SessionParticipant,
 };
 use mpc_protocol::SessionState;
 use rand::rngs::OsRng;
+use sha3::{Digest, Keccak256};
 use std::pin::Pin;
 
 mod aux_info;
@@ -20,6 +22,15 @@ pub use aux_info::run_aux_info;
 pub use keygen::run_keygen;
 pub use keygen_sign::run_keygen_sign;
 pub use threshold_sign::run_threshold_sign;
+
+pub fn make_signing_message() -> Result<PrehashedMessage> {
+    let message = "this is the message that is sent out";
+    let prehashed_message: PrehashedMessage =
+        Keccak256::digest(message.as_bytes())
+            .as_slice()
+            .try_into()?;
+    Ok(prehashed_message)
+}
 
 pub fn make_signers(
     num_parties: usize,

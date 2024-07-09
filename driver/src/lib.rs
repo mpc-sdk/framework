@@ -140,13 +140,13 @@ pub async fn sign(
     party: PartyOptions,
     session_id: SessionId,
     signer: SigningKey,
-    key_share: PrivateKey,
+    key_share: &PrivateKey,
     message: &PrehashedMessage,
 ) -> Result<Signature> {
     let mut selected_parties = BTreeSet::new();
     selected_parties.extend(party.verifiers().iter());
 
-    match (&options.protocol, &key_share) {
+    match (&options.protocol, key_share) {
         (Protocol::Cggmp, PrivateKey::Cggmp(key_share)) => {
             Ok(cggmp::sign(
                 options,
