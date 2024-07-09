@@ -1336,7 +1336,7 @@ dependencies = [
 
 [[package]]
 name = "mpc-bindings"
-version = "0.5.0"
+version = "0.7.0"
 dependencies = [
  "console_error_panic_hook",
  "futures",
@@ -1358,7 +1358,7 @@ dependencies = [
 
 [[package]]
 name = "mpc-client"
-version = "0.5.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "async-stream",
@@ -1383,7 +1383,7 @@ dependencies = [
 
 [[package]]
 name = "mpc-driver"
-version = "0.5.0"
+version = "0.7.0"
 dependencies = [
  "async-trait",
  "futures",
@@ -1406,7 +1406,7 @@ dependencies = [
 
 [[package]]
 name = "mpc-protocol"
-version = "0.6.1"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1426,7 +1426,7 @@ dependencies = [
 
 [[package]]
 name = "mpc-relay"
-version = "0.5.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "axum-server",
@@ -1455,7 +1455,7 @@ dependencies = [
 
 [[package]]
 name = "mpc-relay-server"
-version = "0.5.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "async-trait",

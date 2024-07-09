@@ -1,6 +1,6 @@
 [package]
 name = "mpc-relay"
-version = "0.5.0"
+version = "0.7.0"
 edition = "2021"
 description = "Noise protocol websocket relay for MPC/TSS applications"
 keywords = ["mpc", "tss", "relay", "crypto", "e2ee"]
@@ -22,8 +22,7 @@ exclude = [
 ]
 
 [dependencies]
-# mpc-protocol = { path = "protocol" }
-mpc-protocol = { version = "0.6.1", path = "protocol" }
+mpc-protocol = { version = "0.7", path = "protocol" }
 anyhow = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
@@ -41,7 +40,7 @@ serde_json = "1"
 rand = "0.8"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-mpc-relay-server = { version = "0.5", path = "server" }
+mpc-relay-server = { version = "0.7", path = "server" }
 clap = { version = "4", features = ["derive", "wrap_help", "env"] }
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "fs", "io-util" ] }
 axum-server = { version = "0.6", features = ["tls-rustls"] }

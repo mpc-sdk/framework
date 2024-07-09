@@ -27,4 +27,3 @@ flate2 = { version = "1.0.30", optional = true }
 
 [dev-dependencies]
 anyhow = "1"
-#tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros" ] }
