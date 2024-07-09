@@ -1,15 +1,19 @@
-use futures::{select, FutureExt, StreamExt};
+use std::num::NonZeroU16;
+
+use futures::StreamExt;
 use mpc_client::{Event, EventStream, NetworkTransport, Transport};
 use mpc_protocol::{SessionId, SessionState};
 
-use crate::{Driver, Error, ProtocolDriver, Round, RoundBuffer};
+use crate::{
+    public_key_to_str, Driver, Error, ProtocolDriver, Round,
+};
 
 /// Connects a network transport with a protocol driver.
 pub(crate) struct Bridge<D: ProtocolDriver> {
     pub(crate) transport: Transport,
-    pub(crate) buffer: RoundBuffer<D::Incoming>,
     pub(crate) driver: Option<D>,
     pub(crate) session: SessionState,
+    pub(crate) party_number: NonZeroU16,
 }
 
 impl<D: ProtocolDriver> Bridge<D> {
@@ -34,35 +38,52 @@ impl<D: ProtocolDriver> Bridge<D> {
                 return Err(Box::new(Error::SessionIdRequired).into());
             }
 
-            let message: D::Outgoing = message.deserialize()?;
-            let round_number = message.round_number();
-            let incoming: D::Incoming = message.into();
-            self.buffer.add_message(round_number, incoming);
+            let message: D::Message = message.deserialize()?;
 
-            if self.buffer.is_ready(round_number) {
-                let messages = self.buffer.take(round_number);
-                for message in messages {
-                    self.driver
-                        .as_mut()
-                        .unwrap()
-                        .handle_incoming(message)?;
-                }
+            let driver = self.driver.as_mut().unwrap();
+            let round_info = driver.round_info()?;
 
-                // For single round drivers we mustn't call proceed again
-                if self.buffer.len() == 1 {
-                    let result =
-                        self.driver.take().unwrap().finish()?;
-                    return Ok(Some(result));
-                }
+            /*
+            let current_round: NonZeroU16 =
+                (round_info.round_number as u16).try_into().unwrap();
 
-                let messages =
-                    self.driver.as_mut().unwrap().proceed()?;
-                self.dispatch_round_messages(messages).await?;
+            if message.round_number() != current_round {
+                panic!(
+                    "out of order message message_round = {}, current_round = {}",
+                    message.round_number(),
+                    current_round,
+                );
+            }
+            */
 
-                if round_number.get() as usize == self.buffer.len() {
-                    let result =
-                        self.driver.take().unwrap().finish()?;
-                    return Ok(Some(result));
+            /*
+            println!(
+                "Message round: {}, session round: {} {} {}",
+                message.round_number(),
+                round_info.round_number,
+                round_info.is_echo,
+                round_info.can_finalize,
+            );
+            */
+
+            if !round_info.can_finalize {
+                driver.handle_incoming(message)?;
+                let round_info = driver.round_info()?;
+                if round_info.can_finalize {
+                    if let Some(result) =
+                        driver.try_finalize_round()?
+                    {
+                        return Ok(Some(result));
+                    }
+
+                    let messages = driver.proceed()?;
+
+                    println!(
+                        "*** DISPATCH MESSAGES ({}) ***",
+                        messages.len()
+                    );
+
+                    self.dispatch_round_messages(messages).await?;
                 }
             }
         }
@@ -72,43 +93,38 @@ impl<D: ProtocolDriver> Bridge<D> {
 
     /// Start running the protocol.
     pub async fn execute(&mut self) -> Result<(), D::Error> {
-        let messages = self.driver.as_mut().unwrap().proceed()?;
+        let driver = self.driver.as_mut().unwrap();
+        let messages = driver.proceed()?;
         self.dispatch_round_messages(messages).await?;
         Ok(())
     }
 
+    /// Send messages to peers.
     async fn dispatch_round_messages(
         &mut self,
-        mut messages: Vec<D::Outgoing>,
+        messages: Vec<D::Message>,
     ) -> Result<(), D::Error> {
-        let is_broadcast = messages.len() == 1
-            && messages.get(0).as_ref().unwrap().is_broadcast();
+        for message in messages {
+            let party_number = message.receiver();
 
-        if is_broadcast {
-            let message = messages.remove(0);
-            let recipients =
-                self.session.recipients(self.transport.public_key());
+            let owner_key =
+                self.session.peer_key(self.party_number).unwrap();
+            let peer_key =
+                self.session.peer_key(*party_number).unwrap();
+
+            tracing::info!(
+                to = public_key_to_str(peer_key),
+                from = public_key_to_str(owner_key),
+                "dispatch_message"
+            );
 
             self.transport
-                .broadcast_json(
-                    &self.session.session_id,
-                    recipients.as_slice(),
+                .send_json(
+                    peer_key,
                     &message,
+                    Some(self.session.session_id),
                 )
                 .await?;
-        } else {
-            for message in messages {
-                let party_number = message.receiver().unwrap();
-                let peer_key =
-                    self.session.peer_key(*party_number).unwrap();
-                self.transport
-                    .send_json(
-                        peer_key,
-                        &message,
-                        Some(self.session.session_id),
-                    )
-                    .await?;
-            }
         }
         Ok(())
     }
@@ -126,18 +142,11 @@ where
 
     #[allow(unused_assignments)]
     let mut output: Option<D::Output> = None;
-    loop {
-        select! {
-            event = stream.next().fuse() => {
-                if let Some(event) = event {
-                    let event = event?;
-                    if let Some(result) =
-                        driver.handle_event(event).await? {
-                        output = Some(result);
-                        break;
-                    }
-                }
-            },
+    while let Some(event) = stream.next().await {
+        let event = event?;
+        if let Some(result) = driver.handle_event(event).await? {
+            output = Some(result);
+            break;
         }
     }
     Ok((driver.into(), output.take().unwrap()))
@@ -151,16 +160,10 @@ where
 pub async fn wait_for_close(
     stream: &mut EventStream,
 ) -> crate::Result<()> {
-    loop {
-        select! {
-            event = stream.next().fuse() => {
-                if let Some(event) = event {
-                    let event = event?;
-                    if let Event::Close = event {
-                        break;
-                    }
-                }
-            },
+    while let Some(event) = stream.next().await {
+        let event = event?;
+        if let Event::Close = event {
+            break;
         }
     }
     Ok(())
@@ -171,18 +174,12 @@ pub async fn wait_for_session_finish(
     stream: &mut EventStream,
     session_id: SessionId,
 ) -> crate::Result<()> {
-    loop {
-        select! {
-            event = stream.next().fuse() => {
-                if let Some(event) = event {
-                    let event = event?;
-                    if let Event::SessionFinished(id)= event {
-                        if session_id == id {
-                            break;
-                        }
-                    }
-                }
-            },
+    while let Some(event) = stream.next().await {
+        let event = event?;
+        if let Event::SessionFinished(id) = event {
+            if session_id == id {
+                break;
+            }
         }
     }
     Ok(())

@@ -1,5 +1,5 @@
 use anyhow::Result;
-use futures::{select, FutureExt, StreamExt};
+use futures::StreamExt;
 
 use mpc_client::{NetworkTransport, Transport};
 use mpc_driver::{
@@ -53,8 +53,8 @@ pub async fn run(
             break;
         }
 
-        select! {
-            event = s_i.next().fuse() => {
+        tokio::select! {
+            event = s_i.next() => {
                 match event {
                     Some(event) => {
                         let event = event?;
@@ -67,7 +67,7 @@ pub async fn run(
                     _ => {}
                 }
             },
-            event = s_p.next().fuse() => {
+            event = s_p.next() => {
                 match event {
                     Some(event) => {
                         let event = event?;

@@ -3,8 +3,10 @@
 
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 mod bindings {
+    use mpc_driver::synedrion::{ecdsa::SigningKey, SessionId};
     use mpc_driver::{
-        meeting, MeetingOptions, PrivateKey, SessionOptions,
+        meeting, MeetingOptions, Participant, PartyOptions,
+        PrivateKey, SessionOptions,
     };
     use mpc_protocol::{hex, MeetingId, UserId, PATTERN};
     use serde_json::Value;
@@ -38,42 +40,62 @@ mod bindings {
     }
 
     /// Distributed key generation.
-    #[wasm_bindgen]
-    pub fn keygen(
+    #[wasm_bindgen(js_name = "keygen")]
+    pub fn keygen_cggmp(
         options: JsValue,
-        participants: JsValue,
+        party: JsValue,
+        session_id_seed: Vec<u8>,
+        signer: Vec<u8>,
     ) -> Result<JsValue, JsError> {
         let options: SessionOptions =
             serde_wasm_bindgen::from_value(options)?;
-        let participants = parse_participants(participants)?;
+        let party: PartyOptions =
+            serde_wasm_bindgen::from_value(party)?;
+        let signer: SigningKey =
+            signer.as_slice().try_into().map_err(JsError::from)?;
+        let participant =
+            Participant::new(signer, party).map_err(JsError::from)?;
         let fut = async move {
-            let key_share =
-                mpc_driver::keygen(options, participants).await?;
+            let key_share = mpc_driver::keygen(
+                options,
+                participant,
+                SessionId::from_seed(&session_id_seed),
+            )
+            .await?;
             Ok(serde_wasm_bindgen::to_value(&key_share)?)
         };
         Ok(future_to_promise(fut).into())
     }
 
     /// Sign a message.
-    #[wasm_bindgen]
-    pub fn sign(
+    #[wasm_bindgen(js_name = "sign")]
+    pub fn sign_cggmp(
         options: JsValue,
-        participants: JsValue,
-        signing_key: JsValue,
+        party: JsValue,
+        session_id_seed: Vec<u8>,
+        signer: Vec<u8>,
+        private_key: JsValue,
         message: JsValue,
     ) -> Result<JsValue, JsError> {
         let options: SessionOptions =
             serde_wasm_bindgen::from_value(options)?;
-        let participants = parse_participants(participants)?;
-        let signing_key: PrivateKey =
-            serde_wasm_bindgen::from_value(signing_key)?;
+        let party: PartyOptions =
+            serde_wasm_bindgen::from_value(party)?;
+        let signer: SigningKey =
+            signer.as_slice().try_into().map_err(JsError::from)?;
+        let private_key: PrivateKey =
+            serde_wasm_bindgen::from_value(private_key)?;
+        let participant =
+            Participant::new(signer, party).map_err(JsError::from)?;
+
         let message = parse_message(message)?;
         let fut = async move {
             let signature = mpc_driver::sign(
                 options,
-                participants,
-                signing_key,
-                message,
+                participant,
+                SessionId::from_seed(&session_id_seed),
+                &private_key,
+                &message,
             )
             .await?;
             Ok(serde_wasm_bindgen::to_value(&signature)?)
@@ -98,26 +120,6 @@ mod bindings {
         let public_key = hex::encode(keypair.public_key());
         let pem = mpc_protocol::encode_keypair(&keypair);
         Ok(serde_wasm_bindgen::to_value(&(pem, public_key))?)
-    }
-
-    /// Participants are hex-encoded public keys.
-    fn parse_participants(
-        participants: JsValue,
-    ) -> Result<Option<Vec<Vec<u8>>>, JsError> {
-        let participants: Option<Vec<String>> =
-            serde_wasm_bindgen::from_value(participants)?;
-        if let Some(participants) = participants {
-            let mut parties = Vec::new();
-            for participant in participants {
-                parties.push(
-                    hex::decode(participant)
-                        .map_err(JsError::from)?,
-                );
-            }
-            Ok(Some(parties))
-        } else {
-            Ok(None)
-        }
     }
 
     fn parse_message(message: JsValue) -> Result<[u8; 32], JsError> {

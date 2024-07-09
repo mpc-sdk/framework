@@ -2,7 +2,11 @@
 #![deny(missing_docs)]
 #![cfg_attr(all(doc, CHANNEL_NIGHTLY), feature(doc_auto_cfg))]
 use async_trait::async_trait;
-use mpc_client::{Client, ClientOptions, Event, EventLoop};
+use mpc_client::{
+    Client, ClientOptions, Event, EventLoop, Transport,
+};
+use mpc_protocol::hex;
+use std::collections::BTreeSet;
 
 mod bridge;
 mod error;
@@ -16,26 +20,37 @@ pub use bridge::{
     wait_for_close, wait_for_driver, wait_for_session_finish,
 };
 pub use error::Error;
-pub(crate) use round::{Round, RoundBuffer, RoundMsg};
+pub(crate) use round::{Round, RoundMsg};
 pub use session::{
     wait_for_session, SessionEventHandler, SessionHandler,
     SessionInitiator, SessionParticipant,
 };
-pub use types::*;
+pub use types::{
+    KeyShare, MeetingOptions, Participant, PartyOptions, PrivateKey,
+    Protocol, ServerOptions, SessionOptions, Signature,
+};
 
 /// Result type for the driver library.
 pub type Result<T> = std::result::Result<T, Error>;
 
-#[cfg(feature = "gg20")]
-pub mod gg20;
+#[cfg(feature = "cggmp")]
+pub mod cggmp;
+#[cfg(feature = "cggmp")]
+pub use synedrion::{self, k256};
 
-#[cfg(feature = "gg20")]
-#[doc(hidden)]
-pub use cggmp_threshold_ecdsa::mpc_ecdsa::gg_2020;
+#[cfg(feature = "cggmp")]
+use synedrion::{PrehashedMessage, SessionId};
 
-#[cfg(feature = "gg20")]
-#[doc(hidden)]
-pub use curv;
+/// Information about the current found which
+/// can be retrieved from a driver.
+pub struct RoundInfo {
+    /// Whether the round is ready to be finalized.
+    pub can_finalize: bool,
+    /// Whether the round is an echo round.
+    pub is_echo: bool,
+    /// Round number.
+    pub round_number: u8,
+}
 
 /// Drives a protocol to completion bridging between
 /// the network transport and local computation.
@@ -57,6 +72,9 @@ pub trait Driver {
     async fn execute(
         &mut self,
     ) -> std::result::Result<(), Self::Error>;
+
+    /// Consume this driver into the underlying transport.
+    fn into_transport(self) -> Transport;
 }
 
 /// Trait for implementations that drive
@@ -66,76 +84,84 @@ pub(crate) trait ProtocolDriver {
     type Error: std::fmt::Debug
         + From<mpc_client::Error>
         + From<Box<crate::Error>>;
-    /// Incoming message type.
-    type Incoming: From<Self::Outgoing>;
+
     /// Outgoing message type.
-    type Outgoing: std::fmt::Debug + round::Round;
+    type Message: std::fmt::Debug + round::Round;
+
     /// Output when the protocol is completed.
     type Output;
 
     /// Handle an incoming message.
     fn handle_incoming(
         &mut self,
-        message: Self::Incoming,
+        message: Self::Message,
     ) -> std::result::Result<(), Self::Error>;
-
-    /*
-    /// Determine if the protocol wants to proceed.
-    fn wants_to_proceed(&self) -> bool;
-    */
 
     /// Proceed to the next round.
     fn proceed(
         &mut self,
-    ) -> std::result::Result<Vec<Self::Outgoing>, Self::Error>;
+    ) -> std::result::Result<Vec<Self::Message>, Self::Error>;
 
-    /// Complete the protocol and get the output.
-    fn finish(self)
-        -> std::result::Result<Self::Output, Self::Error>;
+    /// Information about the current round for the driver.
+    fn round_info(
+        &self,
+    ) -> std::result::Result<RoundInfo, Self::Error>;
+
+    /// Try to finalize a round if the protocol is completed
+    /// the result is returned.
+    ///
+    /// Must check with `can_finalize()` first.
+    fn try_finalize_round(
+        &mut self,
+    ) -> std::result::Result<Option<Self::Output>, Self::Error>;
 }
 
 /// Run distributed key generation.
-#[cfg(feature = "gg20")]
+#[cfg(feature = "cggmp")]
 pub async fn keygen(
     options: SessionOptions,
-    participants: Option<Vec<Vec<u8>>>,
+    participant: Participant,
+    session_id: SessionId,
 ) -> Result<KeyShare> {
     match &options.protocol {
-        Protocol::GG20 => {
-            Ok(crate::gg20::keygen(options, participants).await?)
+        Protocol::Cggmp => {
+            Ok(crate::cggmp::keygen(options, participant, session_id)
+                .await?
+                .into())
         }
-        _ => todo!("drive CGGMP protocol"),
     }
 }
 
 /// Sign a message.
-#[cfg(feature = "gg20")]
+#[cfg(feature = "cggmp")]
 pub async fn sign(
     options: SessionOptions,
-    participants: Option<Vec<Vec<u8>>>,
-    signing_key: PrivateKey,
-    message: [u8; 32],
+    participant: Participant,
+    session_id: SessionId,
+    key_share: &PrivateKey,
+    message: &PrehashedMessage,
 ) -> Result<Signature> {
-    match &options.protocol {
-        Protocol::GG20 => {
-            assert!(matches!(signing_key, PrivateKey::GG20(_)));
-            Ok(gg20::sign(
+    let mut selected_parties = BTreeSet::new();
+    selected_parties.extend(participant.party().verifiers().iter());
+
+    match (&options.protocol, key_share) {
+        (Protocol::Cggmp, PrivateKey::Cggmp(key_share)) => {
+            Ok(cggmp::sign(
                 options,
-                participants,
-                signing_key,
+                participant,
+                session_id,
+                &key_share.to_key_share(&selected_parties),
                 message,
             )
             .await?
             .into())
         }
-        _ => todo!("drive CGGMP protocol"),
     }
 }
 
 #[doc(hidden)]
 /// Compute the address of an uncompressed public key (65 bytes).
 pub fn address(public_key: &[u8]) -> String {
-    use mpc_protocol::hex;
     use sha3::{Digest, Keccak256};
     // Remove the leading 0x04
     let bytes = &public_key[1..];
@@ -156,4 +182,16 @@ pub(crate) async fn new_client(
     };
     let url = options.url(&server_url);
     Ok(Client::new(&url, options).await?)
+}
+
+#[cfg(feature = "cggmp")]
+pub(crate) fn key_to_str(
+    key: &crate::k256::ecdsa::VerifyingKey,
+) -> String {
+    hex::encode(&key.to_encoded_point(true).as_bytes()[1..5])
+}
+
+#[cfg(feature = "cggmp")]
+pub(crate) fn public_key_to_str(public_key: &[u8]) -> String {
+    hex::encode(&public_key[0..6])
 }

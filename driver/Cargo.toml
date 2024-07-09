@@ -1,6 +1,6 @@
 [package]
 name = "mpc-driver"
-version = "0.5.0"
+version = "0.7.0"
 edition = "2021"
 description = "Driver for round-based MPC protocols"
 keywords = ["mpc", "tss", "relay", "crypto", "e2ee"]
@@ -8,12 +8,12 @@ license = "GPL-3.0"
 repository = "https://github.com/mpc-sdk/framework"
 
 [features]
-gg20 = ["dep:curv-kzen", "dep:paillier", "dep:cggmp-threshold-ecdsa"]
+default = ["cggmp"]
 cggmp = []
 
 [dependencies]
-mpc-protocol = { version = "0.6", path = "../protocol" }
-mpc-client = { version = "0.5", path = "../client" }
+mpc-protocol = { version = "0.7", path = "../protocol" }
+mpc-client = { version = "0.7", path = "../client" }
 thiserror = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -22,49 +22,17 @@ tracing = "0.1"
 tokio = { version = "1", features = ["sync"] }
 async-trait = "0.1"
 futures = "0.3"
-
-[dependencies.round-based]
-git = "https://github.com/webb-tools/round-based-protocol"
-
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies.curv-kzen]
-optional = true
-version = "0.10"
-
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies.paillier]
-optional = true
-version = "0.4.3"
-package = "kzen-paillier"
-
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies.cggmp-threshold-ecdsa]
-optional = true
-git = "https://github.com/webb-tools/cggmp-threshold-ecdsa"
-version = "0.1"
+# synedrion = {version = "0.1", git = "https://github.com/entropyxyz/synedrion" , rev = "7e0a62a1ba2d2d9ae06a0396f357e8cfc674860f"}
+synedrion = {version = "0.1", git = "https://github.com/mpc-sdk/synedrion" , branch = "threshold-serde"}
+k256 = { version = "0.13.2", default-features = false, features = ["pem", "serde", "std"] }
+rand = "0.8"
 
 # WASM
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-mpc-ecdsa-getrandom-hack = {version = "*"}
-getrandom = {version = "0.1.16", features = ["wasm-bindgen"]}
-rand = { version="0.6.5", features = ["wasm-bindgen"] }
+getrandom = { version = "0.2", features = ["js"] }
+rand_core = { version = "0.6.4", features = ["getrandom"] }
 wasm-bindgen = { version = "0.2" }
-
-[target.'cfg(target_arch = "wasm32")'.dependencies.curv-kzen]
-optional = true
-version = "0.10"
-features = ["num-bigint"]
-default-features = false
-
-[target.'cfg(target_arch = "wasm32")'.dependencies.paillier]
-optional = true
-version = "0.4.3"
-package = "kzen-paillier"
-default-features = false
-
-[target.'cfg(target_arch = "wasm32")'.dependencies.cggmp-threshold-ecdsa]
-optional = true
-git = "https://github.com/webb-tools/cggmp-threshold-ecdsa"
-default-features = false
-version = "0.1"
 
 [build-dependencies]
 rustc_version = "0.4.0"

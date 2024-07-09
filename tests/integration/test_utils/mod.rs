@@ -1,4 +1,4 @@
-pub(crate) mod gg20;
+pub(crate) mod cggmp;
 
 pub(crate) mod meeting_point;
 pub(crate) mod peer_channel;

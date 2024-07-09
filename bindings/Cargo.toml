@@ -1,6 +1,6 @@
 [package]
 name = "mpc-bindings"
-version = "0.5.0"
+version = "0.7.0"
 edition = "2021"
 description = "Webassembly bindings to drive multi-party computation protocols"
 
@@ -11,16 +11,15 @@ tracing = ["dep:tracing", "dep:tracing-subscriber", "dep:tracing-subscriber-wasm
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-mpc-driver = { path = "../driver", features = ["gg20", "cggmp"] }
+mpc-driver = { path = "../driver", features = ["cggmp"] }
 mpc-protocol = { path = "../protocol" }
 mpc-client = { path = "../client" }
 
-mpc-ecdsa-getrandom-hack = "*"
-getrandom = {version = "0.1.16", features = ["wasm-bindgen"]}
+getrandom = {version = "0.2", features = ["js"]}
 wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
-serde-wasm-bindgen = "0.5"
+serde-wasm-bindgen = "0.6"
 wasm-bindgen-futures = "0.4"
-rand = { version="0.6.5", features = ["wasm-bindgen"] }
+rand = { version="0.8" }
 console_error_panic_hook = "0.1"
 serde = { version = "1", features = ["derive"] }
 log = "0.4"

@@ -1,6 +1,6 @@
 use crate::Result;
 use async_trait::async_trait;
-use futures::{select, FutureExt, StreamExt};
+use futures::StreamExt;
 use mpc_client::{Event, EventStream, NetworkTransport, Transport};
 use mpc_protocol::SessionState;
 use tokio::sync::Mutex;
@@ -13,6 +13,9 @@ pub trait SessionEventHandler {
         &mut self,
         event: Event,
     ) -> Result<Option<SessionState>>;
+
+    /// Consume this session handler into the underlying transport.
+    fn into_transport(self) -> Transport;
 }
 
 /// Variants that can create or join a session.
@@ -32,6 +35,13 @@ impl SessionEventHandler for SessionHandler {
         match self {
             Self::Initiator(s) => s.handle_event(event).await,
             Self::Participant(s) => s.handle_event(event).await,
+        }
+    }
+
+    fn into_transport(self) -> Transport {
+        match self {
+            Self::Initiator(s) => s.into_transport(),
+            Self::Participant(s) => s.into_transport(),
         }
     }
 }
@@ -84,6 +94,10 @@ impl SessionInitiator {
 
 #[async_trait]
 impl SessionEventHandler for SessionInitiator {
+    fn into_transport(self) -> Transport {
+        self.transport
+    }
+
     async fn handle_event(
         &mut self,
         event: Event,
@@ -158,6 +172,10 @@ impl SessionParticipant {
 
 #[async_trait]
 impl SessionEventHandler for SessionParticipant {
+    fn into_transport(self) -> Transport {
+        self.transport
+    }
+
     /// Handle joining a session for a participant.
     async fn handle_event(
         &mut self,
@@ -223,18 +241,13 @@ where
 {
     #[allow(unused_assignments)]
     let mut session: Option<SessionState> = None;
-    loop {
-        select! {
-            event = stream.next().fuse() => {
-                if let Some(event) = event {
-                    let event = event?;
-                    if let Some(active_session) =
-                        client_session.handle_event(event).await? {
-                        session = Some(active_session);
-                        break;
-                    }
-                }
-            },
+    while let Some(event) = stream.next().await {
+        let event = event?;
+        if let Some(active_session) =
+            client_session.handle_event(event).await?
+        {
+            session = Some(active_session);
+            break;
         }
     }
     Ok((client_session.into(), session.take().unwrap()))
