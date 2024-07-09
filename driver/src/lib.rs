@@ -137,24 +137,22 @@ pub async fn keygen(
 #[cfg(feature = "cggmp")]
 pub async fn sign(
     options: SessionOptions,
-    participants: Option<Vec<Vec<u8>>>,
+    party: PartyOptions,
     session_id: SessionId,
     signer: SigningKey,
-    selected_participants: Vec<VerifyingKey>,
     key_share: PrivateKey,
     message: &PrehashedMessage,
 ) -> Result<Signature> {
     let mut selected_parties = BTreeSet::new();
-    selected_parties.extend(selected_participants.iter());
+    selected_parties.extend(party.verifiers().iter());
 
     match (&options.protocol, &key_share) {
         (Protocol::Cggmp, PrivateKey::Cggmp(key_share)) => {
             Ok(cggmp::sign(
                 options,
-                participants,
+                party,
                 session_id,
                 signer,
-                selected_participants,
                 &key_share.to_key_share(&selected_parties),
                 message,
             )

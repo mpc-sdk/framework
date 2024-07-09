@@ -48,7 +48,7 @@ pub async fn run_keygen_sign(
 
     for (index, (opts, signer)) in session_options
         .into_iter()
-        .zip(signers.into_iter())
+        .zip(signers.clone().into_iter())
         .enumerate()
     {
         let participants =
@@ -81,6 +81,13 @@ pub async fn run_keygen_sign(
     for result in results {
         key_shares.push(result?);
     }
+
+    let selected_signers =
+        vec![signers[0].clone(), signers[2].clone()];
+    let selected_key_shares = vec![
+        key_shares.get(0).unwrap().clone(),
+        key_shares.get(2).unwrap().clone(),
+    ];
 
     /*
     let selected_signers =

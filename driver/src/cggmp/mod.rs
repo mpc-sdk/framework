@@ -400,15 +400,13 @@ async fn make_dkg_reshare<P: SchemeParams + 'static>(
 /// Sign a message using the CGGMP protocol.
 pub async fn sign<P: SchemeParams + 'static>(
     options: SessionOptions,
-    participants: Option<Vec<Vec<u8>>>,
+    // participants: Option<Vec<Vec<u8>>>,
+    party: PartyOptions,
     session_id: SessionId,
     signer: SigningKey,
-    verifiers: Vec<VerifyingKey>,
     key_share: &synedrion::KeyShare<P, VerifyingKey>,
     prehashed_message: &PrehashedMessage,
 ) -> crate::Result<RecoverableSignature> {
-    let is_initiator = participants.is_some();
-
     // Create the client
     let (client, event_loop) = new_client(options).await?;
 
@@ -421,16 +419,19 @@ pub async fn sign<P: SchemeParams + 'static>(
     let mut stream = event_loop.run();
 
     // Wait for the session to become active
-    let client_session = if let Some(participants) = participants {
+    let client_session = if party.is_initiator() {
+        let mut other_participants = party.participants().to_vec();
+        other_participants.retain(|p| p != party.public_key());
         SessionHandler::Initiator(SessionInitiator::new(
             transport,
-            participants,
+            other_participants,
         ))
     } else {
         SessionHandler::Participant(SessionParticipant::new(
             transport,
         ))
     };
+
     let (transport, session) =
         wait_for_session(&mut stream, client_session).await?;
 
@@ -442,7 +443,7 @@ pub async fn sign<P: SchemeParams + 'static>(
         session.clone(),
         session_id,
         signer.clone(),
-        verifiers.clone(),
+        party.verifiers().to_vec(),
     )?;
     let (transport, aux_info) =
         wait_for_driver(&mut stream, driver).await?;
@@ -454,7 +455,7 @@ pub async fn sign<P: SchemeParams + 'static>(
         session,
         session_id,
         signer,
-        verifiers,
+        party.verifiers().to_vec(),
         key_share,
         &aux_info,
         prehashed_message,
@@ -463,7 +464,7 @@ pub async fn sign<P: SchemeParams + 'static>(
         wait_for_driver(&mut stream, driver).await?;
 
     // Close the session and socket
-    if is_initiator {
+    if party.is_initiator() {
         transport.close_session(protocol_session_id).await?;
         wait_for_session_finish(&mut stream, protocol_session_id)
             .await?;
