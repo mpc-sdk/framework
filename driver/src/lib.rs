@@ -25,7 +25,10 @@ pub use session::{
     wait_for_session, SessionEventHandler, SessionHandler,
     SessionInitiator, SessionParticipant,
 };
-pub use types::*;
+pub use types::{
+    KeyShare, MeetingOptions, PartyOptions, PrivateKey, Protocol,
+    ServerOptions, SessionOptions, Signature,
+};
 
 /// Result type for the driver library.
 pub type Result<T> = std::result::Result<T, Error>;

@@ -58,13 +58,12 @@ try {
   const keyShareElement = document.getElementById("key-share");
   keyShareElement.innerHTML = `<p class="address">Address: ${keyShare.address}</p>`;
 
-  /*
   // First and third parties perform signing
   if (partyIndex == 0 || partyIndex == 2) {
     const result = await module.sign(
       options,
       signParty,
-      fromHexString(signsessionIdSeed),
+      fromHexString(signSessionIdSeed),
       fromHexString(signer),
       keyShare.privateKey,
       message,
@@ -74,12 +73,10 @@ try {
 
     const signatureElement = document.getElementById("signature");
     signatureElement.innerHTML = `
-      <p class="signature-address">Address: ${result.cggmp.address}</p>
-      <p>${JSON.stringify(result.cggmp.signature)}</p>`;
+      <p class="signature">Signature: ${result.cggmp}</p>`;
 
     console.log("signing completed");
   }
-  */
 } catch (e) {
   console.error(e);
 }

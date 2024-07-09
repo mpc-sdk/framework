@@ -3,10 +3,7 @@
 
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 mod bindings {
-    use mpc_driver::synedrion::{
-        ecdsa::{SigningKey, VerifyingKey},
-        SessionId,
-    };
+    use mpc_driver::synedrion::{ecdsa::SigningKey, SessionId};
     use mpc_driver::{
         meeting, MeetingOptions, PartyOptions, PrivateKey,
         SessionOptions,
@@ -49,7 +46,6 @@ mod bindings {
         party: JsValue,
         session_id_seed: Vec<u8>,
         signer: Vec<u8>,
-        verifiers: JsValue,
     ) -> Result<JsValue, JsError> {
         let options: SessionOptions =
             serde_wasm_bindgen::from_value(options)?;
