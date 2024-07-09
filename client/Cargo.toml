@@ -1,6 +1,6 @@
 [package]
 name = "mpc-client"
-version = "0.5.0"
+version = "0.7.0"
 edition = "2021"
 description = "Noise protocol websocket relay client for MPC/TSS applications"
 keywords = ["mpc", "tss", "relay", "crypto", "e2ee"]
@@ -8,7 +8,7 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/mpc-sdk/framework"
 
 [dependencies]
-mpc-protocol = { path = "../protocol", features = ["zlib"] }
+mpc-protocol = { version = "0.7", path = "../protocol", features = ["zlib"] }
 #mpc-protocol = "0.4"
 thiserror = "1"
 serde = { version = "1", features = ["derive"] }

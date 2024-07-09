@@ -950,7 +950,7 @@ dependencies = [
 
 [[package]]
 name = "mpc-client"
-version = "0.5.0"
+version = "0.7.0"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -995,7 +995,7 @@ dependencies = [
 
 [[package]]
 name = "mpc-driver"
-version = "0.5.0"
+version = "0.7.0"
 dependencies = [
  "async-trait",
  "futures",
@@ -1018,7 +1018,7 @@ dependencies = [
 
 [[package]]
 name = "mpc-protocol"
-version = "0.6.1"
+version = "0.7.0"
 dependencies = [
  "async-trait",
  "binary-stream",
