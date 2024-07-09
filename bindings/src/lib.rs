@@ -5,8 +5,8 @@
 mod bindings {
     use mpc_driver::synedrion::{ecdsa::SigningKey, SessionId};
     use mpc_driver::{
-        meeting, MeetingOptions, PartyOptions, PrivateKey,
-        SessionOptions,
+        meeting, MeetingOptions, Participant, PartyOptions,
+        PrivateKey, SessionOptions,
     };
     use mpc_protocol::{hex, MeetingId, UserId, PATTERN};
     use serde_json::Value;
@@ -53,12 +53,13 @@ mod bindings {
             serde_wasm_bindgen::from_value(party)?;
         let signer: SigningKey =
             signer.as_slice().try_into().map_err(JsError::from)?;
+        let participant =
+            Participant::new(signer, party).map_err(JsError::from)?;
         let fut = async move {
             let key_share = mpc_driver::keygen(
                 options,
-                party,
+                participant,
                 SessionId::from_seed(&session_id_seed),
-                signer,
             )
             .await?;
             Ok(serde_wasm_bindgen::to_value(&key_share)?)
@@ -84,14 +85,15 @@ mod bindings {
             signer.as_slice().try_into().map_err(JsError::from)?;
         let private_key: PrivateKey =
             serde_wasm_bindgen::from_value(private_key)?;
+        let participant =
+            Participant::new(signer, party).map_err(JsError::from)?;
 
         let message = parse_message(message)?;
         let fut = async move {
             let signature = mpc_driver::sign(
                 options,
-                party,
+                participant,
                 SessionId::from_seed(&session_id_seed),
-                signer,
                 &private_key,
                 &message,
             )

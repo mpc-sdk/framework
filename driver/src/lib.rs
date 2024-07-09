@@ -26,8 +26,8 @@ pub use session::{
     SessionInitiator, SessionParticipant,
 };
 pub use types::{
-    KeyShare, MeetingOptions, PartyOptions, PrivateKey, Protocol,
-    ServerOptions, SessionOptions, Signature,
+    KeyShare, MeetingOptions, Participant, PartyOptions, PrivateKey,
+    Protocol, ServerOptions, SessionOptions, Signature,
 };
 
 /// Result type for the driver library.
@@ -39,9 +39,7 @@ pub mod cggmp;
 pub use synedrion::{self, k256};
 
 #[cfg(feature = "cggmp")]
-use synedrion::{
-    k256::ecdsa::SigningKey, PrehashedMessage, SessionId,
-};
+use synedrion::{PrehashedMessage, SessionId};
 
 /// Information about the current found which
 /// can be retrieved from a driver.
@@ -122,16 +120,15 @@ pub(crate) trait ProtocolDriver {
 #[cfg(feature = "cggmp")]
 pub async fn keygen(
     options: SessionOptions,
-    party: PartyOptions,
+    participant: Participant,
     session_id: SessionId,
-    signer: SigningKey,
 ) -> Result<KeyShare> {
     match &options.protocol {
-        Protocol::Cggmp => Ok(crate::cggmp::keygen(
-            options, party, session_id, signer,
-        )
-        .await?
-        .into()),
+        Protocol::Cggmp => {
+            Ok(crate::cggmp::keygen(options, participant, session_id)
+                .await?
+                .into())
+        }
     }
 }
 
@@ -139,22 +136,20 @@ pub async fn keygen(
 #[cfg(feature = "cggmp")]
 pub async fn sign(
     options: SessionOptions,
-    party: PartyOptions,
+    participant: Participant,
     session_id: SessionId,
-    signer: SigningKey,
     key_share: &PrivateKey,
     message: &PrehashedMessage,
 ) -> Result<Signature> {
     let mut selected_parties = BTreeSet::new();
-    selected_parties.extend(party.verifiers().iter());
+    selected_parties.extend(participant.party().verifiers().iter());
 
     match (&options.protocol, key_share) {
         (Protocol::Cggmp, PrivateKey::Cggmp(key_share)) => {
             Ok(cggmp::sign(
                 options,
-                party,
+                participant,
                 session_id,
-                signer,
                 &key_share.to_key_share(&selected_parties),
                 message,
             )

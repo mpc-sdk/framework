@@ -2,11 +2,48 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    k256::ecdsa::{self, RecoveryId, VerifyingKey},
+    k256::ecdsa::{self, RecoveryId, SigningKey, VerifyingKey},
     synedrion::RecoverableSignature,
     Error, Result,
 };
 use mpc_protocol::{hex, Keypair, Parameters};
+
+/// Participant in a protocol session.
+#[derive(Clone)]
+pub struct Participant {
+    /// Signing key for this participant.
+    signing_key: SigningKey,
+    /// Options for this participant.
+    party: PartyOptions,
+}
+
+impl Participant {
+    /// Create a new participant.
+    pub fn new(
+        signing_key: SigningKey,
+        party: PartyOptions,
+    ) -> Result<Self> {
+        if party
+            .verifiers()
+            .into_iter()
+            .find(|v| v == &signing_key.verifying_key())
+            .is_none()
+        {
+            return Err(Error::NotVerifyingParty);
+        }
+        Ok(Self { signing_key, party })
+    }
+
+    /// Participant signing key.
+    pub fn signing_key(&self) -> &SigningKey {
+        &self.signing_key
+    }
+
+    /// Participant party information.
+    pub fn party(&self) -> &PartyOptions {
+        &self.party
+    }
+}
 
 /// Options for a party participating in a protocol.
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -51,77 +51,15 @@ use mpc_client::{NetworkTransport, Transport};
 
 use crate::{
     new_client, wait_for_close, wait_for_driver, wait_for_session,
-    wait_for_session_finish, PartyOptions, SessionHandler,
+    wait_for_session_finish, Participant, SessionHandler,
     SessionInitiator, SessionOptions, SessionParticipant,
 };
-
-/*
-/// Run DKG for the CGGMP protocol.
-pub async fn keygen<P: SchemeParams + 'static>(
-    options: SessionOptions,
-    participants: Option<Vec<Vec<u8>>>,
-    session_id: SessionId,
-    signer: SigningKey,
-    verifiers: Vec<VerifyingKey>,
-) -> crate::Result<ThresholdKeyShare<P, VerifyingKey>> {
-    let is_initiator = participants.is_some();
-
-    // Create the client
-    let (client, event_loop) = new_client(options).await?;
-
-    let mut transport: Transport = client.into();
-
-    // Handshake with the server
-    transport.connect().await?;
-
-    // Start the event stream
-    let mut stream = event_loop.run();
-
-    // Wait for the session to become active
-    let client_session = if let Some(participants) = participants {
-        SessionHandler::Initiator(SessionInitiator::new(
-            transport,
-            participants,
-        ))
-    } else {
-        SessionHandler::Participant(SessionParticipant::new(
-            transport,
-        ))
-    };
-
-    let (transport, session) =
-        wait_for_session(&mut stream, client_session).await?;
-
-    let protocol_session_id = session.session_id;
-
-    // Wait for key generation
-    let keygen = KeyGenDriver::<P>::new(
-        transport, session, session_id, signer, verifiers,
-    )?;
-
-    let (mut transport, key_share) =
-        wait_for_driver(&mut stream, keygen).await?;
-
-    // Close the session and socket
-    if is_initiator {
-        transport.close_session(protocol_session_id).await?;
-        wait_for_session_finish(&mut stream, protocol_session_id)
-            .await?;
-    }
-
-    transport.close().await?;
-    wait_for_close(&mut stream).await?;
-
-    Ok(key_share.0)
-}
-*/
 
 /// Run threshold DKG for the CGGMP protocol.
 pub async fn keygen<P: SchemeParams + 'static>(
     options: SessionOptions,
-    party: PartyOptions,
+    participant: Participant,
     session_id: SessionId,
-    signer: SigningKey,
 ) -> crate::Result<ThresholdKeyShare<P, VerifyingKey>> {
     let n = options.parameters.parties as usize;
     let t = options.parameters.threshold as usize;
@@ -138,9 +76,11 @@ pub async fn keygen<P: SchemeParams + 'static>(
     let mut stream = event_loop.run();
 
     // Wait for the session to become active
-    let client_session = if party.is_initiator() {
-        let mut other_participants = party.participants().to_vec();
-        other_participants.retain(|p| p != party.public_key());
+    let client_session = if participant.party().is_initiator() {
+        let mut other_participants =
+            participant.party().participants().to_vec();
+        other_participants
+            .retain(|p| p != participant.party().public_key());
         SessionHandler::Initiator(SessionInitiator::new(
             transport,
             other_participants,
@@ -158,15 +98,12 @@ pub async fn keygen<P: SchemeParams + 'static>(
 
     let (transport, stream, t_key_share, acks) = make_dkg_init::<P>(
         t,
-        party.party_index(),
+        &participant,
         transport,
         stream,
-        &party,
         protocol_session_id,
         session.clone(),
         session_id,
-        &signer,
-        party.verifiers(),
     )
     .await?;
 
@@ -192,8 +129,8 @@ pub async fn keygen<P: SchemeParams + 'static>(
             stream,
             session,
             session_id,
-            signer,
-            party.verifiers(),
+            participant.signing_key().to_owned(),
+            participant.party().verifiers(),
         )
         .await?
     } else {
@@ -201,7 +138,7 @@ pub async fn keygen<P: SchemeParams + 'static>(
     };
 
     // Close the session and socket
-    if party.is_initiator() {
+    if participant.party().is_initiator() {
         transport.close_session(protocol_session_id).await?;
         wait_for_session_finish(&mut stream, protocol_session_id)
             .await?;
@@ -216,23 +153,26 @@ pub async fn keygen<P: SchemeParams + 'static>(
 /// Make initialize key share for threshold DKG.
 async fn make_dkg_init<P: SchemeParams + 'static>(
     t: usize,
-    party_index: usize,
+    participant: &Participant,
     transport: Transport,
     mut stream: EventStream,
-    party: &PartyOptions,
     protocol_session_id: ProtocolSessionId,
     session: SessionState,
     session_id: SessionId,
-    signer: &SigningKey,
-    verifiers: &[VerifyingKey],
 ) -> crate::Result<(
     Transport,
     EventStream,
     Option<ThresholdKeyShare<P, VerifyingKey>>,
     Vec<KeyInitAck>,
 )> {
-    let init_verifiers =
-        verifiers.iter().take(t).cloned().collect::<Vec<_>>();
+    let init_verifiers = participant
+        .party()
+        .verifiers()
+        .iter()
+        .take(t)
+        .cloned()
+        .collect::<Vec<_>>();
+    let party_index = participant.party().party_index();
 
     if party_index < t {
         // Wait for key init generation
@@ -240,7 +180,7 @@ async fn make_dkg_init<P: SchemeParams + 'static>(
             transport,
             session,
             session_id,
-            signer.to_owned(),
+            participant.signing_key().to_owned(),
             init_verifiers,
         )?;
 
@@ -257,10 +197,13 @@ async fn make_dkg_init<P: SchemeParams + 'static>(
         // Notify participants not involved in key init
         // that we are done
         // let other_participants = &participants[t..];
-        let other_participants = party
+        let other_participants = participant
+            .party()
             .participants()
             .iter()
-            .filter(|p| p.as_slice() != party.public_key())
+            .filter(|p| {
+                p.as_slice() != participant.party().public_key()
+            })
             .collect::<Vec<_>>();
         for other_public_key in other_participants {
             transport
@@ -400,9 +343,8 @@ async fn make_dkg_reshare<P: SchemeParams + 'static>(
 /// Sign a message using the CGGMP protocol.
 pub async fn sign<P: SchemeParams + 'static>(
     options: SessionOptions,
-    party: PartyOptions,
+    participant: Participant,
     session_id: SessionId,
-    signer: SigningKey,
     key_share: &synedrion::KeyShare<P, VerifyingKey>,
     prehashed_message: &PrehashedMessage,
 ) -> crate::Result<RecoverableSignature> {
@@ -418,9 +360,11 @@ pub async fn sign<P: SchemeParams + 'static>(
     let mut stream = event_loop.run();
 
     // Wait for the session to become active
-    let client_session = if party.is_initiator() {
-        let mut other_participants = party.participants().to_vec();
-        other_participants.retain(|p| p != party.public_key());
+    let client_session = if participant.party().is_initiator() {
+        let mut other_participants =
+            participant.party().participants().to_vec();
+        other_participants
+            .retain(|p| p != participant.party().public_key());
         SessionHandler::Initiator(SessionInitiator::new(
             transport,
             other_participants,
@@ -441,8 +385,8 @@ pub async fn sign<P: SchemeParams + 'static>(
         transport,
         session.clone(),
         session_id,
-        signer.clone(),
-        party.verifiers().to_vec(),
+        participant.signing_key().clone(),
+        participant.party().verifiers().to_vec(),
     )?;
     let (transport, aux_info) =
         wait_for_driver(&mut stream, driver).await?;
@@ -452,8 +396,8 @@ pub async fn sign<P: SchemeParams + 'static>(
         transport,
         session,
         session_id,
-        signer,
-        party.verifiers().to_vec(),
+        participant.signing_key().clone(),
+        participant.party().verifiers().to_vec(),
         key_share,
         &aux_info,
         prehashed_message,
@@ -462,7 +406,7 @@ pub async fn sign<P: SchemeParams + 'static>(
         wait_for_driver(&mut stream, driver).await?;
 
     // Close the session and socket
-    if party.is_initiator() {
+    if participant.party().is_initiator() {
         transport.close_session(protocol_session_id).await?;
         wait_for_session_finish(&mut stream, protocol_session_id)
             .await?;

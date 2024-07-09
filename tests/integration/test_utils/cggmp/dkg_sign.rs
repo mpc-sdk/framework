@@ -3,7 +3,7 @@ use mpc_driver::{
     k256::ecdsa::{self, signature::hazmat::PrehashVerifier},
     keygen, sign,
     synedrion::SessionId,
-    PartyOptions, PrivateKey, Protocol, ServerOptions,
+    Participant, PartyOptions, PrivateKey, Protocol, ServerOptions,
     SessionOptions,
 };
 use mpc_protocol::{generate_keypair, Parameters};
@@ -81,9 +81,8 @@ async fn run_dkg_sign(
         tasks.push(tokio::task::spawn(async move {
             let key_share = keygen(
                 opts,
-                party,
+                Participant::new(signer, party)?,
                 keygen_session_id.clone(),
-                signer,
             )
             .await?;
             Ok::<_, anyhow::Error>(key_share)
@@ -156,9 +155,8 @@ async fn run_dkg_sign(
         tasks.push(tokio::task::spawn(async move {
             let signature = sign(
                 opts,
-                party,
+                Participant::new(signer, party)?,
                 sign_session_id.clone(),
-                signer,
                 &key_share.private_key,
                 &message,
             )
