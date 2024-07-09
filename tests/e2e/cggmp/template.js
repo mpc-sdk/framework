@@ -8,10 +8,10 @@ function fromHexString(hex) {
   return new Uint8Array(hex.match(/.{1,2}/g).map((byte) => parseInt(byte, 16)));
 }
 
+const publicKey = ${PUBLIC_KEY};
 const partyIndex = ${INDEX};
 const message = "${MESSAGE}";
 const participants = ${PARTICIPANTS};
-const signingParticipants = ${SIGNING_PARTICIPANTS};
 const keygenSessionIdSeed = ${KEYGEN_SESSION_ID_SEED};
 const signSessionIdSeed = ${SIGN_SESSION_ID_SEED};
 const signer = ${SIGNER};
@@ -28,16 +28,29 @@ const options = {
     threshold: 2,
   },
 };
+const party = {
+  publicKey,
+  participants,
+  isInitiator: partyIndex == 0,
+  verifiers,
+  partyIndex,
+};
+const signParty = {
+  publicKey,
+  participants: [participants[0], participants[2]],
+  isInitiator: partyIndex == 0,
+  verifiers: [verifiers[0], verifiers[2]],
+  partyIndex,
+};
 
 try {
 
   // Start key generation
   const keyShare = await module.keygen(
     options,
-    participants,
+    party,
     fromHexString(keygenSessionIdSeed),
     fromHexString(signer),
-    verifiers,
   );
 
   console.log("keygen completed");
@@ -50,10 +63,9 @@ try {
   if (partyIndex == 0 || partyIndex == 2) {
     const result = await module.sign(
       options,
-      signingParticipants,
+      signParty,
       fromHexString(signsessionIdSeed),
       fromHexString(signer),
-      verifiers,
       keyShare.privateKey,
       message,
     );

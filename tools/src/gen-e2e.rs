@@ -19,7 +19,7 @@ const SERVER_PUBLIC_KEY: &str =
 
 const MSG: &str = "this is the message that is sent out";
 
-fn main() {
+fn main() -> anyhow::Result<()> {
     let base_dir = env!("CARGO_MANIFEST_DIR");
     let base_path = PathBuf::from(base_dir);
     let base_path = base_path.parent().expect("parent path");
@@ -32,6 +32,10 @@ fn main() {
 
     let file_names = vec!["p1", "p2", "p3"];
     let keypairs = vec![KEYPAIR_P1, KEYPAIR_P2, KEYPAIR_P3];
+    let mut keys = Vec::with_capacity(keypairs.len());
+    for pem in &keypairs {
+        keys.push(decode_keypair(pem)?);
+    }
 
     let signing_keys = vec![
         SigningKey::random(&mut OsRng),
@@ -47,21 +51,8 @@ fn main() {
     let message = Keccak256::digest(MSG.as_bytes());
     let message = hex::encode(&message);
 
-    let joiners = vec![KEYPAIR_P2, KEYPAIR_P3];
-    let joiners: Vec<_> = joiners
-        .into_iter()
-        .map(|pem| {
-            hex::encode(decode_keypair(pem).unwrap().public_key())
-        })
-        .collect();
-
-    let signing_joiners = vec![KEYPAIR_P3];
-    let signing_joiners: Vec<_> = signing_joiners
-        .into_iter()
-        .map(|pem| {
-            hex::encode(decode_keypair(pem).unwrap().public_key())
-        })
-        .collect();
+    let participants: Vec<_> =
+        keys.iter().map(|key| key.public_key().to_vec()).collect();
 
     for (index, ((keypair, signing_key), file_name)) in keypairs
         .into_iter()
@@ -69,47 +60,41 @@ fn main() {
         .zip(file_names.into_iter())
         .enumerate()
     {
-        let participants = if index == 0 {
-            format!("{:#?}", joiners)
-        } else {
-            "null".to_owned()
-        };
-
-        let signing_participants = if index == 0 {
-            format!("{:#?}", signing_joiners)
-        } else {
-            "null".to_owned()
-        };
-
+        let noise_key = keys.get(index).unwrap();
         let js = CGGMP_JS
+            .replace(
+                "${PUBLIC_KEY}",
+                &serde_json::to_string(&hex::encode(
+                    noise_key.public_key(),
+                ))?,
+            )
             .replace("${INDEX}", &index.to_string())
             .replace("${MESSAGE}", &message)
-            .replace("${PARTICIPANTS}", &participants)
-            .replace("${SIGNING_PARTICIPANTS}", &signing_participants)
+            .replace(
+                "${PARTICIPANTS}",
+                &serde_json::to_string(&participants)?,
+            )
             .replace(
                 "${KEYGEN_SESSION_ID_SEED}",
                 &serde_json::to_string(&hex::encode(
                     &keygen_session_id_seed,
-                ))
-                .unwrap(),
+                ))?,
             )
             .replace(
                 "${SIGN_SESSION_ID_SEED}",
                 &serde_json::to_string(&hex::encode(
                     &sign_session_id_seed,
-                ))
-                .unwrap(),
+                ))?,
             )
             .replace(
                 "${SIGNER}",
                 &serde_json::to_string(&hex::encode(
                     signing_key.to_bytes(),
-                ))
-                .unwrap(),
+                ))?,
             )
             .replace(
                 "${VERIFIERS}",
-                &serde_json::to_string(&verifiers).unwrap(),
+                &serde_json::to_string(&verifiers)?,
             )
             .replace("${KEYPAIR}", keypair)
             .replace("${SERVER_URL}", SERVER_URL)
@@ -127,4 +112,6 @@ fn main() {
         fs::write(js_file, js).expect("to write javascript");
         fs::write(html_file, html).expect("to write html");
     }
+
+    Ok(())
 }

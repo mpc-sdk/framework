@@ -10,8 +10,10 @@ use mpc_protocol::{hex, Keypair, Parameters};
 
 /// Options for a party participating in a protocol.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PartyOptions {
     /// Public key of this party.
+    #[serde(with = "hex::serde")]
     public_key: Vec<u8>,
     /// Public keys of all participants including this one.
     participants: Vec<Vec<u8>>,

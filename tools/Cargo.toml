@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+anyhow = "1"
 mpc-protocol = { path = "../protocol" }
 mpc-driver = { path = "../driver", features = ["cggmp"] }
 tokio = { version = "1", features = ["rt", "macros", "rt-multi-thread"] }

@@ -124,28 +124,6 @@ mod bindings {
         Ok(serde_wasm_bindgen::to_value(&(pem, public_key))?)
     }
 
-    /*
-    /// Participants are hex-encoded public keys.
-    fn parse_participants(
-        participants: JsValue,
-    ) -> Result<Option<Vec<Vec<u8>>>, JsError> {
-        let participants: Option<Vec<String>> =
-            serde_wasm_bindgen::from_value(participants)?;
-        if let Some(participants) = participants {
-            let mut parties = Vec::new();
-            for participant in participants {
-                parties.push(
-                    hex::decode(participant)
-                        .map_err(JsError::from)?,
-                );
-            }
-            Ok(Some(parties))
-        } else {
-            Ok(None)
-        }
-    }
-    */
-
     fn parse_message(message: JsValue) -> Result<[u8; 32], JsError> {
         let message: String =
             serde_wasm_bindgen::from_value(message)?;

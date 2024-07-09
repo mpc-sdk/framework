@@ -44,6 +44,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyhow"
+version = "1.0.86"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b3d1d046238990b9cf5bcde22a3fb3584ee5cf65fb2765f454ed428c7a0063da"
+
+[[package]]
 name = "async-stream"
 version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -970,6 +976,7 @@ dependencies = [
 name = "mpc-dev-tools"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "axum",
  "axum-extra",
  "axum-macros",
@@ -1529,7 +1536,7 @@ checksum = "2047c6ded9c721764247e62cd3b03c09ffc529b2ba5b10ec482ae507a4a70160"
 [[package]]
 name = "synedrion"
 version = "0.1.0"
-source = "git+https://github.com/entropyxyz/synedrion?rev=7e0a62a1ba2d2d9ae06a0396f357e8cfc674860f#7e0a62a1ba2d2d9ae06a0396f357e8cfc674860f"
+source = "git+https://github.com/mpc-sdk/synedrion?branch=threshold-serde#d8aec89ef8e70354a72775b2a686261760ada277"
 dependencies = [
  "base64",
  "bincode",
