@@ -179,6 +179,7 @@ pub async fn threshold_keygen<P: SchemeParams + 'static>(
     let (mut transport, mut stream, t_key_share) =
         make_dkg_reshare::<P>(
             t,
+            t,
             t_key_share,
             acks,
             transport,
@@ -318,7 +319,8 @@ async fn make_dkg_init<P: SchemeParams + 'static>(
 
 /// Drive the key resharing phase of threshold DKG.
 async fn make_dkg_reshare<P: SchemeParams + 'static>(
-    t: usize,
+    old_threshold: usize,
+    new_threshold: usize,
     t_key_share: Option<ThresholdKeyShare<P, VerifyingKey>>,
     acks: Vec<KeyInitAck>,
     transport: Transport,
@@ -332,17 +334,17 @@ async fn make_dkg_reshare<P: SchemeParams + 'static>(
     EventStream,
     ThresholdKeyShare<P, VerifyingKey>,
 )> {
-    let old_holders =
-        BTreeSet::from_iter(verifiers.iter().cloned().take(t));
-
-    let ack = acks.iter().find(|a| a.party_index == 0).unwrap();
-    let new_holder = NewHolder {
-        verifying_key: ack.key_share_verifying_key.clone(),
-        old_threshold: t,
-        old_holders,
-    };
+    let old_holders = BTreeSet::from_iter(
+        verifiers.iter().cloned().take(old_threshold),
+    );
 
     let inputs = if let Some(t_key_share) = t_key_share {
+        let new_holder = NewHolder {
+            verifying_key: t_key_share.verifying_key().clone(),
+            old_threshold,
+            old_holders,
+        };
+
         KeyResharingInputs {
             old_holder: Some(OldHolder {
                 key_share: t_key_share.clone(),
@@ -352,9 +354,16 @@ async fn make_dkg_reshare<P: SchemeParams + 'static>(
                 .clone()
                 .into_iter()
                 .collect::<BTreeSet<_>>(),
-            new_threshold: t,
+            new_threshold,
         }
     } else {
+        let ack = acks.iter().find(|a| a.party_index == 0).unwrap();
+        let new_holder = NewHolder {
+            verifying_key: ack.key_share_verifying_key.clone(),
+            old_threshold,
+            old_holders,
+        };
+
         KeyResharingInputs {
             old_holder: None,
             new_holder: Some(new_holder.clone()),
@@ -362,7 +371,7 @@ async fn make_dkg_reshare<P: SchemeParams + 'static>(
                 .clone()
                 .into_iter()
                 .collect::<BTreeSet<_>>(),
-            new_threshold: t,
+            new_threshold,
         }
     };
 
