@@ -8,7 +8,8 @@ mod bindings {
         SessionId,
     };
     use mpc_driver::{
-        meeting, MeetingOptions, PrivateKey, SessionOptions,
+        meeting, MeetingOptions, PartyOptions, PrivateKey,
+        SessionOptions,
     };
     use mpc_protocol::{hex, MeetingId, UserId, PATTERN};
     use serde_json::Value;
@@ -45,26 +46,23 @@ mod bindings {
     #[wasm_bindgen(js_name = "keygen")]
     pub fn keygen_cggmp(
         options: JsValue,
-        participants: JsValue,
+        party: JsValue,
         session_id_seed: Vec<u8>,
         signer: Vec<u8>,
         verifiers: JsValue,
     ) -> Result<JsValue, JsError> {
         let options: SessionOptions =
             serde_wasm_bindgen::from_value(options)?;
-        let participants = parse_participants(participants)?;
-
+        let party: PartyOptions =
+            serde_wasm_bindgen::from_value(party)?;
         let signer: SigningKey =
             signer.as_slice().try_into().map_err(JsError::from)?;
-        let verifiers: Vec<VerifyingKey> =
-            serde_wasm_bindgen::from_value(verifiers)?;
         let fut = async move {
             let key_share = mpc_driver::keygen(
                 options,
-                participants,
+                party,
                 SessionId::from_seed(&session_id_seed),
                 signer,
-                verifiers,
             )
             .await?;
             Ok(serde_wasm_bindgen::to_value(&key_share)?)
@@ -76,21 +74,18 @@ mod bindings {
     #[wasm_bindgen(js_name = "sign")]
     pub fn sign_cggmp(
         options: JsValue,
-        participants: JsValue,
+        party: JsValue,
         session_id_seed: Vec<u8>,
         signer: Vec<u8>,
-        verifiers: JsValue,
         private_key: JsValue,
         message: JsValue,
     ) -> Result<JsValue, JsError> {
         let options: SessionOptions =
             serde_wasm_bindgen::from_value(options)?;
-        let participants = parse_participants(participants)?;
+        let party: PartyOptions =
+            serde_wasm_bindgen::from_value(party)?;
         let signer: SigningKey =
             signer.as_slice().try_into().map_err(JsError::from)?;
-        let verifiers: Vec<VerifyingKey> =
-            serde_wasm_bindgen::from_value(verifiers)?;
-
         let private_key: PrivateKey =
             serde_wasm_bindgen::from_value(private_key)?;
 
@@ -98,11 +93,10 @@ mod bindings {
         let fut = async move {
             let signature = mpc_driver::sign(
                 options,
-                participants,
+                party,
                 SessionId::from_seed(&session_id_seed),
                 signer,
-                verifiers,
-                private_key,
+                &private_key,
                 &message,
             )
             .await?;
@@ -130,6 +124,7 @@ mod bindings {
         Ok(serde_wasm_bindgen::to_value(&(pem, public_key))?)
     }
 
+    /*
     /// Participants are hex-encoded public keys.
     fn parse_participants(
         participants: JsValue,
@@ -149,6 +144,7 @@ mod bindings {
             Ok(None)
         }
     }
+    */
 
     fn parse_message(message: JsValue) -> Result<[u8; 32], JsError> {
         let message: String =
