@@ -129,6 +129,7 @@ pub async fn threshold_keygen<P: SchemeParams + 'static>(
         .position(|v| v == signer.verifying_key())
         .ok_or(Error::NotVerifyingParty)?;
 
+    let n = options.parameters.parties as usize;
     let t = options.parameters.threshold as usize;
 
     // Create the client
@@ -176,12 +177,24 @@ pub async fn threshold_keygen<P: SchemeParams + 'static>(
     )
     .await?;
 
-    let (mut transport, mut stream, t_key_share) =
+    // Do key resharing phase
+    let (mut transport, mut stream, t_key_share) = if t < n {
+        let account_verifying_key =
+            if let Some(t_key_share) = &t_key_share {
+                t_key_share.verifying_key().clone()
+            } else {
+                let ack = acks
+                    .iter()
+                    .find(|a| a.party_index == 0)
+                    .ok_or(Error::NoKeyInitAck)?;
+                ack.key_share_verifying_key.clone()
+            };
+
         make_dkg_reshare::<P>(
             t,
             t,
+            account_verifying_key,
             t_key_share,
-            acks,
             transport,
             stream,
             session,
@@ -189,7 +202,10 @@ pub async fn threshold_keygen<P: SchemeParams + 'static>(
             signer,
             verifiers,
         )
-        .await?;
+        .await?
+    } else {
+        (transport, stream, t_key_share.unwrap())
+    };
 
     // Close the session and socket
     if is_initiator {
@@ -248,6 +264,7 @@ async fn make_dkg_init<P: SchemeParams + 'static>(
 
         // Notify participants not involved in key init
         // that we are done
+        // let other_participants = &participants[t..];
         let other_participants = participants
             .iter()
             .filter(|p| p.as_slice() != public_key)
@@ -263,7 +280,6 @@ async fn make_dkg_init<P: SchemeParams + 'static>(
         }
 
         let mut acks = vec![ack];
-
         while let Some(event) = stream.next().await {
             let event = event?;
             if let Event::JsonMessage {
@@ -287,7 +303,6 @@ async fn make_dkg_init<P: SchemeParams + 'static>(
 
         let t_key_share =
             ThresholdKeyShare::from_key_share(&key_share);
-
         Ok((transport, stream, Some(t_key_share), acks))
     } else {
         // If we are not participating in key init then wait
@@ -321,8 +336,8 @@ async fn make_dkg_init<P: SchemeParams + 'static>(
 async fn make_dkg_reshare<P: SchemeParams + 'static>(
     old_threshold: usize,
     new_threshold: usize,
+    account_verifying_key: VerifyingKey,
     t_key_share: Option<ThresholdKeyShare<P, VerifyingKey>>,
-    acks: Vec<KeyInitAck>,
     transport: Transport,
     mut stream: EventStream,
     session: SessionState,
@@ -340,7 +355,7 @@ async fn make_dkg_reshare<P: SchemeParams + 'static>(
 
     let inputs = if let Some(t_key_share) = t_key_share {
         let new_holder = NewHolder {
-            verifying_key: t_key_share.verifying_key().clone(),
+            verifying_key: account_verifying_key,
             old_threshold,
             old_holders,
         };
@@ -357,9 +372,8 @@ async fn make_dkg_reshare<P: SchemeParams + 'static>(
             new_threshold,
         }
     } else {
-        let ack = acks.iter().find(|a| a.party_index == 0).unwrap();
         let new_holder = NewHolder {
-            verifying_key: ack.key_share_verifying_key.clone(),
+            verifying_key: account_verifying_key.clone(),
             old_threshold,
             old_holders,
         };

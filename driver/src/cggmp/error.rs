@@ -27,6 +27,10 @@ pub enum Error {
     #[error("signer is not a verifying party")]
     NotVerifyingParty,
 
+    /// Could not locate ack for key init phase.
+    #[error("could not find an ACK for key init phase")]
+    NoKeyInitAck,
+
     /// Attempt to finish a protocol when another round is expected.
     #[error("protocol is not finished, another round is available")]
     NotFinished,
