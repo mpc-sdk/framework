@@ -90,3 +90,23 @@ async fn integration_cggmp_dkg_sign_2_2() -> Result<()> {
 
     Ok(())
 }
+
+/// CGGMP DKG followed by signing (2-of-2).
+///
+/// Note that this follows a different code path to the 2-of-3
+/// which also runs a resharing phase.
+#[tokio::test]
+#[serial]
+async fn integration_cggmp_dkg_reshare_2_2_to_3_4() -> Result<()> {
+    // crate::test_utils::init_tracing();
+
+    // Wait for the server to start
+    let (rx, _handle) = spawn_server()?;
+    let _ = rx.await?;
+
+    let server_public_key = server_public_key().await?;
+    cggmp::run_dkg_reshare_2_2_to_3_4(SERVER, server_public_key)
+        .await?;
+
+    Ok(())
+}
