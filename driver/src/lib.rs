@@ -159,6 +159,45 @@ pub async fn sign(
     }
 }
 
+/// Reshare key shares.
+#[cfg(feature = "cggmp")]
+pub async fn reshare(
+    options: SessionOptions,
+    participant: Participant,
+    session_id: SessionId,
+    account_verifying_key: k256::ecdsa::VerifyingKey,
+    key_share: Option<&PrivateKey>,
+    old_threshold: usize,
+    new_threshold: usize,
+) -> Result<KeyShare> {
+    match (&options.protocol, key_share) {
+        (Protocol::Cggmp, Some(PrivateKey::Cggmp(key_share))) => {
+            Ok(cggmp::reshare(
+                options,
+                participant,
+                session_id,
+                account_verifying_key,
+                Some(key_share.to_owned()),
+                old_threshold,
+                new_threshold,
+            )
+            .await?
+            .into())
+        }
+        (Protocol::Cggmp, None) => Ok(cggmp::reshare(
+            options,
+            participant,
+            session_id,
+            account_verifying_key,
+            None,
+            old_threshold,
+            new_threshold,
+        )
+        .await?
+        .into()),
+    }
+}
+
 #[doc(hidden)]
 /// Compute the address of an uncompressed public key (65 bytes).
 pub fn address(public_key: &[u8]) -> String {
