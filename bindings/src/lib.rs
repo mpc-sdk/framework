@@ -3,7 +3,10 @@
 
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 mod bindings {
-    use mpc_driver::synedrion::{ecdsa::SigningKey, SessionId};
+    use mpc_driver::synedrion::{
+        ecdsa::{SigningKey, VerifyingKey},
+        SessionId,
+    };
     use mpc_driver::{
         meeting, MeetingOptions, Participant, PartyOptions,
         PrivateKey, SessionOptions,
@@ -99,6 +102,47 @@ mod bindings {
             )
             .await?;
             Ok(serde_wasm_bindgen::to_value(&signature)?)
+        };
+        Ok(future_to_promise(fut).into())
+    }
+
+    /// Reshare key shares.
+    #[wasm_bindgen(js_name = "reshare")]
+    pub fn reshare_cggmp(
+        options: JsValue,
+        party: JsValue,
+        session_id_seed: Vec<u8>,
+        signer: Vec<u8>,
+        account_verifying_key: JsValue,
+        private_key: JsValue,
+        old_threshold: usize,
+        new_threshold: usize,
+    ) -> Result<JsValue, JsError> {
+        let options: SessionOptions =
+            serde_wasm_bindgen::from_value(options)?;
+        let party: PartyOptions =
+            serde_wasm_bindgen::from_value(party)?;
+        let signer: SigningKey =
+            signer.as_slice().try_into().map_err(JsError::from)?;
+        let account_verifying_key: VerifyingKey =
+            serde_wasm_bindgen::from_value(account_verifying_key)?;
+        let private_key: Option<PrivateKey> =
+            serde_wasm_bindgen::from_value(private_key)?;
+        let participant =
+            Participant::new(signer, party).map_err(JsError::from)?;
+
+        let fut = async move {
+            let key_share = mpc_driver::reshare(
+                options,
+                participant,
+                SessionId::from_seed(&session_id_seed),
+                account_verifying_key,
+                private_key.as_ref(),
+                old_threshold,
+                new_threshold,
+            )
+            .await?;
+            Ok(serde_wasm_bindgen::to_value(&key_share)?)
         };
         Ok(future_to_promise(fut).into())
     }

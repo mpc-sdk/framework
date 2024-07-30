@@ -15,9 +15,11 @@ use std::pin::Pin;
 
 mod dkg_sign;
 mod drivers;
+mod reshare;
 
 pub use dkg_sign::*;
 pub use drivers::*;
+pub use reshare::*;
 
 pub fn make_signing_message() -> Result<PrehashedMessage> {
     let message = "this is the message that is sent out";

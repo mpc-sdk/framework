@@ -88,7 +88,9 @@ where
     for preprocessed in cached_messages.drain(..) {
         // In production usage, this will happen in a spawned task.
         println!("{key_str}: applying a cached message");
-        let result = session.process_message(preprocessed).unwrap();
+        let mut rng = OsRng;
+        let result =
+            session.process_message(&mut rng, preprocessed).unwrap();
 
         // This will happen in a host task.
         accum.add_processed_message(result)??;
@@ -132,8 +134,10 @@ where
                 key_to_str(&from),
                 message_round_number,
             );
-            let result =
-                session.process_message(preprocessed).unwrap();
+            let mut rng = OsRng;
+            let result = session
+                .process_message(&mut rng, preprocessed)
+                .unwrap();
 
             // This will happen in a host task.
             accum.add_processed_message(result)??;

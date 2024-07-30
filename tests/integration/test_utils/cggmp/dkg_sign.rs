@@ -11,18 +11,27 @@ use rand::{rngs::OsRng, Rng};
 
 use super::{make_signers, make_signing_message};
 
+pub async fn run_dkg_sign_2_2(
+    server: &str,
+    server_public_key: Vec<u8>,
+) -> Result<()> {
+    let t = 2;
+    let n = 2;
+    run_dkg_sign(t, n, server, server_public_key).await
+}
+
 pub async fn run_dkg_sign_2_3(
     server: &str,
     server_public_key: Vec<u8>,
 ) -> Result<()> {
-    let n = 3;
     let t = 2;
-    run_dkg_sign(n, t, server, server_public_key).await
+    let n = 3;
+    run_dkg_sign(t, n, server, server_public_key).await
 }
 
 async fn run_dkg_sign(
-    n: u16,
     t: u16,
+    n: u16,
     server: &str,
     server_public_key: Vec<u8>,
 ) -> Result<()> {
@@ -100,8 +109,10 @@ async fn run_dkg_sign(
     let sign_session_id: [u8; 32] = rng.gen();
     let sign_session_id = SessionId::from_seed(&sign_session_id);
 
-    let selected_signers =
-        vec![signers[0].clone(), signers[2].clone()];
+    let selected_signers = vec![
+        signers.first().unwrap().clone(),
+        signers.last().unwrap().clone(),
+    ];
     let selected_verifiers = selected_signers
         .iter()
         .map(|s| s.verifying_key().clone())
@@ -114,20 +125,20 @@ async fn run_dkg_sign(
     let selected_key_shares =
         vec![first_share, key_shares.remove(key_shares.len() - 1)];
     let public_keys = vec![
-        keypairs.get(0).unwrap().public_key().to_owned(),
-        keypairs.get(2).unwrap().public_key().to_owned(),
+        keypairs.first().unwrap().public_key().to_owned(),
+        keypairs.last().unwrap().public_key().to_owned(),
     ];
 
     let session_options = vec![
         SessionOptions {
             protocol: Protocol::Cggmp,
-            keypair: keypairs.get(0).unwrap().clone(),
+            keypair: keypairs.first().unwrap().clone(),
             parameters: params.clone(),
             server: server.clone(),
         },
         SessionOptions {
             protocol: Protocol::Cggmp,
-            keypair: keypairs.get(2).unwrap().clone(),
+            keypair: keypairs.last().unwrap().clone(),
             parameters: params.clone(),
             server: server.clone(),
         },

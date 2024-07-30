@@ -268,6 +268,76 @@ async fn make_dkg_init<P: SchemeParams + 'static>(
     }
 }
 
+/// Reshare key shares.
+pub async fn reshare<P: SchemeParams>(
+    options: SessionOptions,
+    participant: Participant,
+    session_id: SessionId,
+    account_verifying_key: VerifyingKey,
+    key_share: Option<ThresholdKeyShare<P, VerifyingKey>>,
+    old_threshold: usize,
+    new_threshold: usize,
+) -> crate::Result<ThresholdKeyShare<P, VerifyingKey>> {
+    // Create the client
+    let (client, event_loop) = new_client(options).await?;
+
+    let mut transport: Transport = client.into();
+
+    // Handshake with the server
+    transport.connect().await?;
+
+    // Start the event stream
+    let mut stream = event_loop.run();
+
+    // Wait for the session to become active
+    let client_session = if participant.party().is_initiator() {
+        let mut other_participants =
+            participant.party().participants().to_vec();
+        other_participants
+            .retain(|p| p != participant.party().public_key());
+        SessionHandler::Initiator(SessionInitiator::new(
+            transport,
+            other_participants,
+        ))
+    } else {
+        SessionHandler::Participant(SessionParticipant::new(
+            transport,
+        ))
+    };
+
+    let (transport, session) =
+        wait_for_session(&mut stream, client_session).await?;
+
+    let protocol_session_id = session.session_id;
+
+    let (mut transport, mut stream, new_key_share) =
+        make_dkg_reshare::<P>(
+            old_threshold,
+            new_threshold,
+            account_verifying_key,
+            key_share,
+            transport,
+            stream,
+            session,
+            session_id,
+            participant.signing_key().to_owned(),
+            participant.party().verifiers(),
+        )
+        .await?;
+
+    // Close the session and socket
+    if participant.party().is_initiator() {
+        transport.close_session(protocol_session_id).await?;
+        wait_for_session_finish(&mut stream, protocol_session_id)
+            .await?;
+    }
+
+    transport.close().await?;
+    wait_for_close(&mut stream).await?;
+
+    Ok(new_key_share)
+}
+
 /// Drive the key resharing phase of threshold DKG.
 async fn make_dkg_reshare<P: SchemeParams + 'static>(
     old_threshold: usize,
