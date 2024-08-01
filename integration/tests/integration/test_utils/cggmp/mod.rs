@@ -13,10 +13,12 @@ use rand::rngs::OsRng;
 use sha3::{Digest, Keccak256};
 use std::pin::Pin;
 
+mod derived_keys;
 mod dkg_sign;
 mod drivers;
 mod reshare;
 
+pub use derived_keys::*;
 pub use dkg_sign::*;
 pub use drivers::*;
 pub use reshare::*;

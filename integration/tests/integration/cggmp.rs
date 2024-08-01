@@ -22,7 +22,6 @@ async fn integration_cggmp_driver_keygen() -> Result<()> {
 async fn integration_cggmp_driver_aux_info() -> Result<()> {
     // crate::test_utils::init_tracing();
 
-    // Wait for the server to start
     let (rx, _handle) = spawn_server()?;
     let addr = rx.await?;
     let server = format!("ws://{}", addr);
@@ -42,7 +41,6 @@ async fn integration_cggmp_driver_aux_info() -> Result<()> {
 async fn integration_cggmp_driver_threshold_sign() -> Result<()> {
     // crate::test_utils::init_tracing();
 
-    // Wait for the server to start
     let (rx, _handle) = spawn_server()?;
     let addr = rx.await?;
     let server = format!("ws://{}", addr);
@@ -58,7 +56,6 @@ async fn integration_cggmp_driver_threshold_sign() -> Result<()> {
 async fn integration_cggmp_dkg_sign_2_3() -> Result<()> {
     // crate::test_utils::init_tracing();
 
-    // Wait for the server to start
     let (rx, _handle) = spawn_server()?;
     let addr = rx.await?;
     let server = format!("ws://{}", addr);
@@ -77,7 +74,6 @@ async fn integration_cggmp_dkg_sign_2_3() -> Result<()> {
 async fn integration_cggmp_dkg_sign_2_2() -> Result<()> {
     // crate::test_utils::init_tracing();
 
-    // Wait for the server to start
     let (rx, _handle) = spawn_server()?;
     let addr = rx.await?;
     let server = format!("ws://{}", addr);
@@ -93,7 +89,6 @@ async fn integration_cggmp_dkg_sign_2_2() -> Result<()> {
 async fn integration_cggmp_dkg_reshare_2_2_to_3_4() -> Result<()> {
     // crate::test_utils::init_tracing();
 
-    // Wait for the server to start
     let (rx, _handle) = spawn_server()?;
     let addr = rx.await?;
     let server = format!("ws://{}", addr);
@@ -101,6 +96,22 @@ async fn integration_cggmp_dkg_reshare_2_2_to_3_4() -> Result<()> {
     let server_public_key = server_public_key().await?;
     cggmp::run_dkg_reshare_2_2_to_3_4(&server, server_public_key)
         .await?;
+
+    Ok(())
+}
+
+/// CGGMP DKG followed by signing (2-of-2) using
+/// derived child keys (BIP32).
+#[tokio::test]
+async fn integration_cggmp_dkg_derived_2_2() -> Result<()> {
+    // crate::test_utils::init_tracing();
+
+    let (rx, _handle) = spawn_server()?;
+    let addr = rx.await?;
+    let server = format!("ws://{}", addr);
+
+    let server_public_key = server_public_key().await?;
+    cggmp::run_dkg_derived_2_2(&server, server_public_key).await?;
 
     Ok(())
 }
