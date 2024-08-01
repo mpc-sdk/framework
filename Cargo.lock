@@ -385,6 +385,8 @@ dependencies = [
  "bs58",
  "hmac",
  "k256",
+ "once_cell",
+ "pbkdf2",
  "rand_core",
  "ripemd",
  "sha2",
@@ -1574,6 +1576,7 @@ name = "mpc-driver"
 version = "0.7.0"
 dependencies = [
  "async-trait",
+ "bip32",
  "futures",
  "getrandom",
  "k256",
@@ -1770,6 +1773,16 @@ name = "paste"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
+
+[[package]]
+name = "pbkdf2"
+version = "0.12.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f8ed6a7761f76e3b9f92dfb0a60a6a6477c61024b775147ff0973a02653abaf2"
+dependencies = [
+ "digest",
+ "hmac",
+]
 
 [[package]]
 name = "pem"

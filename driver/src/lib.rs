@@ -198,6 +198,19 @@ pub async fn reshare(
     }
 }
 
+/// Derive a BIP32 child key.
+#[cfg(feature = "cggmp")]
+pub fn derive_bip32(
+    key_share: &PrivateKey,
+    derivation_path: &bip32::DerivationPath,
+) -> Result<PrivateKey> {
+    match key_share {
+        PrivateKey::Cggmp(key_share) => Ok(PrivateKey::Cggmp(
+            cggmp::derive_bip32(key_share, derivation_path)?,
+        )),
+    }
+}
+
 #[doc(hidden)]
 /// Compute the address of an uncompressed public key (65 bytes).
 pub fn address(public_key: &[u8]) -> String {

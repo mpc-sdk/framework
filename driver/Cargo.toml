@@ -25,6 +25,8 @@ futures = "0.3"
 synedrion = {version = "0.1", git = "https://github.com/entropyxyz/synedrion" , rev = "bd15ac19f2662d9da722cfc68b6a04f88680ea60"}
 # synedrion = {version = "0.1", git = "https://github.com/mpc-sdk/synedrion" , branch = "threshold-serde"}
 k256 = { version = "0.13.2", default-features = false, features = ["pem", "serde", "std"] }
+# enable `std` feature for error conversion
+bip32 = { version = "0.5", features = ["std"]}
 rand = "0.8"
 
 # WASM
