@@ -1,6 +1,4 @@
-use crate::test_utils::{
-    cggmp, server_public_key, spawn_server, SERVER,
-};
+use crate::test_utils::{cggmp, server_public_key, spawn_server};
 use anyhow::Result;
 use serial_test::serial;
 
@@ -12,10 +10,11 @@ async fn integration_cggmp_driver_keygen() -> Result<()> {
 
     // Wait for the server to start
     let (rx, _handle) = spawn_server()?;
-    let _ = rx.await?;
+    let addr = rx.await?;
+    let server = format!("ws://{}", addr);
 
     let server_public_key = server_public_key().await?;
-    cggmp::run_keygen(SERVER, server_public_key).await?;
+    cggmp::run_keygen(&server, server_public_key).await?;
 
     Ok(())
 }
@@ -28,10 +27,11 @@ async fn integration_cggmp_driver_aux_info() -> Result<()> {
 
     // Wait for the server to start
     let (rx, _handle) = spawn_server()?;
-    let _ = rx.await?;
+    let addr = rx.await?;
+    let server = format!("ws://{}", addr);
 
     let server_public_key = server_public_key().await?;
-    cggmp::run_aux_info(SERVER, server_public_key).await?;
+    cggmp::run_aux_info(&server, server_public_key).await?;
 
     Ok(())
 }
@@ -48,10 +48,11 @@ async fn integration_cggmp_driver_threshold_sign() -> Result<()> {
 
     // Wait for the server to start
     let (rx, _handle) = spawn_server()?;
-    let _ = rx.await?;
+    let addr = rx.await?;
+    let server = format!("ws://{}", addr);
 
     let server_public_key = server_public_key().await?;
-    cggmp::run_threshold_sign(SERVER, server_public_key).await?;
+    cggmp::run_threshold_sign(&server, server_public_key).await?;
 
     Ok(())
 }
@@ -64,10 +65,11 @@ async fn integration_cggmp_dkg_sign_2_3() -> Result<()> {
 
     // Wait for the server to start
     let (rx, _handle) = spawn_server()?;
-    let _ = rx.await?;
+    let addr = rx.await?;
+    let server = format!("ws://{}", addr);
 
     let server_public_key = server_public_key().await?;
-    cggmp::run_dkg_sign_2_3(SERVER, server_public_key).await?;
+    cggmp::run_dkg_sign_2_3(&server, server_public_key).await?;
 
     Ok(())
 }
@@ -83,10 +85,11 @@ async fn integration_cggmp_dkg_sign_2_2() -> Result<()> {
 
     // Wait for the server to start
     let (rx, _handle) = spawn_server()?;
-    let _ = rx.await?;
+    let addr = rx.await?;
+    let server = format!("ws://{}", addr);
 
     let server_public_key = server_public_key().await?;
-    cggmp::run_dkg_sign_2_2(SERVER, server_public_key).await?;
+    cggmp::run_dkg_sign_2_2(&server, server_public_key).await?;
 
     Ok(())
 }
@@ -102,10 +105,11 @@ async fn integration_cggmp_dkg_reshare_2_2_to_3_4() -> Result<()> {
 
     // Wait for the server to start
     let (rx, _handle) = spawn_server()?;
-    let _ = rx.await?;
+    let addr = rx.await?;
+    let server = format!("ws://{}", addr);
 
     let server_public_key = server_public_key().await?;
-    cggmp::run_dkg_reshare_2_2_to_3_4(SERVER, server_public_key)
+    cggmp::run_dkg_reshare_2_2_to_3_4(&server, server_public_key)
         .await?;
 
     Ok(())

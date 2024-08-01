@@ -1,5 +1,5 @@
 use crate::test_utils::{
-    server_public_key, session_timeout, spawn_server, SERVER,
+    server_public_key, session_timeout, spawn_server,
 };
 use anyhow::Result;
 use serial_test::serial;
@@ -16,10 +16,11 @@ async fn integration_session_timeout() -> Result<()> {
 
     // Wait for the server to start
     let (rx, _handle) = spawn_server()?;
-    let _ = rx.await?;
+    let addr = rx.await?;
+    let server = format!("ws://{}", addr);
 
     let server_public_key = server_public_key().await?;
-    session_timeout::run(SERVER, server_public_key).await?;
+    session_timeout::run(&server, server_public_key).await?;
 
     Ok(())
 }
