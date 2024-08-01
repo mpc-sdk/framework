@@ -36,7 +36,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[cfg(feature = "cggmp")]
 pub mod cggmp;
 #[cfg(feature = "cggmp")]
-pub use synedrion::{self, k256};
+pub use synedrion::{self, bip32, k256};
 
 #[cfg(feature = "cggmp")]
 use synedrion::{PrehashedMessage, SessionId};
