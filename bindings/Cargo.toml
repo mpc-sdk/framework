@@ -5,7 +5,11 @@ edition = "2021"
 description = "Webassembly bindings to drive multi-party computation protocols"
 
 [features]
-tracing = ["dep:tracing", "dep:tracing-subscriber", "dep:tracing-subscriber-wasm"]
+tracing = [
+  "dep:tracing",
+  "dep:tracing-subscriber", 
+  "dep:tracing-subscriber-wasm"
+]
 
 [lib]
 crate-type = ["cdylib", "rlib"]
