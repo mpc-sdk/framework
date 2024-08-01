@@ -11,7 +11,6 @@ use anyhow::Result;
 async fn integration_peer_channel() -> Result<()> {
     //crate::test_utils::init_tracing();
 
-    // Wait for the server to start
     let (rx, _handle) = spawn_server()?;
     let addr = rx.await?;
     let server = format!("ws://{}", addr);
