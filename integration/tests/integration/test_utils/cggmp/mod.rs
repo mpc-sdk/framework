@@ -8,7 +8,7 @@ use mpc_driver::{
     Driver, SessionEventHandler, SessionHandler, SessionInitiator,
     SessionParticipant,
 };
-use mpc_protocol::SessionState;
+use mpc_protocol::{Keypair, SessionState};
 use rand::rngs::OsRng;
 use sha3::{Digest, Keccak256};
 use std::pin::Pin;
@@ -101,7 +101,7 @@ pub async fn make_client_sessions(
     // Create the clients
     let mut clients = Vec::new();
     let mut event_loops = Vec::new();
-    let mut keypairs = Vec::new();
+    let mut keypairs: Vec<Keypair> = Vec::new();
     for _ in 0..n {
         let (client, event_loop, keypair) =
             new_client::<anyhow::Error>(
