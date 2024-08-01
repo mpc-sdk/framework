@@ -18,17 +18,16 @@ crate-type = ["cdylib", "rlib"]
 mpc-driver = { path = "../driver", features = ["cggmp"] }
 mpc-protocol = { path = "../protocol" }
 mpc-client = { path = "../client" }
-
-getrandom = {version = "0.2", features = ["js"]}
-wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
 serde-wasm-bindgen = "0.6"
 wasm-bindgen-futures = "0.4"
-rand = { version="0.8" }
+rand = "0.8"
 console_error_panic_hook = "0.1"
-serde = { version = "1", features = ["derive"] }
 log = "0.4"
 futures = "0.3"
 serde_json = "1"
+getrandom = {version = "0.2", features = ["js"]}
+wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
+serde = { version = "1", features = ["derive"] }
 
 tracing = { version = "0.1", optional = true }
 tracing-subscriber = { version = "0.3", optional = true }

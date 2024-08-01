@@ -10,10 +10,10 @@ repository = "https://github.com/mpc-sdk/framework"
 [dependencies]
 mpc-protocol = { version = "0.7", path = "../protocol", features = ["zlib"] }
 thiserror = "1"
-binary-stream = { version = "8", features = ["async"] }
+binary-stream = { version = "9", features = ["async"] }
 serde = {version = "1", features = ["derive"]}
 serde_json = "1"
-toml = "0.7"
+toml = "0.8"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 async-trait = "0.1"
@@ -24,7 +24,7 @@ axum-server = { version = "0.7", features = ["tls-rustls"] }
 tower-http = { version = "0.5", features = ["trace", "cors"] }
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "sync", "macros", "time", "net"] }
 tokio-stream = "0.1"
-tokio-tungstenite = "0.21"
+tokio-tungstenite = "0.23"
 url = { version = "2", features = ["serde"] }
 
 [dev-dependencies]
