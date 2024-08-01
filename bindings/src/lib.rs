@@ -147,6 +147,24 @@ mod bindings {
         Ok(future_to_promise(fut).into())
     }
 
+    /// Generate a BIP32 derived child key.
+    #[wasm_bindgen(js_name = "deriveBip32")]
+    pub fn derive_bip32(
+        private_key: JsValue,
+        derivation_path: String,
+    ) -> Result<JsValue, JsError> {
+        use mpc_driver::bip32::DerivationPath;
+
+        let private_key: PrivateKey =
+            serde_wasm_bindgen::from_value(private_key)?;
+        let derivation_path: DerivationPath =
+            derivation_path.parse()?;
+        let child_key =
+            mpc_driver::derive_bip32(&private_key, &derivation_path)?;
+
+        Ok(serde_wasm_bindgen::to_value(&child_key)?)
+    }
+
     /// Generate a PEM-encoded keypair.
     ///
     /// Uses the default noise protocol parameters
