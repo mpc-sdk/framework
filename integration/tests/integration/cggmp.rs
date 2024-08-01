@@ -1,10 +1,8 @@
 use crate::test_utils::{cggmp, server_public_key, spawn_server};
 use anyhow::Result;
-use serial_test::serial;
 
 /// CGGMP distributed key generation.
 #[tokio::test]
-#[serial]
 async fn integration_cggmp_driver_keygen() -> Result<()> {
     // crate::test_utils::init_tracing();
 
@@ -21,7 +19,6 @@ async fn integration_cggmp_driver_keygen() -> Result<()> {
 
 /// CGGMP auxiliary info.
 #[tokio::test]
-#[serial]
 async fn integration_cggmp_driver_aux_info() -> Result<()> {
     // crate::test_utils::init_tracing();
 
@@ -42,7 +39,6 @@ async fn integration_cggmp_driver_aux_info() -> Result<()> {
 /// but in the real-world signing would need to generate fresh AuxInfo
 /// which is done in the keygen_sign test spec.
 #[tokio::test]
-#[serial]
 async fn integration_cggmp_driver_threshold_sign() -> Result<()> {
     // crate::test_utils::init_tracing();
 
@@ -59,7 +55,6 @@ async fn integration_cggmp_driver_threshold_sign() -> Result<()> {
 
 /// CGGMP DKG followed by signing (2-of-3).
 #[tokio::test]
-#[serial]
 async fn integration_cggmp_dkg_sign_2_3() -> Result<()> {
     // crate::test_utils::init_tracing();
 
@@ -79,7 +74,6 @@ async fn integration_cggmp_dkg_sign_2_3() -> Result<()> {
 /// Note that this follows a different code path to the 2-of-3
 /// which also runs a resharing phase.
 #[tokio::test]
-#[serial]
 async fn integration_cggmp_dkg_sign_2_2() -> Result<()> {
     // crate::test_utils::init_tracing();
 
@@ -94,12 +88,8 @@ async fn integration_cggmp_dkg_sign_2_2() -> Result<()> {
     Ok(())
 }
 
-/// CGGMP DKG followed by signing (2-of-2).
-///
-/// Note that this follows a different code path to the 2-of-3
-/// which also runs a resharing phase.
+/// CGGMP DKG followed by resharing and signing.
 #[tokio::test]
-#[serial]
 async fn integration_cggmp_dkg_reshare_2_2_to_3_4() -> Result<()> {
     // crate::test_utils::init_tracing();
 

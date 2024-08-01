@@ -2,12 +2,10 @@ use crate::test_utils::{
     server_public_key, socket_close, spawn_server,
 };
 use anyhow::Result;
-use serial_test::serial;
 
 /// Creates a client that handshakes with the server and
 /// then explicitly closes the connection.
 #[tokio::test]
-#[serial]
 async fn integration_socket_close() -> Result<()> {
     //crate::test_utils::init_tracing();
     //

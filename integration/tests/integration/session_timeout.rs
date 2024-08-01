@@ -2,14 +2,12 @@ use crate::test_utils::{
     server_public_key, session_timeout, spawn_server,
 };
 use anyhow::Result;
-use serial_test::serial;
 
 /// Creates two clients that handshake with the server.
 ///
 /// The first client creates a session but the second
 /// client never joins the session so we get a timeout event.
 #[tokio::test]
-#[serial]
 async fn integration_session_timeout() -> Result<()> {
     //crate::test_utils::init_tracing();
     //

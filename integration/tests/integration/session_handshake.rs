@@ -1,5 +1,4 @@
 use anyhow::Result;
-use serial_test::serial;
 
 use crate::test_utils::{
     server_public_key, session_handshake, spawn_server,
@@ -8,7 +7,6 @@ use crate::test_utils::{
 /// Uses the session helpers from the driver library to determine
 /// when both participants in a session are active.
 #[tokio::test]
-#[serial]
 async fn integration_session_handshake() -> Result<()> {
     //crate::test_utils::init_tracing();
 

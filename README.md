@@ -32,6 +32,7 @@ You will need the [rust][] toolchain and a few other tools:
 
 ```
 cargo install cargo-make
+cargo install cargo-nextest
 cargo install wasm-pack
 ```
 
@@ -64,7 +65,7 @@ cargo make doc
 To run the tests using the native client:
 
 ```
-cargo make test
+cargo nextest run
 ```
 
 #### Web Platform

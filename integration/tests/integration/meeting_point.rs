@@ -1,5 +1,4 @@
 use anyhow::Result;
-use serial_test::serial;
 
 use crate::test_utils::{
     meeting_point, server_public_key, spawn_server,
@@ -7,7 +6,6 @@ use crate::test_utils::{
 
 /// Mimics a meeting point flow for two participants.
 #[tokio::test]
-#[serial]
 async fn integration_meeting_point() -> Result<()> {
     //crate::test_utils::init_tracing();
 

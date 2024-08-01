@@ -1,5 +1,4 @@
 use anyhow::Result;
-use serial_test::serial;
 
 use crate::test_utils::{
     server_public_key, session_broadcast, spawn_server,
@@ -12,7 +11,6 @@ use crate::test_utils::{
 /// and each node broadcasts a message to all the other
 /// participants in the session.
 #[tokio::test]
-#[serial]
 async fn integration_session_broadcast() -> Result<()> {
     //crate::test_utils::init_tracing();
 
