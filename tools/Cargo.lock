@@ -242,6 +242,8 @@ dependencies = [
  "bs58",
  "hmac",
  "k256",
+ "once_cell",
+ "pbkdf2",
  "rand_core",
  "ripemd",
  "sha2",
@@ -1023,6 +1025,7 @@ name = "mpc-driver"
 version = "0.7.0"
 dependencies = [
  "async-trait",
+ "bip32",
  "futures",
  "getrandom",
  "k256",
@@ -1106,6 +1109,16 @@ checksum = "a1914cd452d8fccd6f9db48147b29fd4ae05bea9dc5d9ad578509f72415de282"
 dependencies = [
  "cfg-if",
  "libm",
+]
+
+[[package]]
+name = "pbkdf2"
+version = "0.12.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f8ed6a7761f76e3b9f92dfb0a60a6a6477c61024b775147ff0973a02653abaf2"
+dependencies = [
+ "digest",
+ "hmac",
 ]
 
 [[package]]
@@ -1570,7 +1583,7 @@ checksum = "2047c6ded9c721764247e62cd3b03c09ffc529b2ba5b10ec482ae507a4a70160"
 [[package]]
 name = "synedrion"
 version = "0.1.0"
-source = "git+https://github.com/entropyxyz/synedrion?rev=0cd2795161ba58cb30c5258f4a9cf96c1e4903e4#0cd2795161ba58cb30c5258f4a9cf96c1e4903e4"
+source = "git+https://github.com/entropyxyz/synedrion?rev=bd15ac19f2662d9da722cfc68b6a04f88680ea60#bd15ac19f2662d9da722cfc68b6a04f88680ea60"
 dependencies = [
  "base64",
  "bincode",
