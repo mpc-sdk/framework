@@ -1,0 +1,43 @@
+[package]
+name = "mpc-relay"
+version = "0.7.0"
+edition = "2021"
+description = "Noise protocol websocket relay for MPC/TSS applications"
+keywords = ["mpc", "tss", "relay", "crypto", "e2ee"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/mpc-sdk/framework"
+
+[dependencies]
+mpc-protocol = { version = "0.7", path = "../protocol" }
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+mpc-driver = { path = "../driver" }
+futures = "0.3"
+tokio-stream = "0.1"
+log = "0.4"
+serial_test = "2"
+sha2 = "0.10"
+sha3 = "0.10"
+serde_json = "1"
+rand = "0.8"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+mpc-relay-server = { version = "0.7", path = "../server" }
+clap = { version = "4", features = ["derive", "wrap_help", "env"] }
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "fs", "io-util" ] }
+axum-server = { version = "0.7", features = ["tls-rustls"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+mpc-client= { path = "../client" }
+
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+tokio = { version = "1", features = ["sync", "time"] }
+mpc-client= { path = "../client" }
+wasm-bindgen-test = "0.3"
+wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
+wasm-log = "0.3"
+getrandom = {version = "0.2", features = ["js"]}
+wasm-bindgen-futures = "0.4"
