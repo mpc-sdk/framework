@@ -42,6 +42,10 @@ pub enum Error {
     /// Error generated converting integers.
     #[error(transparent)]
     FromInt(#[from] std::num::TryFromIntError),
+
+    /// Driver library error.
+    #[error(transparent)]
+    Bip32(#[from] synedrion::bip32::Error),
 }
 
 impl From<synedrion::sessions::LocalError> for Error {

@@ -1,5 +1,4 @@
 pub(crate) mod cggmp;
-
 pub(crate) mod meeting_point;
 pub(crate) mod peer_channel;
 pub(crate) mod session_broadcast;
@@ -7,21 +6,11 @@ pub(crate) mod session_handshake;
 pub(crate) mod session_timeout;
 pub(crate) mod socket_close;
 
-#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
 pub(crate) mod native;
-
-#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
-pub(crate) mod web;
-
-#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
 pub use native::*;
 
-#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
-pub use web::*;
-
-use mpc_protocol::{generate_keypair, Keypair};
-
 use mpc_client::{Client, ClientOptions, EventLoop};
+use mpc_protocol::{generate_keypair, Keypair};
 
 /// Create a new client connected to the mock server.
 pub async fn new_client<E: From<mpc_client::Error>>(

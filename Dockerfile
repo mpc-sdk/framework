@@ -7,7 +7,7 @@ COPY client client
 COPY driver driver
 COPY protocol protocol
 COPY server server
-COPY src src
+COPY relay relay
 COPY Cargo.toml Cargo.toml
 COPY Cargo.lock Cargo.lock
 COPY config.toml config.toml

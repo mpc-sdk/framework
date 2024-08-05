@@ -143,7 +143,8 @@ impl ServerConfig {
 
         let dir = Self::directory(path.as_ref())?;
 
-        let contents = if let Ok(env_keypair) = std::env::var(ENV_PEM) {
+        let contents = if let Ok(env_keypair) = std::env::var(ENV_PEM)
+        {
             tracing::info!("use environmet keypair PEM");
             env_keypair.to_owned()
         } else {

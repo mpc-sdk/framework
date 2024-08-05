@@ -1,10 +1,12 @@
 use anyhow::Result;
 use mpc_driver::{
-    k256::ecdsa::{self, signature::hazmat::PrehashVerifier},
+    k256::ecdsa::{
+        self, signature::hazmat::PrehashVerifier, SigningKey,
+    },
     keygen, sign,
     synedrion::SessionId,
-    Participant, PartyOptions, PrivateKey, Protocol, ServerOptions,
-    SessionOptions,
+    KeyShare, Participant, PartyOptions, PrivateKey, Protocol,
+    ServerOptions, SessionOptions,
 };
 use mpc_protocol::{generate_keypair, Parameters};
 use rand::{rngs::OsRng, Rng};
@@ -17,7 +19,12 @@ pub async fn run_dkg_sign_2_2(
 ) -> Result<()> {
     let t = 2;
     let n = 2;
-    run_dkg_sign(t, n, server, server_public_key).await
+
+    let (server, key_shares, signers) =
+        run_dkg(t, n, server, server_public_key).await?;
+    sign_t_2(t, n, server, key_shares, signers).await?;
+
+    Ok(())
 }
 
 pub async fn run_dkg_sign_2_3(
@@ -26,21 +33,25 @@ pub async fn run_dkg_sign_2_3(
 ) -> Result<()> {
     let t = 2;
     let n = 3;
-    run_dkg_sign(t, n, server, server_public_key).await
+
+    let (server, key_shares, signers) =
+        run_dkg(t, n, server, server_public_key).await?;
+    sign_t_2(t, n, server, key_shares, signers).await?;
+
+    Ok(())
 }
 
-async fn run_dkg_sign(
+pub(super) async fn run_dkg(
     t: u16,
     n: u16,
     server: &str,
     server_public_key: Vec<u8>,
-) -> Result<()> {
+) -> Result<(ServerOptions, Vec<KeyShare>, Vec<SigningKey>)> {
     let params = Parameters {
         parties: n,
         threshold: t,
     };
     let (signers, verifiers) = make_signers(n as usize);
-    let message = make_signing_message()?;
     let server = ServerOptions {
         server_url: server.to_owned(),
         server_public_key: server_public_key.clone(),
@@ -105,7 +116,32 @@ async fn run_dkg_sign(
         key_shares.push(result?);
     }
 
+    Ok((server, key_shares, signers))
+}
+
+pub(super) async fn sign_t_2(
+    t: u16,
+    n: u16,
+    server: ServerOptions,
+    mut key_shares: Vec<KeyShare>,
+    signers: Vec<SigningKey>,
+) -> Result<()> {
+    let params = Parameters {
+        parties: n,
+        threshold: t,
+    };
+
+    let message = make_signing_message()?;
+
+    let mut keypairs = Vec::new();
+
+    for _ in 0..t {
+        let keypair = generate_keypair()?;
+        keypairs.push(keypair.clone());
+    }
+
     // Prepare data for signing
+    let rng = &mut OsRng;
     let sign_session_id: [u8; 32] = rng.gen();
     let sign_session_id = SessionId::from_seed(&sign_session_id);
 

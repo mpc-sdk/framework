@@ -8,8 +8,7 @@ use mpc_protocol::decode_keypair;
 
 use mpc_relay_server::{RelayServer, ServerConfig};
 
-const ADDR: &str = "127.0.0.1:7337";
-pub(crate) const SERVER: &str = "ws://localhost:7337";
+const ADDR: &str = "127.0.0.1:0";
 
 /// Get the public key for the test server.
 pub async fn server_public_key() -> Result<Vec<u8>> {

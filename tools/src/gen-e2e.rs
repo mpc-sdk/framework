@@ -5,17 +5,20 @@ use sha3::{Digest, Keccak256};
 use std::{fs, path::PathBuf};
 
 const CGGMP_JS: &str =
-    include_str!("../../tests/e2e/cggmp/template.js");
+    include_str!("../../integration/tests/e2e/cggmp/template.js");
 const CGGMP_HTML: &str =
-    include_str!("../../tests/e2e/cggmp/template.html");
+    include_str!("../../integration/tests/e2e/cggmp/template.html");
 
-const KEYPAIR_P1: &str = include_str!("../../tests/e2e/p1.pem");
-const KEYPAIR_P2: &str = include_str!("../../tests/e2e/p2.pem");
-const KEYPAIR_P3: &str = include_str!("../../tests/e2e/p3.pem");
+const KEYPAIR_P1: &str =
+    include_str!("../../integration/tests/e2e/p1.pem");
+const KEYPAIR_P2: &str =
+    include_str!("../../integration/tests/e2e/p2.pem");
+const KEYPAIR_P3: &str =
+    include_str!("../../integration/tests/e2e/p3.pem");
 
 const SERVER_URL: &str = "ws://127.0.0.1:8008";
 const SERVER_PUBLIC_KEY: &str =
-    include_str!("../../tests/server_public_key.txt");
+    include_str!("../../integration/tests/server_public_key.txt");
 
 const MSG: &str = "this is the message that is sent out";
 
@@ -23,8 +26,11 @@ fn main() -> anyhow::Result<()> {
     let base_dir = env!("CARGO_MANIFEST_DIR");
     let base_path = PathBuf::from(base_dir);
     let base_path = base_path.parent().expect("parent path");
-    let output_dir =
-        base_path.join("tests").join("e2e").join("cggmp");
+    let output_dir = base_path
+        .join("integration")
+        .join("tests")
+        .join("e2e")
+        .join("cggmp");
 
     let rng = &mut OsRng;
     let keygen_session_id_seed: [u8; 32] = rng.gen();

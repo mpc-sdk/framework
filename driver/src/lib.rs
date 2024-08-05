@@ -36,7 +36,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[cfg(feature = "cggmp")]
 pub mod cggmp;
 #[cfg(feature = "cggmp")]
-pub use synedrion::{self, k256};
+pub use synedrion::{self, bip32, k256};
 
 #[cfg(feature = "cggmp")]
 use synedrion::{PrehashedMessage, SessionId};
@@ -195,6 +195,19 @@ pub async fn reshare(
         )
         .await?
         .into()),
+    }
+}
+
+/// Derive a BIP32 child key.
+#[cfg(feature = "cggmp")]
+pub fn derive_bip32(
+    key_share: &PrivateKey,
+    derivation_path: &bip32::DerivationPath,
+) -> Result<PrivateKey> {
+    match key_share {
+        PrivateKey::Cggmp(key_share) => Ok(PrivateKey::Cggmp(
+            cggmp::derive_bip32(key_share, derivation_path)?,
+        )),
     }
 }
 

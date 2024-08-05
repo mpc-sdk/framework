@@ -32,6 +32,7 @@ You will need the [rust][] toolchain and a few other tools:
 
 ```
 cargo install cargo-make
+cargo install cargo-nextest
 cargo install wasm-pack
 ```
 
@@ -64,7 +65,7 @@ cargo make doc
 To run the tests using the native client:
 
 ```
-cargo make test
+cargo nextest run
 ```
 
 #### Web Platform
@@ -114,7 +115,7 @@ cargo make dev-server
 Running the test specs requires [playwright][], so first install the dependencies for the end-to-end tests and then the [playwright][] browsers:
 
 ```
-cd tests/e2e
+cd integration/tests/e2e
 npm install
 npx playwright install
 ```

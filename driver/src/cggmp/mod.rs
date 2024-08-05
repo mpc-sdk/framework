@@ -5,6 +5,7 @@ use mpc_protocol::{SessionId as ProtocolSessionId, SessionState};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use synedrion::{
+    bip32::DerivationPath,
     ecdsa::{self, SigningKey, VerifyingKey},
     KeyResharingInputs, MessageBundle, NewHolder, OldHolder,
     PrehashedMessage, RecoverableSignature, SchemeParams, SessionId,
@@ -485,4 +486,15 @@ pub async fn sign<P: SchemeParams + 'static>(
     wait_for_close(&mut stream).await?;
 
     Ok(signature)
+}
+
+/// Derive a child key using the BIP32 algorithm.
+pub fn derive_bip32<P>(
+    key_share: &ThresholdKeyShare<P, VerifyingKey>,
+    derivation_path: &DerivationPath,
+) -> Result<ThresholdKeyShare<P, VerifyingKey>>
+where
+    P: SchemeParams + 'static,
+{
+    Ok(key_share.derive_bip32(derivation_path)?)
 }
