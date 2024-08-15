@@ -4,10 +4,10 @@ WORKDIR /usr/app
 
 COPY bindings bindings
 COPY client client
+COPY command_line command_line
 COPY driver driver
 COPY protocol protocol
-COPY server server
-COPY relay relay
+COPY relay_server relay_server
 COPY Cargo.toml Cargo.toml
 COPY Cargo.lock Cargo.lock
 COPY config.toml config.toml
