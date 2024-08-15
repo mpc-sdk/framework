@@ -354,6 +354,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "bincode"
+version = "2.0.0-rc.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f11ea1a0346b94ef188834a65c068a03aec181c94896d481d7a0a40d85b0ce95"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "bindgen"
 version = "0.69.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1131,7 +1140,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13471584da78061a28306d1359dd0178d8d6fc1c7c80e5e35d27260346e0516a"
 dependencies = [
  "anymap2",
- "bincode",
+ "bincode 1.3.3",
  "gloo-console",
  "gloo-utils",
  "js-sys",
@@ -2158,9 +2167,9 @@ dependencies = [
 
 [[package]]
 name = "secrecy"
-version = "0.8.0"
+version = "0.9.0-pre.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9bd1c54ea06cfd2f6b63219704de0b9b4f72dcc2b8fdef820be6cd799780e91e"
+checksum = "8e480ff13eb421e9c0201c7d8e17fe61ad336a38701989e91f8d0523001cd2fa"
 dependencies = [
  "serde",
  "zeroize",
@@ -2444,10 +2453,10 @@ checksum = "a7065abeca94b6a8a577f9bd45aa0867a2238b74e8eb67cf10d492bc39351394"
 [[package]]
 name = "synedrion"
 version = "0.1.0"
-source = "git+https://github.com/entropyxyz/synedrion?rev=bd15ac19f2662d9da722cfc68b6a04f88680ea60#bd15ac19f2662d9da722cfc68b6a04f88680ea60"
+source = "git+https://github.com/entropyxyz/synedrion?rev=1d210d149dfeb0dca1dd41d7fac4d0bf03c686fa#1d210d149dfeb0dca1dd41d7fac4d0bf03c686fa"
 dependencies = [
  "base64 0.21.7",
- "bincode",
+ "bincode 2.0.0-rc.3",
  "bip32",
  "crypto-bigint",
  "crypto-primes",
