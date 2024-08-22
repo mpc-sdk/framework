@@ -8,7 +8,7 @@ publish = false
 mpc-client= { path = "../client" }
 mpc-driver = { path = "../driver" }
 mpc-protocol = { version = "0.7", path = "../protocol" }
-mpc-relay-server = { version = "0.7", path = "../server" }
+mpc-relay-server = { version = "0.7", path = "../relay_server" }
 anyhow = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

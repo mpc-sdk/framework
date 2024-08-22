@@ -2,11 +2,11 @@
 members = [
   "bindings",
   "client",
+  "command_line",
   "driver",
   "integration",
   "protocol",
-  "relay",
-  "server",
+  "relay_server",
 ]
 exclude = [
   "tools",

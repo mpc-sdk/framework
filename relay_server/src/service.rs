@@ -261,47 +261,6 @@ async fn handle_request(
     Ok(())
 }
 
-/*
-async fn wait_for_meeting_ready(
-    interval_secs: u64,
-    state: State,
-    _owner: Connection,
-    _start_time: SystemTime,
-    meeting: MeetingState,
-) {
-    let interval =
-        tokio::time::interval(Duration::from_secs(interval_secs));
-    let mut stream = IntervalStream::new(interval);
-    while stream.next().await.is_some() {
-        let (ready, target) = {
-            let reader = state.read().await;
-            if let Some(target) =
-                reader.meetings.get_meeting(&meeting.meeting_id)
-            {
-                let ready = target.is_full();
-                let state = MeetingState {
-                    meeting_id: meeting.meeting_id,
-                    registered_participants: target.participants(),
-                    data: target.data().clone(),
-                };
-                (ready, state)
-            } else {
-                break;
-            }
-        };
-
-        if ready {
-            if let Err(e) =
-                notify_meeting_ready(Arc::clone(&state), target).await
-            {
-                tracing::error!("{:#?}", e);
-            }
-            break;
-        }
-    }
-}
-*/
-
 async fn wait_for_session_ready(
     interval_secs: u64,
     state: State,
@@ -515,7 +474,7 @@ async fn service(
 
                         let meeting_state = if meeting.is_full() {
                             Some(MeetingState {
-                                meeting_id: meeting_id,
+                                meeting_id,
                                 registered_participants: meeting
                                     .participants(),
                                 data: meeting.data().clone(),
