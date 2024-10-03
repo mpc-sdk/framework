@@ -17,16 +17,16 @@ mpc-client = { version = "0.7", path = "../client" }
 thiserror = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-sha3 = "0.10"
+sha3 = "0.11.0-pre.4"
 tracing = "0.1"
 tokio = { version = "1", features = ["sync"] }
 async-trait = "0.1"
 futures = "0.3"
-synedrion = {version = "0.1", git = "https://github.com/entropyxyz/synedrion" , rev = "1d210d149dfeb0dca1dd41d7fac4d0bf03c686fa"}
+synedrion = {version = "0.1", git = "https://github.com/entropyxyz/synedrion" , rev = "6a38f1fb5dcc91a7e249be77e19c5c93e1945b29"}
 # synedrion = {version = "0.1", git = "https://github.com/mpc-sdk/synedrion" , branch = "threshold-serde"}
-k256 = { version = "0.13.2", default-features = false, features = ["pem", "serde", "std"] }
+k256 = { version = "0.14.0-pre.2", default-features = false, features = ["pem", "serde", "std"] }
 # enable `std` feature for error conversion
-bip32 = { version = "0.5", features = ["std"]}
+bip32 = { version = "0.6.0-pre.0", features = ["std"]}
 rand = "0.8"
 
 # WASM
