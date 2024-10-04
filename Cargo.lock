@@ -627,14 +627,14 @@ dependencies = [
 
 [[package]]
 name = "crypto-bigint"
-version = "0.6.0-rc.5"
+version = "0.6.0-rc.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "040a95c58773f47c92f5f17814702bfd68e8ace9ddce4690c982d0019cac32e2"
+checksum = "e43027691f1c055da3da4f7d96af09fcec420d435d5616e51f29afd0811c56a7"
 dependencies = [
  "hybrid-array",
  "num-traits",
  "rand_core",
- "serdect",
+ "serdect 0.2.0",
  "subtle",
  "zeroize",
 ]
@@ -663,9 +663,9 @@ dependencies = [
 
 [[package]]
 name = "crypto-primes"
-version = "0.6.0-pre.0"
+version = "0.6.0-pre.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "31bb1382ea4ef18b2da595f36ca284c7b6366d22264ac02f8baee109361cd6b0"
+checksum = "f8cddf16f4947447608151498f97ed91d3f60f8113a6488f440c469608ee65b6"
 dependencies = [
  "crypto-bigint",
  "rand_core",
@@ -786,7 +786,7 @@ dependencies = [
  "digest 0.11.0-pre.9",
  "elliptic-curve",
  "rfc6979",
- "serdect",
+ "serdect 0.3.0-rc.0",
  "signature",
  "spki",
 ]
@@ -813,7 +813,7 @@ dependencies = [
  "pkcs8",
  "rand_core",
  "sec1",
- "serdect",
+ "serdect 0.3.0-rc.0",
  "subtle",
  "zeroize",
 ]
@@ -1452,7 +1452,7 @@ dependencies = [
  "ecdsa",
  "elliptic-curve",
  "once_cell",
- "serdect",
+ "serdect 0.3.0-rc.0",
  "sha2 0.11.0-pre.4",
 ]
 
@@ -2219,7 +2219,7 @@ dependencies = [
  "der",
  "hybrid-array",
  "pkcs8",
- "serdect",
+ "serdect 0.3.0-rc.0",
  "subtle",
  "zeroize",
 ]
@@ -2322,6 +2322,16 @@ dependencies = [
  "form_urlencoded",
  "itoa",
  "ryu",
+ "serde",
+]
+
+[[package]]
+name = "serdect"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a84f14a19e9a014bb9f4512488d9829a68e04ecabffb0f9904cd1ace94598177"
+dependencies = [
+ "base16ct",
  "serde",
 ]
 
@@ -2532,8 +2542,9 @@ checksum = "a7065abeca94b6a8a577f9bd45aa0867a2238b74e8eb67cf10d492bc39351394"
 
 [[package]]
 name = "synedrion"
-version = "0.1.0"
-source = "git+https://github.com/entropyxyz/synedrion?rev=6a38f1fb5dcc91a7e249be77e19c5c93e1945b29#6a38f1fb5dcc91a7e249be77e19c5c93e1945b29"
+version = "0.2.0-pre.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "79783ec15f7f4f01a7c107ca929d6293a95e4ee53a8692f635e5ca0f829dd34b"
 dependencies = [
  "base64 0.22.1",
  "bincode 2.0.0-rc.3",
