@@ -1,6 +1,5 @@
 //! ECDSA signatures compatible with Ethereum.
 use mpc_driver::ecdsa::{self, RecoverableSignature, Signature};
-use serde::Serialize;
 use std::borrow::Cow;
 use wasm_bindgen::prelude::{wasm_bindgen, JsError, JsValue};
 

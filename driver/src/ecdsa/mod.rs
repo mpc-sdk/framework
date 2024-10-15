@@ -71,7 +71,7 @@ impl<'a> EcdsaSigner<'a> {
 
     /// Sign a message.
     pub fn sign(&self, message: &[u8]) -> Signature {
-        self.signing_key.sign(message.as_ref())
+        self.signing_key.sign(message)
     }
 
     /// Verifying key for this signer.

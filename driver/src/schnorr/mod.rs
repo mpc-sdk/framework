@@ -3,10 +3,12 @@
 use crate::Result;
 use k256::schnorr::{
     signature::{hazmat::PrehashSigner, Signer, Verifier},
-    Signature, SigningKey, VerifyingKey,
+    SigningKey, VerifyingKey,
 };
 use rand::rngs::OsRng;
 use std::borrow::Cow;
+
+pub use k256::schnorr::Signature;
 
 /// Create a signer for Taproot BIP-340 Schnorr signatures.
 pub struct SchnorrSigner<'a> {
@@ -30,14 +32,14 @@ impl<'a> SchnorrSigner<'a> {
     }
 
     /// Sign a message.
-    pub fn sign<B: AsRef<[u8]>>(&self, message: B) -> Signature {
-        self.signing_key.sign(message.as_ref())
+    pub fn sign(&self, message: &[u8]) -> Signature {
+        self.signing_key.sign(message)
     }
 
     /// Attempt to sign the given message digest, returning a
     /// digital signature on success, or an error if something went wrong.
     pub fn sign_prehash(&self, prehash: &[u8]) -> Result<Signature> {
-        Ok(self.signing_key.as_ref().sign_prehash(prehash)?)
+        Ok(self.signing_key.sign_prehash(prehash)?)
     }
 
     /// Verifying key for this signer.
@@ -46,13 +48,11 @@ impl<'a> SchnorrSigner<'a> {
     }
 
     /// Verify a message.
-    pub fn verify<B: AsRef<[u8]>>(
+    pub fn verify(
         &self,
-        message: B,
+        message: &[u8],
         signature: &Signature,
     ) -> Result<()> {
-        Ok(self
-            .verifying_key()
-            .verify(message.as_ref(), signature)?)
+        Ok(self.verifying_key().verify(message, signature)?)
     }
 }

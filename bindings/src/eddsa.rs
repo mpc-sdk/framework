@@ -1,7 +1,7 @@
 //! EdDSA signatures compatible with Solana.
 use mpc_driver::eddsa;
 use std::borrow::Cow;
-use wasm_bindgen::prelude::{wasm_bindgen, JsError};
+use wasm_bindgen::prelude::{wasm_bindgen, JsError, JsValue};
 
 /// Signer for EdDSA.
 #[wasm_bindgen]
@@ -28,7 +28,7 @@ impl EddsaSigner {
     }
 
     /// Sign a message.
-    pub fn sign(&self, message: &[u8]) -> Result<(), JsError> {
+    pub fn sign(&self, message: &[u8]) -> Result<JsValue, JsError> {
         let result = self.inner.sign(message);
         todo!();
     }
