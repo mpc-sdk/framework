@@ -45,12 +45,17 @@ impl<'a> EcdsaSigner<'a> {
         self.signing_key.sign(message.as_ref())
     }
 
+    /// Verifying key for this signer.
+    pub fn verifying_key(&self) -> &VerifyingKey {
+        self.signing_key.verifying_key()
+    }
+
     /// Verify a message.
     pub fn verify<B: AsRef<[u8]>>(
-        verifying_key: &VerifyingKey,
+        &self,
         message: B,
         signature: &Signature,
     ) -> Result<(), Error> {
-        verifying_key.verify(message.as_ref(), signature)
+        self.verifying_key().verify(message.as_ref(), signature)
     }
 }

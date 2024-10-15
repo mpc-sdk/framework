@@ -7,12 +7,17 @@ use rand::rngs::OsRng;
 /// Create a signer for EdDSA signatures.
 pub struct EddsaSigner<'a> {
     signing_key: &'a SigningKey,
+    verifying_key: VerifyingKey,
 }
 
 impl<'a> EddsaSigner<'a> {
     /// Create a new signer.
     pub fn new(signing_key: &'a SigningKey) -> Self {
-        Self { signing_key }
+        let verifying_key = signing_key.verifying_key();
+        Self {
+            signing_key,
+            verifying_key,
+        }
     }
 
     /// Generate a random private signing key.
@@ -28,13 +33,20 @@ impl<'a> EddsaSigner<'a> {
         signer.sign(message)
     }
 
+    /// Verifying key for this signer.
+    pub fn verifying_key(&self) -> &VerifyingKey {
+        &self.verifying_key
+    }
+
     /// Verify a message.
     pub fn verify<B: AsRef<[u8]>>(
-        verifying_key: &VerifyingKey,
+        &self,
         message: B,
         signature: &Signature,
     ) -> Result<(), ed25519::Error> {
-        let verifier = DalekVerifier { verifying_key };
+        let verifier = DalekVerifier {
+            verifying_key: self.verifying_key(),
+        };
         verifier.verify(message, &signature)
     }
 }
