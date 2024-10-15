@@ -22,6 +22,11 @@ impl EddsaSigner {
         })
     }
 
+    /// Generate a random signing key.
+    pub fn random() -> Vec<u8> {
+        eddsa::EddsaSigner::random().to_bytes().as_slice().to_vec()
+    }
+
     /// Sign a message.
     pub fn sign(&self, message: &[u8]) -> Result<(), JsError> {
         let result = self.inner.sign(message);
