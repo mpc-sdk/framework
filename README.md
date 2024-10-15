@@ -16,9 +16,9 @@ Creating a meeting point that shares the session identifier between participants
 
 ### Signers
 
-* `ecdsa`: Single-party signer compatible with Ethereum.
-* `eddsa`: Single-party signer compatible with Solana.
-* `schnorr`: Single-party signer compatible with Bitcoin Taproot (BIP-340).
+* `ecdsa`: Single-party signer compatible with Ethereum using [k256](https://docs.rs/k256/latest/k256/).
+* `eddsa`: Single-party signer compatible with Solana using [ed25519](https://docs.rs/ed25519/latest/ed25519/) and [ed25519-dalek](https://docs.rs/ed25519-dalek/latest/ed25519_dalek/).
+* `schnorr`: Single-party signer compatible with Bitcoin Taproot (BIP-340) using [k256](https://docs.rs/k256/latest/k256/).
 
 ## Server Installation
 
