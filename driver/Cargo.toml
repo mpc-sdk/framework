@@ -10,6 +10,7 @@ repository = "https://github.com/mpc-sdk/framework"
 [features]
 default = ["cggmp"]
 cggmp = []
+schnorr = ["k256/schnorr"]
 
 [dependencies]
 mpc-protocol = { version = "0.7", path = "../protocol" }
@@ -23,7 +24,8 @@ tokio = { version = "1", features = ["sync"] }
 async-trait = "0.1"
 futures = "0.3"
 # synedrion = {version = "0.1", git = "https://github.com/entropyxyz/synedrion" , rev = "6a38f1fb5dcc91a7e249be77e19c5c93e1945b29"}
-synedrion = "0.2.0-pre.0"
+# synedrion = "0.2.0-pre.0"
+synedrion = { version = "0.2.0-pre.0", git = "https://github.com/tmpfs/synedrion", branch = "update-crypto-bigint" }
 k256 = { version = "0.14.0-pre.2", default-features = false, features = ["pem", "serde", "std"] }
 # enable `std` feature for error conversion
 bip32 = { version = "0.6.0-pre.0", features = ["std"]}
@@ -41,3 +43,4 @@ rustc_version = "0.4.1"
 
 [package.metadata.docs.rs]
 all-features = true
+

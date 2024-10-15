@@ -12,3 +12,7 @@ exclude = [
   "tools",
 ]
 resolver = "2"
+
+[patch.crates-io]
+crypto-bigint = { git = "https://github.com/RustCrypto/crypto-bigint.git", rev = "b85c162ab2dda726b54ec4a48de8fa0019296c74" }
+crypto-primes = { git = "https://github.com/entropyxyz/crypto-primes.git", rev = "b7158dae701bfd0cb7848fab373d27c40900b8ec" }
