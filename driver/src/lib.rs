@@ -8,6 +8,9 @@ use mpc_client::{
 use mpc_protocol::hex;
 use std::collections::BTreeSet;
 
+#[cfg(feature = "schnorr")]
+pub mod schnorr;
+
 mod bridge;
 mod error;
 pub mod meeting;
