@@ -11,6 +11,7 @@ repository = "https://github.com/mpc-sdk/framework"
 default = ["cggmp"]
 cggmp = []
 schnorr = ["k256/schnorr"]
+ecdsa = ["k256/ecdsa"]
 
 [dependencies]
 mpc-protocol = { version = "0.7", path = "../protocol" }

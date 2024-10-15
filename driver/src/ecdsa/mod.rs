@@ -1,15 +1,14 @@
-//! Generate Schnorr signatures compatible with Bitcoin
-//! Taproot (BIP 340).
-use k256::schnorr::{
+//! Generate ECDSA signatures compatible with Ethereum.
+use k256::ecdsa::{
     signature::{Signer, Verifier},
     Error, Signature, SigningKey, VerifyingKey,
 };
 use rand::rngs::OsRng;
 
-/// Create a signer for Taproot BIP-340 Schnorr signatures.
-pub struct SchnorrSigner {}
+/// Create a signer for ECDSA signatures.
+pub struct EcdsaSigner {}
 
-impl SchnorrSigner {
+impl EcdsaSigner {
     /// Generate a random private signing key.
     pub fn random() -> SigningKey {
         SigningKey::random(&mut OsRng)

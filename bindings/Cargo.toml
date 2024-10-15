@@ -5,6 +5,7 @@ edition = "2021"
 description = "Webassembly bindings to drive multi-party computation protocols"
 
 [features]
+ecsda = ["mpc-driver/ecdsa"]
 schnorr = ["mpc-driver/schnorr"]
 tracing = [
   "dep:tracing",

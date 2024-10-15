@@ -8,6 +8,9 @@ use mpc_client::{
 use mpc_protocol::hex;
 use std::collections::BTreeSet;
 
+#[cfg(feature = "ecdsa")]
+pub mod ecdsa;
+
 #[cfg(feature = "schnorr")]
 pub mod schnorr;
 
