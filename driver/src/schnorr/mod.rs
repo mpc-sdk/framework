@@ -7,20 +7,24 @@ use k256::schnorr::{
 use rand::rngs::OsRng;
 
 /// Create a signer for Taproot BIP-340 Schnorr signatures.
-pub struct SchnorrSigner {}
+pub struct SchnorrSigner<'a> {
+    signing_key: &'a SigningKey,
+}
 
-impl SchnorrSigner {
+impl<'a> SchnorrSigner<'a> {
+    /// Create a new signer.
+    pub fn new(signing_key: &'a SigningKey) -> Self {
+        Self { signing_key }
+    }
+
     /// Generate a random private signing key.
     pub fn random() -> SigningKey {
         SigningKey::random(&mut OsRng)
     }
 
     /// Sign a message.
-    pub fn sign<B: AsRef<[u8]>>(
-        signing_key: &SigningKey,
-        message: B,
-    ) -> Signature {
-        signing_key.sign(message.as_ref())
+    pub fn sign<B: AsRef<[u8]>>(&self, message: B) -> Signature {
+        self.signing_key.sign(message.as_ref())
     }
 
     /// Verify a message.

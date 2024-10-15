@@ -5,20 +5,26 @@ use ed25519_dalek::{Signature, SigningKey, VerifyingKey};
 use rand::rngs::OsRng;
 
 /// Create a signer for EdDSA signatures.
-pub struct EddsaSigner {}
+pub struct EddsaSigner<'a> {
+    signing_key: &'a SigningKey,
+}
 
-impl EddsaSigner {
+impl<'a> EddsaSigner<'a> {
+    /// Create a new signer.
+    pub fn new(signing_key: &'a SigningKey) -> Self {
+        Self { signing_key }
+    }
+
     /// Generate a random private signing key.
     pub fn random() -> SigningKey {
         SigningKey::generate(&mut OsRng)
     }
 
     /// Sign a message.
-    pub fn sign<B: AsRef<[u8]>>(
-        signing_key: &SigningKey,
-        message: B,
-    ) -> Signature {
-        let signer = DalekSigner { signing_key };
+    pub fn sign<B: AsRef<[u8]>>(&self, message: B) -> Signature {
+        let signer = DalekSigner {
+            signing_key: self.signing_key,
+        };
         signer.sign(message)
     }
 
