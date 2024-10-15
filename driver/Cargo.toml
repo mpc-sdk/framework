@@ -32,7 +32,7 @@ k256 = { version = "0.14.0-pre.2", default-features = false, features = ["pem", 
 bip32 = { version = "0.6.0-pre.0", features = ["std"], optional = true }
 rand = "0.8"
 ed25519 = { version = "2.3.0-pre.0", optional = true }
-ed25519-dalek = { version = "2.2.0-pre", optional = true, git = "https://github.com/dalek-cryptography/curve25519-dalek", branch = "rustcrypto-new-releases" }
+ed25519-dalek = { version = "2.2.0-pre", features = ["rand_core"], optional = true, git = "https://github.com/dalek-cryptography/curve25519-dalek", branch = "rustcrypto-new-releases" }
 
 # WASM
 

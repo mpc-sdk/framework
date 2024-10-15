@@ -45,6 +45,11 @@ pub enum Error {
     Client(#[from] mpc_client::Error),
 
     /// Client library errors.
+    #[cfg(any(
+        feature = "cggmp",
+        feature = "ecdsa",
+        feature = "schnorr"
+    ))]
     #[error(transparent)]
     K256(#[from] k256::ecdsa::Error),
 }
