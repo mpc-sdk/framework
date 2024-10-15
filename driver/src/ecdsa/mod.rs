@@ -1,19 +1,26 @@
 //! Generate ECDSA signatures compatible with Ethereum.
+use crate::Result;
 use k256::ecdsa::{
     signature::{Signer, Verifier},
-    Error, RecoveryId, Signature, SigningKey, VerifyingKey,
+    RecoveryId, Signature, SigningKey, VerifyingKey,
 };
 use rand::rngs::OsRng;
+use std::borrow::Cow;
 
 /// Create a signer for ECDSA signatures.
 pub struct EcdsaSigner<'a> {
-    signing_key: &'a SigningKey,
+    signing_key: Cow<'a, SigningKey>,
 }
 
 impl<'a> EcdsaSigner<'a> {
     /// Create a new signer.
-    pub fn new(signing_key: &'a SigningKey) -> Self {
+    pub fn new(signing_key: Cow<'a, SigningKey>) -> Self {
         Self { signing_key }
+    }
+
+    /// Initialize a signing key from a byte slice.
+    pub fn from_slice(signing_key: &[u8]) -> Result<SigningKey> {
+        Ok(SigningKey::from_slice(signing_key)?)
     }
 
     /// Generate a random private signing key.
@@ -27,8 +34,8 @@ impl<'a> EcdsaSigner<'a> {
     pub fn sign_recoverable(
         &self,
         message: &[u8],
-    ) -> Result<(Signature, RecoveryId), Error> {
-        self.signing_key.sign_recoverable(message)
+    ) -> Result<(Signature, RecoveryId)> {
+        Ok(self.signing_key.sign_recoverable(message)?)
     }
 
     /// Sign the given message prehash, returning a signature
@@ -36,8 +43,8 @@ impl<'a> EcdsaSigner<'a> {
     pub fn sign_prehash_recoverable(
         &self,
         prehash: &[u8],
-    ) -> Result<(Signature, RecoveryId), Error> {
-        self.signing_key.sign_prehash_recoverable(prehash)
+    ) -> Result<(Signature, RecoveryId)> {
+        Ok(self.signing_key.sign_prehash_recoverable(prehash)?)
     }
 
     /// Sign a message.
@@ -55,7 +62,9 @@ impl<'a> EcdsaSigner<'a> {
         &self,
         message: B,
         signature: &Signature,
-    ) -> Result<(), Error> {
-        self.verifying_key().verify(message.as_ref(), signature)
+    ) -> Result<()> {
+        Ok(self
+            .verifying_key()
+            .verify(message.as_ref(), signature)?)
     }
 }

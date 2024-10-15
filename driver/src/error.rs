@@ -44,14 +44,15 @@ pub enum Error {
     #[error(transparent)]
     Client(#[from] mpc_client::Error),
 
-    /// Client library errors.
-    #[cfg(any(
-        feature = "cggmp",
-        feature = "ecdsa",
-        feature = "schnorr"
-    ))]
+    /// ECDSA library errors.
+    #[cfg(any(feature = "cggmp", feature = "ecdsa",))]
     #[error(transparent)]
-    K256(#[from] k256::ecdsa::Error),
+    Ecdsa(#[from] k256::ecdsa::Error),
+
+    /// Ed25519 library errors.
+    #[cfg(any(feature = "eddsa", feature = "schnorr"))]
+    #[error(transparent)]
+    Ed25519(#[from] Box<ed25519::Error>),
 }
 
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
