@@ -2,9 +2,11 @@
 
 use crate::Result;
 use ed25519::signature::{Signer, Verifier};
-use ed25519_dalek::{SecretKey, Signature, SigningKey, VerifyingKey};
+use ed25519_dalek::{SecretKey, SigningKey, VerifyingKey};
 use rand::rngs::OsRng;
 use std::borrow::Cow;
+
+pub use ed25519_dalek::Signature;
 
 /// Create a signer for EdDSA signatures.
 pub struct EddsaSigner<'a> {
