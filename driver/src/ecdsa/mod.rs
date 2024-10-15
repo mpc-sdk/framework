@@ -2,10 +2,32 @@
 use crate::Result;
 use k256::ecdsa::{
     signature::{Signer, Verifier},
-    RecoveryId, Signature, SigningKey, VerifyingKey,
+    RecoveryId, SigningKey, VerifyingKey,
 };
 use rand::rngs::OsRng;
+use serde::{Deserialize, Serialize};
+use sha3::{Digest, Keccak256};
 use std::borrow::Cow;
+
+pub use k256::ecdsa::Signature;
+
+/// Type for a recoverable signature.
+#[derive(Serialize, Deserialize)]
+pub struct RecoverableSignature {
+    /// Signature bytes.
+    pub signature: Vec<u8>,
+    /// Recovery identifier.
+    pub recovery_id: u8,
+}
+
+impl From<(Signature, RecoveryId)> for RecoverableSignature {
+    fn from(value: (Signature, RecoveryId)) -> Self {
+        Self {
+            signature: value.0.to_bytes().as_slice().to_vec(),
+            recovery_id: value.1.into(),
+        }
+    }
+}
 
 /// Create a signer for ECDSA signatures.
 pub struct EcdsaSigner<'a> {
@@ -48,7 +70,7 @@ impl<'a> EcdsaSigner<'a> {
     }
 
     /// Sign a message.
-    pub fn sign<B: AsRef<[u8]>>(&self, message: B) -> Signature {
+    pub fn sign(&self, message: &[u8]) -> Signature {
         self.signing_key.sign(message.as_ref())
     }
 
@@ -58,13 +80,35 @@ impl<'a> EcdsaSigner<'a> {
     }
 
     /// Verify a message.
-    pub fn verify<B: AsRef<[u8]>>(
+    pub fn verify(
         &self,
-        message: B,
+        message: &[u8],
         signature: &Signature,
     ) -> Result<()> {
-        Ok(self
-            .verifying_key()
-            .verify(message.as_ref(), signature)?)
+        Ok(self.verifying_key().verify(message, signature)?)
+    }
+
+    /// Sign a message for Ethereum first hashing the message
+    /// with the Keccak256 digest.
+    pub fn sign_eth(
+        &self,
+        message: &[u8],
+    ) -> Result<(Signature, RecoveryId)> {
+        let digest = Keccak256::new_with_prefix(message);
+        Ok(self.signing_key.sign_digest_recoverable(digest)?)
+    }
+
+    /// Recover the public key from a signature and recovery identifier.
+    pub fn recover(
+        message: &[u8],
+        signature: RecoverableSignature,
+    ) -> Result<VerifyingKey> {
+        let recid = RecoveryId::try_from(signature.recovery_id)?;
+        let signature = Signature::from_slice(&signature.signature)?;
+        Ok(VerifyingKey::recover_from_digest(
+            Keccak256::new_with_prefix(message),
+            &signature,
+            recid,
+        )?)
     }
 }
