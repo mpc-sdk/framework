@@ -1,5 +1,5 @@
 use anyhow::Result;
-use mpc_driver::eddsa::EddsaSigner;
+use mpc_driver::signers::eddsa::EddsaSigner;
 use serde::Deserialize;
 use std::borrow::Cow;
 
