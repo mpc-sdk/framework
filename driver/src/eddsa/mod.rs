@@ -1,5 +1,4 @@
 //! Generate EdDSA signatures compatible with Solana.
-
 use crate::Result;
 use ed25519::signature::{Signer, Verifier};
 use ed25519_dalek::{SecretKey, SigningKey, VerifyingKey};

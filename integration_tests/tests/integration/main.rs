@@ -1,6 +1,9 @@
 #[cfg(feature = "ecdsa")]
 mod ecdsa;
 
+#[cfg(feature = "eddsa")]
+mod eddsa;
+
 mod cggmp;
 mod meeting_point;
 mod peer_channel;
