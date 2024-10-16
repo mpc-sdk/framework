@@ -4,6 +4,9 @@ mod ecdsa;
 #[cfg(feature = "eddsa")]
 mod eddsa;
 
+#[cfg(feature = "schnorr")]
+mod schnorr;
+
 mod cggmp;
 mod meeting_point;
 mod peer_channel;

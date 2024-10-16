@@ -3,12 +3,12 @@
 use crate::Result;
 use k256::schnorr::{
     signature::{hazmat::PrehashSigner, Signer, Verifier},
-    SigningKey, VerifyingKey,
+    SigningKey,
 };
 use rand::rngs::OsRng;
 use std::borrow::Cow;
 
-pub use k256::schnorr::Signature;
+pub use k256::schnorr::{Signature, VerifyingKey};
 
 /// Create a signer for Taproot BIP-340 Schnorr signatures.
 pub struct SchnorrSigner<'a> {
@@ -42,17 +42,46 @@ impl<'a> SchnorrSigner<'a> {
         Ok(self.signing_key.sign_prehash(prehash)?)
     }
 
+    /// Compute Schnorr signature.
+    ///
+    /// # ⚠️  Warning
+    ///
+    /// This is a low-level interface intended only for unusual use cases
+    /// involving signing pre-hashed messages.
+    pub fn sign_raw(
+        &self,
+        msg_digest: &[u8],
+        aux_rand: &[u8; 32],
+    ) -> Result<Signature> {
+        Ok(self.signing_key.sign_raw(msg_digest, aux_rand)?)
+    }
+
     /// Verifying key for this signer.
     pub fn verifying_key(&self) -> &VerifyingKey {
         self.signing_key.verifying_key()
     }
 
-    /// Verify a message.
+    /// Verify a Schnorr signaature.
     pub fn verify(
         &self,
         message: &[u8],
         signature: &Signature,
     ) -> Result<()> {
         Ok(self.verifying_key().verify(message, signature)?)
+    }
+    /// Verify a Schnorr signaature.
+    ///
+    /// # ⚠️ Warning
+    ///
+    /// This is a low-level interface intended only for unusual use cases
+    /// involving verifying pre-hashed messages, or "raw" messages where the
+    /// message is not hashed at all prior to being used to generate the
+    /// Schnorr signature.
+    pub fn verify_raw(
+        &self,
+        message: &[u8],
+        signature: &Signature,
+    ) -> Result<()> {
+        Ok(self.verifying_key().verify_raw(message, signature)?)
     }
 }
