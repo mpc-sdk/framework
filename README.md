@@ -100,7 +100,7 @@ The webassembly tests cannot simulate key generation and signing as it is too co
 To run end to end tests for the web platform, first compile the webassembly bindings:
 
 ```
-cargo make bindings
+cargo make wasm-bindings
 ```
 
 Then generate the test files:

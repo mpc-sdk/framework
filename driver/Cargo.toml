@@ -12,6 +12,8 @@ cggmp = ["k256", "synedrion", "bip32"]
 ecdsa = ["k256/ecdsa"]
 eddsa = ["ed25519", "ed25519-dalek"]
 schnorr = ["ed25519", "k256/schnorr"]
+signers = ["ecdsa", "eddsa", "schnorr"]
+protocols = ["cggmp"]
 full = ["cggmp", "ecdsa", "eddsa", "schnorr"]
 
 [dependencies]

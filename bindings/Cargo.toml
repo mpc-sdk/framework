@@ -9,6 +9,8 @@ cggmp = ["mpc-driver/cggmp"]
 ecdsa = ["mpc-driver/ecdsa"]
 eddsa = ["mpc-driver/eddsa"]
 schnorr = ["mpc-driver/schnorr"]
+signers = ["ecdsa", "eddsa", "schnorr"]
+protocols = ["cggmp"]
 full = ["cggmp", "ecdsa", "eddsa", "schnorr"]
 
 tracing = [
