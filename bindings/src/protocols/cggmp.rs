@@ -11,6 +11,18 @@ use serde_json::Value;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::future_to_promise;
 
+#[wasm_bindgen]
+pub struct CggmpProtocol;
+
+#[wasm_bindgen]
+impl CggmpProtocol {
+    /// Create a CGGMP protocol.
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> CggmpProtocol {
+        Self
+    }
+}
+
 /// Distributed key generation.
 #[wasm_bindgen(js_name = "keygen")]
 pub fn keygen_cggmp(
