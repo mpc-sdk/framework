@@ -1,5 +1,5 @@
 //! EdDSA signatures compatible with Solana.
-use mpc_driver::eddsa::{self, Signature};
+use mpc_driver::signers::eddsa::{self, Signature};
 use std::borrow::Cow;
 use wasm_bindgen::prelude::{wasm_bindgen, JsError, JsValue};
 

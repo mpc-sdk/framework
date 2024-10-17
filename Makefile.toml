@@ -76,7 +76,7 @@ dependencies = ["check-wasm", "test", "format"]
 [tasks.bindings]
 script = '''
 cd bindings
-wasm-pack build --target web --scope mpc-sdk
+wasm-pack build --target web --scope mpc-sdk --features full
 '''
 
 [tasks.bindings-debug]
