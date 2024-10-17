@@ -1,6 +1,5 @@
 # Multi-party computation protocol
 
-
 End-to-end encrypted relay service designed for MPC/TSS applications built using the [noise protocol][] and websockets for the transport layer.
 
 The service facilitates secure communication between peers but it does not handle public key exchange nor meeting points.
@@ -8,6 +7,18 @@ The service facilitates secure communication between peers but it does not handl
 For clients to use the relay service they must know the public key of the server and the public keys of all the participants for a session.
 
 Creating a meeting point that shares the session identifier between participants to execute an MPC/TSS protocol is left up to the application. Typically, this can be achieved by encoding the session identifier in a URL and sharing the URL with all the participants.
+
+## Features
+
+### Protocols
+
+* `cggmp`: Enable the CGGMP21 protocol using [synedrion](https://github.com/entropyxyz/synedrion).
+
+### Signers
+
+* `ecdsa`: Single-party signer compatible with Ethereum using [k256](https://docs.rs/k256/latest/k256/).
+* `eddsa`: Single-party signer compatible with Solana using [ed25519](https://docs.rs/ed25519/latest/ed25519/) and [ed25519-dalek](https://docs.rs/ed25519-dalek/latest/ed25519_dalek/).
+* `schnorr`: Single-party signer compatible with Bitcoin Taproot (BIP-340) using [k256](https://docs.rs/k256/latest/k256/).
 
 ## Server Installation
 

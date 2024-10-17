@@ -8,6 +8,8 @@ use mpc_client::{
 use mpc_protocol::hex;
 use std::collections::BTreeSet;
 
+pub mod signers;
+
 mod bridge;
 mod error;
 pub mod meeting;

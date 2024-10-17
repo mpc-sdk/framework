@@ -8,8 +8,10 @@ license = "GPL-3.0"
 repository = "https://github.com/mpc-sdk/framework"
 
 [features]
-default = ["cggmp"]
-cggmp = []
+cggmp = ["k256", "synedrion", "bip32"]
+ecdsa = ["k256/ecdsa"]
+eddsa = ["ed25519", "ed25519-dalek"]
+schnorr = ["ed25519", "k256/schnorr"]
 
 [dependencies]
 mpc-protocol = { version = "0.7", path = "../protocol" }
@@ -23,11 +25,14 @@ tokio = { version = "1", features = ["sync"] }
 async-trait = "0.1"
 futures = "0.3"
 # synedrion = {version = "0.1", git = "https://github.com/entropyxyz/synedrion" , rev = "6a38f1fb5dcc91a7e249be77e19c5c93e1945b29"}
-synedrion = "0.2.0-pre.0"
-k256 = { version = "0.14.0-pre.2", default-features = false, features = ["pem", "serde", "std"] }
+# synedrion = "0.2.0-pre.0"
+synedrion = { version = "0.2.0-pre.0", git = "https://github.com/tmpfs/synedrion", branch = "update-crypto-bigint", optional = true }
+k256 = { version = "0.14.0-pre.2", default-features = false, features = ["pem", "serde", "std"], optional = true }
 # enable `std` feature for error conversion
-bip32 = { version = "0.6.0-pre.0", features = ["std"]}
+bip32 = { version = "0.6.0-pre.0", features = ["std"], optional = true }
 rand = "0.8"
+ed25519 = { version = "2.3.0-pre.0", optional = true }
+ed25519-dalek = { version = "2.2.0-pre", features = ["rand_core"], optional = true, git = "https://github.com/dalek-cryptography/curve25519-dalek", branch = "rustcrypto-new-releases" }
 
 # WASM
 

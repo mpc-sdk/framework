@@ -1,6 +1,9 @@
 //! Webassembly bindings for the web platform.
 #![deny(missing_docs)]
 
+/// Single party signers.
+pub mod signers;
+
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 mod bindings {
     use mpc_driver::synedrion::{

@@ -11,3 +11,4 @@ target
 .terraform
 .env
 /*.sh
+node_modules
