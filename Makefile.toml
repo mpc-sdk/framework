@@ -32,7 +32,7 @@ args = ["fmt", "--all", "--", "--check"]
 [tasks.check]
 workspace = true
 command = "cargo"
-args = ["check"]
+args = ["hack", "check", "--each-feature"]
 
 [tasks.clippy]
 workspace = true

@@ -12,6 +12,7 @@ cggmp = ["k256", "synedrion", "bip32"]
 ecdsa = ["k256/ecdsa"]
 eddsa = ["ed25519", "ed25519-dalek"]
 schnorr = ["ed25519", "k256/schnorr"]
+full = ["cggmp", "ecdsa", "eddsa", "schnorr"]
 
 [dependencies]
 mpc-protocol = { version = "0.7", path = "../protocol" }

@@ -3,7 +3,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     k256::ecdsa::{self, RecoveryId, SigningKey, VerifyingKey},
-    synedrion::RecoverableSignature,
     Error, Result,
 };
 use mpc_protocol::{hex, Keypair, Parameters};
@@ -142,8 +141,8 @@ pub enum Signature {
 }
 
 #[cfg(feature = "cggmp")]
-impl From<RecoverableSignature> for Signature {
-    fn from(value: RecoverableSignature) -> Self {
+impl From<synedrion::RecoverableSignature> for Signature {
+    fn from(value: synedrion::RecoverableSignature) -> Self {
         let (sig, recovery_id) = value.to_backend();
         Signature::Cggmp(sig, recovery_id.into())
     }
