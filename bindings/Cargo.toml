@@ -5,11 +5,14 @@ edition = "2021"
 description = "Webassembly bindings to drive multi-party computation protocols"
 
 [features]
-default = ["mpc-driver/cggmp"]
-
+cggmp = ["mpc-driver/cggmp"]
 ecdsa = ["mpc-driver/ecdsa"]
 eddsa = ["mpc-driver/eddsa"]
 schnorr = ["mpc-driver/schnorr"]
+signers = ["ecdsa", "eddsa", "schnorr"]
+protocols = ["cggmp"]
+full = ["cggmp", "ecdsa", "eddsa", "schnorr"]
+
 tracing = [
   "dep:tracing",
   "dep:tracing-subscriber", 
@@ -20,7 +23,7 @@ tracing = [
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-mpc-driver = { path = "../driver", features = ["cggmp"] }
+mpc-driver = { path = "../driver" }
 mpc-protocol = { path = "../protocol" }
 mpc-client = { path = "../client" }
 serde-wasm-bindgen = "0.6"

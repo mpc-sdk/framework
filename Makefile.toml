@@ -30,9 +30,8 @@ command = "cargo"
 args = ["fmt", "--all", "--", "--check"]
 
 [tasks.check]
-workspace = true
 command = "cargo"
-args = ["check"]
+args = ["hack", "check", "--all", "--each-feature"]
 
 [tasks.clippy]
 workspace = true
@@ -73,16 +72,22 @@ dependencies = ["unit", "integration"]
 [tasks.dev]
 dependencies = ["check-wasm", "test", "format"]
 
-[tasks.bindings]
+[tasks.wasm-bindings]
 script = '''
 cd bindings
-wasm-pack build --target web --scope mpc-sdk
+wasm-pack build --target web --scope mpc-sdk --features full
 '''
 
-[tasks.bindings-debug]
+[tasks.wasm-signers]
 script = '''
 cd bindings
-wasm-pack build --target web --scope mpc-sdk --features tracing
+wasm-pack build --target web --scope mpc-sdk --features signers
+'''
+
+[tasks.wasm-bindings-debug]
+script = '''
+cd bindings
+wasm-pack build --target web --scope mpc-sdk --features tracing,full
 '''
 
 [tasks.gen-server-key]

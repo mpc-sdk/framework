@@ -23,7 +23,7 @@ async fn main() {
 
 fn router() -> Router {
     let bindings = ServeDir::new("../bindings/pkg");
-    let cggmp = ServeDir::new("../integration/tests/e2e/cggmp");
+    let cggmp = ServeDir::new("../integration_tests/tests/e2e/cggmp");
     Router::new()
         .nest_service("/pkg", bindings)
         .nest_service("/cggmp", cggmp)

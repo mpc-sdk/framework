@@ -1,20 +1,8 @@
-#[cfg(all(
-    feature = "ecdsa",
-    target_arch = "wasm32",
-    target_os = "unknown"
-))]
+#[cfg(feature = "ecdsa")]
 pub mod ecdsa;
 
-#[cfg(all(
-    feature = "eddsa",
-    target_arch = "wasm32",
-    target_os = "unknown"
-))]
+#[cfg(feature = "eddsa")]
 pub mod eddsa;
 
-#[cfg(all(
-    feature = "schnorr",
-    target_arch = "wasm32",
-    target_os = "unknown"
-))]
+#[cfg(feature = "schnorr")]
 pub mod schnorr;

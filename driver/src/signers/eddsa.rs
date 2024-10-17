@@ -91,6 +91,9 @@ where
         message: B,
         signature: &ed25519::Signature,
     ) -> Result<()> {
-        Ok(self.verifying_key.verify(message.as_ref(), signature)?)
+        Ok(self
+            .verifying_key
+            .verify(message.as_ref(), signature)
+            .map_err(Box::from)?)
     }
 }

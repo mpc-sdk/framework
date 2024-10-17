@@ -100,7 +100,7 @@ The webassembly tests cannot simulate key generation and signing as it is too co
 To run end to end tests for the web platform, first compile the webassembly bindings:
 
 ```
-cargo make bindings
+cargo make wasm-bindings
 ```
 
 Then generate the test files:
@@ -126,7 +126,7 @@ cargo make dev-server
 Running the test specs requires [playwright][], so first install the dependencies for the end-to-end tests and then the [playwright][] browsers:
 
 ```
-cd integration/tests/e2e
+cd integration_tests/tests/e2e
 npm install
 npx playwright install
 ```
