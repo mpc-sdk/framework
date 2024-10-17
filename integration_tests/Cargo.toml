@@ -5,6 +5,7 @@ edition = "2021"
 publish = false
 
 [features]
+cggmp = ["mpc-driver/cggmp"]
 ecdsa = ["mpc-driver/ecdsa"]
 eddsa = ["mpc-driver/eddsa"]
 schnorr = ["mpc-driver/schnorr"]
