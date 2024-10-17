@@ -1,24 +1,27 @@
-use mpc_driver::k256::ecdsa::SigningKey;
+use k256::ecdsa::SigningKey;
 use mpc_protocol::{decode_keypair, hex};
 use rand::{rngs::OsRng, Rng};
 use sha3::{Digest, Keccak256};
 use std::{fs, path::PathBuf};
 
-const CGGMP_JS: &str =
-    include_str!("../../integration/tests/e2e/cggmp/template.js");
-const CGGMP_HTML: &str =
-    include_str!("../../integration/tests/e2e/cggmp/template.html");
+const CGGMP_JS: &str = include_str!(
+    "../../integration_tests/tests/e2e/cggmp/template.js"
+);
+const CGGMP_HTML: &str = include_str!(
+    "../../integration_tests/tests/e2e/cggmp/template.html"
+);
 
 const KEYPAIR_P1: &str =
-    include_str!("../../integration/tests/e2e/p1.pem");
+    include_str!("../../integration_tests/tests/e2e/p1.pem");
 const KEYPAIR_P2: &str =
-    include_str!("../../integration/tests/e2e/p2.pem");
+    include_str!("../../integration_tests/tests/e2e/p2.pem");
 const KEYPAIR_P3: &str =
-    include_str!("../../integration/tests/e2e/p3.pem");
+    include_str!("../../integration_tests/tests/e2e/p3.pem");
 
 const SERVER_URL: &str = "ws://127.0.0.1:8008";
-const SERVER_PUBLIC_KEY: &str =
-    include_str!("../../integration/tests/server_public_key.txt");
+const SERVER_PUBLIC_KEY: &str = include_str!(
+    "../../integration_tests/tests/server_public_key.txt"
+);
 
 const MSG: &str = "this is the message that is sent out";
 
@@ -27,7 +30,7 @@ fn main() -> anyhow::Result<()> {
     let base_path = PathBuf::from(base_dir);
     let base_path = base_path.parent().expect("parent path");
     let output_dir = base_path
-        .join("integration")
+        .join("integration_tests")
         .join("tests")
         .join("e2e")
         .join("cggmp");

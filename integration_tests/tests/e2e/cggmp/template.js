@@ -43,10 +43,12 @@ const signParty = {
   partyIndex,
 };
 
+const protocol = new module.CggmpProtocol();
+
 try {
 
   // Start key generation
-  const keyShare = await module.keygen(
+  const keyShare = await protocol.keygen(
     options,
     party,
     fromHexString(keygenSessionIdSeed),
@@ -60,7 +62,7 @@ try {
 
   // First and third parties perform signing
   if (partyIndex == 0 || partyIndex == 2) {
-    const result = await module.sign(
+    const result = await protocol.sign(
       options,
       signParty,
       fromHexString(signSessionIdSeed),

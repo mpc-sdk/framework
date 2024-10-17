@@ -24,6 +24,7 @@ impl CggmpProtocol {
 
     /// Distributed key generation.
     pub fn keygen(
+        &self,
         options: JsValue,
         party: JsValue,
         session_id_seed: Vec<u8>,
@@ -51,6 +52,7 @@ impl CggmpProtocol {
 
     /// Sign a message.
     pub fn sign(
+        &self,
         options: JsValue,
         party: JsValue,
         session_id_seed: Vec<u8>,
@@ -86,6 +88,7 @@ impl CggmpProtocol {
 
     /// Reshare key shares.
     pub fn reshare(
+        &self,
         options: JsValue,
         party: JsValue,
         session_id_seed: Vec<u8>,
@@ -127,6 +130,7 @@ impl CggmpProtocol {
     /// Generate a BIP32 derived child key.
     #[wasm_bindgen(js_name = "deriveBip32")]
     pub fn derive_bip32(
+        &self,
         private_key: JsValue,
         derivation_path: String,
     ) -> Result<JsValue, JsError> {
