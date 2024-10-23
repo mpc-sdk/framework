@@ -8,7 +8,6 @@ cd ../../../bindings/webassembly
 wasm-pack build \
 	--target web \
 	--no-opt \
-	--scope mpc-sdk \
 	--features eddsa
 
 cp -rf ./pkg ../../conformance/signers/webassembly-eddsa/

@@ -17,12 +17,17 @@ init().then((module) => {
 
   let signature = signer.sign(messageBytes);
   console.log("signature", signature);
+
+  let verified = false;
   
   try {
     signer.verify(messageBytes, signature);
+    verified = true;
     console.log("signature verified");
   } catch (e) {
     console.error("verification failed", e);
   }
+
+  console.assert(verified);
 
 })
