@@ -1,5 +1,5 @@
 use anyhow::Result;
-use mpc_driver::signers::ecdsa::EcdsaSigner;
+use mpc_driver::signers::ecdsa::{EcdsaSigner, RecoverableSignature};
 use serde::Deserialize;
 use std::borrow::Cow;
 
@@ -64,6 +64,34 @@ fn integration_ecdsa_sign_message() -> Result<()> {
     println!("s: {:#?}", hex::encode(s));
     println!("v: {:#?}", recid);
     */
+
+    Ok(())
+}
+
+#[test]
+fn integration_ecdsa_sign_verify_recover() -> Result<()> {
+    use sha3::{Digest, Keccak256};
+
+    let signing_key = EcdsaSigner::random();
+    let signer = EcdsaSigner::new(Cow::Owned(signing_key));
+    let verifying_key = signer.verifying_key();
+    let message = "example message";
+    let (signature, recovery_id) =
+        signer.sign_eth(message.as_bytes())?;
+    let recoverable_signature = RecoverableSignature {
+        bytes: signature.to_bytes().to_vec(),
+        recovery_id: recovery_id.into(),
+    };
+
+    let hash =
+        Keccak256::new_with_prefix(message).finalize().to_vec();
+    signer.verify_prehash(&hash, &signature)?;
+
+    let public_key = EcdsaSigner::recover(
+        message.as_bytes(),
+        recoverable_signature,
+    )?;
+    assert_eq!(verifying_key, &public_key);
 
     Ok(())
 }

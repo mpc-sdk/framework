@@ -1,7 +1,7 @@
 //! Generate ECDSA signatures compatible with Ethereum.
 use crate::Result;
 use k256::ecdsa::{
-    signature::{Signer, Verifier},
+    signature::{hazmat::PrehashVerifier, Signer, Verifier},
     RecoveryId, SigningKey, VerifyingKey,
 };
 use rand::rngs::OsRng;
@@ -12,10 +12,11 @@ use std::borrow::Cow;
 pub use k256::ecdsa::Signature;
 
 /// Type for a recoverable signature.
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RecoverableSignature {
     /// Signature bytes.
-    pub signature: Vec<u8>,
+    pub bytes: Vec<u8>,
     /// Recovery identifier.
     pub recovery_id: u8,
 }
@@ -23,7 +24,7 @@ pub struct RecoverableSignature {
 impl From<(Signature, RecoveryId)> for RecoverableSignature {
     fn from(value: (Signature, RecoveryId)) -> Self {
         Self {
-            signature: value.0.to_bytes().as_slice().to_vec(),
+            bytes: value.0.to_bytes().as_slice().to_vec(),
             recovery_id: value.1.into(),
         }
     }
@@ -88,6 +89,15 @@ impl<'a> EcdsaSigner<'a> {
         Ok(self.verifying_key().verify(message, signature)?)
     }
 
+    /// Verify a prehash message.
+    pub fn verify_prehash(
+        &self,
+        prehash: &[u8],
+        signature: &Signature,
+    ) -> Result<()> {
+        Ok(self.verifying_key().verify_prehash(prehash, signature)?)
+    }
+
     /// Sign a message for Ethereum first hashing the message
     /// with the Keccak256 digest.
     pub fn sign_eth(
@@ -113,7 +123,7 @@ impl<'a> EcdsaSigner<'a> {
         signature: RecoverableSignature,
     ) -> Result<VerifyingKey> {
         let recid = RecoveryId::try_from(signature.recovery_id)?;
-        let signature = Signature::from_slice(&signature.signature)?;
+        let signature = Signature::from_slice(&signature.bytes)?;
         Ok(VerifyingKey::recover_from_digest(
             Keccak256::new_with_prefix(message),
             &signature,

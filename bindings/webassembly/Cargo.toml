@@ -1,5 +1,5 @@
 [package]
-name = "mpc-bindings"
+name = "mpc-webassembly-bindings"
 version = "0.7.0"
 edition = "2021"
 description = "Webassembly bindings to drive multi-party computation protocols"
@@ -23,9 +23,9 @@ tracing = [
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-mpc-driver = { path = "../driver" }
-mpc-protocol = { path = "../protocol" }
-mpc-client = { path = "../client" }
+mpc-driver = { path = "../../driver" }
+mpc-protocol = { path = "../../protocol" }
+mpc-client = { path = "../../client" }
 serde-wasm-bindgen = "0.6"
 wasm-bindgen-futures = "0.4"
 rand = "0.8"

@@ -1658,28 +1658,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c9be0862c1b3f26a88803c4a49de6889c10e608b3ee9344e6ef5b45fb37ad3d1"
 
 [[package]]
-name = "mpc-bindings"
-version = "0.7.0"
-dependencies = [
- "console_error_panic_hook",
- "futures",
- "getrandom",
- "log",
- "mpc-client",
- "mpc-driver",
- "mpc-protocol",
- "rand",
- "serde",
- "serde-wasm-bindgen 0.6.5",
- "serde_json",
- "tracing",
- "tracing-subscriber",
- "tracing-subscriber-wasm",
- "wasm-bindgen",
- "wasm-bindgen-futures",
-]
-
-[[package]]
 name = "mpc-client"
 version = "0.7.0"
 dependencies = [
@@ -1827,6 +1805,28 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "url",
+]
+
+[[package]]
+name = "mpc-webassembly-bindings"
+version = "0.7.0"
+dependencies = [
+ "console_error_panic_hook",
+ "futures",
+ "getrandom",
+ "log",
+ "mpc-client",
+ "mpc-driver",
+ "mpc-protocol",
+ "rand",
+ "serde",
+ "serde-wasm-bindgen 0.6.5",
+ "serde_json",
+ "tracing",
+ "tracing-subscriber",
+ "tracing-subscriber-wasm",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
 ]
 
 [[package]]
