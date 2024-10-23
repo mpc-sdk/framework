@@ -24,4 +24,6 @@ function proxyConsoleError(id, page) {
 }
 
 test("EdDSA: keygen and sign message", async ({ context, page }) => {
+  proxyConsoleError("eddsa", page);
+  await page.goto("http://localhost:5173");
 });

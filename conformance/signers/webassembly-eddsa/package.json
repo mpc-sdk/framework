@@ -5,14 +5,17 @@
   "private": true,
   "main": "index.js",
   "scripts": {
-      "run": "serve site",
-      "test": "playwright test",
-      "test-ui": "playwright test --ui",
-      "test-headed": "playwright test --headed"
+    "build": "./build.sh",
+    "dev": "vite",
+    "test": "playwright test",
+    "test-ui": "playwright test --ui",
+    "test-headed": "playwright test --headed"
   },
   "license": "ISC",
   "devDependencies": {
+    "eddsa-bindings": "file:./pkg",
     "@playwright/test": "^1.45.3",
-    "serve": "^14.2.4"
+    "vite-plugin-top-level-await": "^1.4.4",
+    "vite-plugin-wasm": "^3.3.0"
   }
 }

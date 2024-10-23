@@ -17,12 +17,7 @@ module.exports = defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
-
-  // Only one worker so each browser test runs in serial
-  workers: 1,
-
-  // Chrome and Safari finish quite fast, but firefox is slow
-  timeout: 90000,
+  workers: 3,
 
   use: {
     trace: 'on-first-retry',
