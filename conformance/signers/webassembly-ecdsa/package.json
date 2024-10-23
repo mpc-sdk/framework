@@ -1,0 +1,20 @@
+{
+  "name": "webassembly-ecdsa",
+  "version": "1.0.0",
+  "description": "Example and test spec for ECDSA signing",
+  "private": true,
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "build": "./build.sh",
+    "dev": "vite",
+    "test": "playwright test",
+    "test-ui": "playwright test --ui",
+    "test-headed": "playwright test --headed"
+  },
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.45.3",
+    "vite": "^5.4.9"
+  }
+}

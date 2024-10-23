@@ -1,4 +1,4 @@
-import init, { SchnorrSigner } from '@schnorr-bindings';
+import init, { EcdsaSigner } from '@ecdsa-bindings';
 
 await init();
 
@@ -9,8 +9,9 @@ function stringToUint8Array(str) {
   return encoder.encode(str);
 }
 
-const signingKeyBytes = SchnorrSigner.random();
-const signer = new SchnorrSigner(signingKeyBytes);
+const signingKeyBytes = EcdsaSigner.random();
+const signer = new EcdsaSigner(signingKeyBytes);
+
 const messageBytes = stringToUint8Array("example message to sign");
 const signature = signer.sign(messageBytes);
 const verifyingKey = signer.verifyingKey();
@@ -20,7 +21,7 @@ const verifyingKey = signer.verifyingKey();
 // console.log("signature", signature);
 
 console.assert(signingKeyBytes.length === 32);
-console.assert(verifyingKey.length === 32);
+console.assert(verifyingKey.length === 33); // SEC1 encoded bytes
 console.assert(signature.length === 64);
 
 let verified = false;

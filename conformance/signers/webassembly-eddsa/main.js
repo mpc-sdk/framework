@@ -9,14 +9,19 @@ function stringToUint8Array(str) {
   return encoder.encode(str);
 }
 
-let signingKeyBytes = EddsaSigner.random();
-let signer = new EddsaSigner(signingKeyBytes);
-let messageBytes = stringToUint8Array("example message to sign");
-let signature = signer.sign(messageBytes);
+const signingKeyBytes = EddsaSigner.random();
+const signer = new EddsaSigner(signingKeyBytes);
+const messageBytes = stringToUint8Array("example message to sign");
+const signature = signer.sign(messageBytes);
+const verifyingKey = signer.verifyingKey();
 
-console.log("signingKeyBytes", signingKeyBytes)
-console.log("verifyingKey", signer.verifyingKey());
-console.log("signature", signature);
+// console.log("signingKeyBytes", signingKeyBytes)
+// console.log("verifyingKey", verifyingKey);
+// console.log("signature", signature);
+
+console.assert(signingKeyBytes.length === 32);
+console.assert(verifyingKey.length === 32);
+console.assert(signature.length === 64);
 
 let verified = false;
 
