@@ -1,6 +1,6 @@
 [workspace]
 members = [
-  "bindings",
+  "bindings/webassembly",
   "client",
   "command_line",
   "driver",

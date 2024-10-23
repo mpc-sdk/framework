@@ -74,19 +74,19 @@ dependencies = ["check-wasm", "test", "format"]
 
 [tasks.wasm-bindings]
 script = '''
-cd bindings
+cd bindings/webassembly
 wasm-pack build --target web --scope mpc-sdk --features full
 '''
 
 [tasks.wasm-signers]
 script = '''
-cd bindings
+cd bindings/webassembly
 wasm-pack build --target web --scope mpc-sdk --features signers
 '''
 
 [tasks.wasm-bindings-debug]
 script = '''
-cd bindings
+cd bindings/webassembly
 wasm-pack build --target web --scope mpc-sdk --features tracing,full
 '''
 
