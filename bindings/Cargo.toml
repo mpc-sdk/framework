@@ -1,5 +1,5 @@
 [package]
-name = "mpc-bindings"
+name = "mpc-webassembly-bindings"
 version = "0.7.0"
 edition = "2021"
 description = "Webassembly bindings to drive multi-party computation protocols"
