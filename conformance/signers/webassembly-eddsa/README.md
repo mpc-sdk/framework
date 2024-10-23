@@ -5,6 +5,7 @@
 * Node >= v20.11.0
 * Rust toolchain (stable channel >= 1.82.0)
 * wasm-pack >= 0.13.0
+* wasm-opt >= 116
 
 ## Setup
 
