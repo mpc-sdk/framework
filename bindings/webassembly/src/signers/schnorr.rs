@@ -50,8 +50,9 @@ impl SchnorrSigner {
     }
 
     /// Verifying key for this signer.
-    pub fn verifying_key(&self) -> Result<JsValue, JsError> {
-        Ok(serde_wasm_bindgen::to_value(self.inner.verifying_key())?)
+    #[wasm_bindgen(js_name = "verifyingKey")]
+    pub fn verifying_key(&self) -> Vec<u8> {
+        self.inner.verifying_key().to_bytes().to_vec()
     }
 
     /// Verify a message.

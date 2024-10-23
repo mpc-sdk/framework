@@ -1,7 +1,7 @@
 {
-  "name": "webassembly-eddsa",
+  "name": "webassembly-schnorr",
   "version": "1.0.0",
-  "description": "Example and test spec for EdDSA signing",
+  "description": "Example and test spec for Schnorr signing",
   "private": true,
   "main": "index.js",
   "type": "module",

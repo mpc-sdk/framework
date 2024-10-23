@@ -31,6 +31,7 @@ impl EcdsaSigner {
     /// Sign the given message, hashing it with the curve’s
     /// default digest function, and returning a signature
     /// and recovery ID.
+    #[wasm_bindgen(js_name = "signRecoverable")]
     pub fn sign_recoverable(
         &self,
         message: &[u8],
@@ -42,6 +43,7 @@ impl EcdsaSigner {
 
     /// Sign the given message prehash, returning a signature
     /// and recovery ID.
+    #[wasm_bindgen(js_name = "signPrehashRecoverable")]
     pub fn sign_prehash_recoverable(
         &self,
         message: &[u8],
@@ -58,6 +60,7 @@ impl EcdsaSigner {
     }
 
     /// Verifying key for this signer.
+    #[wasm_bindgen(js_name = "verifyingKey")]
     pub fn verifying_key(&self) -> Result<JsValue, JsError> {
         Ok(serde_wasm_bindgen::to_value(self.inner.verifying_key())?)
     }
@@ -76,6 +79,7 @@ impl EcdsaSigner {
 
     /// Sign a message for Ethereum first hashing the message
     /// with the Keccak256 digest.
+    #[wasm_bindgen(js_name = "signEth")]
     pub fn sign_eth(
         &self,
         message: &[u8],
