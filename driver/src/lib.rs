@@ -21,3 +21,5 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[cfg(feature = "cggmp")]
 pub mod cggmp;
+
+pub use sha3;

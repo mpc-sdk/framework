@@ -77,6 +77,19 @@ impl EcdsaSigner {
         )?)
     }
 
+    /// Verify a prehash.
+    #[wasm_bindgen(js_name = "verifyPrehash")]
+    pub fn verify_prehash(
+        &self,
+        prehash: &[u8],
+        signature: &[u8],
+    ) -> Result<JsValue, JsError> {
+        let signature = Signature::from_slice(signature)?;
+        Ok(serde_wasm_bindgen::to_value(
+            &self.inner.verify_prehash(prehash, &signature)?,
+        )?)
+    }
+
     /// Sign a message for Ethereum first hashing the message
     /// with the Keccak256 digest.
     #[wasm_bindgen(js_name = "signEth")]
@@ -93,11 +106,21 @@ impl EcdsaSigner {
     pub fn recover(
         message: &[u8],
         signature: JsValue,
-    ) -> Result<JsValue, JsError> {
+    ) -> Result<Vec<u8>, JsError> {
         let signature: RecoverableSignature =
             serde_wasm_bindgen::from_value(signature)?;
         let verifying_key =
             ecdsa::EcdsaSigner::recover(message, signature)?;
-        Ok(serde_wasm_bindgen::to_value(&verifying_key)?)
+        let verifying_key_bytes =
+            verifying_key.to_sec1_bytes().to_vec();
+        Ok(verifying_key_bytes)
+    }
+
+    /// Compute the Keccak256 digest of a message.
+    pub fn keccak256(message: &[u8]) -> Vec<u8> {
+        use mpc_driver::sha3::{Digest, Keccak256};
+        let digest = Keccak256::new_with_prefix(message);
+        let hash = digest.finalize();
+        hash.to_vec()
     }
 }

@@ -11,9 +11,9 @@ function stringToUint8Array(str) {
 
 const signingKeyBytes = SchnorrSigner.random();
 const signer = new SchnorrSigner(signingKeyBytes);
+const verifyingKey = signer.verifyingKey();
 const messageBytes = stringToUint8Array("example message to sign");
 const signature = signer.sign(messageBytes);
-const verifyingKey = signer.verifyingKey();
 
 // console.log("signingKeyBytes", signingKeyBytes)
 // console.log("verifyingKey", verifyingKey);
