@@ -1,6 +1,6 @@
-key = "../test.pem"
+key = "../../../integration_tests/tests/test.pem"
 
-# speed up polling for e2e tests (wait-interval)
+# speed up polling for webassembly CGGMP tests (wait-interval)
 # but keep the standard timeout setting (wait-timeout)
 [session]
 timeout = 300

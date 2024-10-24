@@ -1,4 +1,4 @@
-const module = await import("/pkg/mpc_bindings.js");
+const module = await import("/pkg/mpc_webassembly_bindings.js");
 
 // Initialize the webassembly
 await module.default();

@@ -1,5 +1,5 @@
 [workspace]
-members = [ "bindings/node",
+members = [
   "bindings/node",
   "bindings/webassembly",
   "client",
@@ -10,7 +10,7 @@ members = [ "bindings/node",
   "relay_server",
 ]
 exclude = [
-  "tools",
+  "conformance/signers/webassembly-cggmp/template"
 ]
 resolver = "2"
 

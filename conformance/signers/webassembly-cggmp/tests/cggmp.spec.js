@@ -1,7 +1,7 @@
 // @ts-check
-const { test, expect } = require('@playwright/test');
+import { test, expect } from '@playwright/test';
 
-const URL = process.env.TEST_URL || "http://localhost:9009/cggmp";
+const URL = process.env.TEST_URL || "http://localhost:5173";
 
 function proxyConsoleError(id, page) {
   // Proxy browser console.error()
