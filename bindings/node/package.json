@@ -5,14 +5,20 @@
   "type": "module",
   "main": "./index.js",
   "scripts": {
-    "build": "napi build --features signers --release",
-    "build:debug": "napi build --features signers"
+    "build-ecdsa": "napi build --features ecdsa --release",
+    "build-ecdsa:debug": "napi build --features ecdsa",
+    "build-eddsa": "napi build --features eddsa --release",
+    "build-eddsa:debug": "napi build --features eddsa",
+    "build-schnorr": "napi build --features schnorr --release",
+    "build-schnorr:debug": "napi build --features schnorr",
+    "build-signers": "napi build --features signers --release",
+    "build-signers:debug": "napi build --features signers"
   },
   "devDependencies": {
     "@napi-rs/cli": "^2.18.4"
   },
+  "package": "unisign",
   "napi": {
-    "name": "unisign",
-    "binaryName": "unisign"
+    "name": "unisign"
   }
 }

@@ -1,4 +1,4 @@
-# Schnorr Signing Test
+# Schnorr Signing Test (webassembly)
 
 ## Prerequisites
 

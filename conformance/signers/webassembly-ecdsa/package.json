@@ -1,7 +1,7 @@
 {
   "name": "webassembly-ecdsa",
   "version": "1.0.0",
-  "description": "Example and test spec for ECDSA signing",
+  "description": "Example and test spec for ECDSA signing using the webassembly bindings",
   "private": true,
   "main": "index.js",
   "type": "module",

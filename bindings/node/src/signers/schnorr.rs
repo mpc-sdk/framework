@@ -15,9 +15,11 @@ pub struct SchnorrSigner {
 impl SchnorrSigner {
     /// Create a new signer.
     #[napi(constructor)]
-    pub fn new(signing_key: &[u8]) -> Result<SchnorrSigner, JsError> {
+    pub fn new(
+        signing_key: Vec<u8>,
+    ) -> Result<SchnorrSigner, JsError> {
         let signing_key =
-            schnorr::SchnorrSigner::from_slice(signing_key)
+            schnorr::SchnorrSigner::from_slice(&signing_key)
                 .map_err(Error::new)?;
         Ok(Self {
             inner: schnorr::SchnorrSigner::new(Cow::Owned(
@@ -27,6 +29,7 @@ impl SchnorrSigner {
     }
 
     /// Generate a random signing key.
+    #[napi]
     pub fn random() -> Vec<u8> {
         schnorr::SchnorrSigner::random()
             .to_bytes()
@@ -35,6 +38,7 @@ impl SchnorrSigner {
     }
 
     /// Sign a message.
+    #[napi]
     pub fn sign(&self, message: &[u8]) -> Vec<u8> {
         let result = self.inner.sign(message);
         result.to_bytes().as_slice().to_vec()
@@ -42,6 +46,7 @@ impl SchnorrSigner {
 
     /// Attempt to sign the given message digest, returning a
     /// digital signature on success, or an error if something went wrong.
+    #[napi]
     pub fn sign_prehash(
         &self,
         prehash: &[u8],
@@ -58,6 +63,7 @@ impl SchnorrSigner {
     }
 
     /// Verify a message.
+    #[napi]
     pub fn verify(
         &self,
         message: &[u8],

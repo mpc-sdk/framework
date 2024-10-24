@@ -18,15 +18,17 @@ pub struct EcdsaSigner {
 impl EcdsaSigner {
     /// Create a new signer.
     #[napi(constructor)]
-    pub fn new(signing_key: &[u8]) -> Result<EcdsaSigner, JsError> {
-        let signing_key = ecdsa::EcdsaSigner::from_slice(signing_key)
-            .map_err(Error::new)?;
+    pub fn new(signing_key: Vec<u8>) -> Result<EcdsaSigner, JsError> {
+        let signing_key =
+            ecdsa::EcdsaSigner::from_slice(&signing_key)
+                .map_err(Error::new)?;
         Ok(Self {
             inner: ecdsa::EcdsaSigner::new(Cow::Owned(signing_key)),
         })
     }
 
     /// Generate a random signing key.
+    #[napi]
     pub fn random() -> Vec<u8> {
         ecdsa::EcdsaSigner::random().to_bytes().as_slice().to_vec()
     }
@@ -65,6 +67,7 @@ impl EcdsaSigner {
     }
 
     /// Sign a message.
+    #[napi]
     pub fn sign(&self, message: &[u8]) -> Vec<u8> {
         let result = self.inner.sign(message);
         result.to_bytes().as_slice().to_vec()
@@ -77,6 +80,7 @@ impl EcdsaSigner {
     }
 
     /// Verify a message.
+    #[napi]
     pub fn verify(
         &self,
         message: &[u8],
@@ -120,6 +124,7 @@ impl EcdsaSigner {
     }
 
     /// Recover the public key from a signature and recovery identifier.
+    #[napi]
     pub fn recover(
         message: &[u8],
         signature: JsUnknown,
@@ -136,6 +141,7 @@ impl EcdsaSigner {
     }
 
     /// Compute the Keccak256 digest of a message.
+    #[napi]
     pub fn keccak256(message: &[u8]) -> Vec<u8> {
         use mpc_driver::sha3::{Digest, Keccak256};
         let digest = Keccak256::new_with_prefix(message);
