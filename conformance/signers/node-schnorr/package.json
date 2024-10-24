@@ -1,0 +1,14 @@
+{
+  "name": "node-schnorr",
+  "version": "1.0.0",
+  "description": "Example and test spec for Schnorr signing using the node bindings",
+  "private": true,
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "build": "./build.sh",
+    "test": "node main.js"
+  },
+  "author": "",
+  "license": "ISC"
+}

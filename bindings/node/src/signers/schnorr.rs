@@ -39,8 +39,8 @@ impl SchnorrSigner {
 
     /// Sign a message.
     #[napi]
-    pub fn sign(&self, message: &[u8]) -> Vec<u8> {
-        let result = self.inner.sign(message);
+    pub fn sign(&self, message: Vec<u8>) -> Vec<u8> {
+        let result = self.inner.sign(&message);
         result.to_bytes().as_slice().to_vec()
     }
 
@@ -49,10 +49,10 @@ impl SchnorrSigner {
     #[napi]
     pub fn sign_prehash(
         &self,
-        prehash: &[u8],
+        prehash: Vec<u8>,
     ) -> Result<Vec<u8>, JsError> {
         let result =
-            self.inner.sign_prehash(prehash).map_err(Error::new)?;
+            self.inner.sign_prehash(&prehash).map_err(Error::new)?;
         Ok(result.to_bytes().as_slice().to_vec())
     }
 
@@ -66,14 +66,14 @@ impl SchnorrSigner {
     #[napi]
     pub fn verify(
         &self,
-        message: &[u8],
-        signature: &[u8],
+        message: Vec<u8>,
+        signature: Vec<u8>,
     ) -> Result<(), JsError> {
         let signature: Signature =
-            signature.try_into().map_err(Error::new)?;
+            signature.as_slice().try_into().map_err(Error::new)?;
         Ok(self
             .inner
-            .verify(message, &signature)
+            .verify(&message, &signature)
             .map_err(Error::new)?)
     }
 }
