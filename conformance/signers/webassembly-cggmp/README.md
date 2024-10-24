@@ -16,7 +16,7 @@ npm install
 npx playwright install
 ```
 
-Build and copy the webssembly bindings:
+Build the templates and webssembly bindings:
 
 ```
 npm run build
