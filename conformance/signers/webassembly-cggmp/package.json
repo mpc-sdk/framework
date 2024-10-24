@@ -4,6 +4,10 @@
   "version": "1.0.0",
   "description": "Example and test spec for CGGMP signing using the webassembly bindings",
   "scripts": {
+      "build": "npm run build:wasm",
+      "build:wasm": "./scripts/build-wasm.sh",
+      "dev": "vite public",
+      "relay": "./scripts/relay-server.sh",
       "test": "playwright test",
       "test-ui": "playwright test --ui",
       "test-headed": "playwright test --headed"

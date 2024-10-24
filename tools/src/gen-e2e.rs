@@ -5,10 +5,11 @@ use sha3::{Digest, Keccak256};
 use std::{fs, path::PathBuf};
 
 const CGGMP_JS: &str = include_str!(
-    "../../conformance/signers/webassembly-cggmp/cggmp/template.js"
+    "../../conformance/signers/webassembly-cggmp/template/main.js"
 );
+
 const CGGMP_HTML: &str = include_str!(
-    "../../conformance/signers/webassembly-cggmp/cggmp/template.html"
+    "../../conformance/signers/webassembly-cggmp/template/main.html"
 );
 
 const KEYPAIR_P1: &str = include_str!(
@@ -36,7 +37,7 @@ fn main() -> anyhow::Result<()> {
         .join("conformance")
         .join("signers")
         .join("webassembly-cggmp")
-        .join("cggmp");
+        .join("public");
 
     let rng = &mut OsRng;
     let keygen_session_id_seed: [u8; 32] = rng.gen();

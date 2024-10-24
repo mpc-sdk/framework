@@ -21,9 +21,5 @@ hex = "0.4"
 serde_json = "1"
 
 [[bin]]
-name = "dev-server"
-path = "src/dev-server.rs"
-
-[[bin]]
 name = "gen-e2e"
 path = "src/gen-e2e.rs"
