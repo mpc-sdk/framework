@@ -39,12 +39,12 @@ impl EcdsaSigner {
     #[napi(js_name = "signRecoverable")]
     pub fn sign_recoverable(
         &self,
-        message: &[u8],
+        message: Vec<u8>,
         env: Env,
     ) -> Result<JsUnknown, JsError> {
         let result = self
             .inner
-            .sign_recoverable(message)
+            .sign_recoverable(&message)
             .map_err(Error::new)?;
         let signature: RecoverableSignature = result.into();
         Ok(env.to_js_value(&signature)?)
@@ -55,12 +55,12 @@ impl EcdsaSigner {
     #[napi(js_name = "signPrehashRecoverable")]
     pub fn sign_prehash_recoverable(
         &self,
-        message: &[u8],
+        message: Vec<u8>,
         env: Env,
     ) -> Result<JsUnknown, JsError> {
         let result = self
             .inner
-            .sign_prehash_recoverable(message)
+            .sign_prehash_recoverable(&message)
             .map_err(Error::new)?;
         let signature: RecoverableSignature = result.into();
         Ok(env.to_js_value(&signature).map_err(Error::new)?)
@@ -68,8 +68,8 @@ impl EcdsaSigner {
 
     /// Sign a message.
     #[napi]
-    pub fn sign(&self, message: &[u8]) -> Vec<u8> {
-        let result = self.inner.sign(message);
+    pub fn sign(&self, message: Vec<u8>) -> Vec<u8> {
+        let result = self.inner.sign(&message);
         result.to_bytes().as_slice().to_vec()
     }
 
@@ -83,14 +83,14 @@ impl EcdsaSigner {
     #[napi]
     pub fn verify(
         &self,
-        message: &[u8],
-        signature: &[u8],
+        message: Vec<u8>,
+        signature: Vec<u8>,
     ) -> Result<(), JsError> {
         let signature =
-            Signature::from_slice(signature).map_err(Error::new)?;
+            Signature::from_slice(&signature).map_err(Error::new)?;
         Ok(self
             .inner
-            .verify(message, &signature)
+            .verify(&message, &signature)
             .map_err(Error::new)?)
     }
 
@@ -98,14 +98,14 @@ impl EcdsaSigner {
     #[napi(js_name = "verifyPrehash")]
     pub fn verify_prehash(
         &self,
-        prehash: &[u8],
-        signature: &[u8],
+        prehash: Vec<u8>,
+        signature: Vec<u8>,
     ) -> Result<(), JsError> {
         let signature =
-            Signature::from_slice(signature).map_err(Error::new)?;
+            Signature::from_slice(&signature).map_err(Error::new)?;
         Ok(self
             .inner
-            .verify_prehash(prehash, &signature)
+            .verify_prehash(&prehash, &signature)
             .map_err(Error::new)?)
     }
 
@@ -114,11 +114,11 @@ impl EcdsaSigner {
     #[napi(js_name = "signEth")]
     pub fn sign_eth(
         &self,
-        message: &[u8],
+        message: Vec<u8>,
         env: Env,
     ) -> Result<JsUnknown, JsError> {
         let result =
-            self.inner.sign_eth(message).map_err(Error::new)?;
+            self.inner.sign_eth(&message).map_err(Error::new)?;
         let signature: RecoverableSignature = result.into();
         Ok(env.to_js_value(&signature)?)
     }
@@ -126,14 +126,14 @@ impl EcdsaSigner {
     /// Recover the public key from a signature and recovery identifier.
     #[napi]
     pub fn recover(
-        message: &[u8],
+        message: Vec<u8>,
         signature: JsUnknown,
         env: Env,
     ) -> Result<Vec<u8>, JsError> {
         let signature: RecoverableSignature =
             env.from_js_value(signature)?;
         let verifying_key =
-            ecdsa::EcdsaSigner::recover(message, signature)
+            ecdsa::EcdsaSigner::recover(&message, signature)
                 .map_err(Error::new)?;
         let verifying_key_bytes =
             verifying_key.to_sec1_bytes().to_vec();
@@ -142,9 +142,9 @@ impl EcdsaSigner {
 
     /// Compute the Keccak256 digest of a message.
     #[napi]
-    pub fn keccak256(message: &[u8]) -> Vec<u8> {
+    pub fn keccak256(message: Vec<u8>) -> Vec<u8> {
         use mpc_driver::sha3::{Digest, Keccak256};
-        let digest = Keccak256::new_with_prefix(message);
+        let digest = Keccak256::new_with_prefix(&message);
         let hash = digest.finalize();
         hash.to_vec()
     }
