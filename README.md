@@ -89,71 +89,13 @@ cargo make doc
 
 ### Tests
 
-#### Native Platform
-
-To run the tests using the native client:
+To run the integration tests using the native client:
 
 ```
 cargo nextest run
 ```
 
-##### End-to-end tests
-
-The webassembly tests cannot simulate key generation and signing as it is too computationally intensive for a single-threaded context and the integration tests would hit the browser script timeout before completion.
-
-To run end to end tests for the web platform, first compile the webassembly bindings:
-
-```
-cargo make wasm-bindings
-```
-
-Then generate the test files:
-
-```
-cargo make gen-e2e
-```
-
-Start a server for the end-to-end tests:
-
-```
-cargo make e2e-server
-```
-
-Note we don't use the `test-server` task as the e2e tests use a configuration with different timeout settings.
-
-Then start a dev server (port 9009) used to serve the HTML and Javascript:
-
-```
-cargo make dev-server
-```
-
-Running the test specs requires [playwright][], so first install the dependencies for the end-to-end tests and then the [playwright][] browsers:
-
-```
-cd integration_tests/tests/e2e
-npm install
-npx playwright install
-```
-
-Then you should be able to run the end-to-end tests:
-
-```
-npm test
-```
-
-Or run headed to see the browsers, which can be useful for debugging:
-
-```
-npm run test-headed
-```
-
-Or use the [playwright][] UI:
-
-```
-npm run test-ui
-```
-
-If you need to debug the test specs you can also just open the pages manually in a browser, first open the initiator `/cggmp/p1.html` and then open the participant pages `/cggmp/p2.html` and `/cggmp/p3.html` on the `http://localhost:9009` development server.
+For webassembly and node binding tests see the README files in the conformance directory.
 
 ## License
 
