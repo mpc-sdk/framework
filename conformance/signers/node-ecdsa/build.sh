@@ -3,4 +3,4 @@
 cd ../../../bindings/node
 npm run build-ecdsa
 
-cp -f unisign.node ../../conformance/signers/node-ecdsa/
+cp -rf build/ecdsa/release ../../conformance/signers/node-ecdsa/build

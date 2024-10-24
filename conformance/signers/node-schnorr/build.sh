@@ -3,4 +3,4 @@
 cd ../../../bindings/node
 npm run build-schnorr
 
-cp -f unisign.node ../../conformance/signers/node-schnorr/
+cp -rf build/schnorr/release ../../conformance/signers/node-schnorr/build
