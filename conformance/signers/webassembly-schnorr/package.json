@@ -1,7 +1,7 @@
 {
   "name": "webassembly-schnorr",
   "version": "1.0.0",
-  "description": "Example and test spec for Schnorr signing",
+  "description": "Example and test spec for Schnorr signing using the webassembly bindings",
   "private": true,
   "main": "index.js",
   "type": "module",

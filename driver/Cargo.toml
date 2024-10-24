@@ -15,6 +15,7 @@ schnorr = ["ed25519", "k256/schnorr"]
 signers = ["ecdsa", "eddsa", "schnorr"]
 protocols = ["cggmp"]
 full = ["cggmp", "ecdsa", "eddsa", "schnorr"]
+napi = ["napi-derive"]
 
 [dependencies]
 mpc-protocol = { version = "0.7", path = "../protocol" }
@@ -36,6 +37,7 @@ bip32 = { version = "0.6.0-pre.0", features = ["std"], optional = true }
 rand = "0.8"
 ed25519 = { version = "2.3.0-pre.0", optional = true }
 ed25519-dalek = { version = "2.2.0-pre", features = ["rand_core"], optional = true, git = "https://github.com/dalek-cryptography/curve25519-dalek", branch = "rustcrypto-new-releases" }
+napi-derive = {version = "3.0.0-alpha.15", optional = true }
 
 # WASM
 

@@ -1,4 +1,4 @@
-# EdDSA Signing Test
+# EdDSA Signing Test (webassembly)
 
 ## Prerequisites
 

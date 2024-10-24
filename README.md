@@ -20,6 +20,24 @@ Creating a meeting point that shares the session identifier between participants
 * `eddsa`: Single-party signer compatible with Solana using [ed25519](https://docs.rs/ed25519/latest/ed25519/) and [ed25519-dalek](https://docs.rs/ed25519-dalek/latest/ed25519_dalek/).
 * `schnorr`: Single-party signer compatible with Bitcoin Taproot (BIP-340) using [k256](https://docs.rs/k256/latest/k256/).
 
+## Bindings
+
+### Webassembly
+
+* [x] CGGMP
+* [x] ECDSA
+* [x] EdDSA
+* [ ] FROST
+* [x] Schnorr
+
+### Node
+
+* [ ] CGGMP
+* [x] ECDSA
+* [x] EdDSA
+* [ ] FROST
+* [x] Schnorr
+
 ## Server Installation
 
 ```

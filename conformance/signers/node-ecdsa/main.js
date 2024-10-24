@@ -1,15 +1,15 @@
-import init, { EcdsaSigner } from '@ecdsa-bindings';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
 
-await init();
+const unisign = require('./build/unisign.node');
+const { EcdsaSigner } = unisign;
 
-console.log("webassembly initialized...");
-
-function stringToUint8Array(str) {
-  const encoder = new TextEncoder();
-  return encoder.encode(str);
+function stringToByteArray(str) {
+  const buffer = Buffer.from(str, 'utf-8');
+  return Array.from(buffer);
 }
 
-function uint8ArraysEqual(arr1, arr2) {
+function arraysEqual(arr1, arr2) {
   if (arr1.length !== arr2.length) {
     return false;
   }
@@ -29,7 +29,7 @@ function signVerify() {
   const signingKeyBytes = EcdsaSigner.random();
   const signer = new EcdsaSigner(signingKeyBytes);
 
-  const messageBytes = stringToUint8Array("example message to sign");
+  const messageBytes = stringToByteArray("example message to sign");
   const signature = signer.sign(messageBytes);
   const verifyingKey = signer.verifyingKey();
 
@@ -63,7 +63,7 @@ function signEthRecover() {
   const signingKeyBytes = EcdsaSigner.random();
   const signer = new EcdsaSigner(signingKeyBytes);
   const verifyingKey = signer.verifyingKey();
-  const messageBytes = stringToUint8Array("example message to sign");
+  const messageBytes = stringToByteArray("example message to sign");
   const hashBytes = EcdsaSigner.keccak256(messageBytes);
   const signature = signer.signEth(messageBytes);
 
@@ -91,7 +91,7 @@ function signEthRecover() {
   
   try {
     const publicKey = EcdsaSigner.recover(messageBytes, signature);
-    console.assert(uint8ArraysEqual(verifyingKey, publicKey));
+    console.assert(arraysEqual(verifyingKey, publicKey));
   } catch(e) {
     console.error("public key recovery failed", e);
   }

@@ -1,5 +1,6 @@
 [workspace]
-members = [
+members = [ "bindings/node",
+  "bindings/node",
   "bindings/webassembly",
   "client",
   "command_line",

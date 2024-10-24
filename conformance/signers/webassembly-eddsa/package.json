@@ -1,7 +1,7 @@
 {
   "name": "webassembly-eddsa",
   "version": "1.0.0",
-  "description": "Example and test spec for EdDSA signing",
+  "description": "Example and test spec for EdDSA signing using the webassembly bindings",
   "private": true,
   "main": "index.js",
   "type": "module",
