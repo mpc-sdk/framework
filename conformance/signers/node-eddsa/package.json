@@ -1,0 +1,10 @@
+{
+  "name": "node-eddsa",
+  "version": "1.0.0",
+  "description": "Example and test spec for EdDSA signing",
+  "private": true,
+  "main": "main.js",
+  "type": "module",
+  "author": "",
+  "license": "ISC"
+}
