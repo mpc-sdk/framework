@@ -98,9 +98,9 @@ cargo run -- generate-keypair server.pem
 [tasks.gen-keys]
 script = '''
 cargo run -- generate-keypair tests/test.pem --public-key tests/server_public_key.txt
-cargo run -- generate-keypair tests/e2e/p1.pem
-cargo run -- generate-keypair tests/e2e/p2.pem
-cargo run -- generate-keypair tests/e2e/p3.pem
+cargo run -- generate-keypair conformance/signers/webassembly-cggmp/p1.pem
+cargo run -- generate-keypair conformance/signers/webassembly-cggmp/p2.pem
+cargo run -- generate-keypair conformance/signers/webassembly-cggmp/p3.pem
 '''
 dependencies = ["gen-server-key"]
 
@@ -117,7 +117,7 @@ cargo run -- start -b 127.0.0.1:8008 integration_tests/tests/config.toml
 
 [tasks.e2e-server]
 script = '''
-cargo run -- start -b 127.0.0.1:8008 integration_tests/tests/e2e/config.toml
+cargo run -- start -b 127.0.0.1:8008 conformance/signers/webassembly-cggmp/config.toml
 '''
 
 [tasks.dev-server]

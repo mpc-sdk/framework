@@ -97,20 +97,6 @@ To run the tests using the native client:
 cargo nextest run
 ```
 
-#### Web Platform
-
-To test the web client using webassembly, first start a test server (port 8008):
-
-```
-cargo make test-server
-```
-
-Now you can run the webassembly tests:
-
-```
-cargo make test-wasm
-```
-
 ##### End-to-end tests
 
 The webassembly tests cannot simulate key generation and signing as it is too computationally intensive for a single-threaded context and the integration tests would hit the browser script timeout before completion.
