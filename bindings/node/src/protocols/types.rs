@@ -123,6 +123,8 @@ impl TryFrom<PartyOptions> for mpc_driver::PartyOptions {
 #[napi(object)]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct KeyShare {
+    // Encoded as a JSON string as we can't access the inner
+    // state of synedrion::ThresholdKeyShare directly
     pub inner: String,
 }
 
@@ -132,7 +134,9 @@ impl TryFrom<ThresholdKeyShare> for KeyShare {
     fn try_from(
         value: ThresholdKeyShare,
     ) -> Result<Self, Self::Error> {
-        todo!();
+        Ok(Self {
+            inner: serde_json::to_string(&value)?,
+        })
     }
 }
 
@@ -140,7 +144,7 @@ impl TryFrom<KeyShare> for ThresholdKeyShare {
     type Error = mpc_driver::Error;
 
     fn try_from(value: KeyShare) -> Result<Self, Self::Error> {
-        todo!();
+        Ok(serde_json::from_str(&value.inner)?)
     }
 }
 

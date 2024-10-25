@@ -30,6 +30,10 @@ pub enum Error {
     #[error("number of participants '{0}' does not match number of verifying keys '{1}'")]
     ParticipantVerifierLength(usize, usize),
 
+    /// JSON error.
+    #[error(transparent)]
+    Json(#[from] serde_json::Error),
+
     /// CGGMP driver errors.
     #[cfg(feature = "cggmp")]
     #[error(transparent)]
