@@ -18,8 +18,8 @@ pub use session::{
     SessionInitiator, SessionParticipant,
 };
 pub use types::{
-    KeyShare, MeetingOptions, Participant, PartyOptions, PrivateKey,
-    ServerOptions, SessionOptions,
+    MeetingOptions, Participant, PartyOptions, ServerOptions,
+    SessionOptions,
 };
 
 pub(crate) use bridge::Bridge;

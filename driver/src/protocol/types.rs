@@ -119,6 +119,7 @@ impl PartyOptions {
     }
 }
 
+/*
 /// Generated key share.
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -187,6 +188,7 @@ impl From<crate::cggmp::KeyShare<crate::synedrion::ProductionParams>>
         }
     }
 }
+*/
 
 /// Options for creating or joining a meeting point.
 #[derive(Serialize, Deserialize)]
