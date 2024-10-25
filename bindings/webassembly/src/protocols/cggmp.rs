@@ -50,7 +50,7 @@ impl CggmpProtocol {
         let public_key = self
             .key_share
             .verifying_key()
-            .to_encoded_point(true)
+            .to_encoded_point(false)
             .as_bytes()
             .to_vec();
         mpc_driver::address(&public_key)
