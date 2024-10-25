@@ -35,8 +35,10 @@ impl CggmpProtocol {
         session_id_seed: Vec<u8>,
         signer: Vec<u8>,
     ) -> Result<KeyShare> {
-        let options: mpc_driver::SessionOptions = options.into();
-        let party: mpc_driver::PartyOptions = party.into();
+        let options: mpc_driver::SessionOptions =
+            options.try_into().map_err(Error::new)?;
+        let party: mpc_driver::PartyOptions =
+            party.try_into().map_err(Error::new)?;
         let signer: SigningKey =
             signer.as_slice().try_into().map_err(Error::from)?;
         let participant =
@@ -67,8 +69,10 @@ impl CggmpProtocol {
         private_key: PrivateKey,
         message: String,
     ) -> Result<Signature> {
-        let options: mpc_driver::SessionOptions = options.into();
-        let party: mpc_driver::PartyOptions = party.into();
+        let options: mpc_driver::SessionOptions =
+            options.try_into().map_err(Error::new)?;
+        let party: mpc_driver::PartyOptions =
+            party.try_into().map_err(Error::new)?;
         let signer: SigningKey =
             signer.as_slice().try_into().map_err(Error::from)?;
         let private_key: mpc_driver::PrivateKey = private_key.into();
@@ -106,8 +110,10 @@ impl CggmpProtocol {
         old_threshold: i64,
         new_threshold: i64,
     ) -> Result<KeyShare> {
-        let options: mpc_driver::SessionOptions = options.into();
-        let party: mpc_driver::PartyOptions = party.into();
+        let options: mpc_driver::SessionOptions =
+            options.try_into().map_err(Error::new)?;
+        let party: mpc_driver::PartyOptions =
+            party.try_into().map_err(Error::new)?;
         let signer: SigningKey =
             signer.as_slice().try_into().map_err(Error::from)?;
 

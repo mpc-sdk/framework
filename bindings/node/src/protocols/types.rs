@@ -57,6 +57,16 @@ pub struct ServerOptions {
     pub pattern: Option<String>,
 }
 
+impl From<ServerOptions> for mpc_driver::ServerOptions {
+    fn from(value: ServerOptions) -> Self {
+        mpc_driver::ServerOptions {
+            server_url: value.server_url,
+            server_public_key: value.server_public_key,
+            pattern: value.pattern,
+        }
+    }
+}
+
 #[napi(object)]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SessionOptions {
@@ -65,9 +75,15 @@ pub struct SessionOptions {
     pub parameters: Parameters,
 }
 
-impl From<SessionOptions> for mpc_driver::SessionOptions {
-    fn from(value: SessionOptions) -> Self {
-        todo!();
+impl TryFrom<SessionOptions> for mpc_driver::SessionOptions {
+    type Error = mpc_driver::Error;
+
+    fn try_from(value: SessionOptions) -> Result<Self, Self::Error> {
+        Ok(mpc_driver::SessionOptions {
+            keypair: value.keypair.try_into()?,
+            server: value.server.into(),
+            parameters: value.parameters.into(),
+        })
     }
 }
 
@@ -79,13 +95,23 @@ pub struct PartyOptions {
     pub public_key: Vec<u8>,
     pub participants: Vec<Vec<u8>>,
     pub is_initiator: bool,
-    pub party_index: u32,
     pub verifiers: Vec<VerifyingKey>,
 }
 
-impl From<PartyOptions> for mpc_driver::PartyOptions {
-    fn from(value: PartyOptions) -> Self {
-        todo!();
+impl TryFrom<PartyOptions> for mpc_driver::PartyOptions {
+    type Error = mpc_driver::Error;
+
+    fn try_from(value: PartyOptions) -> Result<Self, Self::Error> {
+        let mut verifiers = Vec::with_capacity(value.verifiers.len());
+        for verifier in value.verifiers {
+            verifiers.push(verifier.try_into()?);
+        }
+        Ok(mpc_driver::PartyOptions::new(
+            value.public_key,
+            value.participants,
+            value.is_initiator,
+            verifiers,
+        )?)
     }
 }
 
