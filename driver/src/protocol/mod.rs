@@ -113,6 +113,7 @@ pub(crate) trait ProtocolDriver {
 }
 
 /// Run distributed key generation.
+#[deprecated]
 #[cfg(feature = "cggmp")]
 pub async fn keygen(
     options: SessionOptions,

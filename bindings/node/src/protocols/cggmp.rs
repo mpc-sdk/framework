@@ -41,13 +41,15 @@ impl CggmpProtocol {
             signer.as_slice().try_into().map_err(Error::from)?;
         let participant =
             Participant::new(signer, party).map_err(Error::from)?;
-        let key_share = mpc_driver::keygen(
+        let key_share = mpc_driver::cggmp::keygen(
             options,
             participant,
             SessionId::from_seed(&session_id_seed),
         )
         .await
         .map_err(Error::new)?;
+
+        let key_share: mpc_driver::KeyShare = key_share.into();
 
         let key_share: KeyShare =
             key_share.try_into().map_err(Error::new)?;

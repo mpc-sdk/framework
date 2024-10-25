@@ -13,7 +13,7 @@ impl TryFrom<VerifyingKey> for ecdsa::VerifyingKey {
     type Error = mpc_driver::Error;
 
     fn try_from(value: VerifyingKey) -> Result<Self, Self::Error> {
-        todo!();
+        Ok(ecdsa::VerifyingKey::from_sec1_bytes(&value.bytes)?)
     }
 }
 
@@ -23,11 +23,28 @@ pub struct Keypair {
     pub pem: String,
 }
 
+impl TryFrom<Keypair> for mpc_protocol::Keypair {
+    type Error = mpc_driver::Error;
+
+    fn try_from(value: Keypair) -> Result<Self, Self::Error> {
+        todo!();
+    }
+}
+
 #[napi(object)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Parameters {
     pub parties: u16,
     pub threshold: u16,
+}
+
+impl From<Parameters> for mpc_protocol::Parameters {
+    fn from(value: Parameters) -> Self {
+        mpc_protocol::Parameters {
+            parties: value.parties,
+            threshold: value.threshold,
+        }
+    }
 }
 
 #[napi]
