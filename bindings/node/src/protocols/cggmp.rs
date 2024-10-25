@@ -17,14 +17,42 @@ use super::types::{
 
 /// CGGMP protocol.
 #[napi]
-pub struct CggmpProtocol;
+pub struct CggmpProtocol {
+    options: mpc_driver::SessionOptions,
+    key_share: ThresholdKeyShare,
+}
 
 #[napi]
 impl CggmpProtocol {
     /// Create a CGGMP protocol.
     #[napi(constructor)]
-    pub fn new() -> Self {
-        Self
+    pub fn new(
+        options: SessionOptions,
+        key_share: KeyShare,
+    ) -> Result<CggmpProtocol> {
+        let options: mpc_driver::SessionOptions =
+            options.try_into().map_err(Error::new)?;
+        let key_share: ThresholdKeyShare =
+            key_share.try_into().map_err(Error::new)?;
+        Ok(Self { options, key_share })
+    }
+
+    /// Verifying key for this signer.
+    #[napi(js_name = "verifyingKey")]
+    pub fn verifying_key(&self) -> Vec<u8> {
+        self.key_share.verifying_key().to_sec1_bytes().to_vec()
+    }
+
+    /// Compute the Ethereum address for the verifying key.
+    #[napi]
+    pub fn address(&self) -> String {
+        let public_key = self
+            .key_share
+            .verifying_key()
+            .to_encoded_point(true)
+            .as_bytes()
+            .to_vec();
+        mpc_driver::address(&public_key)
     }
 
     /// Distributed key generation.
@@ -60,21 +88,16 @@ impl CggmpProtocol {
     #[napi]
     pub async fn sign(
         &self,
-        options: SessionOptions,
         party: PartyOptions,
         session_id_seed: Vec<u8>,
         signer: Vec<u8>,
-        key_share: KeyShare,
         message: String,
     ) -> Result<RecoverableSignature> {
-        let options: mpc_driver::SessionOptions =
-            options.try_into().map_err(Error::new)?;
+        let options = self.options.clone();
         let party: mpc_driver::PartyOptions =
             party.try_into().map_err(Error::new)?;
         let signer: SigningKey =
             signer.as_slice().try_into().map_err(Error::new)?;
-        let key_share: ThresholdKeyShare =
-            key_share.try_into().map_err(Error::new)?;
         let message = hex::decode(&message).map_err(Error::new)?;
         let message: [u8; 32] =
             message.as_slice().try_into().map_err(Error::new)?;
@@ -84,13 +107,14 @@ impl CggmpProtocol {
         let mut selected_parties = BTreeSet::new();
         selected_parties
             .extend(participant.party().verifiers().iter());
-        let key_share = &key_share.to_key_share(&selected_parties);
+        let key_share =
+            self.key_share.to_key_share(&selected_parties);
 
         let signature = mpc_driver::cggmp::sign(
             options,
             participant,
             SessionId::from_seed(&session_id_seed),
-            key_share,
+            &key_share,
             &message,
         )
         .await
@@ -105,7 +129,7 @@ impl CggmpProtocol {
     #[napi]
     pub async fn reshare(
         &self,
-        options: SessionOptions,
+        // options: SessionOptions,
         party: PartyOptions,
         session_id_seed: Vec<u8>,
         signer: Vec<u8>,
@@ -114,8 +138,7 @@ impl CggmpProtocol {
         old_threshold: i64,
         new_threshold: i64,
     ) -> Result<KeyShare> {
-        let options: mpc_driver::SessionOptions =
-            options.try_into().map_err(Error::new)?;
+        let options = self.options.clone();
         let party: mpc_driver::PartyOptions =
             party.try_into().map_err(Error::new)?;
         let signer: SigningKey =
@@ -154,38 +177,35 @@ impl CggmpProtocol {
     #[napi(js_name = "deriveBip32")]
     pub fn derive_bip32(
         &self,
-        key_share: KeyShare,
         derivation_path: String,
     ) -> std::result::Result<KeyShare, napi::JsError> {
         use mpc_driver::bip32::DerivationPath;
-        let key_share: ThresholdKeyShare =
-            key_share.try_into().map_err(Error::new)?;
         let derivation_path: DerivationPath =
             derivation_path.parse().map_err(Error::new)?;
         let child_key = mpc_driver::cggmp::derive_bip32(
-            &key_share,
+            &self.key_share,
             &derivation_path,
         )
         .map_err(Error::new)?;
         Ok(child_key.try_into().map_err(Error::new)?)
     }
-}
 
-/// Generate a PEM-encoded keypair for the noise protocol.
-///
-/// Uses the default noise protocol parameters
-/// if no pattern is given.
-#[napi(js_name = "generateKeypair")]
-pub fn generate_keypair(
-    pattern: Option<String>,
-    env: Env,
-) -> std::result::Result<napi::JsUnknown, JsError> {
-    let pattern = pattern.unwrap_or_else(|| PATTERN.to_owned());
-    let keypair = mpc_protocol::Keypair::new(
-        pattern.parse().map_err(Error::new)?,
-    )
-    .map_err(Error::new)?;
-    let public_key = hex::encode(keypair.public_key());
-    let pem = mpc_protocol::encode_keypair(&keypair);
-    Ok(env.to_js_value(&(pem, public_key)).map_err(Error::new)?)
+    /// Generate a PEM-encoded keypair for the noise protocol.
+    ///
+    /// Uses the default noise protocol parameters
+    /// if no pattern is given.
+    #[napi(js_name = "generateKeypair")]
+    pub fn generate_keypair(
+        pattern: Option<String>,
+        env: Env,
+    ) -> std::result::Result<napi::JsUnknown, JsError> {
+        let pattern = pattern.unwrap_or_else(|| PATTERN.to_owned());
+        let keypair = mpc_protocol::Keypair::new(
+            pattern.parse().map_err(Error::new)?,
+        )
+        .map_err(Error::new)?;
+        let public_key = hex::encode(keypair.public_key());
+        let pem = mpc_protocol::encode_keypair(&keypair);
+        Ok(env.to_js_value(&(pem, public_key)).map_err(Error::new)?)
+    }
 }

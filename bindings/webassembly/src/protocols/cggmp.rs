@@ -92,20 +92,13 @@ impl CggmpProtocol {
         session_id_seed: Vec<u8>,
         signer: Vec<u8>,
         // key_share: JsValue,
-        message: JsValue,
+        message: String,
     ) -> Result<JsValue, JsError> {
         let options = self.options.clone();
-
-        // let options: SessionOptions =
-        //     serde_wasm_bindgen::from_value(options)?;
         let party: PartyOptions =
             serde_wasm_bindgen::from_value(party)?;
         let signer: SigningKey =
             signer.as_slice().try_into().map_err(JsError::from)?;
-
-        // let key_share: KeyShare =
-        //     serde_wasm_bindgen::from_value(key_share)?;
-
         let participant =
             Participant::new(signer, party).map_err(JsError::from)?;
 
@@ -115,7 +108,11 @@ impl CggmpProtocol {
         let key_share =
             self.key_share.to_key_share(&selected_parties);
 
-        let message = parse_message(message)?;
+        let message: Vec<u8> =
+            hex::decode(&message).map_err(JsError::from)?;
+        let message: [u8; 32] =
+            message.as_slice().try_into().map_err(JsError::from)?;
+
         let fut = async move {
             let signature = mpc_driver::cggmp::sign(
                 options,
@@ -143,8 +140,6 @@ impl CggmpProtocol {
         new_threshold: usize,
     ) -> Result<JsValue, JsError> {
         let options = self.options.clone();
-        // let options: SessionOptions =
-        //     serde_wasm_bindgen::from_value(options)?;
         let party: PartyOptions =
             serde_wasm_bindgen::from_value(party)?;
         let signer: SigningKey =
@@ -176,13 +171,10 @@ impl CggmpProtocol {
     #[wasm_bindgen(js_name = "deriveBip32")]
     pub fn derive_bip32(
         &self,
-        // key_share: JsValue,
         derivation_path: String,
     ) -> Result<JsValue, JsError> {
         use mpc_driver::bip32::DerivationPath;
 
-        // let key_share: KeyShare =
-        //     serde_wasm_bindgen::from_value(key_share)?;
         let derivation_path: DerivationPath =
             derivation_path.parse()?;
         let child_key = mpc_driver::cggmp::derive_bip32(
@@ -192,32 +184,23 @@ impl CggmpProtocol {
 
         Ok(serde_wasm_bindgen::to_value(&child_key)?)
     }
-}
 
-/// Generate a PEM-encoded keypair.
-///
-/// Uses the default noise protocol parameters
-/// if no pattern is given.
-#[wasm_bindgen(js_name = "generateKeypair")]
-pub fn generate_keypair(
-    pattern: Option<String>,
-) -> Result<JsValue, JsError> {
-    let pattern = if let Some(pattern) = pattern {
-        pattern
-    } else {
-        PATTERN.to_owned()
-    };
-    let keypair = mpc_protocol::Keypair::new(pattern.parse()?)?;
-    let public_key = hex::encode(keypair.public_key());
-    let pem = mpc_protocol::encode_keypair(&keypair);
-    Ok(serde_wasm_bindgen::to_value(&(pem, public_key))?)
-}
-
-fn parse_message(message: JsValue) -> Result<[u8; 32], JsError> {
-    let message: String = serde_wasm_bindgen::from_value(message)?;
-    let message: Vec<u8> =
-        hex::decode(&message).map_err(JsError::from)?;
-    let message: [u8; 32] =
-        message.as_slice().try_into().map_err(JsError::from)?;
-    Ok(message)
+    /// Generate a PEM-encoded keypair for the noise protocol.
+    ///
+    /// Uses the default noise protocol parameters
+    /// if no pattern is given.
+    #[wasm_bindgen(js_name = "generateKeypair")]
+    pub fn generate_keypair(
+        pattern: Option<String>,
+    ) -> Result<JsValue, JsError> {
+        let pattern = if let Some(pattern) = pattern {
+            pattern
+        } else {
+            PATTERN.to_owned()
+        };
+        let keypair = mpc_protocol::Keypair::new(pattern.parse()?)?;
+        let public_key = hex::encode(keypair.public_key());
+        let pem = mpc_protocol::encode_keypair(&keypair);
+        Ok(serde_wasm_bindgen::to_value(&(pem, public_key))?)
+    }
 }
