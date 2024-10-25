@@ -1759,10 +1759,13 @@ version = "0.7.0"
 dependencies = [
  "anyhow",
  "mpc-driver",
+ "mpc-protocol",
  "napi",
  "napi-build 1.2.1",
  "napi-derive",
+ "serde",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]
@@ -1874,6 +1877,7 @@ dependencies = [
  "napi-sys",
  "serde",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]

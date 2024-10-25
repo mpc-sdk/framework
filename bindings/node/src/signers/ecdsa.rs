@@ -3,8 +3,7 @@ use anyhow::Error;
 use mpc_driver::signers::ecdsa::{
     self, RecoverableSignature, Signature,
 };
-use napi::bindgen_prelude::Env;
-use napi::{JsError, JsUnknown};
+use napi::{Env, JsError, JsUnknown};
 use napi_derive::napi;
 use std::borrow::Cow;
 
