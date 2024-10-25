@@ -1,7 +1,6 @@
 //! Bindings for the CGGMP protocol.
 use anyhow::Error;
 use mpc_driver::synedrion::{
-    self,
     ecdsa::{self, SigningKey},
     SessionId,
 };
@@ -42,9 +41,9 @@ impl CggmpProtocol {
         let party: mpc_driver::PartyOptions =
             party.try_into().map_err(Error::new)?;
         let signer: SigningKey =
-            signer.as_slice().try_into().map_err(Error::from)?;
+            signer.as_slice().try_into().map_err(Error::new)?;
         let participant =
-            Participant::new(signer, party).map_err(Error::from)?;
+            Participant::new(signer, party).map_err(Error::new)?;
         let key_share = mpc_driver::cggmp::keygen::<Params>(
             options,
             participant,
@@ -74,18 +73,18 @@ impl CggmpProtocol {
         let party: mpc_driver::PartyOptions =
             party.try_into().map_err(Error::new)?;
         let signer: SigningKey =
-            signer.as_slice().try_into().map_err(Error::from)?;
-        let key_share: ThresholdKeyShare = key_share.into();
+            signer.as_slice().try_into().map_err(Error::new)?;
+        let key_share: ThresholdKeyShare =
+            key_share.try_into().map_err(Error::new)?;
         let message = hex::decode(&message).map_err(Error::new)?;
         let message: [u8; 32] =
             message.as_slice().try_into().map_err(Error::new)?;
         let participant =
-            Participant::new(signer, party).map_err(Error::from)?;
+            Participant::new(signer, party).map_err(Error::new)?;
 
         let mut selected_parties = BTreeSet::new();
         selected_parties
             .extend(participant.party().verifiers().iter());
-
         let key_share = &key_share.to_key_share(&selected_parties);
 
         let signature = mpc_driver::cggmp::sign(
@@ -121,15 +120,19 @@ impl CggmpProtocol {
         let party: mpc_driver::PartyOptions =
             party.try_into().map_err(Error::new)?;
         let signer: SigningKey =
-            signer.as_slice().try_into().map_err(Error::from)?;
+            signer.as_slice().try_into().map_err(Error::new)?;
 
         let account_verifying_key: ecdsa::VerifyingKey =
             account_verifying_key.try_into().map_err(Error::new)?;
 
         let key_share: Option<ThresholdKeyShare> =
-            key_share.map(|k| k.into());
+            if let Some(key_share) = key_share {
+                Some(key_share.try_into().map_err(Error::new)?)
+            } else {
+                None
+            };
         let participant =
-            Participant::new(signer, party).map_err(Error::from)?;
+            Participant::new(signer, party).map_err(Error::new)?;
 
         let key_share = mpc_driver::cggmp::reshare(
             options,
@@ -148,25 +151,25 @@ impl CggmpProtocol {
         Ok(key_share)
     }
 
-    /*
     /// Generate a BIP32 derived child key.
     #[napi(js_name = "deriveBip32")]
     pub fn derive_bip32(
         &self,
-        private_key: PrivateKey,
+        key_share: KeyShare,
         derivation_path: String,
-        env: Env,
-    ) -> std::result::Result<napi::JsUnknown, napi::JsError> {
+    ) -> std::result::Result<KeyShare, napi::JsError> {
         use mpc_driver::bip32::DerivationPath;
-        let private_key: mpc_driver::PrivateKey = private_key.into();
+        let key_share: ThresholdKeyShare =
+            key_share.try_into().map_err(Error::new)?;
         let derivation_path: DerivationPath =
-            derivation_path.parse().map_err(Error::from)?;
-        let child_key =
-            mpc_driver::derive_bip32(&private_key, &derivation_path)
-                .map_err(Error::new)?;
-        Ok(env.to_js_value(&child_key).map_err(Error::new)?)
+            derivation_path.parse().map_err(Error::new)?;
+        let child_key = mpc_driver::cggmp::derive_bip32(
+            &key_share,
+            &derivation_path,
+        )
+        .map_err(Error::new)?;
+        Ok(child_key.try_into().map_err(Error::new)?)
     }
-    */
 }
 
 /// Generate a PEM-encoded keypair for the noise protocol.

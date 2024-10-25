@@ -1,5 +1,4 @@
 use mpc_driver::synedrion::{self, ecdsa};
-use mpc_protocol::hex;
 use napi_derive::napi;
 use serde::{Deserialize, Serialize};
 
@@ -60,7 +59,6 @@ impl From<Parameters> for mpc_protocol::Parameters {
 #[serde(rename_all = "camelCase")]
 pub struct ServerOptions {
     pub server_url: String,
-    #[serde(with = "hex::serde")]
     pub server_public_key: Vec<u8>,
     pub pattern: Option<String>,
 }
@@ -99,7 +97,6 @@ impl TryFrom<SessionOptions> for mpc_driver::SessionOptions {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PartyOptions {
-    #[serde(with = "hex::serde")]
     pub public_key: Vec<u8>,
     pub participants: Vec<Vec<u8>>,
     pub is_initiator: bool,
@@ -126,13 +123,7 @@ impl TryFrom<PartyOptions> for mpc_driver::PartyOptions {
 #[napi(object)]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct KeyShare {
-    pub index: u32,
-}
-
-impl From<KeyShare> for ThresholdKeyShare {
-    fn from(value: KeyShare) -> Self {
-        todo!();
-    }
+    pub inner: String,
 }
 
 impl TryFrom<ThresholdKeyShare> for KeyShare {
@@ -145,28 +136,41 @@ impl TryFrom<ThresholdKeyShare> for KeyShare {
     }
 }
 
+impl TryFrom<KeyShare> for ThresholdKeyShare {
+    type Error = mpc_driver::Error;
+
+    fn try_from(value: KeyShare) -> Result<Self, Self::Error> {
+        todo!();
+    }
+}
+
 #[napi(object)]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RecoverableSignature {
-    pub index: u32,
+    pub bytes: Vec<u8>,
+    pub recovery_id: u8,
 }
 
 impl From<RecoverableSignature>
     for mpc_driver::recoverable_signature::RecoverableSignature
 {
     fn from(value: RecoverableSignature) -> Self {
-        todo!();
+        Self {
+            bytes: value.bytes,
+            recovery_id: value.recovery_id,
+        }
     }
 }
 
-impl TryFrom<mpc_driver::recoverable_signature::RecoverableSignature>
+impl From<mpc_driver::recoverable_signature::RecoverableSignature>
     for RecoverableSignature
 {
-    type Error = mpc_driver::Error;
-
-    fn try_from(
+    fn from(
         value: mpc_driver::recoverable_signature::RecoverableSignature,
-    ) -> Result<Self, Self::Error> {
-        todo!();
+    ) -> Self {
+        Self {
+            bytes: value.bytes,
+            recovery_id: value.recovery_id,
+        }
     }
 }
