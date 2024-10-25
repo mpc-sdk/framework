@@ -43,13 +43,16 @@ pub enum Error {
     #[error(transparent)]
     Client(#[from] mpc_client::Error),
 
+    /// Protocol library errors.
+    #[error(transparent)]
+    Protocol(#[from] mpc_protocol::Error),
+
     /// ECDSA library errors.
     #[cfg(any(feature = "cggmp", feature = "ecdsa",))]
     #[error(transparent)]
     Ecdsa(#[from] k256::ecdsa::Error),
 
     /// Ed25519 library errors.
-
     // NOTE: must be boxed otherwise thiserror will compile two
     // NOTE: From implementations when the full feature is enabled
     #[cfg(any(feature = "eddsa", feature = "schnorr"))]

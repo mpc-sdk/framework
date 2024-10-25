@@ -1,4 +1,5 @@
 use mpc_driver::synedrion::{self, ecdsa};
+use mpc_protocol::decode_keypair;
 use napi_derive::napi;
 use serde::{Deserialize, Serialize};
 
@@ -34,7 +35,7 @@ impl TryFrom<Keypair> for mpc_protocol::Keypair {
     type Error = mpc_driver::Error;
 
     fn try_from(value: Keypair) -> Result<Self, Self::Error> {
-        todo!();
+        Ok(decode_keypair(value.pem)?)
     }
 }
 
@@ -150,6 +151,7 @@ impl TryFrom<KeyShare> for ThresholdKeyShare {
 
 #[napi(object)]
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct RecoverableSignature {
     pub bytes: Vec<u8>,
     pub recovery_id: u8,
