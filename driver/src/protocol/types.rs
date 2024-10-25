@@ -119,42 +119,6 @@ impl PartyOptions {
     }
 }
 
-/*
-/// Signature for different protocols.
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum Signature {
-    /// Signature for the CGGMP protocol.
-    ///
-    /// Note that we must convert the `RecoveryId` to `u8`
-    /// for serde support.
-    #[cfg(feature = "cggmp")]
-    Cggmp(ecdsa::Signature, u8),
-}
-
-#[cfg(feature = "cggmp")]
-impl From<synedrion::RecoverableSignature> for Signature {
-    fn from(value: synedrion::RecoverableSignature) -> Self {
-        let (sig, recovery_id) = value.to_backend();
-        Signature::Cggmp(sig, recovery_id.into())
-    }
-}
-
-#[cfg(feature = "cggmp")]
-impl TryFrom<Signature> for (ecdsa::Signature, RecoveryId) {
-    type Error = crate::Error;
-
-    fn try_from(value: Signature) -> Result<Self> {
-        match value {
-            Signature::Cggmp(backend_signature, recovery_id) => {
-                let rec_id: RecoveryId = recovery_id.try_into()?;
-                Ok((backend_signature, rec_id))
-            }
-        }
-    }
-}
-*/
-
 /// Generated key share.
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
