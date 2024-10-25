@@ -105,17 +105,6 @@ pub(crate) trait ProtocolDriver {
     ) -> std::result::Result<Option<Self::Output>, Self::Error>;
 }
 
-#[doc(hidden)]
-/// Compute the address of an uncompressed public key (65 bytes).
-pub fn address(public_key: &[u8]) -> String {
-    use sha3::{Digest, Keccak256};
-    // Remove the leading 0x04
-    let bytes = &public_key[1..];
-    let digest = Keccak256::digest(bytes);
-    let final_bytes = &digest[12..];
-    format!("0x{}", hex::encode(final_bytes))
-}
-
 /// Create a new client using the provided session options.
 pub(crate) async fn new_client(
     options: SessionOptions,

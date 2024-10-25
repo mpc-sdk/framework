@@ -3,6 +3,8 @@ const module = await import("/pkg/mpc_webassembly_bindings.js");
 // Initialize the webassembly
 await module.default();
 
+const { CggmpProtocol } = module;
+
 // Convert from a hex-encoded string.
 function fromHexString(hex) {
   return new Uint8Array(hex.match(/.{1,2}/g).map((byte) => parseInt(byte, 16)));
@@ -43,12 +45,10 @@ const signParty = {
   partyIndex,
 };
 
-const protocol = new module.CggmpProtocol();
-
 try {
 
   // Start key generation
-  const keyShare = await protocol.keygen(
+  const keyShare = await CggmpProtocol.keygen(
     options,
     party,
     fromHexString(keygenSessionIdSeed),
@@ -57,17 +57,26 @@ try {
 
   console.log("keygen completed", keyShare);
 
+  const protocol = new CggmpProtocol(options, keyShare);
+  const verifyingKey = protocol.verifyingKey();
+  const address = protocol.address();
+
+  console.log("verifyingKey", verifyingKey);
+  console.log("address", address);
+
+  console.assert(verifyingKey.length === 33); // SEC1 encoded
+
   const keyShareElement = document.getElementById("key-share");
-  keyShareElement.innerHTML = `<p class="address">Address: ${keyShare.address}</p>`;
+  keyShareElement.innerHTML = `<p class="address">Address: ${address}</p>`;
 
   // First and third parties perform signing
   if (partyIndex == 0 || partyIndex == 2) {
     const result = await protocol.sign(
-      options,
+      // options,
       signParty,
       fromHexString(signSessionIdSeed),
       fromHexString(signer),
-      keyShare,
+      // keyShare,
       message,
     );
 

@@ -213,7 +213,7 @@ pub struct ServerOptions {
 }
 
 /// Options used to drive a session to completion.
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SessionOptions {
     /// Keypair for the participant.

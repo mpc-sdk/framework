@@ -26,3 +26,16 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub mod cggmp;
 
 pub use sha3;
+
+#[cfg(any(feature = "ecdsa", feature = "cggmp"))]
+#[doc(hidden)]
+/// Compute the address of an uncompressed public key (65 bytes).
+pub fn address(public_key: &[u8]) -> String {
+    use mpc_protocol::hex;
+    use sha3::{Digest, Keccak256};
+    // Remove the leading 0x04
+    let bytes = &public_key[1..];
+    let digest = Keccak256::digest(bytes);
+    let final_bytes = &digest[12..];
+    format!("0x{}", hex::encode(final_bytes))
+}

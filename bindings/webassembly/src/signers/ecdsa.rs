@@ -66,6 +66,17 @@ impl EcdsaSigner {
         self.inner.verifying_key().to_sec1_bytes().to_vec()
     }
 
+    /// Compute the Ethereum address for the verifying key.
+    pub fn address(&self) -> String {
+        let public_key = self
+            .inner
+            .verifying_key()
+            .to_encoded_point(true)
+            .as_bytes()
+            .to_vec();
+        mpc_driver::address(&public_key)
+    }
+
     /// Verify a message.
     pub fn verify(
         &self,

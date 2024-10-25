@@ -19,19 +19,45 @@ type KeyShare = synedrion::ThresholdKeyShare<Params, VerifyingKey>;
 
 /// CGGMP protocol.
 #[wasm_bindgen]
-pub struct CggmpProtocol;
+pub struct CggmpProtocol {
+    options: SessionOptions,
+    key_share: KeyShare,
+}
 
 #[wasm_bindgen]
 impl CggmpProtocol {
     /// Create a CGGMP protocol.
     #[wasm_bindgen(constructor)]
-    pub fn new() -> CggmpProtocol {
-        Self
+    pub fn new(
+        options: JsValue,
+        key_share: JsValue,
+    ) -> Result<CggmpProtocol, JsError> {
+        let options: SessionOptions =
+            serde_wasm_bindgen::from_value(options)?;
+        let key_share: KeyShare =
+            serde_wasm_bindgen::from_value(key_share)?;
+        Ok(Self { options, key_share })
+    }
+
+    /// Verifying key for this signer.
+    #[wasm_bindgen(js_name = "verifyingKey")]
+    pub fn verifying_key(&self) -> Vec<u8> {
+        self.key_share.verifying_key().to_sec1_bytes().to_vec()
+    }
+
+    /// Compute the Ethereum address for the verifying key.
+    pub fn address(&self) -> String {
+        let public_key = self
+            .key_share
+            .verifying_key()
+            .to_encoded_point(true)
+            .as_bytes()
+            .to_vec();
+        mpc_driver::address(&public_key)
     }
 
     /// Distributed key generation.
     pub fn keygen(
-        &self,
         options: JsValue,
         party: JsValue,
         session_id_seed: Vec<u8>,
@@ -61,22 +87,24 @@ impl CggmpProtocol {
     /// Sign a message.
     pub fn sign(
         &self,
-        options: JsValue,
+        // options: JsValue,
         party: JsValue,
         session_id_seed: Vec<u8>,
         signer: Vec<u8>,
-        key_share: JsValue,
+        // key_share: JsValue,
         message: JsValue,
     ) -> Result<JsValue, JsError> {
-        let options: SessionOptions =
-            serde_wasm_bindgen::from_value(options)?;
+        let options = self.options.clone();
+
+        // let options: SessionOptions =
+        //     serde_wasm_bindgen::from_value(options)?;
         let party: PartyOptions =
             serde_wasm_bindgen::from_value(party)?;
         let signer: SigningKey =
             signer.as_slice().try_into().map_err(JsError::from)?;
 
-        let key_share: KeyShare =
-            serde_wasm_bindgen::from_value(key_share)?;
+        // let key_share: KeyShare =
+        //     serde_wasm_bindgen::from_value(key_share)?;
 
         let participant =
             Participant::new(signer, party).map_err(JsError::from)?;
@@ -84,7 +112,8 @@ impl CggmpProtocol {
         let mut selected_parties = BTreeSet::new();
         selected_parties
             .extend(participant.party().verifiers().iter());
-        let key_share = key_share.to_key_share(&selected_parties);
+        let key_share =
+            self.key_share.to_key_share(&selected_parties);
 
         let message = parse_message(message)?;
         let fut = async move {
@@ -104,7 +133,7 @@ impl CggmpProtocol {
     /// Reshare key shares.
     pub fn reshare(
         &self,
-        options: JsValue,
+        // options: JsValue,
         party: JsValue,
         session_id_seed: Vec<u8>,
         signer: Vec<u8>,
@@ -113,8 +142,9 @@ impl CggmpProtocol {
         old_threshold: usize,
         new_threshold: usize,
     ) -> Result<JsValue, JsError> {
-        let options: SessionOptions =
-            serde_wasm_bindgen::from_value(options)?;
+        let options = self.options.clone();
+        // let options: SessionOptions =
+        //     serde_wasm_bindgen::from_value(options)?;
         let party: PartyOptions =
             serde_wasm_bindgen::from_value(party)?;
         let signer: SigningKey =
@@ -146,17 +176,17 @@ impl CggmpProtocol {
     #[wasm_bindgen(js_name = "deriveBip32")]
     pub fn derive_bip32(
         &self,
-        key_share: JsValue,
+        // key_share: JsValue,
         derivation_path: String,
     ) -> Result<JsValue, JsError> {
         use mpc_driver::bip32::DerivationPath;
 
-        let key_share: KeyShare =
-            serde_wasm_bindgen::from_value(key_share)?;
+        // let key_share: KeyShare =
+        //     serde_wasm_bindgen::from_value(key_share)?;
         let derivation_path: DerivationPath =
             derivation_path.parse()?;
         let child_key = mpc_driver::cggmp::derive_bip32(
-            &key_share,
+            &self.key_share,
             &derivation_path,
         )?;
 
