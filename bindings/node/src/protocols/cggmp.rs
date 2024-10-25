@@ -1,6 +1,7 @@
 //! Bindings for the CGGMP protocol.
 use anyhow::Error;
 use mpc_driver::synedrion::{
+    self,
     ecdsa::{self, SigningKey},
     SessionId,
 };
@@ -8,10 +9,11 @@ use mpc_driver::Participant;
 use mpc_protocol::{hex, PATTERN};
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
+use std::collections::BTreeSet;
 
 use super::types::{
-    KeyShare, PartyOptions, PrivateKey, SessionOptions, Signature,
-    VerifyingKey,
+    KeyShare, Params, PartyOptions, RecoverableSignature,
+    SessionOptions, ThresholdKeyShare, VerifyingKey,
 };
 
 /// CGGMP protocol.
@@ -43,15 +45,13 @@ impl CggmpProtocol {
             signer.as_slice().try_into().map_err(Error::from)?;
         let participant =
             Participant::new(signer, party).map_err(Error::from)?;
-        let key_share = mpc_driver::cggmp::keygen(
+        let key_share = mpc_driver::cggmp::keygen::<Params>(
             options,
             participant,
             SessionId::from_seed(&session_id_seed),
         )
         .await
         .map_err(Error::new)?;
-
-        let key_share: mpc_driver::KeyShare = key_share.into();
 
         let key_share: KeyShare =
             key_share.try_into().map_err(Error::new)?;
@@ -66,33 +66,39 @@ impl CggmpProtocol {
         party: PartyOptions,
         session_id_seed: Vec<u8>,
         signer: Vec<u8>,
-        private_key: PrivateKey,
+        key_share: KeyShare,
         message: String,
-    ) -> Result<Signature> {
+    ) -> Result<RecoverableSignature> {
         let options: mpc_driver::SessionOptions =
             options.try_into().map_err(Error::new)?;
         let party: mpc_driver::PartyOptions =
             party.try_into().map_err(Error::new)?;
         let signer: SigningKey =
             signer.as_slice().try_into().map_err(Error::from)?;
-        let private_key: mpc_driver::PrivateKey = private_key.into();
+        let key_share: ThresholdKeyShare = key_share.into();
         let message = hex::decode(&message).map_err(Error::new)?;
         let message: [u8; 32] =
             message.as_slice().try_into().map_err(Error::new)?;
         let participant =
             Participant::new(signer, party).map_err(Error::from)?;
 
-        let signature = mpc_driver::sign(
+        let mut selected_parties = BTreeSet::new();
+        selected_parties
+            .extend(participant.party().verifiers().iter());
+
+        let key_share = &key_share.to_key_share(&selected_parties);
+
+        let signature = mpc_driver::cggmp::sign(
             options,
             participant,
             SessionId::from_seed(&session_id_seed),
-            &private_key,
+            key_share,
             &message,
         )
         .await
         .map_err(Error::new)?;
 
-        let signature: Signature =
+        let signature: RecoverableSignature =
             signature.try_into().map_err(Error::new)?;
         Ok(signature)
     }
@@ -106,7 +112,7 @@ impl CggmpProtocol {
         session_id_seed: Vec<u8>,
         signer: Vec<u8>,
         account_verifying_key: VerifyingKey,
-        private_key: Option<PrivateKey>,
+        key_share: Option<KeyShare>,
         old_threshold: i64,
         new_threshold: i64,
     ) -> Result<KeyShare> {
@@ -120,17 +126,17 @@ impl CggmpProtocol {
         let account_verifying_key: ecdsa::VerifyingKey =
             account_verifying_key.try_into().map_err(Error::new)?;
 
-        let private_key: Option<mpc_driver::PrivateKey> =
-            private_key.map(|k| k.into());
+        let key_share: Option<ThresholdKeyShare> =
+            key_share.map(|k| k.into());
         let participant =
             Participant::new(signer, party).map_err(Error::from)?;
 
-        let key_share = mpc_driver::reshare(
+        let key_share = mpc_driver::cggmp::reshare(
             options,
             participant,
             SessionId::from_seed(&session_id_seed),
             account_verifying_key,
-            private_key.as_ref(),
+            key_share,
             old_threshold as usize,
             new_threshold as usize,
         )
@@ -142,6 +148,7 @@ impl CggmpProtocol {
         Ok(key_share)
     }
 
+    /*
     /// Generate a BIP32 derived child key.
     #[napi(js_name = "deriveBip32")]
     pub fn derive_bip32(
@@ -159,6 +166,7 @@ impl CggmpProtocol {
                 .map_err(Error::new)?;
         Ok(env.to_js_value(&child_key).map_err(Error::new)?)
     }
+    */
 }
 
 /// Generate a PEM-encoded keypair for the noise protocol.

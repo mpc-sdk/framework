@@ -6,7 +6,6 @@ use mpc_client::{
     Client, ClientOptions, Event, EventLoop, Transport,
 };
 use mpc_protocol::hex;
-use std::collections::BTreeSet;
 
 mod bridge;
 mod round;
@@ -20,7 +19,7 @@ pub use session::{
 };
 pub use types::{
     KeyShare, MeetingOptions, Participant, PartyOptions, PrivateKey,
-    ServerOptions, SessionOptions, Signature,
+    ServerOptions, SessionOptions,
 };
 
 pub(crate) use bridge::Bridge;
@@ -30,12 +29,6 @@ pub use bridge::{
 
 #[cfg(feature = "cggmp")]
 pub use synedrion::{self, bip32, k256};
-
-#[cfg(feature = "cggmp")]
-use synedrion::{PrehashedMessage, SessionId};
-
-#[cfg(feature = "cggmp")]
-use crate::cggmp;
 
 /// Information about the current found which
 /// can be retrieved from a driver.
@@ -110,82 +103,6 @@ pub(crate) trait ProtocolDriver {
     fn try_finalize_round(
         &mut self,
     ) -> std::result::Result<Option<Self::Output>, Self::Error>;
-}
-
-/// Sign a message.
-#[cfg(feature = "cggmp")]
-pub async fn sign(
-    options: SessionOptions,
-    participant: Participant,
-    session_id: SessionId,
-    key_share: &PrivateKey,
-    message: &PrehashedMessage,
-) -> Result<Signature> {
-    let mut selected_parties = BTreeSet::new();
-    selected_parties.extend(participant.party().verifiers().iter());
-
-    match key_share {
-        PrivateKey::Cggmp(key_share) => Ok(cggmp::sign(
-            options,
-            participant,
-            session_id,
-            &key_share.to_key_share(&selected_parties),
-            message,
-        )
-        .await?
-        .into()),
-    }
-}
-
-/// Reshare key shares.
-#[deprecated]
-#[cfg(feature = "cggmp")]
-pub async fn reshare(
-    options: SessionOptions,
-    participant: Participant,
-    session_id: SessionId,
-    account_verifying_key: k256::ecdsa::VerifyingKey,
-    key_share: Option<&PrivateKey>,
-    old_threshold: usize,
-    new_threshold: usize,
-) -> Result<KeyShare> {
-    match key_share {
-        Some(PrivateKey::Cggmp(key_share)) => Ok(cggmp::reshare(
-            options,
-            participant,
-            session_id,
-            account_verifying_key,
-            Some(key_share.to_owned()),
-            old_threshold,
-            new_threshold,
-        )
-        .await?
-        .into()),
-        None => Ok(cggmp::reshare(
-            options,
-            participant,
-            session_id,
-            account_verifying_key,
-            None,
-            old_threshold,
-            new_threshold,
-        )
-        .await?
-        .into()),
-    }
-}
-
-/// Derive a BIP32 child key.
-#[cfg(feature = "cggmp")]
-pub fn derive_bip32(
-    key_share: &PrivateKey,
-    derivation_path: &bip32::DerivationPath,
-) -> Result<PrivateKey> {
-    match key_share {
-        PrivateKey::Cggmp(key_share) => Ok(PrivateKey::Cggmp(
-            cggmp::derive_bip32(key_share, derivation_path)?,
-        )),
-    }
 }
 
 #[doc(hidden)]

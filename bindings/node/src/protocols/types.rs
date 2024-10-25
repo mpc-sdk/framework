@@ -1,7 +1,15 @@
-use mpc_driver::synedrion::ecdsa;
+use mpc_driver::synedrion::{self, ecdsa};
 use mpc_protocol::hex;
 use napi_derive::napi;
 use serde::{Deserialize, Serialize};
+
+#[cfg(not(debug_assertions))]
+pub(super) type Params = synedrion::ProductionParams;
+#[cfg(debug_assertions)]
+pub(super) type Params = synedrion::TestParams;
+
+pub(super) type ThresholdKeyShare =
+    synedrion::ThresholdKeyShare<Params, ecdsa::VerifyingKey>;
 
 #[napi(object)]
 #[derive(Serialize, Deserialize, Debug)]
@@ -121,17 +129,17 @@ pub struct KeyShare {
     pub index: u32,
 }
 
-impl From<KeyShare> for mpc_driver::KeyShare {
+impl From<KeyShare> for ThresholdKeyShare {
     fn from(value: KeyShare) -> Self {
         todo!();
     }
 }
 
-impl TryFrom<mpc_driver::KeyShare> for KeyShare {
+impl TryFrom<ThresholdKeyShare> for KeyShare {
     type Error = mpc_driver::Error;
 
     fn try_from(
-        value: mpc_driver::KeyShare,
+        value: ThresholdKeyShare,
     ) -> Result<Self, Self::Error> {
         todo!();
     }
@@ -139,43 +147,25 @@ impl TryFrom<mpc_driver::KeyShare> for KeyShare {
 
 #[napi(object)]
 #[derive(Serialize, Deserialize, Debug)]
-pub struct PrivateKey {
+pub struct RecoverableSignature {
     pub index: u32,
 }
 
-impl From<PrivateKey> for mpc_driver::PrivateKey {
-    fn from(value: PrivateKey) -> Self {
+impl From<RecoverableSignature>
+    for mpc_driver::recoverable_signature::RecoverableSignature
+{
+    fn from(value: RecoverableSignature) -> Self {
         todo!();
     }
 }
 
-impl TryFrom<mpc_driver::PrivateKey> for PrivateKey {
+impl TryFrom<mpc_driver::recoverable_signature::RecoverableSignature>
+    for RecoverableSignature
+{
     type Error = mpc_driver::Error;
 
     fn try_from(
-        value: mpc_driver::PrivateKey,
-    ) -> Result<Self, Self::Error> {
-        todo!();
-    }
-}
-
-#[napi(object)]
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Signature {
-    pub index: u32,
-}
-
-impl From<Signature> for mpc_driver::Signature {
-    fn from(value: Signature) -> Self {
-        todo!();
-    }
-}
-
-impl TryFrom<mpc_driver::Signature> for Signature {
-    type Error = mpc_driver::Error;
-
-    fn try_from(
-        value: mpc_driver::Signature,
+        value: mpc_driver::recoverable_signature::RecoverableSignature,
     ) -> Result<Self, Self::Error> {
         todo!();
     }

@@ -2,7 +2,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    k256::ecdsa::{self, RecoveryId, SigningKey, VerifyingKey},
+    k256::ecdsa::{SigningKey, VerifyingKey},
     Error, Result,
 };
 use mpc_protocol::{hex, Keypair, Parameters};
@@ -119,6 +119,7 @@ impl PartyOptions {
     }
 }
 
+/*
 /// Signature for different protocols.
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -152,6 +153,7 @@ impl TryFrom<Signature> for (ecdsa::Signature, RecoveryId) {
         }
     }
 }
+*/
 
 /// Generated key share.
 #[derive(Serialize, Deserialize)]

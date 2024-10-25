@@ -1,6 +1,7 @@
 //! ECDSA signatures compatible with Ethereum.
-use mpc_driver::signers::ecdsa::{
-    self, RecoverableSignature, Signature,
+use mpc_driver::{
+    recoverable_signature::RecoverableSignature,
+    signers::ecdsa::{self, Signature},
 };
 use std::borrow::Cow;
 use wasm_bindgen::prelude::{wasm_bindgen, JsError, JsValue};

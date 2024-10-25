@@ -5,6 +5,9 @@ pub mod signers;
 
 mod error;
 
+#[cfg(any(feature = "ecdsa", feature = "cggmp"))]
+pub mod recoverable_signature;
+
 #[cfg(feature = "cggmp")]
 pub mod meeting;
 

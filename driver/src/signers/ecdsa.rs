@@ -1,34 +1,14 @@
 //! Generate ECDSA signatures compatible with Ethereum.
-use crate::Result;
+use crate::{recoverable_signature::RecoverableSignature, Result};
 use k256::ecdsa::{
     signature::{hazmat::PrehashVerifier, Signer, Verifier},
     RecoveryId, SigningKey, VerifyingKey,
 };
 use rand::rngs::OsRng;
-use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
 use std::borrow::Cow;
 
 pub use k256::ecdsa::Signature;
-
-/// Type for a recoverable signature.
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RecoverableSignature {
-    /// Signature bytes.
-    pub bytes: Vec<u8>,
-    /// Recovery identifier.
-    pub recovery_id: u8,
-}
-
-impl From<(Signature, RecoveryId)> for RecoverableSignature {
-    fn from(value: (Signature, RecoveryId)) -> Self {
-        Self {
-            bytes: value.0.to_bytes().as_slice().to_vec(),
-            recovery_id: value.1.into(),
-        }
-    }
-}
 
 /// Create a signer for ECDSA signatures.
 pub struct EcdsaSigner<'a> {

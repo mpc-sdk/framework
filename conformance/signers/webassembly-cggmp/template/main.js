@@ -55,7 +55,7 @@ try {
     fromHexString(signer),
   );
 
-  console.log("keygen completed");
+  console.log("keygen completed", keyShare);
 
   const keyShareElement = document.getElementById("key-share");
   keyShareElement.innerHTML = `<p class="address">Address: ${keyShare.address}</p>`;
@@ -67,15 +67,15 @@ try {
       signParty,
       fromHexString(signSessionIdSeed),
       fromHexString(signer),
-      keyShare.privateKey,
+      keyShare,
       message,
     );
 
-    console.log("signature: ", result);
+    console.log("signature", result);
 
     const signatureElement = document.getElementById("signature");
     signatureElement.innerHTML = `
-      <p class="signature">Signature: ${result.cggmp}</p>`;
+      <p class="signature">Signature: ${result}</p>`;
 
     console.log("signing completed");
   }

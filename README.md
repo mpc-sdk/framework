@@ -89,10 +89,10 @@ cargo make doc
 
 ### Tests
 
-To run the integration tests using the native client:
+To run the tests using the native client:
 
 ```
-cargo nextest run
+cargo make test
 ```
 
 For webassembly and node binding tests see the README files in the conformance directory.
