@@ -1850,7 +1850,6 @@ dependencies = [
  "futures",
  "getrandom",
  "log",
- "mpc-client",
  "mpc-driver",
  "mpc-protocol",
  "rand",
