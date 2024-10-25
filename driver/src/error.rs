@@ -30,11 +30,6 @@ pub enum Error {
     #[error("number of participants '{0}' does not match number of verifying keys '{1}'")]
     ParticipantVerifierLength(usize, usize),
 
-    /// Signature variant is not of the expected protocol type.
-    #[cfg(feature = "cggmp")]
-    #[error("signature is not of the expected protocol '{0:?}'")]
-    InvalidSignature(crate::Protocol),
-
     /// CGGMP driver errors.
     #[cfg(feature = "cggmp")]
     #[error(transparent)]

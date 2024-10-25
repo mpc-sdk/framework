@@ -20,7 +20,7 @@ pub use session::{
 };
 pub use types::{
     KeyShare, MeetingOptions, Participant, PartyOptions, PrivateKey,
-    Protocol, ServerOptions, SessionOptions, Signature,
+    ServerOptions, SessionOptions, Signature,
 };
 
 pub(crate) use bridge::Bridge;
@@ -120,13 +120,9 @@ pub async fn keygen(
     participant: Participant,
     session_id: SessionId,
 ) -> Result<KeyShare> {
-    match &options.protocol {
-        Protocol::Cggmp => {
-            Ok(crate::cggmp::keygen(options, participant, session_id)
-                .await?
-                .into())
-        }
-    }
+    Ok(crate::cggmp::keygen(options, participant, session_id)
+        .await?
+        .into())
 }
 
 /// Sign a message.
@@ -141,22 +137,21 @@ pub async fn sign(
     let mut selected_parties = BTreeSet::new();
     selected_parties.extend(participant.party().verifiers().iter());
 
-    match (&options.protocol, key_share) {
-        (Protocol::Cggmp, PrivateKey::Cggmp(key_share)) => {
-            Ok(cggmp::sign(
-                options,
-                participant,
-                session_id,
-                &key_share.to_key_share(&selected_parties),
-                message,
-            )
-            .await?
-            .into())
-        }
+    match key_share {
+        PrivateKey::Cggmp(key_share) => Ok(cggmp::sign(
+            options,
+            participant,
+            session_id,
+            &key_share.to_key_share(&selected_parties),
+            message,
+        )
+        .await?
+        .into()),
     }
 }
 
 /// Reshare key shares.
+#[deprecated]
 #[cfg(feature = "cggmp")]
 pub async fn reshare(
     options: SessionOptions,
@@ -167,21 +162,19 @@ pub async fn reshare(
     old_threshold: usize,
     new_threshold: usize,
 ) -> Result<KeyShare> {
-    match (&options.protocol, key_share) {
-        (Protocol::Cggmp, Some(PrivateKey::Cggmp(key_share))) => {
-            Ok(cggmp::reshare(
-                options,
-                participant,
-                session_id,
-                account_verifying_key,
-                Some(key_share.to_owned()),
-                old_threshold,
-                new_threshold,
-            )
-            .await?
-            .into())
-        }
-        (Protocol::Cggmp, None) => Ok(cggmp::reshare(
+    match key_share {
+        Some(PrivateKey::Cggmp(key_share)) => Ok(cggmp::reshare(
+            options,
+            participant,
+            session_id,
+            account_verifying_key,
+            Some(key_share.to_owned()),
+            old_threshold,
+            new_threshold,
+        )
+        .await?
+        .into()),
+        None => Ok(cggmp::reshare(
             options,
             participant,
             session_id,

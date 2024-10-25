@@ -47,14 +47,6 @@ impl From<Parameters> for mpc_protocol::Parameters {
     }
 }
 
-#[napi]
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum Protocol {
-    #[cfg(feature = "cggmp")]
-    Cggmp,
-}
-
 #[napi(object)]
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -68,7 +60,6 @@ pub struct ServerOptions {
 #[napi(object)]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SessionOptions {
-    pub protocol: Protocol,
     pub keypair: Keypair,
     pub server: ServerOptions,
     pub parameters: Parameters,

@@ -119,15 +119,6 @@ impl PartyOptions {
     }
 }
 
-/// Supported multi-party computation protocols.
-#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum Protocol {
-    /// The CGGMP protocol.
-    #[cfg(feature = "cggmp")]
-    Cggmp,
-}
-
 /// Signature for different protocols.
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -157,7 +148,7 @@ impl TryFrom<Signature> for (ecdsa::Signature, RecoveryId) {
             Signature::Cggmp(backend_signature, recovery_id) => {
                 let rec_id: RecoveryId = recovery_id.try_into()?;
                 Ok((backend_signature, rec_id))
-            } // _ => Err(Error::InvalidSignature(Protocol::Cggmp)),
+            }
         }
     }
 }
@@ -257,8 +248,6 @@ pub struct ServerOptions {
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SessionOptions {
-    /// MPC protocol.
-    pub protocol: Protocol,
     /// Keypair for the participant.
     pub keypair: Keypair,
     /// Server options.
