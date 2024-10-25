@@ -112,19 +112,6 @@ pub(crate) trait ProtocolDriver {
     ) -> std::result::Result<Option<Self::Output>, Self::Error>;
 }
 
-/// Run distributed key generation.
-#[deprecated]
-#[cfg(feature = "cggmp")]
-pub async fn keygen(
-    options: SessionOptions,
-    participant: Participant,
-    session_id: SessionId,
-) -> Result<KeyShare> {
-    Ok(crate::cggmp::keygen(options, participant, session_id)
-        .await?
-        .into())
-}
-
 /// Sign a message.
 #[cfg(feature = "cggmp")]
 pub async fn sign(

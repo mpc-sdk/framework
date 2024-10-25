@@ -1,5 +1,6 @@
 //! Bindings for the CGGMP protocol.
 use mpc_driver::synedrion::{
+    self,
     ecdsa::{SigningKey, VerifyingKey},
     SessionId,
 };
@@ -9,6 +10,11 @@ use mpc_driver::{
 use mpc_protocol::{hex, PATTERN};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::future_to_promise;
+
+#[cfg(not(debug_assertions))]
+type Params = synedrion::ProductionParams;
+#[cfg(debug_assertions)]
+type Params = synedrion::TestParams;
 
 /// CGGMP protocol.
 #[wasm_bindgen]
@@ -39,12 +45,14 @@ impl CggmpProtocol {
         let participant =
             Participant::new(signer, party).map_err(JsError::from)?;
         let fut = async move {
-            let key_share = mpc_driver::keygen(
+            let key_share = mpc_driver::cggmp::keygen::<Params>(
                 options,
                 participant,
                 SessionId::from_seed(&session_id_seed),
             )
             .await?;
+
+            let key_share: mpc_driver::KeyShare = key_share.into();
             Ok(serde_wasm_bindgen::to_value(&key_share)?)
         };
         Ok(future_to_promise(fut).into())

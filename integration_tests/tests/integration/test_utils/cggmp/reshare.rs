@@ -1,12 +1,13 @@
 use anyhow::Result;
 use mpc_driver::{
+    cggmp::keygen,
     k256::ecdsa::{
         self, signature::hazmat::PrehashVerifier, SigningKey,
     },
-    keygen, reshare, sign,
+    reshare, sign,
     synedrion::SessionId,
-    KeyShare, Participant, PartyOptions, PrivateKey, Protocol,
-    ServerOptions, SessionOptions,
+    KeyShare, Participant, PartyOptions, PrivateKey, ServerOptions,
+    SessionOptions,
 };
 use mpc_protocol::{generate_keypair, Parameters};
 use rand::{rngs::OsRng, Rng};
@@ -83,7 +84,6 @@ async fn run_dkg(
         public_keys.push(keypair.public_key().to_vec());
 
         session_options.push(SessionOptions {
-            protocol: Protocol::Cggmp,
             keypair,
             parameters: params.clone(),
             server: server.clone(),
@@ -124,7 +124,7 @@ async fn run_dkg(
     let mut key_shares = Vec::new();
     let results = futures::future::try_join_all(tasks).await?;
     for result in results {
-        key_shares.push(result?);
+        key_shares.push(result?.into());
     }
 
     Ok(key_shares)
@@ -176,7 +176,6 @@ async fn run_reshare(
         public_keys.push(keypair.public_key().to_vec());
 
         session_options.push(SessionOptions {
-            protocol: Protocol::Cggmp,
             keypair,
             parameters: params.clone(),
             server: server.clone(),
@@ -269,7 +268,6 @@ async fn run_sign(
         public_keys.push(keypair.public_key().to_vec());
 
         session_options.push(SessionOptions {
-            protocol: Protocol::Cggmp,
             keypair,
             parameters: params.clone(),
             server: server.clone(),
@@ -312,19 +310,16 @@ async fn run_sign(
 
     let session_options = vec![
         SessionOptions {
-            protocol: Protocol::Cggmp,
             keypair: first_keypair.clone(),
             parameters: params.clone(),
             server: server.clone(),
         },
         SessionOptions {
-            protocol: Protocol::Cggmp,
             keypair: second_keypair.clone(),
             parameters: params.clone(),
             server: server.clone(),
         },
         SessionOptions {
-            protocol: Protocol::Cggmp,
             keypair: last_keypair.clone(),
             parameters: params.clone(),
             server: server.clone(),
