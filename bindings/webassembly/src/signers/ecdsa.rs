@@ -1,6 +1,7 @@
 //! ECDSA signatures compatible with Ethereum.
-use mpc_driver::signers::ecdsa::{
-    self, RecoverableSignature, Signature,
+use mpc_driver::{
+    recoverable_signature::RecoverableSignature,
+    signers::ecdsa::{self, Signature},
 };
 use std::borrow::Cow;
 use wasm_bindgen::prelude::{wasm_bindgen, JsError, JsValue};
@@ -63,6 +64,17 @@ impl EcdsaSigner {
     #[wasm_bindgen(js_name = "verifyingKey")]
     pub fn verifying_key(&self) -> Vec<u8> {
         self.inner.verifying_key().to_sec1_bytes().to_vec()
+    }
+
+    /// Compute the Ethereum address for the verifying key.
+    pub fn address(&self) -> String {
+        let public_key = self
+            .inner
+            .verifying_key()
+            .to_encoded_point(true)
+            .as_bytes()
+            .to_vec();
+        mpc_driver::address(&public_key)
     }
 
     /// Verify a message.

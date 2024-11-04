@@ -14,11 +14,12 @@ use synedrion::{
         Session,
     },
     AuxInfo, InteractiveSigningResult, KeyShare, PrehashedMessage,
-    RecoverableSignature, SchemeParams, SessionId,
+    SchemeParams, SessionId,
 };
 
 use crate::{
-    key_to_str, Bridge, Driver, ProtocolDriver, RoundInfo, RoundMsg,
+    key_to_str, recoverable_signature::RecoverableSignature, Bridge,
+    Driver, ProtocolDriver, RoundInfo, RoundMsg,
 };
 
 use super::MessageOut;
@@ -210,7 +211,9 @@ where
         println!("{key_str}: finalizing the round");
 
         match session.finalize_round(&mut OsRng, accum).unwrap() {
-            FinalizeOutcome::Success(result) => Ok(Some(result)),
+            FinalizeOutcome::Success(result) => {
+                Ok(Some(result.into()))
+            }
             FinalizeOutcome::AnotherRound {
                 session: new_session,
                 cached_messages: new_cached_messages,

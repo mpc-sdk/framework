@@ -2,7 +2,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    k256::ecdsa::{self, RecoveryId, SigningKey, VerifyingKey},
+    k256::ecdsa::{SigningKey, VerifyingKey},
     Error, Result,
 };
 use mpc_protocol::{hex, Keypair, Parameters};
@@ -119,118 +119,6 @@ impl PartyOptions {
     }
 }
 
-/// Supported multi-party computation protocols.
-#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum Protocol {
-    /// The CGGMP protocol.
-    #[cfg(feature = "cggmp")]
-    Cggmp,
-}
-
-/// Signature for different protocols.
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum Signature {
-    /// Signature for the CGGMP protocol.
-    ///
-    /// Note that we must convert the `RecoveryId` to `u8`
-    /// for serde support.
-    #[cfg(feature = "cggmp")]
-    Cggmp(ecdsa::Signature, u8),
-}
-
-#[cfg(feature = "cggmp")]
-impl From<synedrion::RecoverableSignature> for Signature {
-    fn from(value: synedrion::RecoverableSignature) -> Self {
-        let (sig, recovery_id) = value.to_backend();
-        Signature::Cggmp(sig, recovery_id.into())
-    }
-}
-
-#[cfg(feature = "cggmp")]
-impl TryFrom<Signature> for (ecdsa::Signature, RecoveryId) {
-    type Error = crate::Error;
-
-    fn try_from(value: Signature) -> Result<Self> {
-        match value {
-            Signature::Cggmp(backend_signature, recovery_id) => {
-                let rec_id: RecoveryId = recovery_id.try_into()?;
-                Ok((backend_signature, rec_id))
-            } // _ => Err(Error::InvalidSignature(Protocol::Cggmp)),
-        }
-    }
-}
-
-/// Generated key share.
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct KeyShare {
-    /// Private key share information.
-    pub private_key: PrivateKey,
-    /// The public key.
-    #[serde(with = "hex::serde")]
-    pub public_key: Vec<u8>,
-    /// Address generated from the public key.
-    pub address: String,
-}
-
-/// Key share variants by protocol.
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum PrivateKey {
-    /// Key share for the CGGMP protocol.
-    #[cfg(all(feature = "cggmp", not(debug_assertions)))]
-    Cggmp(crate::cggmp::KeyShare<crate::synedrion::ProductionParams>),
-    /// Key share for the CGGMP protocol.
-    #[cfg(all(feature = "cggmp", debug_assertions))]
-    Cggmp(crate::cggmp::KeyShare<crate::synedrion::TestParams>),
-}
-
-#[cfg(all(feature = "cggmp", debug_assertions))]
-impl From<crate::cggmp::KeyShare<crate::synedrion::TestParams>>
-    for KeyShare
-{
-    fn from(
-        local_key: crate::cggmp::KeyShare<
-            crate::synedrion::TestParams,
-        >,
-    ) -> Self {
-        let public_key = local_key
-            .verifying_key()
-            .to_encoded_point(true)
-            .as_bytes()
-            .to_vec();
-        Self {
-            private_key: PrivateKey::Cggmp(local_key),
-            address: crate::address(&public_key),
-            public_key,
-        }
-    }
-}
-
-#[cfg(all(feature = "cggmp", not(debug_assertions)))]
-impl From<crate::cggmp::KeyShare<crate::synedrion::ProductionParams>>
-    for KeyShare
-{
-    fn from(
-        local_key: crate::cggmp::KeyShare<
-            crate::synedrion::ProductionParams,
-        >,
-    ) -> Self {
-        let public_key = local_key
-            .verifying_key()
-            .to_encoded_point(true)
-            .as_bytes()
-            .to_vec();
-        Self {
-            private_key: PrivateKey::Cggmp(local_key),
-            address: crate::address(&public_key),
-            public_key,
-        }
-    }
-}
-
 /// Options for creating or joining a meeting point.
 #[derive(Serialize, Deserialize)]
 pub struct MeetingOptions {
@@ -254,11 +142,9 @@ pub struct ServerOptions {
 }
 
 /// Options used to drive a session to completion.
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SessionOptions {
-    /// MPC protocol.
-    pub protocol: Protocol,
     /// Keypair for the participant.
     pub keypair: Keypair,
     /// Server options.

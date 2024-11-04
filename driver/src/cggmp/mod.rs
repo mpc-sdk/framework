@@ -1,4 +1,5 @@
 //! Driver for the CGGMP protocol.
+use crate::recoverable_signature::RecoverableSignature;
 use futures::StreamExt;
 use mpc_client::{Event, EventStream};
 use mpc_protocol::{SessionId as ProtocolSessionId, SessionState};
@@ -8,8 +9,7 @@ use synedrion::{
     bip32::DerivationPath,
     ecdsa::{self, SigningKey, VerifyingKey},
     KeyResharingInputs, MessageBundle, NewHolder, OldHolder,
-    PrehashedMessage, RecoverableSignature, SchemeParams, SessionId,
-    ThresholdKeyShare,
+    PrehashedMessage, SchemeParams, SessionId, ThresholdKeyShare,
 };
 
 mod aux_gen;

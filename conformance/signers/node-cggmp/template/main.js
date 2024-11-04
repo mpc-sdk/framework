@@ -1,29 +1,32 @@
-const module = await import("/pkg/mpc_webassembly_bindings.js");
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
 
-// Initialize the webassembly
-await module.default();
+const unisign = require('../build/unisign.node');
+const { CggmpProtocol } = unisign;
 
-const { CggmpProtocol } = module;
+// console.log("cggmp", CggmpProtocol);
 
 // Convert from a hex-encoded string.
 function fromHexString(hex) {
   return new Uint8Array(hex.match(/.{1,2}/g).map((byte) => parseInt(byte, 16)));
 }
 
-const publicKey = ${PUBLIC_KEY};
+const publicKey = Array.from(fromHexString(${PUBLIC_KEY}));
 const partyIndex = ${INDEX};
 const message = "${MESSAGE}";
 const participants = ${PARTICIPANTS};
 const keygenSessionIdSeed = ${KEYGEN_SESSION_ID_SEED};
 const signSessionIdSeed = ${SIGN_SESSION_ID_SEED};
 const signer = ${SIGNER};
-const verifiers = ${VERIFIERS};
+const verifiers = ${VERIFIERS}.map((v) => {
+  return {bytes: Array.from(fromHexString(v))};
+});
 const options = {
   protocol: "cggmp",
-  keypair: `${KEYPAIR}`,
+  keypair: {pem: `${KEYPAIR}`},
   server: {
     serverUrl: "${SERVER_URL}",
-    serverPublicKey: "${SERVER_PUBLIC_KEY}",
+    serverPublicKey: Array.from(fromHexString("${SERVER_PUBLIC_KEY}")),
   },
   parameters: {
     parties: 3,
@@ -51,8 +54,8 @@ try {
   const keyShare = await CggmpProtocol.keygen(
     options,
     party,
-    fromHexString(keygenSessionIdSeed),
-    fromHexString(signer),
+    Array.from(fromHexString(keygenSessionIdSeed)),
+    Array.from(fromHexString(signer)),
   );
 
   console.log("keygen completed", keyShare);
@@ -66,28 +69,19 @@ try {
 
   console.assert(verifyingKey.length === 33); // SEC1 encoded
 
-  const keyShareElement = document.getElementById("key-share");
-  keyShareElement.innerHTML = `<p class="address">Address: ${address}</p>`;
-
   // First and third parties perform signing
   if (partyIndex == 0 || partyIndex == 2) {
     const result = await protocol.sign(
-      // options,
       signParty,
-      fromHexString(signSessionIdSeed),
-      fromHexString(signer),
-      // keyShare,
+      Array.from(fromHexString(signSessionIdSeed)),
+      Array.from(fromHexString(signer)),
       message,
     );
 
     console.log("signature", result);
-
-    const signatureElement = document.getElementById("signature");
-    signatureElement.innerHTML = `
-      <p class="signature">Signature: ${result}</p>`;
-
     console.log("signing completed");
   }
 } catch (e) {
   console.error(e);
 }
+

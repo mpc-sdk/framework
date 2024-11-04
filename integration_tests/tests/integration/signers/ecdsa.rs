@@ -1,5 +1,8 @@
 use anyhow::Result;
-use mpc_driver::signers::ecdsa::{EcdsaSigner, RecoverableSignature};
+use mpc_driver::{
+    recoverable_signature::RecoverableSignature,
+    signers::ecdsa::EcdsaSigner,
+};
 use serde::Deserialize;
 use std::borrow::Cow;
 

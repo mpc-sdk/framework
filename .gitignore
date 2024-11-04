@@ -13,3 +13,4 @@ target
 /*.sh
 node_modules
 *.node
+.aider*

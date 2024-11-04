@@ -30,10 +30,9 @@ pub enum Error {
     #[error("number of participants '{0}' does not match number of verifying keys '{1}'")]
     ParticipantVerifierLength(usize, usize),
 
-    /// Signature variant is not of the expected protocol type.
-    #[cfg(feature = "cggmp")]
-    #[error("signature is not of the expected protocol '{0:?}'")]
-    InvalidSignature(crate::Protocol),
+    /// JSON error.
+    #[error(transparent)]
+    Json(#[from] serde_json::Error),
 
     /// CGGMP driver errors.
     #[cfg(feature = "cggmp")]
@@ -44,13 +43,16 @@ pub enum Error {
     #[error(transparent)]
     Client(#[from] mpc_client::Error),
 
+    /// Protocol library errors.
+    #[error(transparent)]
+    Protocol(#[from] mpc_protocol::Error),
+
     /// ECDSA library errors.
     #[cfg(any(feature = "cggmp", feature = "ecdsa",))]
     #[error(transparent)]
     Ecdsa(#[from] k256::ecdsa::Error),
 
     /// Ed25519 library errors.
-
     // NOTE: must be boxed otherwise thiserror will compile two
     // NOTE: From implementations when the full feature is enabled
     #[cfg(any(feature = "eddsa", feature = "schnorr"))]

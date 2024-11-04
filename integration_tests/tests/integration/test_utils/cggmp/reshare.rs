@@ -1,17 +1,20 @@
 use anyhow::Result;
 use mpc_driver::{
+    cggmp::{keygen, reshare, sign},
     k256::ecdsa::{
         self, signature::hazmat::PrehashVerifier, SigningKey,
+        VerifyingKey,
     },
-    keygen, reshare, sign,
-    synedrion::SessionId,
-    KeyShare, Participant, PartyOptions, PrivateKey, Protocol,
-    ServerOptions, SessionOptions,
+    synedrion::{SessionId, TestParams, ThresholdKeyShare},
+    Participant, PartyOptions, ServerOptions, SessionOptions,
 };
 use mpc_protocol::{generate_keypair, Parameters};
 use rand::{rngs::OsRng, Rng};
+use std::collections::BTreeSet;
 
 use super::{make_signers, make_signing_message};
+
+type KeyShare = ThresholdKeyShare<TestParams, VerifyingKey>;
 
 pub async fn run_dkg_reshare_2_2_to_3_4(
     server: &str,
@@ -83,7 +86,6 @@ async fn run_dkg(
         public_keys.push(keypair.public_key().to_vec());
 
         session_options.push(SessionOptions {
-            protocol: Protocol::Cggmp,
             keypair,
             parameters: params.clone(),
             server: server.clone(),
@@ -124,7 +126,7 @@ async fn run_dkg(
     let mut key_shares = Vec::new();
     let results = futures::future::try_join_all(tasks).await?;
     for result in results {
-        key_shares.push(result?);
+        key_shares.push(result?.into());
     }
 
     Ok(key_shares)
@@ -138,14 +140,7 @@ async fn run_reshare(
     new_t: usize,
     new_n: usize,
 ) -> Result<(Vec<KeyShare>, Vec<SigningKey>)> {
-    let mut old_keys = Vec::new();
-    for share in old_holders {
-        match share.private_key {
-            PrivateKey::Cggmp(key_share) => {
-                old_keys.push(key_share);
-            }
-        }
-    }
+    let old_keys = old_holders.clone();
 
     let account_verifying_key =
         old_keys.first().unwrap().verifying_key().to_owned();
@@ -176,7 +171,6 @@ async fn run_reshare(
         public_keys.push(keypair.public_key().to_vec());
 
         session_options.push(SessionOptions {
-            protocol: Protocol::Cggmp,
             keypair,
             parameters: params.clone(),
             server: server.clone(),
@@ -210,7 +204,7 @@ async fn run_reshare(
                 Participant::new(signer, party)?,
                 keygen_session_id.clone(),
                 account_verifying_key.clone(),
-                key_share.map(PrivateKey::Cggmp).as_ref(),
+                key_share,
                 old_t,
                 new_t,
             )
@@ -250,14 +244,7 @@ async fn run_sign(
         pattern: None,
     };
 
-    let mut keys = Vec::new();
-    for share in key_shares {
-        match share.private_key {
-            PrivateKey::Cggmp(key_share) => {
-                keys.push(key_share);
-            }
-        }
-    }
+    let mut keys = key_shares.clone();
 
     let mut session_options = Vec::new();
     let mut public_keys = Vec::new();
@@ -269,7 +256,6 @@ async fn run_sign(
         public_keys.push(keypair.public_key().to_vec());
 
         session_options.push(SessionOptions {
-            protocol: Protocol::Cggmp,
             keypair,
             parameters: params.clone(),
             server: server.clone(),
@@ -312,19 +298,16 @@ async fn run_sign(
 
     let session_options = vec![
         SessionOptions {
-            protocol: Protocol::Cggmp,
             keypair: first_keypair.clone(),
             parameters: params.clone(),
             server: server.clone(),
         },
         SessionOptions {
-            protocol: Protocol::Cggmp,
             keypair: second_keypair.clone(),
             parameters: params.clone(),
             server: server.clone(),
         },
         SessionOptions {
-            protocol: Protocol::Cggmp,
             keypair: last_keypair.clone(),
             parameters: params.clone(),
             server: server.clone(),
@@ -350,12 +333,18 @@ async fn run_sign(
             selected_verifiers.clone(),
         )?;
 
+        let participant = Participant::new(signer, party)?;
+        let mut selected_parties = BTreeSet::new();
+        selected_parties
+            .extend(participant.party().verifiers().iter());
+        let key_share = key_share.to_key_share(&selected_parties);
+
         tasks.push(tokio::task::spawn(async move {
             let signature = sign(
                 opts,
-                Participant::new(signer, party)?,
+                participant,
                 sign_session_id.clone(),
-                &PrivateKey::Cggmp(key_share),
+                &key_share,
                 &message,
             )
             .await?;

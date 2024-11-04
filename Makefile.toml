@@ -7,47 +7,9 @@ default_to_workspace = false
 [env]
 RUST_BACKTRACE = 0
 
-[tasks.fix-all]
-workspace = true
-command = "cargo"
-args = ["fix", "--all-features", "--allow-dirty"]
-
-[tasks.fix-clippy]
-workspace = true
-command = "cargo"
-args = ["clippy", "--fix", "--all-features"]
-
-[tasks.fix]
-dependencies = ["fix-clippy", "fix-all", "format"]
-
-[tasks.format]
-workspace = true
-command = "cargo"
-args = ["fmt"]
-
-[tasks.format-check]
-command = "cargo"
-args = ["fmt", "--all", "--", "--check"]
-
 [tasks.check]
 command = "cargo"
 args = ["hack", "check", "--all", "--each-feature"]
-
-[tasks.clippy]
-workspace = true
-command = "cargo"
-args = ["clippy", "--all-features"]
-
-[tasks.clean]
-workspace = true
-command = "cargo"
-args = ["clean"]
-
-[tasks.build]
-workspace = true
-command = "cargo"
-args = ["build"]
-dependencies = ["clean"]
 
 [tasks.release]
 command = "cargo"
@@ -60,11 +22,13 @@ args = ["doc", "--workspace", "--open", "--no-deps", "--all-features"]
 
 [tasks.unit]
 command = "cargo"
-args = ["test", "--all", "--lib"]
+args = ["nextest", "run", "--all", "--lib"]
 
 [tasks.integration]
-command = "cargo"
-args = ["test", "integration", "--all-features"]
+script = '''
+cd integration_tests
+cargo nextest run --all-features
+'''
 
 [tasks.test]
 dependencies = ["unit", "integration"]
@@ -101,29 +65,16 @@ cargo run -- generate-keypair tests/test.pem --public-key tests/server_public_ke
 cargo run -- generate-keypair conformance/signers/webassembly-cggmp/p1.pem
 cargo run -- generate-keypair conformance/signers/webassembly-cggmp/p2.pem
 cargo run -- generate-keypair conformance/signers/webassembly-cggmp/p3.pem
+
+cargo run -- generate-keypair conformance/signers/node-cggmp/p1.pem
+cargo run -- generate-keypair conformance/signers/node-cggmp/p2.pem
+cargo run -- generate-keypair conformance/signers/node-cggmp/p3.pem
 '''
 dependencies = ["gen-server-key"]
-
-[tasks.gen-e2e]
-script = '''
-cd tools
-cargo run --bin gen-e2e
-'''
 
 [tasks.test-server]
 script = '''
 cargo run -- start -b 127.0.0.1:8008 integration_tests/tests/config.toml
-'''
-
-[tasks.e2e-server]
-script = '''
-cargo run -- start -b 127.0.0.1:8008 conformance/signers/webassembly-cggmp/config.toml
-'''
-
-[tasks.dev-server]
-script = '''
-cd tools
-cargo run --bin dev-server
 '''
 
 [tasks.check-wasm]

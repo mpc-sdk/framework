@@ -1,10 +1,10 @@
 //! ECDSA signatures compatible with Ethereum.
 use anyhow::Error;
-use mpc_driver::signers::ecdsa::{
-    self, RecoverableSignature, Signature,
+use mpc_driver::{
+    recoverable_signature::RecoverableSignature,
+    signers::ecdsa::{self, Signature},
 };
-use napi::bindgen_prelude::Env;
-use napi::{JsError, JsUnknown};
+use napi::{Env, JsError, JsUnknown};
 use napi_derive::napi;
 use std::borrow::Cow;
 

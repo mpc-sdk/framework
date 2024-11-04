@@ -10,7 +10,9 @@
     "build-eddsa": "mkdir -p build/eddsa/release && napi build --features eddsa --release build/eddsa/release",
     "build-eddsa:debug": "mkdir -p build/eddsa/debug && napi build --features eddsa build/eddsa/debug",
     "build-schnorr": "mkdir -p build/schnorr/release && napi build --features schnorr --release build/schnorr/release",
-    "build-schnorr:debug": "mkdir -p build/schnorr/debug && napi build --features schnorr build/schnorr/debug"
+    "build-schnorr:debug": "mkdir -p build/schnorr/debug && napi build --features schnorr build/schnorr/debug",
+    "build-cggmp": "mkdir -p build/cggmp/release && napi build --features cggmp --release build/cggmp/release",
+    "build-cggmp:debug": "mkdir -p build/cggmp/debug && napi build --features cggmp build/cggmp/debug"
   },
   "devDependencies": {
     "@napi-rs/cli": "^2.18.4"

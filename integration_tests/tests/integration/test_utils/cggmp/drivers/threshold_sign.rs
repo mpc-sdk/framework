@@ -9,10 +9,10 @@ use mpc_driver::{
     k256::ecdsa::{
         signature::hazmat::PrehashVerifier, SigningKey, VerifyingKey,
     },
+    recoverable_signature::RecoverableSignature,
     synedrion::{
         AuxInfo, KeyResharingInputs, KeyShare, NewHolder, OldHolder,
-        PrehashedMessage, RecoverableSignature, SessionId,
-        TestParams, ThresholdKeyShare,
+        PrehashedMessage, SessionId, TestParams, ThresholdKeyShare,
     },
     wait_for_close,
 };
@@ -52,7 +52,7 @@ pub async fn run_threshold_sign(
     assert_eq!(t, signatures.len());
 
     for signature in signatures {
-        let (sig, rec_id) = signature.to_backend();
+        let (sig, rec_id) = signature.try_into()?;
         let vkey = key_shares[0].verifying_key();
 
         // Check that the signature can be verified

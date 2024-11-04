@@ -5,7 +5,14 @@ edition = "2021"
 description = "Nodejs bindings to drive multi-party computation protocols"
 
 [features]
-cggmp = ["mpc-driver/cggmp"]
+cggmp = [
+  "mpc-driver/cggmp",
+  "tokio",
+  "napi/async",
+  "napi/tokio",
+  "napi/tokio_rt",
+  "serde"
+]
 ecdsa = ["mpc-driver/ecdsa"]
 eddsa = ["mpc-driver/eddsa"]
 schnorr = ["mpc-driver/schnorr"]
@@ -24,18 +31,19 @@ crate-type = ["cdylib"]
 
 [dependencies]
 mpc-driver = { path = "../../driver" }
-napi = { version = "3.0.0-alpha.16", features = ["anyhow", "serde-json"]}
+mpc-protocol = { path = "../../protocol" }
+napi = { version = "3.0.0-alpha.16", features = ["anyhow", "serde-json", "napi9"]}
 napi-derive = "3.0.0-alpha.15"
 anyhow = "1"
 serde_json = "1"
-# mpc-protocol = { path = "../../protocol" }
+tokio = { version = "1", features = ["rt", "rt-multi-thread"], optional = true }
 # mpc-client = { path = "../../client" }
 # rand = "0.8"
 # log = "0.4"
 # futures = "0.3"
 # serde_json = "1"
 # getrandom = {version = "0.2", features = ["js"]}
-# serde = { version = "1", features = ["derive"] }
+serde = { version = "1", features = ["derive"], optional = true }
 
 # tracing = { version = "0.1", optional = true }
 # tracing-subscriber = { version = "0.3", optional = true }
