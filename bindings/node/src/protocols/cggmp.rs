@@ -65,10 +65,13 @@ impl CggmpProtocol {
     ) -> Result<KeyShare> {
         let options: mpc_driver::SessionOptions =
             options.try_into().map_err(Error::new)?;
+
         let party: mpc_driver::PartyOptions =
             party.try_into().map_err(Error::new)?;
+
         let signer: SigningKey =
             signer.as_slice().try_into().map_err(Error::new)?;
+
         let participant =
             Participant::new(signer, party).map_err(Error::new)?;
         let key_share = mpc_driver::cggmp::keygen::<Params>(

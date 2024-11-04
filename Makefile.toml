@@ -65,6 +65,10 @@ cargo run -- generate-keypair tests/test.pem --public-key tests/server_public_ke
 cargo run -- generate-keypair conformance/signers/webassembly-cggmp/p1.pem
 cargo run -- generate-keypair conformance/signers/webassembly-cggmp/p2.pem
 cargo run -- generate-keypair conformance/signers/webassembly-cggmp/p3.pem
+
+cargo run -- generate-keypair conformance/signers/node-cggmp/p1.pem
+cargo run -- generate-keypair conformance/signers/node-cggmp/p2.pem
+cargo run -- generate-keypair conformance/signers/node-cggmp/p3.pem
 '''
 dependencies = ["gen-server-key"]
 
