@@ -60,8 +60,6 @@ try {
 
   console.log("keygen completed", keyShare);
 
-  /*
-
   const protocol = new CggmpProtocol(options, keyShare);
   const verifyingKey = protocol.verifyingKey();
   const address = protocol.address();
@@ -71,28 +69,18 @@ try {
 
   console.assert(verifyingKey.length === 33); // SEC1 encoded
 
-  console.log(address);
-
   // First and third parties perform signing
   if (partyIndex == 0 || partyIndex == 2) {
     const result = await protocol.sign(
-      // options,
       signParty,
-      fromHexString(signSessionIdSeed),
-      fromHexString(signer),
-      // keyShare,
+      Array.from(fromHexString(signSessionIdSeed)),
+      Array.from(fromHexString(signer)),
       message,
     );
 
     console.log("signature", result);
-
-    // const signatureElement = document.getElementById("signature");
-    // signatureElement.innerHTML = `
-    //   <p class="signature">Signature: ${result}</p>`;
-
     console.log("signing completed");
   }
-  */
 } catch (e) {
   console.error(e);
 }

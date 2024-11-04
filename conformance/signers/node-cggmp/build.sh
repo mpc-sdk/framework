@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
+mkdir -p build
+
 cd ../../../bindings/node
 npm run build-cggmp
 
-cp -rf build/cggmp/release/* ../../conformance/signers/node-cggmp/build/
+cp -f build/cggmp/release/* ../../conformance/signers/node-cggmp/build/
