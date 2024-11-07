@@ -1869,7 +1869,6 @@ dependencies = [
  "k256",
  "mpc-client",
  "mpc-protocol",
- "napi-derive",
  "rand",
  "rand_core",
  "rustc_version",
