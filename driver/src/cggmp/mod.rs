@@ -192,6 +192,7 @@ async fn make_dkg_init<P: SchemeParams + 'static>(
             party_index,
             key_share_verifying_key: key_share
                 .verifying_key()
+                .unwrap()
                 .clone(),
         };
 

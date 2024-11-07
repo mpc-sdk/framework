@@ -1,5 +1,5 @@
 use anyhow::Result;
-use mpc_driver::signers::schnorr::{SchnorrSigner, Signature, VerifyingKey};
+use mpc_driver::signers::schnorr::{SchnorrSigner, VerifyingKey};
 use serde::Deserialize;
 use std::borrow::Cow;
 
@@ -62,13 +62,13 @@ fn integration_schnorr_sign() -> Result<()> {
             }
         // Verify only (no secret key in test vector)
         } else {
-            let signature_bytes: [u8; 64] =
-                test.signature.as_slice().try_into()?;
+            // let signature_bytes: [u8; 64] =
+            //     test.signature.as_slice().try_into()?;
 
             // Some verification failures are caught
             // parsing either the public key or the signature
             if let (Ok(signature), Ok(verifying_key)) = (
-                Signature::from_bytes(&signature_bytes),
+                test.signature.as_slice().try_into(),
                 VerifyingKey::from_bytes(&test.public_key),
             ) {
                 let verified = verifying_key
