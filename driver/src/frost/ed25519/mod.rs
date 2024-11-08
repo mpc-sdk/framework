@@ -13,8 +13,8 @@ use mpc_protocol::SessionId;
 
 use crate::{
     new_client, wait_for_close, wait_for_driver, wait_for_session,
-    wait_for_session_finish, Participant, SessionHandler,
-    SessionInitiator, SessionOptions, SessionParticipant,
+    Participant, SessionHandler, SessionInitiator, SessionOptions,
+    SessionParticipant,
 };
 
 type MessageOut = ();
@@ -82,5 +82,11 @@ pub async fn keygen(
         verifiers,
     )?;
 
-    todo!();
+    let (transport, key_share) =
+        wait_for_driver(&mut stream, key_gen).await?;
+
+    transport.close().await?;
+    wait_for_close(&mut stream).await?;
+
+    Ok(key_share)
 }
