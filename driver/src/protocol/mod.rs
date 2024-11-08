@@ -126,7 +126,6 @@ pub(crate) fn key_to_str(
     hex::encode(&key.to_encoded_point(true).as_bytes()[1..5])
 }
 
-#[cfg(feature = "cggmp")]
 pub(crate) fn public_key_to_str(public_key: &[u8]) -> String {
     hex::encode(&public_key[0..6])
 }

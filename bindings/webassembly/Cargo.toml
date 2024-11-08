@@ -8,10 +8,10 @@ description = "Webassembly bindings to drive multi-party computation protocols"
 cggmp = ["mpc-driver/cggmp"]
 ecdsa = ["mpc-driver/ecdsa"]
 eddsa = ["mpc-driver/eddsa"]
-frost-eddsa = ["mpc-driver/frost-eddsa"]
+frost-ed25519 = ["mpc-driver/frost-ed25519"]
 schnorr = ["mpc-driver/schnorr"]
 signers = ["ecdsa", "eddsa", "schnorr"]
-protocols = ["cggmp", "frost-eddsa"]
+protocols = ["cggmp", "frost-ed25519"]
 full = ["signers", "protocols"]
 
 tracing = [

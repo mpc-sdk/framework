@@ -11,10 +11,10 @@ repository = "https://github.com/mpc-sdk/framework"
 cggmp = ["k256", "synedrion", "bip32"]
 ecdsa = ["k256/ecdsa"]
 eddsa = ["ed25519", "ed25519-dalek"]
-frost-eddsa = ["frost-ed25519"]
+frost-ed25519 = ["dep:frost-ed25519", "k256/ecdsa"]
 schnorr = ["ed25519", "k256/schnorr"]
 signers = ["ecdsa", "eddsa", "schnorr"]
-protocols = ["cggmp", "frost-eddsa"]
+protocols = ["cggmp", "frost-ed25519"]
 full = ["protocols", "signers"]
 
 [dependencies]

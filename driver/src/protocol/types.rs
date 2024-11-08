@@ -1,10 +1,8 @@
 //! Types passed across the Javascript/Webassembly boundary.
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    k256::ecdsa::{SigningKey, VerifyingKey},
-    Error, Result,
-};
+use crate::{Error, Result};
+use k256::ecdsa::{SigningKey, VerifyingKey};
 use mpc_protocol::{hex, Keypair, Parameters};
 
 /// Participant in a protocol session.
