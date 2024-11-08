@@ -1,10 +1,14 @@
 //! Key generation for FROST Ed25519.
 use async_trait::async_trait;
-use frost_ed25519::keys::{KeyPackage, PublicKeyPackage};
+use frost_ed25519::{
+    keys::{dkg, KeyPackage, PublicKeyPackage},
+    Identifier,
+};
+use k256::ecdsa::{SigningKey, VerifyingKey};
 use mpc_client::{Event, NetworkTransport, Transport};
 use mpc_protocol::{hex, SessionId, SessionState};
 use rand::rngs::OsRng;
-use std::collections::BTreeSet;
+use std::{collections::BTreeMap, num::NonZeroU16};
 
 use crate::{
     frost::{Error, Result},
@@ -19,13 +23,42 @@ pub struct KeyGenDriver {
 }
 
 impl KeyGenDriver {
-    /// Create a new CGGMP key generator.
+    /// Create a new FROST key generator.
     pub fn new(
         transport: Transport,
         session: SessionState,
         session_id: SessionId,
+        max_signers: u16,
+        min_signers: u16,
+        identifiers: Vec<Identifier>,
+        signer: SigningKey,
+        verifiers: Vec<VerifyingKey>,
     ) -> Result<Self> {
-        todo!();
+        let party_number = session
+            .party_number(transport.public_key())
+            .ok_or_else(|| {
+                Error::NotSessionParticipant(hex::encode(
+                    transport.public_key(),
+                ))
+            })?;
+
+        let driver = FrostDriver::new(
+            session_id,
+            party_number,
+            max_signers,
+            min_signers,
+            identifiers,
+            // signer,
+            // verifiers,
+        )?;
+
+        let bridge = Bridge {
+            transport,
+            driver: Some(driver),
+            session,
+            party_number,
+        };
+        Ok(Self { bridge })
     }
 }
 
@@ -57,12 +90,34 @@ impl From<KeyGenDriver> for Transport {
 }
 
 /// FROST keygen driver.
-struct FrostDriver {}
+struct FrostDriver {
+    session_id: SessionId,
+    party_number: NonZeroU16,
+    max_signers: u16,
+    min_signers: u16,
+    identifiers: Vec<Identifier>,
+
+    round1_packages: BTreeMap<Identifier, dkg::round1::SecretPackage>,
+}
 
 impl FrostDriver {
     /// Create a key generator.
-    pub fn new(session_id: SessionId) -> Result<Self> {
-        todo!();
+    pub fn new(
+        session_id: SessionId,
+        party_number: NonZeroU16,
+        max_signers: u16,
+        min_signers: u16,
+        identifiers: Vec<Identifier>,
+    ) -> Result<Self> {
+        Ok(Self {
+            session_id,
+            party_number,
+            max_signers,
+            min_signers,
+            identifiers,
+
+            round1_packages: BTreeMap::new(),
+        })
     }
 }
 
@@ -76,6 +131,14 @@ impl ProtocolDriver for FrostDriver {
     }
 
     fn proceed(&mut self) -> Result<Vec<Self::Message>> {
+        /*
+        let (private_package, public_package) = dkg::part1(
+            participant_identifier,
+            self.max_signers,
+            self.min_signers,
+            &mut OsRng,
+        )?;
+        */
         todo!();
     }
 
