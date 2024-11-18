@@ -16,11 +16,7 @@ use crate::{
     Bridge, Driver, ProtocolDriver, RoundInfo, RoundMsg,
 };
 
-use super::KeyShare;
-
-const ROUND_1: u8 = 1;
-const ROUND_2: u8 = 2;
-const ROUND_3: u8 = 3;
+use super::{KeyShare, ROUND_1, ROUND_2, ROUND_3};
 
 #[derive(Debug, Serialize, Deserialize)]
 enum DkgPackage {

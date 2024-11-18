@@ -5,8 +5,11 @@ use frost_ed25519::{
 };
 
 mod key_gen;
+mod sign;
+
 pub use ed25519_dalek;
 pub use key_gen::KeyGenDriver;
+pub use sign::SignatureDriver;
 
 use super::Error;
 use mpc_client::{NetworkTransport, Transport};
@@ -30,6 +33,10 @@ pub type PartyOptions =
 
 /// Key share for this protocol.
 pub type KeyShare = (KeyPackage, PublicKeyPackage);
+
+const ROUND_1: u8 = 1;
+const ROUND_2: u8 = 2;
+const ROUND_3: u8 = 3;
 
 /// Run threshold DKG for the FROST protocol.
 pub async fn keygen(

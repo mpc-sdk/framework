@@ -107,7 +107,7 @@ where
     }
 }
 
-/// CGGMP keygen driver.
+/// CGGMP signature driver.
 struct CggmpDriver<P>
 where
     P: SchemeParams + 'static,
@@ -131,7 +131,7 @@ impl<P> CggmpDriver<P>
 where
     P: SchemeParams + 'static,
 {
-    /// Create a key generator.
+    /// Create a driver.
     pub fn new(
         session_id: SessionId,
         signer: SigningKey,
