@@ -15,10 +15,8 @@ use crate::{
     Bridge, Driver, ProtocolDriver, RoundInfo, RoundMsg,
 };
 
-type MessageOut = RoundPackage;
-
 #[derive(Debug, Serialize, Deserialize)]
-pub(crate) enum RoundPackage {
+pub(crate) enum DkgPackage {
     Round1(dkg::round1::Package),
 }
 
@@ -127,11 +125,28 @@ impl FrostDriver {
 
 impl ProtocolDriver for FrostDriver {
     type Error = Error;
-    type Message = RoundMsg<MessageOut>;
+    type Message = RoundMsg<DkgPackage>;
     type Output = (KeyPackage, PublicKeyPackage);
 
     fn round_info(&self) -> Result<RoundInfo> {
-        todo!();
+        let round_1 = NonZeroU16::new(1).unwrap();
+        let round_2 = NonZeroU16::new(2).unwrap();
+        let round_3 = NonZeroU16::new(3).unwrap();
+
+        let round_number = self.round_number.get() as u8;
+        let is_echo = false;
+        let can_finalize = match self.round_number {
+            round_1 => {
+                self.received_round1_packages.len()
+                    == self.identifiers.len() - 1
+            }
+            _ => panic!("handle other rounds"),
+        };
+        Ok(RoundInfo {
+            round_number,
+            can_finalize,
+            is_echo,
+        })
     }
 
     fn proceed(&mut self) -> Result<Vec<Self::Message>> {
@@ -169,9 +184,7 @@ impl ProtocolDriver for FrostDriver {
                         let message = RoundMsg {
                             round: self.round_number,
                             receiver,
-                            body: RoundPackage::Round1(
-                                public_package,
-                            ),
+                            body: DkgPackage::Round1(public_package),
                         };
                     }
                 }
@@ -192,7 +205,32 @@ impl ProtocolDriver for FrostDriver {
         &mut self,
         message: Self::Message,
     ) -> Result<()> {
-        todo!();
+        let round_1 = NonZeroU16::new(1).unwrap();
+        let round_2 = NonZeroU16::new(2).unwrap();
+        let round_3 = NonZeroU16::new(3).unwrap();
+
+        match self.round_number {
+            round_1 => {
+                match message.body {
+                    DkgPackage::Round1(package) => {
+                        let party_index =
+                            message.receiver.get() as usize - 1;
+                        if let Some(id) =
+                            self.identifiers.get(party_index)
+                        {
+                            self.received_round1_packages
+                                .insert(*id, package);
+                        } else {
+                            panic!("recevier could not locate identifier");
+                        }
+                    }
+                    _ => panic!("round was received out of turn"),
+                }
+            }
+            _ => todo!("handle other rounds"),
+        }
+
+        Ok(())
     }
 
     fn try_finalize_round(&mut self) -> Result<Option<Self::Output>> {
