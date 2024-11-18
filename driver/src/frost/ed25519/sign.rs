@@ -108,6 +108,8 @@ struct FrostDriver {
     round_number: u8,
     key_share: KeyShare,
     message: Vec<u8>,
+    nonces: Option<SigningNonces>,
+    commitments: Option<SigningCommitments>,
 }
 
 impl FrostDriver {
@@ -137,6 +139,8 @@ impl FrostDriver {
             round_number: ROUND_1,
             key_share,
             message,
+            nonces: None,
+            commitments: None,
         })
     }
 }
@@ -189,10 +193,21 @@ impl ProtocolDriver for FrostDriver {
                     }
                 }
 
+                self.nonces = Some(nonces);
+                self.commitments = Some(commitments);
+
                 self.round_number =
                     self.round_number.checked_add(1).unwrap();
 
                 Ok(messages)
+            }
+            ROUND_2 => {
+                /*
+                let nonces = self.nonces.take().unwrap();
+                let signing_package =
+                    SigningPackage::new(commitments_map, message);
+                */
+                todo!();
             }
             _ => Err(Error::InvalidRound(self.round_number)),
         }
