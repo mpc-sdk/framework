@@ -36,7 +36,7 @@ impl<P> SignatureDriver<P>
 where
     P: SchemeParams + 'static,
 {
-    /// Create a new CGGMP key generator.
+    /// Create a new CGGMP signature driver.
     pub fn new(
         transport: Transport,
         session: SessionState,

@@ -30,7 +30,7 @@ pub struct SignatureDriver {
 }
 
 impl SignatureDriver {
-    /// Create a new FROST key generator.
+    /// Create a new FROST signature driver.
     pub fn new(
         transport: Transport,
         session: SessionState,
