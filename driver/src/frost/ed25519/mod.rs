@@ -13,9 +13,19 @@ use mpc_protocol::SessionId;
 
 use crate::{
     new_client, wait_for_close, wait_for_driver, wait_for_session,
-    Participant, SessionHandler, SessionInitiator, SessionOptions,
+    SessionHandler, SessionInitiator, SessionOptions,
     SessionParticipant,
 };
+
+/// Participant in the protocol.
+pub type Participant = crate::Participant<
+    ed25519_dalek::SigningKey,
+    ed25519_dalek::VerifyingKey,
+>;
+
+/// Options for each party.
+pub type PartyOptions =
+    crate::PartyOptions<ed25519_dalek::VerifyingKey>;
 
 /// Run threshold DKG for the FROST protocol.
 pub async fn keygen(

@@ -17,7 +17,7 @@ use crate::{
 
 type MessageOut = RoundPackage;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub(crate) enum RoundPackage {
     Round1(dkg::round1::Package),
 }
@@ -118,7 +118,7 @@ impl FrostDriver {
             max_signers,
             min_signers,
             identifiers,
-            round_number: NonZeroU16::new(1),
+            round_number: NonZeroU16::new(1).unwrap(),
             round1_packages: BTreeMap::new(),
             received_round1_packages: BTreeMap::new(),
         })
@@ -135,12 +135,17 @@ impl ProtocolDriver for FrostDriver {
     }
 
     fn proceed(&mut self) -> Result<Vec<Self::Message>> {
+        let round_1 = NonZeroU16::new(1).unwrap();
+        let round_2 = NonZeroU16::new(2).unwrap();
+        let round_3 = NonZeroU16::new(3).unwrap();
+
         match self.round_number {
-            1 => {
+            round_1 => {
                 let mut messages =
                     Vec::with_capacity(self.identifiers.len() - 1);
 
-                let party_index: usize = self.party_number.into();
+                let party_index: usize =
+                    self.party_number.get() as usize;
                 let self_index = party_index - 1;
                 let self_id =
                     self.identifiers.get(self_index).unwrap();
@@ -158,9 +163,11 @@ impl ProtocolDriver for FrostDriver {
                         .insert(id.clone(), private_package);
 
                     if id != self_id {
-                        let receiver = NonZeroU16::new(index + 1);
+                        let receiver =
+                            NonZeroU16::new((index + 1) as u16)
+                                .unwrap();
                         let message = RoundMsg {
-                            round,
+                            round: self.round_number,
                             receiver,
                             body: RoundPackage::Round1(
                                 public_package,
@@ -169,7 +176,9 @@ impl ProtocolDriver for FrostDriver {
                     }
                 }
 
-                self.round_number += 1;
+                self.round_number =
+                    self.round_number.checked_add(1).unwrap();
+
                 return Ok(messages);
             }
             _ => todo!("handle other rounds"),
