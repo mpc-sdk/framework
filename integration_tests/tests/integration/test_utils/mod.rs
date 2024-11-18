@@ -1,6 +1,3 @@
-#[cfg(feature = "cggmp")]
-pub(crate) mod cggmp;
-
 pub(crate) mod meeting_point;
 pub(crate) mod peer_channel;
 pub(crate) mod session_broadcast;

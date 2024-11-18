@@ -1,5 +1,7 @@
-use crate::test_utils::{cggmp, server_public_key, spawn_server};
+use crate::test_utils::{server_public_key, spawn_server};
 use anyhow::Result;
+
+mod helpers;
 
 /// CGGMP distributed key generation.
 #[tokio::test]
@@ -12,7 +14,7 @@ async fn integration_cggmp_driver_keygen() -> Result<()> {
     let server = format!("ws://{}", addr);
 
     let server_public_key = server_public_key().await?;
-    cggmp::run_keygen(&server, server_public_key).await?;
+    helpers::run_keygen(&server, server_public_key).await?;
 
     Ok(())
 }
@@ -27,7 +29,7 @@ async fn integration_cggmp_driver_aux_info() -> Result<()> {
     let server = format!("ws://{}", addr);
 
     let server_public_key = server_public_key().await?;
-    cggmp::run_aux_info(&server, server_public_key).await?;
+    helpers::run_aux_info(&server, server_public_key).await?;
 
     Ok(())
 }
@@ -46,7 +48,7 @@ async fn integration_cggmp_driver_threshold_sign() -> Result<()> {
     let server = format!("ws://{}", addr);
 
     let server_public_key = server_public_key().await?;
-    cggmp::run_threshold_sign(&server, server_public_key).await?;
+    helpers::run_threshold_sign(&server, server_public_key).await?;
 
     Ok(())
 }
@@ -61,7 +63,7 @@ async fn integration_cggmp_dkg_sign_2_3() -> Result<()> {
     let server = format!("ws://{}", addr);
 
     let server_public_key = server_public_key().await?;
-    cggmp::run_dkg_sign_2_3(&server, server_public_key).await?;
+    helpers::run_dkg_sign_2_3(&server, server_public_key).await?;
 
     Ok(())
 }
@@ -79,7 +81,7 @@ async fn integration_cggmp_dkg_sign_2_2() -> Result<()> {
     let server = format!("ws://{}", addr);
 
     let server_public_key = server_public_key().await?;
-    cggmp::run_dkg_sign_2_2(&server, server_public_key).await?;
+    helpers::run_dkg_sign_2_2(&server, server_public_key).await?;
 
     Ok(())
 }
@@ -94,7 +96,7 @@ async fn integration_cggmp_dkg_reshare_2_2_to_3_4() -> Result<()> {
     let server = format!("ws://{}", addr);
 
     let server_public_key = server_public_key().await?;
-    cggmp::run_dkg_reshare_2_2_to_3_4(&server, server_public_key)
+    helpers::run_dkg_reshare_2_2_to_3_4(&server, server_public_key)
         .await?;
 
     Ok(())
@@ -111,7 +113,7 @@ async fn integration_cggmp_dkg_derived_2_2() -> Result<()> {
     let server = format!("ws://{}", addr);
 
     let server_public_key = server_public_key().await?;
-    cggmp::run_dkg_derived_2_2(&server, server_public_key).await?;
+    helpers::run_dkg_derived_2_2(&server, server_public_key).await?;
 
     Ok(())
 }
