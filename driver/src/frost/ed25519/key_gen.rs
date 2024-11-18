@@ -15,6 +15,10 @@ use crate::{
     Bridge, Driver, ProtocolDriver, RoundInfo, RoundMsg,
 };
 
+const ROUND_1: u8 = 1;
+const ROUND_2: u8 = 2;
+const ROUND_3: u8 = 3;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) enum DkgPackage {
     Round1(dkg::round1::Package),
@@ -95,7 +99,7 @@ struct FrostDriver {
     max_signers: u16,
     min_signers: u16,
     identifiers: Vec<Identifier>,
-    round_number: NonZeroU16,
+    round_number: u8,
     round1_packages: BTreeMap<Identifier, dkg::round1::SecretPackage>,
     received_round1_packages:
         BTreeMap<Identifier, dkg::round1::Package>,
@@ -116,7 +120,7 @@ impl FrostDriver {
             max_signers,
             min_signers,
             identifiers,
-            round_number: NonZeroU16::new(1).unwrap(),
+            round_number: ROUND_1,
             round1_packages: BTreeMap::new(),
             received_round1_packages: BTreeMap::new(),
         })
@@ -129,14 +133,10 @@ impl ProtocolDriver for FrostDriver {
     type Output = (KeyPackage, PublicKeyPackage);
 
     fn round_info(&self) -> Result<RoundInfo> {
-        let round_1 = NonZeroU16::new(1).unwrap();
-        let round_2 = NonZeroU16::new(2).unwrap();
-        let round_3 = NonZeroU16::new(3).unwrap();
-
-        let round_number = self.round_number.get() as u8;
+        let round_number = self.round_number;
         let is_echo = false;
         let can_finalize = match self.round_number {
-            round_1 => {
+            ROUND_1 => {
                 self.received_round1_packages.len()
                     == self.identifiers.len() - 1
             }
@@ -150,12 +150,10 @@ impl ProtocolDriver for FrostDriver {
     }
 
     fn proceed(&mut self) -> Result<Vec<Self::Message>> {
-        let round_1 = NonZeroU16::new(1).unwrap();
-        let round_2 = NonZeroU16::new(2).unwrap();
-        let round_3 = NonZeroU16::new(3).unwrap();
-
         match self.round_number {
-            round_1 => {
+            // Round 1 is a broadcast round, same package
+            // is sent to all other participants
+            ROUND_1 => {
                 let mut messages =
                     Vec::with_capacity(self.identifiers.len() - 1);
 
@@ -182,7 +180,10 @@ impl ProtocolDriver for FrostDriver {
                             NonZeroU16::new((index + 1) as u16)
                                 .unwrap();
                         let message = RoundMsg {
-                            round: self.round_number,
+                            round: NonZeroU16::new(
+                                self.round_number.into(),
+                            )
+                            .unwrap(),
                             receiver,
                             body: DkgPackage::Round1(public_package),
                         };
@@ -193,6 +194,9 @@ impl ProtocolDriver for FrostDriver {
                     self.round_number.checked_add(1).unwrap();
 
                 return Ok(messages);
+            }
+            ROUND_2 => {
+                todo!("proceed to round 2");
             }
             _ => todo!("handle other rounds"),
         }
@@ -205,12 +209,8 @@ impl ProtocolDriver for FrostDriver {
         &mut self,
         message: Self::Message,
     ) -> Result<()> {
-        let round_1 = NonZeroU16::new(1).unwrap();
-        let round_2 = NonZeroU16::new(2).unwrap();
-        let round_3 = NonZeroU16::new(3).unwrap();
-
         match self.round_number {
-            round_1 => {
+            ROUND_1 => {
                 match message.body {
                     DkgPackage::Round1(package) => {
                         let party_index =
