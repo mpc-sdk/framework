@@ -4,12 +4,13 @@ use ed25519_dalek::{SigningKey, VerifyingKey};
 use frost_ed25519::{
     round1::{self, SigningCommitments, SigningNonces},
     round2::{self, SignatureShare},
-    Signature,
+    Identifier, Signature,
 };
 use mpc_client::{Event, NetworkTransport, Transport};
 use mpc_protocol::{hex, SessionId, SessionState};
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
+use std::num::NonZeroU16;
 
 use crate::{
     frost::{Error, Result},
@@ -37,6 +38,7 @@ impl SignatureDriver {
         session_id: SessionId,
         signer: SigningKey,
         verifiers: Vec<VerifyingKey>,
+        identifiers: Vec<Identifier>,
         key_share: KeyShare,
         message: Vec<u8>,
     ) -> Result<Self> {
@@ -49,7 +51,13 @@ impl SignatureDriver {
             })?;
 
         let driver = FrostDriver::new(
-            session_id, signer, verifiers, key_share, message,
+            session_id,
+            party_number,
+            signer,
+            verifiers,
+            identifiers,
+            key_share,
+            message,
         )?;
 
         let bridge = Bridge {
@@ -92,8 +100,11 @@ impl From<SignatureDriver> for Transport {
 /// FROST signature driver.
 struct FrostDriver {
     session_id: SessionId,
+    party_number: NonZeroU16,
     signer: SigningKey,
     verifiers: Vec<VerifyingKey>,
+    identifiers: Vec<Identifier>,
+    id: Identifier,
     key_share: KeyShare,
     message: Vec<u8>,
 }
@@ -102,15 +113,26 @@ impl FrostDriver {
     /// Create a driver.
     pub fn new(
         session_id: SessionId,
+        party_number: NonZeroU16,
         signer: SigningKey,
         verifiers: Vec<VerifyingKey>,
+        identifiers: Vec<Identifier>,
         key_share: KeyShare,
         message: Vec<u8>,
     ) -> Result<Self> {
+        let party_index: usize = party_number.get() as usize;
+        let self_index = party_index - 1;
+        let id = *identifiers
+            .get(self_index)
+            .ok_or(Error::IndexIdentifier(party_index))?;
+
         Ok(Self {
             session_id,
+            party_number,
             signer,
             verifiers,
+            identifiers,
+            id,
             key_share,
             message,
         })

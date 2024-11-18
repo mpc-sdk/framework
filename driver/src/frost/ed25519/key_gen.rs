@@ -131,7 +131,9 @@ impl FrostDriver {
     ) -> Result<Self> {
         let party_index: usize = party_number.get() as usize;
         let self_index = party_index - 1;
-        let id = *identifiers.get(self_index).unwrap();
+        let id = *identifiers
+            .get(self_index)
+            .ok_or(Error::IndexIdentifier(party_index))?;
 
         Ok(Self {
             session_id,
