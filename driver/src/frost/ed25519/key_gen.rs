@@ -230,8 +230,10 @@ impl ProtocolDriver for FrostDriver {
                 let mut messages =
                     Vec::with_capacity(self.identifiers.len() - 1);
 
-                let round1_secret_package =
-                    self.round1_package.take().unwrap();
+                let round1_secret_package = self
+                    .round1_package
+                    .take()
+                    .ok_or(Error::Round2TooEarly)?;
 
                 let (round2_secret_package, round2_packages) =
                     dkg::part2(
@@ -279,49 +281,51 @@ impl ProtocolDriver for FrostDriver {
     ) -> Result<()> {
         let round_number = message.round.get() as u8;
         match round_number {
-            ROUND_1 => {
-                match message.body {
-                    DkgPackage::Round1(package) => {
-                        let party_index = self
-                            .verifiers
-                            .iter()
-                            .position(|v| v == &message.sender)
-                            .unwrap();
-                        if let Some(id) =
-                            self.identifiers.get(party_index)
-                        {
-                            self.received_round1_packages
-                                .insert(id.clone(), package);
+            ROUND_1 => match message.body {
+                DkgPackage::Round1(package) => {
+                    let party_index = self
+                        .verifiers
+                        .iter()
+                        .position(|v| v == &message.sender)
+                        .ok_or(Error::SenderVerifier)?;
+                    if let Some(id) =
+                        self.identifiers.get(party_index)
+                    {
+                        self.received_round1_packages
+                            .insert(id.clone(), package);
 
-                            Ok(())
-                        } else {
-                            panic!("recevier could not locate identifier");
-                        }
+                        Ok(())
+                    } else {
+                        Err(Error::SenderIdentifier(
+                            round_number,
+                            party_index,
+                        ))
                     }
-                    _ => panic!("round was received out of turn"),
                 }
-            }
-            ROUND_2 => {
-                match message.body {
-                    DkgPackage::Round2(package) => {
-                        let party_index = self
-                            .verifiers
-                            .iter()
-                            .position(|v| v == &message.sender)
-                            .unwrap();
-                        if let Some(id) =
-                            self.identifiers.get(party_index)
-                        {
-                            self.received_round2_packages
-                                .insert(id.clone(), package);
-                            Ok(())
-                        } else {
-                            panic!("recevier could not locate identifier");
-                        }
+                _ => Err(Error::RoundPayload(round_number)),
+            },
+            ROUND_2 => match message.body {
+                DkgPackage::Round2(package) => {
+                    let party_index = self
+                        .verifiers
+                        .iter()
+                        .position(|v| v == &message.sender)
+                        .ok_or(Error::SenderVerifier)?;
+                    if let Some(id) =
+                        self.identifiers.get(party_index)
+                    {
+                        self.received_round2_packages
+                            .insert(id.clone(), package);
+                        Ok(())
+                    } else {
+                        Err(Error::SenderIdentifier(
+                            round_number,
+                            party_index,
+                        ))
                     }
-                    _ => panic!("round was received out of turn"),
                 }
-            }
+                _ => Err(Error::RoundPayload(round_number)),
+            },
             _ => Err(Error::InvalidRound(round_number)),
         }
     }
@@ -333,8 +337,10 @@ impl ProtocolDriver for FrostDriver {
             && self.received_round2_packages.len()
                 == self.identifiers.len() - 1
         {
-            let round2_secret_package =
-                self.round2_package.take().unwrap();
+            let round2_secret_package = self
+                .round2_package
+                .take()
+                .ok_or(Error::Round3TooEarly)?;
 
             let result = dkg::part3(
                 &round2_secret_package,
