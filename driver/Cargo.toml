@@ -35,7 +35,7 @@ k256 = { version = "0.13", default-features = false, features = ["pem", "serde",
 bip32 = { version = "0.5", features = ["std"], optional = true }
 rand = "0.8"
 ed25519 = { version = "2.2.3", optional = true }
-ed25519-dalek = { version = "2", features = ["rand_core"], optional = true }
+ed25519-dalek = { version = "2", features = ["rand_core", "serde"], optional = true }
 frost-ed25519 = { version = "2", optional = true }
 
 # WASM

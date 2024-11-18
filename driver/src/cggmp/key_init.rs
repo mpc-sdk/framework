@@ -155,7 +155,7 @@ where
     P: SchemeParams + 'static,
 {
     type Error = Error;
-    type Message = RoundMsg<MessageOut>;
+    type Message = RoundMsg<MessageOut, VerifyingKey>;
     type Output = KeyShare<P, VerifyingKey>;
 
     fn round_info(&self) -> Result<RoundInfo> {

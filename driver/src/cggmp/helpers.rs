@@ -37,7 +37,7 @@ pub fn proceed<Res>(
         PreprocessedMessage<Signature, VerifyingKey>,
     >,
     key: &VerifyingKey,
-) -> Result<Vec<RoundMsg<MessageOut>>>
+) -> Result<Vec<RoundMsg<MessageOut, VerifyingKey>>>
 where
     Res: ProtocolResult + Send + 'static,
 {
@@ -102,7 +102,7 @@ where
 pub fn handle_incoming<Res>(
     session: &mut Session<Res, Signature, SigningKey, VerifyingKey>,
     accum: &mut RoundAccumulator<Signature, VerifyingKey>,
-    message: RoundMsg<MessageOut>,
+    message: RoundMsg<MessageOut, VerifyingKey>,
 ) -> Result<()>
 where
     Res: ProtocolResult + Send + 'static,

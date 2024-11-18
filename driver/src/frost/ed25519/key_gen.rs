@@ -1,5 +1,6 @@
 //! Key generation for FROST Ed25519.
 use async_trait::async_trait;
+use ed25519_dalek::{SigningKey, VerifyingKey};
 use frost_ed25519::{
     keys::{dkg, KeyPackage, PublicKeyPackage},
     Identifier,
@@ -40,6 +41,8 @@ impl KeyGenDriver {
         max_signers: u16,
         min_signers: u16,
         identifiers: Vec<Identifier>,
+        signer: SigningKey,
+        verifiers: Vec<VerifyingKey>,
     ) -> Result<Self> {
         let party_number = session
             .party_number(transport.public_key())
@@ -55,6 +58,8 @@ impl KeyGenDriver {
             max_signers,
             min_signers,
             identifiers,
+            signer,
+            verifiers,
         )?;
 
         let bridge = Bridge {
@@ -102,6 +107,8 @@ struct FrostDriver {
     min_signers: u16,
     identifiers: Vec<Identifier>,
     id: Identifier,
+    signer: SigningKey,
+    verifiers: Vec<VerifyingKey>,
     round_number: u8,
     round1_packages: BTreeMap<Identifier, dkg::round1::SecretPackage>,
     received_round1_packages:
@@ -120,6 +127,8 @@ impl FrostDriver {
         max_signers: u16,
         min_signers: u16,
         identifiers: Vec<Identifier>,
+        signer: SigningKey,
+        verifiers: Vec<VerifyingKey>,
     ) -> Result<Self> {
         let party_index: usize = party_number.get() as usize;
         let self_index = party_index - 1;
@@ -132,6 +141,8 @@ impl FrostDriver {
             min_signers,
             identifiers,
             id,
+            signer,
+            verifiers,
             round_number: ROUND_1,
 
             round1_packages: BTreeMap::new(),
@@ -145,7 +156,7 @@ impl FrostDriver {
 
 impl ProtocolDriver for FrostDriver {
     type Error = Error;
-    type Message = RoundMsg<DkgPackage>;
+    type Message = RoundMsg<DkgPackage, VerifyingKey>;
     type Output = (KeyPackage, PublicKeyPackage);
 
     fn round_info(&self) -> Result<RoundInfo> {
@@ -198,6 +209,10 @@ impl ProtocolDriver for FrostDriver {
                                 self.round_number.into(),
                             )
                             .unwrap(),
+                            sender: self
+                                .signer
+                                .verifying_key()
+                                .clone(),
                             receiver,
                             body: DkgPackage::Round1(public_package),
                         };
@@ -246,6 +261,10 @@ impl ProtocolDriver for FrostDriver {
                                 self.round_number.into(),
                             )
                             .unwrap(),
+                            sender: self
+                                .signer
+                                .verifying_key()
+                                .clone(),
                             receiver,
                             body: DkgPackage::Round2(package),
                         };

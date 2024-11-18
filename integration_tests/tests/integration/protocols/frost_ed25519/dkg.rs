@@ -49,7 +49,7 @@ pub(super) async fn run_keygen(
 
     let mut tasks = Vec::new();
 
-    for (index, (opts, _signer)) in session_options
+    for (index, (opts, signer)) in session_options
         .into_iter()
         .zip(signers.clone().into_iter())
         .enumerate()
@@ -66,7 +66,6 @@ pub(super) async fn run_keygen(
             verifiers.clone(),
         )?;
 
-        let signer = SigningKey::generate(rng);
         let verifier = signer.verifying_key().clone();
         tasks.push(tokio::task::spawn(async move {
             let key_share = keygen(

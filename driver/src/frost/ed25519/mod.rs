@@ -70,8 +70,7 @@ pub async fn keygen(
     let (transport, session) =
         wait_for_session(&mut stream, client_session).await?;
 
-    // TODO: pass verifiers to driver
-    let _verifiers = participant
+    let verifiers = participant
         .party()
         .verifiers()
         .iter()
@@ -91,6 +90,8 @@ pub async fn keygen(
         n,
         t,
         identifiers,
+        participant.signing_key().to_owned(),
+        verifiers,
     )?;
 
     let (transport, key_share) =

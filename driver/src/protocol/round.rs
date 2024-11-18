@@ -1,9 +1,6 @@
 use mpc_protocol::{PartyNumber, RoundNumber};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
-#[cfg(any(feature = "ecdsa", feature = "cggmp"))]
-use k256::ecdsa::VerifyingKey;
-
 /// Trait for round messages.
 pub(crate) trait Round:
     Serialize + DeserializeOwned + Send + Sync
@@ -21,31 +18,31 @@ pub(crate) trait Round:
 /// Used to ensure round messages are grouped together and
 /// out of order messages can thus be handled correctly.
 #[derive(Debug, Serialize, Deserialize)]
-pub(crate) struct RoundMsg<O>
+pub(crate) struct RoundMsg<O, V>
 where
     O: Send + Sync,
 {
     pub(crate) round: RoundNumber,
-    #[cfg(any(feature = "ecdsa", feature = "cggmp"))]
-    pub(crate) sender: VerifyingKey,
+    pub(crate) sender: V,
     pub(crate) receiver: PartyNumber,
     pub(crate) body: O,
 }
 
-#[cfg(any(feature = "ecdsa", feature = "cggmp"))]
-impl<O> RoundMsg<O>
+impl<O, V> RoundMsg<O, V>
 where
     O: Serialize + Send + Sync + DeserializeOwned,
+    V: Serialize + Send + Sync + DeserializeOwned,
 {
     /// Consume this message into the sender and body.
-    pub fn into_body(self) -> (VerifyingKey, O) {
+    pub fn into_body(self) -> (V, O) {
         (self.sender, self.body)
     }
 }
 
-impl<O> Round for RoundMsg<O>
+impl<O, V> Round for RoundMsg<O, V>
 where
     O: Serialize + Send + Sync + DeserializeOwned,
+    V: Serialize + Send + Sync + DeserializeOwned,
 {
     fn round_number(&self) -> RoundNumber {
         self.round

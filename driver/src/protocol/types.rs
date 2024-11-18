@@ -15,7 +15,7 @@ pub struct Participant<S, V> {
 
 impl<S, V> Participant<S, V>
 where
-    V: PartialEq,
+    V: PartialEq + std::fmt::Debug,
 {
     /// Create a new participant.
     pub fn new(
@@ -29,6 +29,11 @@ where
             .find(|v| *v == &verifying_key)
             .is_none()
         {
+            println!(
+                "not in constructor {:#?} {:#?}",
+                party.verifiers(),
+                verifying_key
+            );
             return Err(Error::NotVerifyingParty);
         }
         Ok(Self { signing_key, party })
