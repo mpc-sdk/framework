@@ -17,10 +17,9 @@ use crate::{
 
 const ROUND_1: u8 = 1;
 const ROUND_2: u8 = 2;
-const ROUND_3: u8 = 3;
 
 #[derive(Debug, Serialize, Deserialize)]
-pub(crate) enum DkgPackage {
+enum DkgPackage {
     Round1(dkg::round1::Package),
     Round2(dkg::round2::Package),
 }
@@ -100,6 +99,7 @@ struct FrostDriver {
     max_signers: u16,
     min_signers: u16,
     identifiers: Vec<Identifier>,
+    id: Identifier,
     round_number: u8,
     round1_packages: BTreeMap<Identifier, dkg::round1::SecretPackage>,
     received_round1_packages:
@@ -119,12 +119,17 @@ impl FrostDriver {
         min_signers: u16,
         identifiers: Vec<Identifier>,
     ) -> Result<Self> {
+        let party_index: usize = party_number.get() as usize;
+        let self_index = party_index - 1;
+        let id = *identifiers.get(self_index).unwrap();
+
         Ok(Self {
             session_id,
             party_number,
             max_signers,
             min_signers,
             identifiers,
+            id,
             round_number: ROUND_1,
 
             round1_packages: BTreeMap::new(),
@@ -153,7 +158,7 @@ impl ProtocolDriver for FrostDriver {
                 self.received_round2_packages.len()
                     == self.identifiers.len() - 1
             }
-            _ => panic!("handle other rounds"),
+            _ => return Err(Error::InvalidRound(self.round_number)),
         };
         Ok(RoundInfo {
             round_number,
@@ -170,12 +175,6 @@ impl ProtocolDriver for FrostDriver {
                 let mut messages =
                     Vec::with_capacity(self.identifiers.len() - 1);
 
-                let party_index: usize =
-                    self.party_number.get() as usize;
-                let self_index = party_index - 1;
-                let self_id =
-                    self.identifiers.get(self_index).unwrap();
-
                 for (index, id) in self.identifiers.iter().enumerate()
                 {
                     let (private_package, public_package) =
@@ -188,7 +187,7 @@ impl ProtocolDriver for FrostDriver {
                     self.round1_packages
                         .insert(id.clone(), private_package);
 
-                    if id != self_id {
+                    if id != &self.id {
                         let receiver =
                             NonZeroU16::new((index + 1) as u16)
                                 .unwrap();
@@ -200,6 +199,8 @@ impl ProtocolDriver for FrostDriver {
                             receiver,
                             body: DkgPackage::Round1(public_package),
                         };
+
+                        messages.push(message);
                     }
                 }
 
@@ -214,14 +215,7 @@ impl ProtocolDriver for FrostDriver {
                 let mut messages =
                     Vec::with_capacity(self.identifiers.len() - 1);
 
-                let party_index: usize =
-                    self.party_number.get() as usize;
-                let self_index = party_index - 1;
-                let self_id =
-                    self.identifiers.get(self_index).unwrap();
-
-                for (index, id) in self.identifiers.iter().enumerate()
-                {
+                for id in &self.identifiers {
                     let round1_secret_package =
                         self.round1_packages.remove(id).unwrap();
 
@@ -253,6 +247,8 @@ impl ProtocolDriver for FrostDriver {
                             receiver,
                             body: DkgPackage::Round2(package),
                         };
+
+                        messages.push(message);
                     }
                 }
 
@@ -260,9 +256,6 @@ impl ProtocolDriver for FrostDriver {
                     self.round_number.checked_add(1).unwrap();
 
                 Ok(messages)
-            }
-            ROUND_3 => {
-                todo!("handle round 3");
             }
             _ => Err(Error::InvalidRound(self.round_number)),
         }
@@ -283,6 +276,8 @@ impl ProtocolDriver for FrostDriver {
                         {
                             self.received_round1_packages
                                 .insert(*id, package);
+
+                            Ok(())
                         } else {
                             panic!("recevier could not locate identifier");
                         }
@@ -300,6 +295,8 @@ impl ProtocolDriver for FrostDriver {
                         {
                             self.received_round2_packages
                                 .insert(*id, package);
+
+                            Ok(())
                         } else {
                             panic!("recevier could not locate identifier");
                         }
@@ -307,13 +304,27 @@ impl ProtocolDriver for FrostDriver {
                     _ => panic!("round was received out of turn"),
                 }
             }
-            _ => todo!("handle other rounds"),
+            _ => Err(Error::InvalidRound(self.round_number)),
         }
-
-        Ok(())
     }
 
     fn try_finalize_round(&mut self) -> Result<Option<Self::Output>> {
-        todo!();
+        if self.round_number > ROUND_2
+            && self.received_round1_packages.len()
+                == self.identifiers.len() - 1
+            && self.received_round2_packages.len()
+                == self.identifiers.len() - 1
+        {
+            let round2_secret_package =
+                &self.round2_packages[&self.id];
+            let result = dkg::part3(
+                round2_secret_package,
+                &self.received_round1_packages,
+                &self.received_round2_packages,
+            )?;
+            Ok(Some(result))
+        } else {
+            Ok(None)
+        }
     }
 }
