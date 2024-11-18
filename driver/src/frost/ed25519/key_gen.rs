@@ -15,6 +15,8 @@ use crate::{
     Bridge, Driver, ProtocolDriver, RoundInfo, RoundMsg,
 };
 
+use super::KeyShare;
+
 const ROUND_1: u8 = 1;
 const ROUND_2: u8 = 2;
 
@@ -68,7 +70,7 @@ impl KeyGenDriver {
 #[async_trait]
 impl Driver for KeyGenDriver {
     type Error = Error;
-    type Output = (KeyPackage, PublicKeyPackage);
+    type Output = KeyShare;
 
     async fn handle_event(
         &mut self,

@@ -9,6 +9,7 @@ cggmp = ["mpc-driver/cggmp"]
 ecdsa = ["mpc-driver/ecdsa"]
 eddsa = ["mpc-driver/eddsa"]
 schnorr = ["mpc-driver/schnorr"]
+frost-ed25519 = ["mpc-driver/frost-ed25519"]
 
 [dev-dependencies]
 mpc-client= { path = "../client" }

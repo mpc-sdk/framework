@@ -1,8 +1,7 @@
-#[cfg(feature = "cggmp")]
+#[cfg(any(feature = "cggmp", feature = "frost-ed25519"))]
 mod protocols;
 
 // Single-party signers.
 mod signers;
 
-#[cfg(feature = "cggmp")]
 pub mod test_utils;

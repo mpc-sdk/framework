@@ -5,6 +5,7 @@ use frost_ed25519::{
 };
 
 mod key_gen;
+pub use ed25519_dalek;
 pub use key_gen::KeyGenDriver;
 
 use super::Error;
@@ -26,6 +27,9 @@ pub type Participant = crate::Participant<
 /// Options for each party.
 pub type PartyOptions =
     crate::PartyOptions<ed25519_dalek::VerifyingKey>;
+
+/// Key share for this protocol.
+pub type KeyShare = (KeyPackage, PublicKeyPackage);
 
 /// Run threshold DKG for the FROST protocol.
 pub async fn keygen(
@@ -66,7 +70,8 @@ pub async fn keygen(
     let (transport, session) =
         wait_for_session(&mut stream, client_session).await?;
 
-    let verifiers = participant
+    // TODO: pass verifiers to driver
+    let _verifiers = participant
         .party()
         .verifiers()
         .iter()
