@@ -1,12 +1,12 @@
 use anyhow::Result;
 use mpc_driver::{
-    cggmp::{keygen, reshare, sign},
+    cggmp::{keygen, reshare, sign, Participant, PartyOptions},
     k256::ecdsa::{
         self, signature::hazmat::PrehashVerifier, SigningKey,
         VerifyingKey,
     },
     synedrion::{SessionId, TestParams, ThresholdKeyShare},
-    Participant, PartyOptions, ServerOptions, SessionOptions,
+    ServerOptions, SessionOptions,
 };
 use mpc_protocol::{generate_keypair, Parameters};
 use rand::{rngs::OsRng, Rng};
@@ -111,10 +111,11 @@ async fn run_dkg(
             verifiers.clone(),
         )?;
 
+        let verifier = signer.verifying_key().clone();
         tasks.push(tokio::task::spawn(async move {
             let key_share = keygen(
                 opts,
-                Participant::new(signer, party)?,
+                Participant::new(signer, verifier, party)?,
                 keygen_session_id.clone(),
             )
             .await?;
@@ -198,10 +199,11 @@ async fn run_reshare(
 
         let key_share = old_keys.get(index).cloned();
 
+        let verifier = signer.verifying_key().clone();
         tasks.push(tokio::task::spawn(async move {
             let key_share = reshare(
                 opts,
-                Participant::new(signer, party)?,
+                Participant::new(signer, verifier, party)?,
                 keygen_session_id.clone(),
                 account_verifying_key.clone(),
                 key_share,
@@ -333,7 +335,8 @@ async fn run_sign(
             selected_verifiers.clone(),
         )?;
 
-        let participant = Participant::new(signer, party)?;
+        let verifier = signer.verifying_key().clone();
+        let participant = Participant::new(signer, verifier, party)?;
         let mut selected_parties = BTreeSet::new();
         selected_parties
             .extend(participant.party().verifiers().iter());

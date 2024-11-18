@@ -17,8 +17,6 @@ use crate::{
     SessionParticipant,
 };
 
-type MessageOut = ();
-
 /// Run threshold DKG for the FROST protocol.
 pub async fn keygen(
     options: SessionOptions,
@@ -78,8 +76,6 @@ pub async fn keygen(
         n,
         t,
         identifiers,
-        participant.signing_key().to_owned(),
-        verifiers,
     )?;
 
     let (transport, key_share) =

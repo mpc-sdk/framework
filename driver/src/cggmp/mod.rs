@@ -52,9 +52,15 @@ use mpc_client::{NetworkTransport, Transport};
 
 use crate::{
     new_client, wait_for_close, wait_for_driver, wait_for_session,
-    wait_for_session_finish, Participant, SessionHandler,
-    SessionInitiator, SessionOptions, SessionParticipant,
+    wait_for_session_finish, SessionHandler, SessionInitiator,
+    SessionOptions, SessionParticipant,
 };
+
+/// Participant in the CGGMP protocol.
+pub type Participant = crate::Participant<SigningKey, VerifyingKey>;
+
+/// Options for each party.
+pub type PartyOptions = crate::PartyOptions<VerifyingKey>;
 
 /// Run threshold DKG for the CGGMP protocol.
 pub async fn keygen<P: SchemeParams + 'static>(

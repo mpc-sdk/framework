@@ -4,10 +4,10 @@ use frost_ed25519::{
     keys::{dkg, KeyPackage, PublicKeyPackage},
     Identifier,
 };
-use k256::ecdsa::{SigningKey, VerifyingKey};
 use mpc_client::{Event, NetworkTransport, Transport};
 use mpc_protocol::{hex, SessionId, SessionState};
 use rand::rngs::OsRng;
+use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, num::NonZeroU16};
 
 use crate::{
@@ -15,7 +15,12 @@ use crate::{
     Bridge, Driver, ProtocolDriver, RoundInfo, RoundMsg,
 };
 
-use super::MessageOut;
+type MessageOut = RoundPackage;
+
+#[derive(Serialize, Deserialize)]
+pub(crate) enum RoundPackage {
+    Round1(dkg::round1::Package),
+}
 
 /// FROST Ed25519 key generation driver.
 pub struct KeyGenDriver {
@@ -31,8 +36,6 @@ impl KeyGenDriver {
         max_signers: u16,
         min_signers: u16,
         identifiers: Vec<Identifier>,
-        signer: SigningKey,
-        verifiers: Vec<VerifyingKey>,
     ) -> Result<Self> {
         let party_number = session
             .party_number(transport.public_key())
@@ -48,8 +51,6 @@ impl KeyGenDriver {
             max_signers,
             min_signers,
             identifiers,
-            // signer,
-            // verifiers,
         )?;
 
         let bridge = Bridge {
@@ -96,8 +97,10 @@ struct FrostDriver {
     max_signers: u16,
     min_signers: u16,
     identifiers: Vec<Identifier>,
-
+    round_number: NonZeroU16,
     round1_packages: BTreeMap<Identifier, dkg::round1::SecretPackage>,
+    received_round1_packages:
+        BTreeMap<Identifier, dkg::round1::Package>,
 }
 
 impl FrostDriver {
@@ -115,8 +118,9 @@ impl FrostDriver {
             max_signers,
             min_signers,
             identifiers,
-
+            round_number: NonZeroU16::new(1),
             round1_packages: BTreeMap::new(),
+            received_round1_packages: BTreeMap::new(),
         })
     }
 }
@@ -131,14 +135,47 @@ impl ProtocolDriver for FrostDriver {
     }
 
     fn proceed(&mut self) -> Result<Vec<Self::Message>> {
+        match self.round_number {
+            1 => {
+                let mut messages =
+                    Vec::with_capacity(self.identifiers.len() - 1);
+
+                let party_index: usize = self.party_number.into();
+                let self_index = party_index - 1;
+                let self_id =
+                    self.identifiers.get(self_index).unwrap();
+
+                for (index, id) in self.identifiers.iter().enumerate()
+                {
+                    let (private_package, public_package) =
+                        dkg::part1(
+                            id.clone(),
+                            self.max_signers,
+                            self.min_signers,
+                            &mut OsRng,
+                        )?;
+                    self.round1_packages
+                        .insert(id.clone(), private_package);
+
+                    if id != self_id {
+                        let receiver = NonZeroU16::new(index + 1);
+                        let message = RoundMsg {
+                            round,
+                            receiver,
+                            body: RoundPackage::Round1(
+                                public_package,
+                            ),
+                        };
+                    }
+                }
+
+                self.round_number += 1;
+                return Ok(messages);
+            }
+            _ => todo!("handle other rounds"),
+        }
         /*
-        let (private_package, public_package) = dkg::part1(
-            participant_identifier,
-            self.max_signers,
-            self.min_signers,
-            &mut OsRng,
-        )?;
-        */
+         */
         todo!();
     }
 

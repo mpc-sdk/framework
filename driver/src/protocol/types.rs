@@ -2,28 +2,31 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{Error, Result};
-use k256::ecdsa::{SigningKey, VerifyingKey};
 use mpc_protocol::{hex, Keypair, Parameters};
 
 /// Participant in a protocol session.
 #[derive(Clone)]
-pub struct Participant {
+pub struct Participant<S, V> {
     /// Signing key for this participant.
-    signing_key: SigningKey,
+    signing_key: S,
     /// Options for this participant.
-    party: PartyOptions,
+    party: PartyOptions<V>,
 }
 
-impl Participant {
+impl<S, V> Participant<S, V>
+where
+    V: PartialEq,
+{
     /// Create a new participant.
     pub fn new(
-        signing_key: SigningKey,
-        party: PartyOptions,
+        signing_key: S,
+        verifying_key: V,
+        party: PartyOptions<V>,
     ) -> Result<Self> {
         if party
             .verifiers()
             .into_iter()
-            .find(|v| v == &signing_key.verifying_key())
+            .find(|v| *v == &verifying_key)
             .is_none()
         {
             return Err(Error::NotVerifyingParty);
@@ -32,12 +35,12 @@ impl Participant {
     }
 
     /// Participant signing key.
-    pub fn signing_key(&self) -> &SigningKey {
+    pub fn signing_key(&self) -> &S {
         &self.signing_key
     }
 
     /// Participant party information.
-    pub fn party(&self) -> &PartyOptions {
+    pub fn party(&self) -> &PartyOptions<V> {
         &self.party
     }
 }
@@ -45,7 +48,7 @@ impl Participant {
 /// Options for a party participating in a protocol.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct PartyOptions {
+pub struct PartyOptions<V> {
     /// Public key of this party.
     #[serde(with = "hex::serde")]
     public_key: Vec<u8>,
@@ -59,16 +62,16 @@ pub struct PartyOptions {
     /// Index of the party in the participants list.
     party_index: usize,
     /// Verifying keys for all participants.
-    verifiers: Vec<VerifyingKey>,
+    verifiers: Vec<V>,
 }
 
-impl PartyOptions {
+impl<V> PartyOptions<V> {
     /// Create new party participant options.
     pub fn new(
         public_key: Vec<u8>,
         participants: Vec<Vec<u8>>,
         is_initiator: bool,
-        verifiers: Vec<VerifyingKey>,
+        verifiers: Vec<V>,
     ) -> Result<Self> {
         let party_index = participants
             .iter()
@@ -112,7 +115,7 @@ impl PartyOptions {
     }
 
     /// Participant verifying keys.
-    pub fn verifiers(&self) -> &[VerifyingKey] {
+    pub fn verifiers(&self) -> &[V] {
         self.verifiers.as_slice()
     }
 }

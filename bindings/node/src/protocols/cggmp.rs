@@ -1,10 +1,10 @@
 //! Bindings for the CGGMP protocol.
 use anyhow::Error;
+use mpc_driver::cggmp::Participant;
 use mpc_driver::synedrion::{
     ecdsa::{self, SigningKey},
     SessionId,
 };
-use mpc_driver::Participant;
 use mpc_protocol::{hex, PATTERN};
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
@@ -66,14 +66,15 @@ impl CggmpProtocol {
         let options: mpc_driver::SessionOptions =
             options.try_into().map_err(Error::new)?;
 
-        let party: mpc_driver::PartyOptions =
+        let party: mpc_driver::cggmp::PartyOptions =
             party.try_into().map_err(Error::new)?;
 
         let signer: SigningKey =
             signer.as_slice().try_into().map_err(Error::new)?;
+        let verifier = signer.verifying_key().clone();
 
-        let participant =
-            Participant::new(signer, party).map_err(Error::new)?;
+        let participant = Participant::new(signer, verifier, party)
+            .map_err(Error::new)?;
         let key_share = mpc_driver::cggmp::keygen::<Params>(
             options,
             participant,
@@ -97,15 +98,16 @@ impl CggmpProtocol {
         message: String,
     ) -> Result<RecoverableSignature> {
         let options = self.options.clone();
-        let party: mpc_driver::PartyOptions =
+        let party: mpc_driver::cggmp::PartyOptions =
             party.try_into().map_err(Error::new)?;
         let signer: SigningKey =
             signer.as_slice().try_into().map_err(Error::new)?;
+        let verifier = signer.verifying_key().clone();
         let message = hex::decode(&message).map_err(Error::new)?;
         let message: [u8; 32] =
             message.as_slice().try_into().map_err(Error::new)?;
-        let participant =
-            Participant::new(signer, party).map_err(Error::new)?;
+        let participant = Participant::new(signer, verifier, party)
+            .map_err(Error::new)?;
 
         let mut selected_parties = BTreeSet::new();
         selected_parties
@@ -142,10 +144,11 @@ impl CggmpProtocol {
         new_threshold: i64,
     ) -> Result<KeyShare> {
         let options = self.options.clone();
-        let party: mpc_driver::PartyOptions =
+        let party: mpc_driver::cggmp::PartyOptions =
             party.try_into().map_err(Error::new)?;
         let signer: SigningKey =
             signer.as_slice().try_into().map_err(Error::new)?;
+        let verifier = signer.verifying_key().clone();
 
         let account_verifying_key: ecdsa::VerifyingKey =
             account_verifying_key.try_into().map_err(Error::new)?;
@@ -156,8 +159,8 @@ impl CggmpProtocol {
             } else {
                 None
             };
-        let participant =
-            Participant::new(signer, party).map_err(Error::new)?;
+        let participant = Participant::new(signer, verifier, party)
+            .map_err(Error::new)?;
 
         let key_share = mpc_driver::cggmp::reshare(
             options,

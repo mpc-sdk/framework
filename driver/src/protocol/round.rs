@@ -1,6 +1,8 @@
-use k256::ecdsa::VerifyingKey;
 use mpc_protocol::{PartyNumber, RoundNumber};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
+
+#[cfg(any(feature = "ecdsa", feature = "cggmp"))]
+use k256::ecdsa::VerifyingKey;
 
 /// Trait for round messages.
 pub(crate) trait Round:
@@ -24,11 +26,13 @@ where
     O: Send + Sync,
 {
     pub(crate) round: RoundNumber,
+    #[cfg(any(feature = "ecdsa", feature = "cggmp"))]
     pub(crate) sender: VerifyingKey,
     pub(crate) receiver: PartyNumber,
     pub(crate) body: O,
 }
 
+#[cfg(any(feature = "ecdsa", feature = "cggmp"))]
 impl<O> RoundMsg<O>
 where
     O: Serialize + Send + Sync + DeserializeOwned,
