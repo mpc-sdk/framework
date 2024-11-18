@@ -269,7 +269,7 @@ impl ProtocolDriver for FrostDriver {
 
                 Ok(messages)
             }
-            _ => Ok(vec![]),
+            _ => Err(Error::InvalidRound(self.round_number)),
         }
     }
 

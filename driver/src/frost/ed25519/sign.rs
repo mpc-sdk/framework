@@ -105,6 +105,7 @@ struct FrostDriver {
     verifiers: Vec<VerifyingKey>,
     identifiers: Vec<Identifier>,
     id: Identifier,
+    round_number: u8,
     key_share: KeyShare,
     message: Vec<u8>,
 }
@@ -133,6 +134,7 @@ impl FrostDriver {
             verifiers,
             identifiers,
             id,
+            round_number: ROUND_1,
             key_share,
             message,
         })
@@ -149,14 +151,64 @@ impl ProtocolDriver for FrostDriver {
     }
 
     fn proceed(&mut self) -> Result<Vec<Self::Message>> {
-        todo!();
+        match self.round_number {
+            // Round 1 is a broadcast round, same package
+            // is sent to all other participants
+            ROUND_1 => {
+                let mut messages =
+                    Vec::with_capacity(self.identifiers.len() - 1);
+
+                let (nonces, commitments) = round1::commit(
+                    self.key_share.0.signing_share(),
+                    &mut OsRng,
+                );
+
+                for (index, id) in self.identifiers.iter().enumerate()
+                {
+                    if id != &self.id {
+                        let receiver =
+                            NonZeroU16::new((index + 1) as u16)
+                                .unwrap();
+                        let message = RoundMsg {
+                            round: NonZeroU16::new(
+                                self.round_number.into(),
+                            )
+                            .unwrap(),
+                            sender: self
+                                .signer
+                                .verifying_key()
+                                .clone(),
+                            receiver,
+                            body: SignPackage::Round1(
+                                nonces.clone(),
+                                commitments.clone(),
+                            ),
+                        };
+
+                        messages.push(message);
+                    }
+                }
+
+                self.round_number =
+                    self.round_number.checked_add(1).unwrap();
+
+                Ok(messages)
+            }
+            _ => Err(Error::InvalidRound(self.round_number)),
+        }
     }
 
     fn handle_incoming(
         &mut self,
         message: Self::Message,
     ) -> Result<()> {
-        todo!();
+        let round_number = message.round.get() as u8;
+        match round_number {
+            ROUND_1 => {
+                todo!();
+            }
+            _ => todo!(),
+        }
     }
 
     fn try_finalize_round(&mut self) -> Result<Option<Self::Output>> {
