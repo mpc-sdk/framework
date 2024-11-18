@@ -22,7 +22,7 @@ pub fn make_signers(
 
 /// FROST distributed key generation.
 #[tokio::test]
-async fn integration_frost_driver_dkg_2_3() -> Result<()> {
+async fn integration_frost_ed25519_dkg_2_3() -> Result<()> {
     // crate::test_utils::init_tracing();
     //
 
@@ -31,8 +31,14 @@ async fn integration_frost_driver_dkg_2_3() -> Result<()> {
     let addr = rx.await?;
     let server = format!("ws://{}", addr);
 
+    let t = 2;
+    let n = 3;
+
     let server_public_key = server_public_key().await?;
-    dkg::run_keygen(2, 3, &server, server_public_key).await?;
+    let (_, key_shares, _) =
+        dkg::run_keygen(t, n, &server, server_public_key).await?;
+
+    assert_eq!(n as usize, key_shares.len());
 
     Ok(())
 }

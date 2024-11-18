@@ -8,7 +8,6 @@ use mpc_driver::{
     ServerOptions, SessionOptions,
 };
 use mpc_protocol::{generate_keypair, Parameters, SessionId};
-use rand::rngs::OsRng;
 
 pub(super) async fn run_keygen(
     t: u16,
@@ -28,7 +27,6 @@ pub(super) async fn run_keygen(
         pattern: None,
     };
 
-    let rng = &mut OsRng;
     let keygen_session_id = SessionId::new_v4();
 
     let mut session_options = Vec::new();

@@ -32,6 +32,7 @@ pub use synedrion::{self, bip32, k256};
 
 /// Information about the current found which
 /// can be retrieved from a driver.
+#[derive(Debug)]
 pub struct RoundInfo {
     /// Whether the round is ready to be finalized.
     pub can_finalize: bool,

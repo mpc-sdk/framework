@@ -6,6 +6,7 @@ pub(crate) trait Round:
     Serialize + DeserializeOwned + Send + Sync
 {
     /// Round number.
+    #[allow(dead_code)]
     fn round_number(&self) -> RoundNumber;
 
     /// Receiver for a message.
@@ -34,6 +35,7 @@ where
     V: Serialize + Send + Sync + DeserializeOwned,
 {
     /// Consume this message into the sender and body.
+    #[allow(dead_code)]
     pub fn into_body(self) -> (V, O) {
         (self.sender, self.body)
     }
