@@ -1,41 +1,119 @@
 use super::dkg::run_keygen;
+use super::make_signing_message;
 use anyhow::Result;
 use mpc_driver::{
     frost::ed25519::{
-        ed25519_dalek::SigningKey, sign, KeyShare, Participant,
-        PartyOptions,
+        ed25519_dalek::{SigningKey, VerifyingKey},
+        sign, KeyShare, Participant, PartyOptions,
     },
-    frost::frost_ed25519::keys,
+    frost::frost_ed25519::{keys, Identifier},
     ServerOptions, SessionOptions,
 };
-use mpc_protocol::{generate_keypair, Parameters, SessionId};
+use mpc_protocol::{
+    generate_keypair, Keypair, Parameters, SessionId,
+};
 use std::collections::BTreeMap;
 
-use super::make_signing_message;
+struct SelectedSigners {
+    /// Keypairs for the noise transport.
+    pub keypairs: Vec<Keypair>,
+    /// Transport public keys.
+    pub public_keys: Vec<Vec<u8>>,
+    /// Signer and all verifying keys.
+    pub signers: Vec<(SigningKey, Vec<VerifyingKey>)>,
+    /// Identifiers extracted from the key shares.
+    pub identifiers: Vec<Identifier>,
+    /// Selected key shares.
+    pub key_shares: Vec<KeyShare>,
+}
 
-pub async fn run_dkg_sign(
+impl SelectedSigners {
+    pub fn new(
+        t: u16,
+        indices: &[usize],
+        signers: Vec<SigningKey>,
+        key_shares: Vec<KeyShare>,
+    ) -> Result<Self> {
+        let mut keypairs = Vec::new();
+        for _ in 0..t {
+            let keypair = generate_keypair()?;
+            keypairs.push(keypair);
+        }
+
+        let public_keys = keypairs
+            .iter()
+            .map(|k| k.public_key().to_owned())
+            .collect::<Vec<_>>();
+
+        let selected_signers = indices
+            .iter()
+            .map(|i| signers.get(*i).unwrap().clone())
+            .collect::<Vec<_>>();
+        let selected_verifiers = selected_signers
+            .iter()
+            .map(|s| s.verifying_key().clone())
+            .collect::<Vec<_>>();
+
+        let selected_key_shares = indices
+            .iter()
+            .map(|i| key_shares.get(*i).unwrap().clone())
+            .collect::<Vec<_>>();
+        let identifiers = selected_key_shares
+            .iter()
+            .map(|s| s.0.identifier().clone())
+            .collect::<Vec<_>>();
+
+        Ok(SelectedSigners {
+            keypairs,
+            public_keys,
+            signers: selected_signers
+                .into_iter()
+                .map(|s| (s, selected_verifiers.clone()))
+                .collect(),
+            key_shares: selected_key_shares,
+            identifiers,
+        })
+    }
+}
+
+pub async fn run_dkg_sign_2_3(
+    server: &str,
+    server_public_key: Vec<u8>,
+) -> Result<()> {
+    run_dkg_sign(2, 3, server, server_public_key, &[0, 2]).await
+}
+
+async fn run_dkg_sign(
     t: u16,
     n: u16,
     server: &str,
     server_public_key: Vec<u8>,
+    indices: &[usize],
 ) -> Result<()> {
     let (server, key_shares, signers) =
         run_keygen(t, n, server, server_public_key).await?;
 
-    sign_t_2(t, n, server, key_shares, signers).await?;
+    let selected = SelectedSigners::new(
+        t,
+        indices,
+        signers,
+        key_shares.clone(),
+    )?;
+
+    check_sign(t, n, server, key_shares, selected).await?;
 
     Ok(())
 }
 
-pub(super) async fn sign_t_2(
+async fn check_sign(
     t: u16,
     n: u16,
     server: ServerOptions,
-    mut key_shares: Vec<KeyShare>,
-    signers: Vec<SigningKey>,
+    all_key_shares: Vec<KeyShare>,
+    selected: SelectedSigners,
 ) -> Result<()> {
     // Prepare group public key for verification after signing
-    let mut verifying_keys = key_shares
+    let verifying_keys = all_key_shares
         .iter()
         .map(|k| {
             (
@@ -45,7 +123,7 @@ pub(super) async fn sign_t_2(
         })
         .collect::<BTreeMap<_, _>>();
     let verifying_key =
-        key_shares.first().unwrap().0.verifying_key().to_owned();
+        all_key_shares.first().unwrap().0.verifying_key().to_owned();
     let pubkey_package =
         keys::PublicKeyPackage::new(verifying_keys, verifying_key);
 
@@ -56,60 +134,31 @@ pub(super) async fn sign_t_2(
 
     let message = make_signing_message();
 
-    let mut keypairs = Vec::new();
-
-    for _ in 0..t {
-        let keypair = generate_keypair()?;
-        keypairs.push(keypair.clone());
-    }
-
     let sign_session_id = SessionId::new_v4();
-
-    let selected_signers = vec![
-        signers.first().unwrap().clone(),
-        signers.last().unwrap().clone(),
-    ];
-    let selected_verifiers = selected_signers
-        .iter()
-        .map(|s| s.verifying_key().clone())
-        .collect::<Vec<_>>();
-
-    let first_share = key_shares.remove(0);
-
-    let selected_key_shares =
-        vec![first_share, key_shares.remove(key_shares.len() - 1)];
-    let public_keys = vec![
-        keypairs.first().unwrap().public_key().to_owned(),
-        keypairs.last().unwrap().public_key().to_owned(),
-    ];
 
     let session_options = vec![
         SessionOptions {
-            keypair: keypairs.first().unwrap().clone(),
+            keypair: selected.keypairs.first().unwrap().clone(),
             parameters: params.clone(),
             server: server.clone(),
         },
         SessionOptions {
-            keypair: keypairs.last().unwrap().clone(),
+            keypair: selected.keypairs.last().unwrap().clone(),
             parameters: params.clone(),
             server: server.clone(),
         },
     ];
 
-    let identifiers = selected_key_shares
-        .iter()
-        .map(|s| s.0.identifier().clone())
-        .collect::<Vec<_>>();
-
     let mut tasks = Vec::new();
-    for (index, ((opts, key_share), signer)) in session_options
-        .into_iter()
-        .zip(selected_key_shares.into_iter())
-        .zip(selected_signers.into_iter())
-        .enumerate()
+    for (index, ((opts, key_share), (signer, verifiers))) in
+        session_options
+            .into_iter()
+            .zip(selected.key_shares.into_iter())
+            .zip(selected.signers.into_iter())
+            .enumerate()
     {
         let participants =
-            public_keys.iter().cloned().collect::<Vec<_>>();
+            selected.public_keys.iter().cloned().collect::<Vec<_>>();
         let is_initiator = index == 0;
         let public_key = participants.get(index).unwrap().to_vec();
 
@@ -117,13 +166,13 @@ pub(super) async fn sign_t_2(
             public_key,
             participants,
             is_initiator,
-            selected_verifiers.clone(),
+            verifiers,
         )?;
 
         let verifier = signer.verifying_key().clone();
         let participant = Participant::new(signer, verifier, party)?;
         let msg = message.clone();
-        let ids = identifiers.clone();
+        let ids = selected.identifiers.clone();
 
         tasks.push(tokio::task::spawn(async move {
             let signature = sign(
@@ -154,7 +203,7 @@ pub(super) async fn sign_t_2(
         // Check that the threshold signature can be verified by
         // the group public key (the verification key) from
         // KeyPackage.verifying_key
-        for key_share in &key_shares {
+        for key_share in &all_key_shares {
             key_share.1.verifying_key().verify(&message, sig)?;
         }
     }

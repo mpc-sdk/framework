@@ -58,11 +58,8 @@ async fn integration_frost_ed25519_dkg_sign_2_3() -> Result<()> {
     let addr = rx.await?;
     let server = format!("ws://{}", addr);
 
-    let t = 2;
-    let n = 3;
-
     let server_public_key = server_public_key().await?;
-    sign::run_dkg_sign(t, n, &server, server_public_key).await?;
+    sign::run_dkg_sign_2_3(&server, server_public_key).await?;
 
     Ok(())
 }
