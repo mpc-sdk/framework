@@ -1,8 +1,8 @@
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 
-const unisign = require('./build/unisign.node');
-const { SchnorrSigner } = unisign;
+const polysig = require('./build/polysig.node');
+const { SchnorrSigner } = polysig;
 
 function stringToByteArray(str) {
   const buffer = Buffer.from(str, 'utf-8');

@@ -1,8 +1,8 @@
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 
-const unisign = require('../build/unisign.node');
-const { CggmpProtocol } = unisign;
+const polysig = require('../build/polysig.node');
+const { CggmpProtocol } = polysig;
 
 // console.log("cggmp", CggmpProtocol);
 

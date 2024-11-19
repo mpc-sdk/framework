@@ -17,8 +17,8 @@
   "devDependencies": {
     "@napi-rs/cli": "^2.18.4"
   },
-  "package": "unisign",
+  "package": "polysig",
   "napi": {
-    "name": "unisign"
+    "name": "polysig"
   }
 }
