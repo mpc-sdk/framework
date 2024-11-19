@@ -330,8 +330,6 @@ impl ProtocolDriver for FrostDriver {
 
     fn try_finalize_round(&mut self) -> Result<Option<Self::Output>> {
         if self.round_number == ROUND_3
-            && self.received_round1_packages.len()
-                == self.identifiers.len() - 1
             && self.received_round2_packages.len()
                 == self.identifiers.len() - 1
         {
