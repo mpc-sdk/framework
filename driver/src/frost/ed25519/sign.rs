@@ -10,6 +10,7 @@ use mpc_client::{Event, NetworkTransport, Transport};
 use mpc_protocol::{hex, SessionId, SessionState};
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::num::NonZeroU16;
 
 use crate::{
@@ -21,7 +22,7 @@ use super::{KeyShare, ROUND_1, ROUND_2, ROUND_3};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum SignPackage {
-    Round1(SigningNonces, SigningCommitments),
+    Round1(SigningCommitments),
     Round2(SignatureShare),
 }
 
@@ -39,6 +40,7 @@ impl SignatureDriver {
         signer: SigningKey,
         verifiers: Vec<VerifyingKey>,
         identifiers: Vec<Identifier>,
+        min_signers: u16,
         key_share: KeyShare,
         message: Vec<u8>,
     ) -> Result<Self> {
@@ -56,6 +58,7 @@ impl SignatureDriver {
             signer,
             verifiers,
             identifiers,
+            min_signers,
             key_share,
             message,
         )?;
@@ -105,11 +108,12 @@ struct FrostDriver {
     verifiers: Vec<VerifyingKey>,
     identifiers: Vec<Identifier>,
     id: Identifier,
+    min_signers: u16,
     round_number: u8,
     key_share: KeyShare,
     message: Vec<u8>,
     nonces: Option<SigningNonces>,
-    commitments: Option<SigningCommitments>,
+    commitments: BTreeMap<Identifier, SigningCommitments>,
 }
 
 impl FrostDriver {
@@ -120,6 +124,7 @@ impl FrostDriver {
         signer: SigningKey,
         verifiers: Vec<VerifyingKey>,
         identifiers: Vec<Identifier>,
+        min_signers: u16,
         key_share: KeyShare,
         message: Vec<u8>,
     ) -> Result<Self> {
@@ -136,11 +141,12 @@ impl FrostDriver {
             verifiers,
             identifiers,
             id,
+            min_signers,
             round_number: ROUND_1,
             key_share,
             message,
             nonces: None,
-            commitments: None,
+            commitments: BTreeMap::new(),
         })
     }
 }
@@ -151,7 +157,20 @@ impl ProtocolDriver for FrostDriver {
     type Output = Signature;
 
     fn round_info(&self) -> Result<RoundInfo> {
-        todo!();
+        let round_number = self.round_number;
+        let is_echo = false;
+        let can_finalize = match self.round_number {
+            ROUND_2 => {
+                self.commitments.len() == self.min_signers as usize
+            }
+            // ROUND_3 => self.received_round2_packages.len() == needs,
+            _ => false,
+        };
+        Ok(RoundInfo {
+            round_number,
+            can_finalize,
+            is_echo,
+        })
     }
 
     fn proceed(&mut self) -> Result<Vec<Self::Message>> {
@@ -184,7 +203,6 @@ impl ProtocolDriver for FrostDriver {
                                 .clone(),
                             receiver,
                             body: SignPackage::Round1(
-                                nonces.clone(),
                                 commitments.clone(),
                             ),
                         };
@@ -194,7 +212,7 @@ impl ProtocolDriver for FrostDriver {
                 }
 
                 self.nonces = Some(nonces);
-                self.commitments = Some(commitments);
+                self.commitments.insert(self.id.clone(), commitments);
 
                 self.round_number =
                     self.round_number.checked_add(1).unwrap();
@@ -219,10 +237,30 @@ impl ProtocolDriver for FrostDriver {
     ) -> Result<()> {
         let round_number = message.round.get() as u8;
         match round_number {
-            ROUND_1 => {
-                todo!();
-            }
-            _ => todo!(),
+            ROUND_1 => match message.body {
+                SignPackage::Round1(commitments) => {
+                    let party_index = self
+                        .verifiers
+                        .iter()
+                        .position(|v| v == &message.sender)
+                        .ok_or(Error::SenderVerifier)?;
+                    if let Some(id) =
+                        self.identifiers.get(party_index)
+                    {
+                        self.commitments
+                            .insert(id.clone(), commitments);
+
+                        Ok(())
+                    } else {
+                        Err(Error::SenderIdentifier(
+                            round_number,
+                            party_index,
+                        ))
+                    }
+                }
+                _ => Err(Error::RoundPayload(round_number)),
+            },
+            _ => Err(Error::InvalidRound(round_number)),
         }
     }
 
