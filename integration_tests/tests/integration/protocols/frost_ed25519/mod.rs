@@ -78,3 +78,18 @@ async fn integration_frost_ed25519_dkg_sign_3_5() -> Result<()> {
 
     Ok(())
 }
+
+/// FROST DKG followed by signing (5-of-9).
+#[tokio::test]
+async fn integration_frost_ed25519_dkg_sign_5_9() -> Result<()> {
+    // crate::test_utils::init_tracing();
+
+    let (rx, _handle) = spawn_server()?;
+    let addr = rx.await?;
+    let server = format!("ws://{}", addr);
+
+    let server_public_key = server_public_key().await?;
+    sign::run_dkg_sign_5_9(&server, server_public_key).await?;
+
+    Ok(())
+}

@@ -90,6 +90,14 @@ pub async fn run_dkg_sign_3_5(
     run_dkg_sign(3, 5, server, server_public_key, &[0, 1, 4]).await
 }
 
+pub async fn run_dkg_sign_5_9(
+    server: &str,
+    server_public_key: Vec<u8>,
+) -> Result<()> {
+    run_dkg_sign(5, 9, server, server_public_key, &[0, 1, 4, 6, 8])
+        .await
+}
+
 async fn run_dkg_sign(
     t: u16,
     n: u16,
