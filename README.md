@@ -1,24 +1,23 @@
-# Multi-party computation protocol
+# Polysig
 
-End-to-end encrypted relay service designed for MPC/TSS applications built using the [noise protocol][] and websockets for the transport layer.
+Polysig is a library for single-party and multisig use cases for ECDSA, Schnorr and Ed25519 signature schemes.
 
-The service facilitates secure communication between peers but it does not handle public key exchange nor meeting points.
+We refer to single-party implementations as *signers* and multisig as *protocols*. Protocols communicate via an end-to-end encrypted relay server using the [noise protocol][] and websockets for the transport layer.
 
-For clients to use the relay service they must know the public key of the server and the public keys of all the participants for a session.
-
-Creating a meeting point that shares the session identifier between participants to execute an MPC/TSS protocol is left up to the application. Typically, this can be achieved by encoding the session identifier in a URL and sharing the URL with all the participants.
+The library includes bindings for Webassembly to be used in the browser and for Nodejs.
 
 ## Features
 
 ### Protocols
 
-* `cggmp`: Enable the CGGMP21 protocol using [synedrion](https://github.com/entropyxyz/synedrion).
+* `cggmp`: Enable the CGGMP21 protocol using [synedrion](https://docs.rs/synedrion/).
+* `frost-ed25519`: Enable the FROST Ed25519 protocol using  [frost-ed25519](https://docs.rs/frost-ed25519/).
 
 ### Signers
 
-* `ecdsa`: Single-party signer compatible with Ethereum using [k256](https://docs.rs/k256/latest/k256/).
-* `eddsa`: Single-party signer compatible with Solana using [ed25519](https://docs.rs/ed25519/latest/ed25519/) and [ed25519-dalek](https://docs.rs/ed25519-dalek/latest/ed25519_dalek/).
-* `schnorr`: Single-party signer compatible with Bitcoin Taproot (BIP-340) using [k256](https://docs.rs/k256/latest/k256/).
+* `ecdsa`: Signer compatible with Ethereum using [k256](https://docs.rs/k256/latest/k256/).
+* `eddsa`: Signer compatible with Solana using [ed25519](https://docs.rs/ed25519/latest/ed25519/) and [ed25519-dalek](https://docs.rs/ed25519-dalek/latest/ed25519_dalek/).
+* `schnorr`: Signer compatible with Bitcoin Taproot (BIP-340) using [k256](https://docs.rs/k256/latest/k256/).
 
 ## Bindings
 
@@ -32,7 +31,7 @@ Creating a meeting point that shares the session identifier between participants
 
 ### Node
 
-* [ ] CGGMP
+* [x] CGGMP
 * [x] ECDSA
 * [x] EdDSA
 * [ ] FROST
