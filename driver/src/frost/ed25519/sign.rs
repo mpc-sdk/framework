@@ -2,9 +2,10 @@
 use async_trait::async_trait;
 use ed25519_dalek::{SigningKey, VerifyingKey};
 use frost_ed25519::{
+    aggregate,
     round1::{self, SigningCommitments, SigningNonces},
     round2::{self, SignatureShare},
-    Identifier, Signature,
+    Identifier, Signature, SigningPackage,
 };
 use mpc_client::{Event, NetworkTransport, Transport};
 use mpc_protocol::{hex, SessionId, SessionState};
@@ -114,6 +115,8 @@ struct FrostDriver {
     message: Vec<u8>,
     nonces: Option<SigningNonces>,
     commitments: BTreeMap<Identifier, SigningCommitments>,
+    signing_package: Option<SigningPackage>,
+    signature_shares: BTreeMap<Identifier, SignatureShare>,
 }
 
 impl FrostDriver {
@@ -147,6 +150,8 @@ impl FrostDriver {
             message,
             nonces: None,
             commitments: BTreeMap::new(),
+            signing_package: None,
+            signature_shares: BTreeMap::new(),
         })
     }
 }
@@ -163,7 +168,10 @@ impl ProtocolDriver for FrostDriver {
             ROUND_2 => {
                 self.commitments.len() == self.min_signers as usize
             }
-            // ROUND_3 => self.received_round2_packages.len() == needs,
+            ROUND_3 => {
+                self.signature_shares.len()
+                    == self.min_signers as usize
+            }
             _ => false,
         };
         Ok(RoundInfo {
@@ -175,8 +183,6 @@ impl ProtocolDriver for FrostDriver {
 
     fn proceed(&mut self) -> Result<Vec<Self::Message>> {
         match self.round_number {
-            // Round 1 is a broadcast round, same package
-            // is sent to all other participants
             ROUND_1 => {
                 let mut messages =
                     Vec::with_capacity(self.identifiers.len() - 1);
@@ -188,27 +194,25 @@ impl ProtocolDriver for FrostDriver {
 
                 for (index, id) in self.identifiers.iter().enumerate()
                 {
-                    if id != &self.id {
-                        let receiver =
-                            NonZeroU16::new((index + 1) as u16)
-                                .unwrap();
-                        let message = RoundMsg {
-                            round: NonZeroU16::new(
-                                self.round_number.into(),
-                            )
-                            .unwrap(),
-                            sender: self
-                                .signer
-                                .verifying_key()
-                                .clone(),
-                            receiver,
-                            body: SignPackage::Round1(
-                                commitments.clone(),
-                            ),
-                        };
-
-                        messages.push(message);
+                    if id == &self.id {
+                        continue;
                     }
+
+                    let receiver =
+                        NonZeroU16::new((index + 1) as u16).unwrap();
+                    let message = RoundMsg {
+                        round: NonZeroU16::new(
+                            self.round_number.into(),
+                        )
+                        .unwrap(),
+                        sender: self.signer.verifying_key().clone(),
+                        receiver,
+                        body: SignPackage::Round1(
+                            commitments.clone(),
+                        ),
+                    };
+
+                    messages.push(message);
                 }
 
                 self.nonces = Some(nonces);
@@ -220,12 +224,54 @@ impl ProtocolDriver for FrostDriver {
                 Ok(messages)
             }
             ROUND_2 => {
-                /*
-                let nonces = self.nonces.take().unwrap();
-                let signing_package =
-                    SigningPackage::new(commitments_map, message);
-                */
-                todo!();
+                let nonces = self
+                    .nonces
+                    .take()
+                    .ok_or(Error::Round2TooEarly)?;
+
+                let signing_package = SigningPackage::new(
+                    self.commitments.clone(),
+                    &self.message,
+                );
+
+                let signature_share = round2::sign(
+                    &signing_package,
+                    &nonces,
+                    &self.key_share.0,
+                )?;
+
+                let mut messages =
+                    Vec::with_capacity(self.identifiers.len() - 1);
+
+                for (index, id) in self.identifiers.iter().enumerate()
+                {
+                    if id == &self.id {
+                        continue;
+                    }
+
+                    let receiver =
+                        NonZeroU16::new((index + 1) as u16).unwrap();
+                    let message = RoundMsg {
+                        round: NonZeroU16::new(
+                            self.round_number.into(),
+                        )
+                        .unwrap(),
+                        sender: self.signer.verifying_key().clone(),
+                        receiver,
+                        body: SignPackage::Round2(
+                            signature_share.clone(),
+                        ),
+                    };
+
+                    messages.push(message);
+                }
+
+                self.signing_package = Some(signing_package);
+
+                self.round_number =
+                    self.round_number.checked_add(1).unwrap();
+
+                Ok(messages)
             }
             _ => Err(Error::InvalidRound(self.round_number)),
         }
@@ -249,7 +295,28 @@ impl ProtocolDriver for FrostDriver {
                     {
                         self.commitments
                             .insert(id.clone(), commitments);
-
+                        Ok(())
+                    } else {
+                        Err(Error::SenderIdentifier(
+                            round_number,
+                            party_index,
+                        ))
+                    }
+                }
+                _ => Err(Error::RoundPayload(round_number)),
+            },
+            ROUND_2 => match message.body {
+                SignPackage::Round2(signature_share) => {
+                    let party_index = self
+                        .verifiers
+                        .iter()
+                        .position(|v| v == &message.sender)
+                        .ok_or(Error::SenderVerifier)?;
+                    if let Some(id) =
+                        self.identifiers.get(party_index)
+                    {
+                        self.signature_shares
+                            .insert(id.clone(), signature_share);
                         Ok(())
                     } else {
                         Err(Error::SenderIdentifier(
@@ -265,6 +332,25 @@ impl ProtocolDriver for FrostDriver {
     }
 
     fn try_finalize_round(&mut self) -> Result<Option<Self::Output>> {
-        todo!();
+        if self.round_number == ROUND_3
+            && self.commitments.len() == self.min_signers as usize
+            && self.signature_shares.len()
+                == self.min_signers as usize
+        {
+            let signing_package = self
+                .signing_package
+                .take()
+                .ok_or(Error::Round3TooEarly)?;
+
+            let group_signature = aggregate(
+                &signing_package,
+                &self.signature_shares,
+                &self.key_share.1,
+            )?;
+
+            Ok(Some(group_signature))
+        } else {
+            Ok(None)
+        }
     }
 }

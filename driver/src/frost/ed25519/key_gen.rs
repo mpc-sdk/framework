@@ -195,28 +195,26 @@ impl ProtocolDriver for FrostDriver {
 
                 for (index, id) in self.identifiers.iter().enumerate()
                 {
-                    if id != &self.id {
-                        let receiver =
-                            NonZeroU16::new((index + 1) as u16)
-                                .unwrap();
-
-                        let message = RoundMsg {
-                            round: NonZeroU16::new(
-                                self.round_number.into(),
-                            )
-                            .unwrap(),
-                            sender: self
-                                .signer
-                                .verifying_key()
-                                .clone(),
-                            receiver,
-                            body: DkgPackage::Round1(
-                                public_package.clone(),
-                            ),
-                        };
-
-                        messages.push(message);
+                    if id == &self.id {
+                        continue;
                     }
+
+                    let receiver =
+                        NonZeroU16::new((index + 1) as u16).unwrap();
+
+                    let message = RoundMsg {
+                        round: NonZeroU16::new(
+                            self.round_number.into(),
+                        )
+                        .unwrap(),
+                        sender: self.signer.verifying_key().clone(),
+                        receiver,
+                        body: DkgPackage::Round1(
+                            public_package.clone(),
+                        ),
+                    };
+
+                    messages.push(message);
                 }
 
                 self.round_number =
