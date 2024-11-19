@@ -43,28 +43,7 @@ impl<D: ProtocolDriver> Bridge<D> {
             let driver = self.driver.as_mut().unwrap();
             let round_info = driver.round_info()?;
 
-            /*
-            let current_round: NonZeroU16 =
-                (round_info.round_number as u16).try_into().unwrap();
-
-            if message.round_number() != current_round {
-                panic!(
-                    "out of order message message_round = {}, current_round = {}",
-                    message.round_number(),
-                    current_round,
-                );
-            }
-            */
-
-            /*
-            println!(
-                "Message round: {}, session round: {} {} {}",
-                message.round_number(),
-                round_info.round_number,
-                round_info.is_echo,
-                round_info.can_finalize,
-            );
-            */
+            // println!("{:#?}", round_info);
 
             if !round_info.can_finalize {
                 driver.handle_incoming(message)?;
@@ -78,10 +57,12 @@ impl<D: ProtocolDriver> Bridge<D> {
 
                     let messages = driver.proceed()?;
 
+                    /*
                     println!(
                         "*** DISPATCH MESSAGES ({}) ***",
                         messages.len()
                     );
+                    */
 
                     self.dispatch_round_messages(messages).await?;
                 }

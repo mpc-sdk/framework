@@ -5,16 +5,19 @@ pub mod signers;
 
 mod error;
 
+#[cfg(any(feature = "frost-ed25519"))]
+pub mod frost;
+
 #[cfg(any(feature = "ecdsa", feature = "cggmp"))]
 pub mod recoverable_signature;
 
 #[cfg(feature = "cggmp")]
 pub mod meeting;
 
-#[cfg(feature = "cggmp")]
+#[cfg(any(feature = "cggmp", feature = "frost-ed25519"))]
 mod protocol;
 
-#[cfg(feature = "cggmp")]
+#[cfg(any(feature = "cggmp", feature = "frost-ed25519"))]
 pub use protocol::*;
 
 pub use error::Error;

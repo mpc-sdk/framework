@@ -1,7 +1,7 @@
-pub(crate) mod cggmp;
 pub(crate) mod meeting_point;
 pub(crate) mod peer_channel;
 pub(crate) mod session_broadcast;
+#[cfg(any(feature = "cggmp", feature = "frost-ed25519"))]
 pub(crate) mod session_handshake;
 pub(crate) mod session_timeout;
 pub(crate) mod socket_close;

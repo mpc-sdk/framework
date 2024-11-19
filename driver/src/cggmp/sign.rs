@@ -36,7 +36,7 @@ impl<P> SignatureDriver<P>
 where
     P: SchemeParams + 'static,
 {
-    /// Create a new CGGMP key generator.
+    /// Create a new CGGMP signature driver.
     pub fn new(
         transport: Transport,
         session: SessionState,
@@ -107,7 +107,7 @@ where
     }
 }
 
-/// CGGMP keygen driver.
+/// CGGMP signature driver.
 struct CggmpDriver<P>
 where
     P: SchemeParams + 'static,
@@ -131,7 +131,7 @@ impl<P> CggmpDriver<P>
 where
     P: SchemeParams + 'static,
 {
-    /// Create a key generator.
+    /// Create a driver.
     pub fn new(
         session_id: SessionId,
         signer: SigningKey,
@@ -173,7 +173,7 @@ where
     P: SchemeParams + 'static,
 {
     type Error = Error;
-    type Message = RoundMsg<MessageOut>;
+    type Message = RoundMsg<MessageOut, VerifyingKey>;
     type Output = RecoverableSignature;
 
     fn round_info(&self) -> Result<RoundInfo> {

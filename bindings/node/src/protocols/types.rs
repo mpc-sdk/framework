@@ -104,7 +104,7 @@ pub struct PartyOptions {
     pub verifiers: Vec<VerifyingKey>,
 }
 
-impl TryFrom<PartyOptions> for mpc_driver::PartyOptions {
+impl TryFrom<PartyOptions> for mpc_driver::cggmp::PartyOptions {
     type Error = mpc_driver::Error;
 
     fn try_from(value: PartyOptions) -> Result<Self, Self::Error> {

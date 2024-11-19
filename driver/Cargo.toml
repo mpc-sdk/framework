@@ -11,11 +11,11 @@ repository = "https://github.com/mpc-sdk/framework"
 cggmp = ["k256", "synedrion", "bip32"]
 ecdsa = ["k256/ecdsa"]
 eddsa = ["ed25519", "ed25519-dalek"]
+frost-ed25519 = ["eddsa", "dep:frost-ed25519"]
 schnorr = ["ed25519", "k256/schnorr"]
 signers = ["ecdsa", "eddsa", "schnorr"]
-protocols = ["cggmp"]
-full = ["cggmp", "ecdsa", "eddsa", "schnorr"]
-napi = ["napi-derive"]
+protocols = ["cggmp", "frost-ed25519"]
+full = ["protocols", "signers"]
 
 [dependencies]
 mpc-protocol = { version = "0.7", path = "../protocol" }
@@ -23,21 +23,20 @@ mpc-client = { version = "0.7", path = "../client" }
 thiserror = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-sha3 = "0.11.0-pre.4"
+sha3 = "0.10"
 tracing = "0.1"
 tokio = { version = "1", features = ["sync"] }
 async-trait = "0.1"
 futures = "0.3"
-# synedrion = {version = "0.1", git = "https://github.com/entropyxyz/synedrion" , rev = "6a38f1fb5dcc91a7e249be77e19c5c93e1945b29"}
-# synedrion = "0.2.0-pre.0"
-synedrion = { version = "0.2.0-pre.0", git = "https://github.com/tmpfs/synedrion", branch = "update-crypto-bigint", optional = true }
-k256 = { version = "0.14.0-pre.2", default-features = false, features = ["pem", "serde", "std"], optional = true }
+synedrion = { version = "0.2.0-pre.0", git = "https://github.com/entropyxyz/synedrion", rev = "b4ce49cb9376c913b7a81c0f899bd4837f3a1eb6", optional = true }
+# synedrion = { version = "0.2.0-pre.0", git = "https://github.com/tmpfs/synedrion", branch = "update-crypto-bigint", optional = true }
+k256 = { version = "0.13", default-features = false, features = ["pem", "serde", "std"], optional = true }
 # enable `std` feature for error conversion
-bip32 = { version = "0.6.0-pre.0", features = ["std"], optional = true }
+bip32 = { version = "0.5", features = ["std"], optional = true }
 rand = "0.8"
-ed25519 = { version = "2.3.0-pre.0", optional = true }
-ed25519-dalek = { version = "2.2.0-pre", features = ["rand_core"], optional = true, git = "https://github.com/dalek-cryptography/curve25519-dalek", branch = "rustcrypto-new-releases" }
-napi-derive = {version = "3.0.0-alpha.15", optional = true }
+ed25519 = { version = "2.2.3", optional = true }
+ed25519-dalek = { version = "2", features = ["rand_core", "serde"], optional = true }
+frost-ed25519 = { version = "2", optional = true }
 
 # WASM
 

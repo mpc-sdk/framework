@@ -53,7 +53,7 @@ pub async fn run_threshold_sign(
 
     for signature in signatures {
         let (sig, rec_id) = signature.try_into()?;
-        let vkey = key_shares[0].verifying_key();
+        let vkey = key_shares[0].verifying_key().unwrap();
 
         // Check that the signature can be verified
         vkey.verify_prehash(&prehashed_message, &sig).unwrap();

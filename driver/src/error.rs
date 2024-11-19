@@ -39,6 +39,11 @@ pub enum Error {
     #[error(transparent)]
     Cggmp(#[from] crate::cggmp::Error),
 
+    /// FROST driver errors.
+    #[cfg(feature = "frost-ed25519")]
+    #[error(transparent)]
+    Frost(#[from] crate::frost::Error),
+
     /// Client library errors.
     #[error(transparent)]
     Client(#[from] mpc_client::Error),

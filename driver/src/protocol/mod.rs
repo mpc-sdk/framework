@@ -32,6 +32,7 @@ pub use synedrion::{self, bip32, k256};
 
 /// Information about the current found which
 /// can be retrieved from a driver.
+#[derive(Debug)]
 pub struct RoundInfo {
     /// Whether the round is ready to be finalized.
     pub can_finalize: bool,
@@ -126,7 +127,6 @@ pub(crate) fn key_to_str(
     hex::encode(&key.to_encoded_point(true).as_bytes()[1..5])
 }
 
-#[cfg(feature = "cggmp")]
 pub(crate) fn public_key_to_str(public_key: &[u8]) -> String {
     hex::encode(&public_key[0..6])
 }

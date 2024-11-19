@@ -4,7 +4,10 @@ use mpc_driver::synedrion::{
     ecdsa::{SigningKey, VerifyingKey},
     SessionId,
 };
-use mpc_driver::{Participant, PartyOptions, SessionOptions};
+use mpc_driver::{
+    cggmp::{Participant, PartyOptions},
+    SessionOptions,
+};
 use mpc_protocol::{hex, PATTERN};
 use std::collections::BTreeSet;
 use wasm_bindgen::prelude::*;
@@ -69,8 +72,9 @@ impl CggmpProtocol {
             serde_wasm_bindgen::from_value(party)?;
         let signer: SigningKey =
             signer.as_slice().try_into().map_err(JsError::from)?;
-        let participant =
-            Participant::new(signer, party).map_err(JsError::from)?;
+        let verifier = signer.verifying_key().clone();
+        let participant = Participant::new(signer, verifier, party)
+            .map_err(JsError::from)?;
         let fut = async move {
             let key_share = mpc_driver::cggmp::keygen::<Params>(
                 options,
@@ -99,8 +103,9 @@ impl CggmpProtocol {
             serde_wasm_bindgen::from_value(party)?;
         let signer: SigningKey =
             signer.as_slice().try_into().map_err(JsError::from)?;
-        let participant =
-            Participant::new(signer, party).map_err(JsError::from)?;
+        let verifier = signer.verifying_key().clone();
+        let participant = Participant::new(signer, verifier, party)
+            .map_err(JsError::from)?;
 
         let mut selected_parties = BTreeSet::new();
         selected_parties
@@ -144,12 +149,13 @@ impl CggmpProtocol {
             serde_wasm_bindgen::from_value(party)?;
         let signer: SigningKey =
             signer.as_slice().try_into().map_err(JsError::from)?;
+        let verifier = signer.verifying_key().clone();
         let account_verifying_key: VerifyingKey =
             serde_wasm_bindgen::from_value(account_verifying_key)?;
         let key_share: Option<KeyShare> =
             serde_wasm_bindgen::from_value(key_share)?;
-        let participant =
-            Participant::new(signer, party).map_err(JsError::from)?;
+        let participant = Participant::new(signer, verifier, party)
+            .map_err(JsError::from)?;
 
         let fut = async move {
             let key_share = mpc_driver::cggmp::reshare(
