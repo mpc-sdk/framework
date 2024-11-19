@@ -6,6 +6,8 @@ We refer to single-party implementations as *signers* and multisig as *protocols
 
 The library includes bindings for Webassembly to be used in the browser and for Nodejs.
 
+The client implementation uses [web-sys][] for webassembly and [tokio-tungstenite][] for other platforms.
+
 ## Features
 
 ### Protocols
@@ -49,8 +51,6 @@ cargo install mpc-relay
 * [server][] Websocket server library
 * [client][] Websocket client library
 * [cli][] Command line interface for the server
-
-The client implementation uses [web-sys][] for webassembly and [tokio-tungstenite][] for other platforms.
 
 ## Development
 
