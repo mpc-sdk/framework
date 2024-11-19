@@ -37,7 +37,6 @@ pub type KeyShare = (KeyPackage, PublicKeyPackage);
 const ROUND_1: u8 = 1;
 const ROUND_2: u8 = 2;
 const ROUND_3: u8 = 3;
-const ROUND_4: u8 = 4;
 
 /// Run threshold DKG for the FROST protocol.
 pub async fn keygen(
@@ -155,14 +154,6 @@ pub async fn sign(
 
     let protocol_session_id = session.session_id;
 
-    /*
-    let mut identifiers: Vec<Identifier> =
-        Vec::with_capacity(min_signers.into());
-    for index in 1..=min_signers {
-        identifiers.push(index.try_into().map_err(Error::from)?);
-    }
-    */
-
     // Wait for message to be signed
     let driver = SignatureDriver::new(
         transport,
@@ -170,7 +161,6 @@ pub async fn sign(
         session_id,
         participant.signing_key().clone(),
         participant.party().verifiers().to_vec(),
-        participant.party().is_initiator(),
         identifiers,
         min_signers,
         key_share,

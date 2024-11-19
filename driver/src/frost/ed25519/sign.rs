@@ -19,13 +19,12 @@ use crate::{
     Bridge, Driver, ProtocolDriver, RoundInfo, RoundMsg,
 };
 
-use super::{KeyShare, ROUND_1, ROUND_2, ROUND_3, ROUND_4};
+use super::{KeyShare, ROUND_1, ROUND_2, ROUND_3};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum SignPackage {
     Round1(SigningCommitments),
-    Round2(Option<SigningPackage>),
-    Round3(SignatureShare),
+    Round2(SignatureShare),
 }
 
 /// FROST signing driver.
@@ -41,7 +40,6 @@ impl SignatureDriver {
         session_id: SessionId,
         signer: SigningKey,
         verifiers: Vec<VerifyingKey>,
-        is_initiator: bool,
         identifiers: Vec<Identifier>,
         min_signers: u16,
         key_share: KeyShare,
@@ -60,7 +58,6 @@ impl SignatureDriver {
             party_number,
             signer,
             verifiers,
-            is_initiator,
             identifiers,
             min_signers,
             key_share,
@@ -110,7 +107,6 @@ struct FrostDriver {
     party_number: NonZeroU16,
     signer: SigningKey,
     verifiers: Vec<VerifyingKey>,
-    is_initiator: bool,
     identifiers: Vec<Identifier>,
     id: Identifier,
     min_signers: u16,
@@ -119,8 +115,6 @@ struct FrostDriver {
     message: Vec<u8>,
     nonces: Option<SigningNonces>,
     commitments: BTreeMap<Identifier, SigningCommitments>,
-    aggregator_signing_package: Option<SigningPackage>,
-    aggregator_signing_package_ack: u16,
     signing_package: Option<SigningPackage>,
     signature_shares: BTreeMap<Identifier, SignatureShare>,
 }
@@ -132,7 +126,6 @@ impl FrostDriver {
         party_number: NonZeroU16,
         signer: SigningKey,
         verifiers: Vec<VerifyingKey>,
-        is_initiator: bool,
         identifiers: Vec<Identifier>,
         min_signers: u16,
         key_share: KeyShare,
@@ -149,7 +142,6 @@ impl FrostDriver {
             party_number,
             signer,
             verifiers,
-            is_initiator,
             identifiers,
             id,
             min_signers,
@@ -158,8 +150,6 @@ impl FrostDriver {
             message,
             nonces: None,
             commitments: BTreeMap::new(),
-            aggregator_signing_package: None,
-            aggregator_signing_package_ack: 0,
             signing_package: None,
             signature_shares: BTreeMap::new(),
         })
@@ -178,8 +168,8 @@ impl ProtocolDriver for FrostDriver {
             ROUND_2 => {
                 self.commitments.len() == self.min_signers as usize
             }
-            ROUND_3 => self.signing_package.is_some(),
-            ROUND_4 => {
+            // ROUND_3 => self.signing_package.is_some(),
+            ROUND_3 => {
                 self.signature_shares.len()
                     == self.min_signers as usize
             }
@@ -238,21 +228,21 @@ impl ProtocolDriver for FrostDriver {
                 let mut messages =
                     Vec::with_capacity(self.identifiers.len() - 1);
 
-                // Initiator is the aggregator/coordinator, creates
-                // the signing package and sends it to the other
-                // participants.
-                //
-                // Other participants send None to drive
-                // the protocol forward.
-                let signing_package = if self.is_initiator {
-                    let signing_package = SigningPackage::new(
-                        self.commitments.clone(),
-                        &self.message,
-                    );
-                    Some(signing_package)
-                } else {
-                    None
-                };
+                let nonces = self
+                    .nonces
+                    .take()
+                    .ok_or(Error::Round3TooEarly)?;
+
+                let signing_package = SigningPackage::new(
+                    self.commitments.clone(),
+                    &self.message,
+                );
+
+                let signature_share = round2::sign(
+                    &signing_package,
+                    &nonces,
+                    &self.key_share.0,
+                )?;
 
                 for (index, id) in self.identifiers.iter().enumerate()
                 {
@@ -270,61 +260,6 @@ impl ProtocolDriver for FrostDriver {
                         sender: self.signer.verifying_key().clone(),
                         receiver,
                         body: SignPackage::Round2(
-                            signing_package.clone(),
-                        ),
-                    };
-
-                    messages.push(message);
-                }
-
-                if self.is_initiator {
-                    // Store the signing package in a temporary field
-                    // which will be assigned to signing_package once
-                    // we receive messages from all other participants
-                    self.aggregator_signing_package = signing_package;
-                }
-
-                self.round_number =
-                    self.round_number.checked_add(1).unwrap();
-
-                Ok(messages)
-            }
-            ROUND_3 => {
-                let nonces = self
-                    .nonces
-                    .take()
-                    .ok_or(Error::Round3TooEarly)?;
-
-                let signing_package = self
-                    .signing_package
-                    .as_ref()
-                    .ok_or(Error::Round3TooEarly)?;
-
-                let signature_share = round2::sign(
-                    signing_package,
-                    &nonces,
-                    &self.key_share.0,
-                )?;
-
-                let mut messages =
-                    Vec::with_capacity(self.identifiers.len() - 1);
-
-                for (index, id) in self.identifiers.iter().enumerate()
-                {
-                    if id == &self.id {
-                        continue;
-                    }
-
-                    let receiver =
-                        NonZeroU16::new((index + 1) as u16).unwrap();
-                    let message = RoundMsg {
-                        round: NonZeroU16::new(
-                            self.round_number.into(),
-                        )
-                        .unwrap(),
-                        sender: self.signer.verifying_key().clone(),
-                        receiver,
-                        body: SignPackage::Round3(
                             signature_share.clone(),
                         ),
                     };
@@ -332,6 +267,7 @@ impl ProtocolDriver for FrostDriver {
                     messages.push(message);
                 }
 
+                self.signing_package = Some(signing_package);
                 self.signature_shares
                     .insert(self.id.clone(), signature_share);
 
@@ -373,42 +309,7 @@ impl ProtocolDriver for FrostDriver {
                 _ => Err(Error::RoundPayload(round_number)),
             },
             ROUND_2 => match message.body {
-                SignPackage::Round2(signing_package) => {
-                    let party_index = self
-                        .verifiers
-                        .iter()
-                        .position(|v| v == &message.sender)
-                        .ok_or(Error::SenderVerifier)?;
-                    if let Some(_) = self.identifiers.get(party_index)
-                    {
-                        // Signing package sent by the aggregator
-                        // to other participants
-                        if signing_package.is_some() {
-                            self.signing_package = signing_package;
-                        // Empty signing package sent by other
-                        // participants to drive the protocol forward
-                        } else {
-                            self.aggregator_signing_package_ack += 1;
-                            if self.aggregator_signing_package_ack
-                                == self.min_signers - 1
-                            {
-                                self.signing_package = self
-                                    .aggregator_signing_package
-                                    .take();
-                            }
-                        }
-                        Ok(())
-                    } else {
-                        Err(Error::SenderIdentifier(
-                            round_number,
-                            party_index,
-                        ))
-                    }
-                }
-                _ => Err(Error::RoundPayload(round_number)),
-            },
-            ROUND_3 => match message.body {
-                SignPackage::Round3(signature_share) => {
+                SignPackage::Round2(signature_share) => {
                     let party_index = self
                         .verifiers
                         .iter()
@@ -434,7 +335,7 @@ impl ProtocolDriver for FrostDriver {
     }
 
     fn try_finalize_round(&mut self) -> Result<Option<Self::Output>> {
-        if self.round_number == ROUND_4
+        if self.round_number == ROUND_3
             && self.signature_shares.len()
                 == self.min_signers as usize
         {
