@@ -103,7 +103,9 @@ impl From<SignatureDriver> for Transport {
 
 /// FROST signature driver.
 struct FrostDriver {
+    #[allow(dead_code)]
     session_id: SessionId,
+    #[allow(dead_code)]
     party_number: NonZeroU16,
     signer: SigningKey,
     verifiers: Vec<VerifyingKey>,

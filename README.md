@@ -57,6 +57,7 @@ cargo install mpc-relay
 You will need the [rust][] toolchain and a few other tools:
 
 ```
+cargo install cargo-hack
 cargo install cargo-make
 cargo install cargo-nextest
 cargo install wasm-pack

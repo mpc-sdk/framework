@@ -3,6 +3,7 @@ extend= [
 ]
 [config]
 default_to_workspace = false
+skip_core_tasks = true
 
 [env]
 RUST_BACKTRACE = 0
@@ -25,10 +26,14 @@ command = "cargo"
 args = ["nextest", "run", "--all", "--lib"]
 
 [tasks.integration]
-script = '''
-cd integration_tests
-cargo nextest run --all-features
-'''
+command = "cargo"
+args = [
+  "nextest",
+  "run",
+  "-p",
+  "polysig-integration-tests",
+  "--all-features",
+]
 
 [tasks.test]
 dependencies = ["unit", "integration"]
