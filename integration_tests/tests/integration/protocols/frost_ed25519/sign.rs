@@ -83,6 +83,13 @@ pub async fn run_dkg_sign_2_3(
     run_dkg_sign(2, 3, server, server_public_key, &[0, 2]).await
 }
 
+pub async fn run_dkg_sign_3_5(
+    server: &str,
+    server_public_key: Vec<u8>,
+) -> Result<()> {
+    run_dkg_sign(3, 5, server, server_public_key, &[0, 1, 4]).await
+}
+
 async fn run_dkg_sign(
     t: u16,
     n: u16,
@@ -92,6 +99,8 @@ async fn run_dkg_sign(
 ) -> Result<()> {
     let (server, key_shares, signers) =
         run_keygen(t, n, server, server_public_key).await?;
+
+    // println!("dkg completed {}", key_shares.len());
 
     let selected = SelectedSigners::new(
         t,
@@ -136,18 +145,15 @@ async fn check_sign(
 
     let sign_session_id = SessionId::new_v4();
 
-    let session_options = vec![
-        SessionOptions {
-            keypair: selected.keypairs.first().unwrap().clone(),
+    let session_options = selected
+        .keypairs
+        .iter()
+        .map(|keypair| SessionOptions {
+            keypair: keypair.clone(),
             parameters: params.clone(),
             server: server.clone(),
-        },
-        SessionOptions {
-            keypair: selected.keypairs.last().unwrap().clone(),
-            parameters: params.clone(),
-            server: server.clone(),
-        },
-    ];
+        })
+        .collect::<Vec<_>>();
 
     let mut tasks = Vec::new();
     for (index, ((opts, key_share), (signer, verifiers))) in
