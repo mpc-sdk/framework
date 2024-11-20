@@ -1,6 +1,7 @@
 use anyhow::Result;
+use mpc_client::cggmp::{keygen, reshare, sign};
 use mpc_driver::{
-    cggmp::{keygen, reshare, sign, Participant, PartyOptions},
+    cggmp::{Participant, PartyOptions},
     k256::ecdsa::{
         self, signature::hazmat::PrehashVerifier, SigningKey,
         VerifyingKey,

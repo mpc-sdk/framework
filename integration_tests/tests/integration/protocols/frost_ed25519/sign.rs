@@ -1,12 +1,13 @@
 use super::dkg::run_keygen;
 use super::make_signing_message;
 use anyhow::Result;
+use mpc_client::frost::ed25519::sign;
 use mpc_driver::{
     frost::ed25519::{
         ed25519_dalek::{SigningKey, VerifyingKey},
-        sign, KeyShare, Participant, PartyOptions,
+        KeyShare, Participant, PartyOptions,
     },
-    frost::frost_ed25519::{keys, Identifier},
+    frost_ed25519::{keys, Identifier},
     ServerOptions, SessionOptions,
 };
 use mpc_protocol::{generate_keypair, Keypair, Parameters};

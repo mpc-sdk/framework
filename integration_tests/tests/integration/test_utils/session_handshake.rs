@@ -1,9 +1,9 @@
 use anyhow::Result;
 use futures::StreamExt;
 
-use mpc_client::{NetworkTransport, Transport};
-use mpc_driver::{
-    SessionEventHandler, SessionInitiator, SessionParticipant,
+use mpc_client::{
+    NetworkTransport, SessionEventHandler, SessionInitiator,
+    SessionParticipant, Transport,
 };
 use mpc_protocol::SessionState;
 

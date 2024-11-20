@@ -1,12 +1,13 @@
 use crate::test_utils::new_client;
 use anyhow::Result;
 use futures::{Stream, StreamExt};
-use mpc_client::{NetworkTransport, Transport};
+use mpc_client::{
+    Driver, NetworkTransport, SessionEventHandler, SessionHandler,
+    SessionInitiator, SessionParticipant, Transport,
+};
 use mpc_driver::{
     k256::ecdsa::{SigningKey, VerifyingKey},
     synedrion::PrehashedMessage,
-    Driver, SessionEventHandler, SessionHandler, SessionInitiator,
-    SessionParticipant,
 };
 use mpc_protocol::{Event, Keypair, SessionState};
 use rand::rngs::OsRng;
