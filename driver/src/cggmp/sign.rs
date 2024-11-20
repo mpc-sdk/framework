@@ -1,7 +1,4 @@
 //! Signature generation for CGGMP.
-use async_trait::async_trait;
-use mpc_client::{NetworkTransport, Transport};
-use mpc_protocol::{hex, Event, SessionState};
 use rand::rngs::OsRng;
 use std::collections::BTreeSet;
 
@@ -18,97 +15,14 @@ use synedrion::{
 };
 
 use crate::{
-    key_to_str, recoverable_signature::RecoverableSignature, Bridge,
-    Driver, ProtocolDriver, RoundInfo, RoundMsg,
+    recoverable_signature::RecoverableSignature, ProtocolDriver,
+    RoundInfo, RoundMsg,
 };
 
 use super::MessageOut;
 
-/// CGGMP signing driver.
-pub struct SignatureDriver<P>
-where
-    P: SchemeParams + 'static,
-{
-    bridge: Bridge<CggmpDriver<P>>,
-}
-
-impl<P> SignatureDriver<P>
-where
-    P: SchemeParams + 'static,
-{
-    /// Create a new CGGMP signature driver.
-    pub fn new(
-        transport: Transport,
-        session: SessionState,
-        session_id: SessionId,
-        signer: SigningKey,
-        verifiers: Vec<VerifyingKey>,
-        key_share: &KeyShare<P, VerifyingKey>,
-        aux_info: &AuxInfo<P, VerifyingKey>,
-        prehashed_message: &PrehashedMessage,
-    ) -> Result<Self> {
-        let party_number = session
-            .party_number(transport.public_key())
-            .ok_or_else(|| {
-                Error::NotSessionParticipant(hex::encode(
-                    transport.public_key(),
-                ))
-            })?;
-
-        let driver = CggmpDriver::new(
-            session_id,
-            signer,
-            verifiers,
-            key_share,
-            aux_info,
-            prehashed_message,
-        )?;
-
-        let bridge = Bridge {
-            transport,
-            driver: Some(driver),
-            session,
-            party_number,
-        };
-        Ok(Self { bridge })
-    }
-}
-
-#[async_trait]
-impl<P> Driver for SignatureDriver<P>
-where
-    P: SchemeParams + 'static,
-{
-    type Error = Error;
-    type Output = RecoverableSignature;
-
-    async fn handle_event(
-        &mut self,
-        event: Event,
-    ) -> Result<Option<Self::Output>> {
-        self.bridge.handle_event(event).await
-    }
-
-    async fn execute(&mut self) -> Result<()> {
-        self.bridge.execute().await
-    }
-
-    fn into_transport(self) -> Transport {
-        self.bridge.transport
-    }
-}
-
-impl<P> From<SignatureDriver<P>> for Transport
-where
-    P: SchemeParams + 'static,
-{
-    fn from(value: SignatureDriver<P>) -> Self {
-        value.bridge.transport
-    }
-}
-
 /// CGGMP signature driver.
-struct CggmpDriver<P>
+pub struct SignatureDriver<P>
 where
     P: SchemeParams + 'static,
 {
@@ -127,7 +41,7 @@ where
     verifiers: Vec<VerifyingKey>,
 }
 
-impl<P> CggmpDriver<P>
+impl<P> SignatureDriver<P>
 where
     P: SchemeParams + 'static,
 {
@@ -168,7 +82,7 @@ where
     }
 }
 
-impl<P> ProtocolDriver for CggmpDriver<P>
+impl<P> ProtocolDriver for SignatureDriver<P>
 where
     P: SchemeParams + 'static,
 {
@@ -206,9 +120,6 @@ where
     fn try_finalize_round(&mut self) -> Result<Option<Self::Output>> {
         let session = self.session.take().unwrap();
         let accum = self.accum.take().unwrap();
-
-        let key_str = key_to_str(&session.verifier());
-        println!("{key_str}: finalizing the round");
 
         match session.finalize_round(&mut OsRng, accum).unwrap() {
             FinalizeOutcome::Success(result) => {

@@ -1,7 +1,4 @@
 //! Aux info generation for CGGMP.
-use async_trait::async_trait;
-use mpc_client::{NetworkTransport, Transport};
-use mpc_protocol::{hex, Event, SessionState};
 use rand::rngs::OsRng;
 use std::collections::BTreeSet;
 
@@ -16,87 +13,12 @@ use synedrion::{
     AuxGenResult, AuxInfo, SchemeParams, SessionId,
 };
 
-use crate::{
-    key_to_str, Bridge, Driver, ProtocolDriver, RoundInfo, RoundMsg,
-};
+use crate::{ProtocolDriver, RoundInfo, RoundMsg};
 
 use super::MessageOut;
 
-/// CGGMP aux info driver.
+/// CGGMP auxgen driver.
 pub struct AuxGenDriver<P>
-where
-    P: SchemeParams + 'static,
-{
-    bridge: Bridge<CggmpDriver<P>>,
-}
-
-impl<P> AuxGenDriver<P>
-where
-    P: SchemeParams + 'static,
-{
-    /// Create a new CGGMP key generator.
-    pub fn new(
-        transport: Transport,
-        session: SessionState,
-        session_id: SessionId,
-        signer: SigningKey,
-        verifiers: Vec<VerifyingKey>,
-    ) -> Result<Self> {
-        let party_number = session
-            .party_number(transport.public_key())
-            .ok_or_else(|| {
-                Error::NotSessionParticipant(hex::encode(
-                    transport.public_key(),
-                ))
-            })?;
-
-        let driver = CggmpDriver::new(session_id, signer, verifiers)?;
-
-        let bridge = Bridge {
-            transport,
-            driver: Some(driver),
-            session,
-            party_number,
-        };
-        Ok(Self { bridge })
-    }
-}
-
-#[async_trait]
-impl<P> Driver for AuxGenDriver<P>
-where
-    P: SchemeParams + 'static,
-{
-    type Error = Error;
-    type Output = AuxInfo<P, VerifyingKey>;
-
-    async fn handle_event(
-        &mut self,
-        event: Event,
-    ) -> Result<Option<Self::Output>> {
-        self.bridge.handle_event(event).await
-    }
-
-    async fn execute(&mut self) -> Result<()> {
-        self.bridge.execute().await
-    }
-
-    fn into_transport(self) -> Transport {
-        self.bridge.transport
-    }
-}
-
-impl<P> From<AuxGenDriver<P>> for Transport
-where
-    P: SchemeParams + 'static,
-{
-    fn from(value: AuxGenDriver<P>) -> Self {
-        value.bridge.transport
-    }
-}
-
-/// CGGMP keygen driver.
-struct CggmpDriver<P>
 where
     P: SchemeParams + 'static,
 {
@@ -115,11 +37,11 @@ where
     verifiers: Vec<VerifyingKey>,
 }
 
-impl<P> CggmpDriver<P>
+impl<P> AuxGenDriver<P>
 where
     P: SchemeParams + 'static,
 {
-    /// Create an aux generator.
+    /// Create an auxgen driver.
     pub fn new(
         session_id: SessionId,
         signer: SigningKey,
@@ -150,7 +72,7 @@ where
     }
 }
 
-impl<P> ProtocolDriver for CggmpDriver<P>
+impl<P> ProtocolDriver for AuxGenDriver<P>
 where
     P: SchemeParams + 'static,
 {
@@ -188,12 +110,6 @@ where
     fn try_finalize_round(&mut self) -> Result<Option<Self::Output>> {
         let session = self.session.take().unwrap();
         let accum = self.accum.take().unwrap();
-
-        let key_str = key_to_str(&session.verifier());
-        println!(
-            "{key_str}: finalizing the round {}",
-            session.current_round().0
-        );
 
         match session.finalize_round(&mut OsRng, accum).unwrap() {
             FinalizeOutcome::Success(result) => Ok(Some(result)),

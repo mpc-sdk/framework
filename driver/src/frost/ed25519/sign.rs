@@ -1,13 +1,10 @@
 //! Signature generation for FROST.
-use async_trait::async_trait;
 use frost_ed25519::{
     aggregate,
     round1::{self, SigningCommitments, SigningNonces},
     round2::{self, SignatureShare},
     Identifier, Signature, SigningPackage,
 };
-use mpc_client::{NetworkTransport, Transport};
-use mpc_protocol::{hex, Event, SessionState};
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -15,7 +12,7 @@ use std::num::NonZeroU16;
 
 use crate::{
     frost::{Error, Result},
-    Bridge, Driver, ProtocolDriver, RoundInfo, RoundMsg,
+    ProtocolDriver, RoundInfo, RoundMsg,
 };
 
 use super::{KeyShare, ROUND_1, ROUND_2, ROUND_3};
@@ -26,76 +23,8 @@ pub enum SignPackage {
     Round2(SignatureShare),
 }
 
-/// FROST signing driver.
-pub struct SignatureDriver {
-    bridge: Bridge<FrostDriver>,
-}
-
-impl SignatureDriver {
-    /// Create a new FROST signature driver.
-    pub fn new(
-        transport: Transport,
-        session: SessionState,
-        identifiers: Vec<Identifier>,
-        min_signers: u16,
-        key_share: KeyShare,
-        message: Vec<u8>,
-    ) -> Result<Self> {
-        let party_number = session
-            .party_number(transport.public_key())
-            .ok_or_else(|| {
-                Error::NotSessionParticipant(hex::encode(
-                    transport.public_key(),
-                ))
-            })?;
-
-        let driver = FrostDriver::new(
-            party_number,
-            identifiers,
-            min_signers,
-            key_share,
-            message,
-        )?;
-
-        let bridge = Bridge {
-            transport,
-            driver: Some(driver),
-            session,
-            party_number,
-        };
-        Ok(Self { bridge })
-    }
-}
-
-#[async_trait]
-impl Driver for SignatureDriver {
-    type Error = Error;
-    type Output = Signature;
-
-    async fn handle_event(
-        &mut self,
-        event: Event,
-    ) -> Result<Option<Self::Output>> {
-        self.bridge.handle_event(event).await
-    }
-
-    async fn execute(&mut self) -> Result<()> {
-        self.bridge.execute().await
-    }
-
-    fn into_transport(self) -> Transport {
-        self.bridge.transport
-    }
-}
-
-impl From<SignatureDriver> for Transport {
-    fn from(value: SignatureDriver) -> Self {
-        value.bridge.transport
-    }
-}
-
 /// FROST signature driver.
-struct FrostDriver {
+pub struct SignatureDriver {
     #[allow(dead_code)]
     party_number: NonZeroU16,
     identifiers: Vec<Identifier>,
@@ -110,7 +39,7 @@ struct FrostDriver {
     signature_shares: BTreeMap<Identifier, SignatureShare>,
 }
 
-impl FrostDriver {
+impl SignatureDriver {
     /// Create a driver.
     pub fn new(
         party_number: NonZeroU16,
@@ -141,7 +70,7 @@ impl FrostDriver {
     }
 }
 
-impl ProtocolDriver for FrostDriver {
+impl ProtocolDriver for SignatureDriver {
     type Error = Error;
     type Message = RoundMsg<SignPackage, Identifier>;
     type Output = Signature;

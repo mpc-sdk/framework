@@ -1,32 +1,19 @@
 //! Internal shared types for MPC protocols.
 
-use crate::Result;
-use async_trait::async_trait;
-use mpc_client::{Client, ClientOptions, EventLoop, Transport};
-use mpc_protocol::{hex, Event};
-
-mod bridge;
 mod round;
-mod session;
 mod types;
 
-pub(crate) use round::{Round, RoundMsg};
-pub use session::{
-    wait_for_session, SessionEventHandler, SessionHandler,
-    SessionInitiator, SessionParticipant,
-};
+pub use round::{Round, RoundMsg};
 pub use types::{
     MeetingOptions, Participant, PartyOptions, ServerOptions,
     SessionOptions,
 };
 
-pub(crate) use bridge::Bridge;
-pub use bridge::{
-    wait_for_close, wait_for_driver, wait_for_session_finish,
-};
-
 #[cfg(feature = "cggmp")]
 pub use synedrion::{self, bip32, k256};
+
+#[cfg(feature = "frost-ed25519")]
+pub use frost_ed25519;
 
 /// Information about the current found which
 /// can be retrieved from a driver.
@@ -40,41 +27,16 @@ pub struct RoundInfo {
     pub round_number: u8,
 }
 
-/// Drives a protocol to completion bridging between
-/// the network transport and local computation.
-#[async_trait]
-pub trait Driver {
-    /// Error type.
-    type Error: std::fmt::Debug
-        + From<mpc_client::Error>
-        + From<mpc_protocol::Error>;
-
-    /// Output yielded when the driver completes.
-    type Output;
-
-    /// Handle an incoming event.
-    async fn handle_event(
-        &mut self,
-        event: Event,
-    ) -> std::result::Result<Option<Self::Output>, Self::Error>;
-
-    /// Start running the protocol.
-    async fn execute(
-        &mut self,
-    ) -> std::result::Result<(), Self::Error>;
-
-    /// Consume this driver into the underlying transport.
-    fn into_transport(self) -> Transport;
-}
-
 /// Trait for implementations that drive
 /// protocol to completion.
-pub(crate) trait ProtocolDriver {
+pub trait ProtocolDriver {
     /// Error type for results.
-    type Error: std::fmt::Debug
-        + From<mpc_client::Error>
+    type Error: std::error::Error
+        + std::fmt::Debug
+        + Send
+        + Sync
         + From<mpc_protocol::Error>
-        + From<Box<crate::Error>>;
+        + 'static;
 
     /// Outgoing message type.
     type Message: std::fmt::Debug + round::Round;
@@ -105,29 +67,4 @@ pub(crate) trait ProtocolDriver {
     fn try_finalize_round(
         &mut self,
     ) -> std::result::Result<Option<Self::Output>, Self::Error>;
-}
-
-/// Create a new client using the provided session options.
-pub(crate) async fn new_client(
-    options: SessionOptions,
-) -> Result<(Client, EventLoop)> {
-    let server_url = options.server.server_url;
-    let options = ClientOptions {
-        keypair: options.keypair,
-        server_public_key: options.server.server_public_key,
-        pattern: options.server.pattern,
-    };
-    let url = options.url(&server_url);
-    Ok(Client::new(&url, options).await?)
-}
-
-#[cfg(feature = "cggmp")]
-pub(crate) fn key_to_str(
-    key: &crate::k256::ecdsa::VerifyingKey,
-) -> String {
-    hex::encode(&key.to_encoded_point(true).as_bytes()[1..5])
-}
-
-pub(crate) fn public_key_to_str(public_key: &[u8]) -> String {
-    hex::encode(&public_key[0..6])
 }

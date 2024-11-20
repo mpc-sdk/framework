@@ -12,10 +12,14 @@
 mod client;
 mod error;
 mod event_loop;
+mod meeting;
+mod protocols;
 mod transport;
 
 pub(crate) use client::{client_impl, client_transport_impl};
 pub use event_loop::EventStream;
+pub use meeting::*;
+pub use protocols::*;
 pub use transport::{NetworkTransport, Transport};
 
 #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]

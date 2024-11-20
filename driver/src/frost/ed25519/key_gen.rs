@@ -1,96 +1,24 @@
 //! Key generation for FROST Ed25519.
-use async_trait::async_trait;
-use frost_ed25519::{
-    keys::{dkg, KeyPackage, PublicKeyPackage},
-    Identifier,
-};
-use mpc_client::{NetworkTransport, Transport};
-use mpc_protocol::{hex, Event, SessionState};
+use frost_ed25519::{keys::dkg, Identifier};
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, num::NonZeroU16};
 
 use crate::{
     frost::{Error, Result},
-    Bridge, Driver, ProtocolDriver, RoundInfo, RoundMsg,
+    ProtocolDriver, RoundInfo, RoundMsg,
 };
 
 use super::{KeyShare, ROUND_1, ROUND_2, ROUND_3};
 
 #[derive(Debug, Serialize, Deserialize)]
-enum DkgPackage {
+pub enum DkgPackage {
     Round1(dkg::round1::Package),
     Round2(dkg::round2::Package),
 }
 
-/// FROST Ed25519 key generation driver.
-pub struct KeyGenDriver {
-    bridge: Bridge<FrostDriver>,
-}
-
-impl KeyGenDriver {
-    /// Create a new FROST key generator.
-    pub fn new(
-        transport: Transport,
-        session: SessionState,
-        max_signers: u16,
-        min_signers: u16,
-        identifiers: Vec<Identifier>,
-    ) -> Result<Self> {
-        let party_number = session
-            .party_number(transport.public_key())
-            .ok_or_else(|| {
-                Error::NotSessionParticipant(hex::encode(
-                    transport.public_key(),
-                ))
-            })?;
-
-        let driver = FrostDriver::new(
-            party_number,
-            max_signers,
-            min_signers,
-            identifiers,
-        )?;
-
-        let bridge = Bridge {
-            transport,
-            driver: Some(driver),
-            session,
-            party_number,
-        };
-        Ok(Self { bridge })
-    }
-}
-
-#[async_trait]
-impl Driver for KeyGenDriver {
-    type Error = Error;
-    type Output = KeyShare;
-
-    async fn handle_event(
-        &mut self,
-        event: Event,
-    ) -> Result<Option<Self::Output>> {
-        self.bridge.handle_event(event).await
-    }
-
-    async fn execute(&mut self) -> Result<()> {
-        self.bridge.execute().await
-    }
-
-    fn into_transport(self) -> Transport {
-        self.bridge.transport
-    }
-}
-
-impl From<KeyGenDriver> for Transport {
-    fn from(value: KeyGenDriver) -> Self {
-        value.bridge.transport
-    }
-}
-
 /// FROST keygen driver.
-struct FrostDriver {
+pub struct KeyGenDriver {
     #[allow(dead_code)]
     party_number: NonZeroU16,
     max_signers: u16,
@@ -107,7 +35,7 @@ struct FrostDriver {
         BTreeMap<Identifier, dkg::round2::Package>,
 }
 
-impl FrostDriver {
+impl KeyGenDriver {
     /// Create a key generator.
     pub fn new(
         party_number: NonZeroU16,
@@ -138,10 +66,10 @@ impl FrostDriver {
     }
 }
 
-impl ProtocolDriver for FrostDriver {
+impl ProtocolDriver for KeyGenDriver {
     type Error = Error;
     type Message = RoundMsg<DkgPackage, Identifier>;
-    type Output = (KeyPackage, PublicKeyPackage);
+    type Output = KeyShare;
 
     fn round_info(&self) -> Result<RoundInfo> {
         let needs = self.identifiers.len() - 1;

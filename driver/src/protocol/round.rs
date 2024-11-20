@@ -2,9 +2,7 @@ use mpc_protocol::{PartyNumber, RoundNumber};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 /// Trait for round messages.
-pub(crate) trait Round:
-    Serialize + DeserializeOwned + Send + Sync
-{
+pub trait Round: Serialize + DeserializeOwned + Send + Sync {
     /// Round number.
     #[allow(dead_code)]
     fn round_number(&self) -> RoundNumber;
@@ -13,13 +11,12 @@ pub(crate) trait Round:
     fn receiver(&self) -> &PartyNumber;
 }
 
-/// Wrapper for a round `Msg` that includes the round
-/// number.
+/// Round message with additional meta data.
 ///
 /// Used to ensure round messages are grouped together and
 /// out of order messages can thus be handled correctly.
 #[derive(Debug, Serialize, Deserialize)]
-pub(crate) struct RoundMsg<O, V>
+pub struct RoundMsg<O, V>
 where
     O: Send + Sync,
 {

@@ -12,15 +12,6 @@ pub enum Error {
     #[error("session identifier required")]
     SessionIdRequired,
 
-    /// Error generated when meeting identifiers are not unique.
-    #[error("meeting identifiers must be unique")]
-    MeetingIdentifiersNotUnique,
-
-    /// Error generated when the meeting initiator does not exist
-    /// in the list of meeting point identifiers.
-    #[error("meeting initiator must exist in list of identifiers")]
-    MeetingInitiatorNotExist,
-
     /// Signing key does not exist in list of verifying keys.
     #[error("signer is not a verifying party")]
     NotVerifyingParty,
@@ -43,10 +34,6 @@ pub enum Error {
     #[cfg(feature = "frost-ed25519")]
     #[error(transparent)]
     Frost(#[from] crate::frost::Error),
-
-    /// Client library errors.
-    #[error(transparent)]
-    Client(#[from] mpc_client::Error),
 
     /// Protocol library errors.
     #[error(transparent)]

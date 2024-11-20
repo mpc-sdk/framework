@@ -1,12 +1,15 @@
 use std::num::NonZeroU16;
 
+use crate::{
+    protocols::Driver, EventStream, NetworkTransport, Result,
+    Transport,
+};
 use futures::StreamExt;
-use mpc_client::{EventStream, NetworkTransport, Transport};
 use mpc_protocol::{Event, SessionId, SessionState};
 
-use crate::{
-    public_key_to_str, Driver, Error, ProtocolDriver, Round,
-};
+use mpc_driver::{Error, ProtocolDriver, Round};
+
+use super::public_key_to_str;
 
 /// Connects a network transport with a protocol driver.
 pub(crate) struct Bridge<D: ProtocolDriver> {
@@ -21,7 +24,7 @@ impl<D: ProtocolDriver> Bridge<D> {
     pub async fn handle_event(
         &mut self,
         event: Event,
-    ) -> Result<Option<D::Output>, D::Error> {
+    ) -> Result<Option<D::Output>> {
         if let Event::JsonMessage {
             message,
             session_id,
@@ -30,32 +33,34 @@ impl<D: ProtocolDriver> Bridge<D> {
         {
             if let Some(session_id) = &session_id {
                 if session_id != &self.session.session_id {
-                    return Err(
-                        Box::new(Error::SessionIdMismatch).into()
-                    );
+                    return Err(Error::SessionIdMismatch.into());
                 }
             } else {
-                return Err(Box::new(Error::SessionIdRequired).into());
+                return Err(Error::SessionIdRequired.into());
             }
 
             let message: D::Message = message.deserialize()?;
 
             let driver = self.driver.as_mut().unwrap();
-            let round_info = driver.round_info()?;
+            let round_info =
+                driver.round_info().map_err(Box::from)?;
 
             // println!("{:#?}", round_info);
 
             if !round_info.can_finalize {
-                driver.handle_incoming(message)?;
-                let round_info = driver.round_info()?;
+                driver.handle_incoming(message).map_err(Box::from)?;
+                let round_info =
+                    driver.round_info().map_err(Box::from)?;
                 if round_info.can_finalize {
-                    if let Some(result) =
-                        driver.try_finalize_round()?
+                    if let Some(result) = driver
+                        .try_finalize_round()
+                        .map_err(Box::from)?
                     {
                         return Ok(Some(result));
                     }
 
-                    let messages = driver.proceed()?;
+                    let messages =
+                        driver.proceed().map_err(Box::from)?;
 
                     /*
                     println!(
@@ -73,9 +78,9 @@ impl<D: ProtocolDriver> Bridge<D> {
     }
 
     /// Start running the protocol.
-    pub async fn execute(&mut self) -> Result<(), D::Error> {
+    pub async fn execute(&mut self) -> Result<()> {
         let driver = self.driver.as_mut().unwrap();
-        let messages = driver.proceed()?;
+        let messages = driver.proceed().map_err(Box::from)?;
         self.dispatch_round_messages(messages).await?;
         Ok(())
     }
@@ -84,7 +89,7 @@ impl<D: ProtocolDriver> Bridge<D> {
     async fn dispatch_round_messages(
         &mut self,
         messages: Vec<D::Message>,
-    ) -> Result<(), D::Error> {
+    ) -> Result<()> {
         for message in messages {
             let party_number = message.receiver();
 
@@ -115,7 +120,7 @@ impl<D: ProtocolDriver> Bridge<D> {
 pub async fn wait_for_driver<D>(
     stream: &mut EventStream,
     mut driver: D,
-) -> Result<(Transport, D::Output), D::Error>
+) -> Result<(Transport, D::Output)>
 where
     D: Driver + Into<Transport>,
 {

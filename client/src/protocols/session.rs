@@ -1,4 +1,4 @@
-use crate::Result;
+use crate::{EventStream, NetworkTransport, Result, Transport};
 use async_trait::async_trait;
 use futures::StreamExt;
 use mpc_protocol::{Event, SessionState};
@@ -222,4 +222,32 @@ impl SessionEventHandler for SessionParticipant {
 
         Ok(None)
     }
+}
+
+impl From<SessionParticipant> for Transport {
+    fn from(value: SessionParticipant) -> Self {
+        value.transport
+    }
+}
+
+/// Wait for a session to become active.
+pub async fn wait_for_session<S>(
+    stream: &mut EventStream,
+    mut client_session: S,
+) -> Result<(Transport, SessionState)>
+where
+    S: SessionEventHandler + Into<Transport>,
+{
+    #[allow(unused_assignments)]
+    let mut session: Option<SessionState> = None;
+    while let Some(event) = stream.next().await {
+        let event = event?;
+        if let Some(active_session) =
+            client_session.handle_event(event).await?
+        {
+            session = Some(active_session);
+            break;
+        }
+    }
+    Ok((client_session.into(), session.take().unwrap()))
 }

@@ -9,7 +9,7 @@ use synedrion::{
     ProtocolResult,
 };
 
-use crate::{key_to_str, Round, RoundInfo, RoundMsg};
+use crate::{RoundInfo, RoundMsg};
 
 use super::MessageOut;
 
@@ -44,12 +44,15 @@ where
     let mut outgoing = Vec::new();
 
     let destinations = session.message_destinations();
+
+    /*
     let key_str = key_to_str(&session.verifier());
 
     println!(
         "{key_str}: *** starting round {:?} ***",
         session.current_round()
     );
+    */
 
     for destination in destinations.iter() {
         // In production usage, this will happen in a spawned task
@@ -59,11 +62,13 @@ where
         let (message, artifact) =
             session.make_message(&mut OsRng, destination)?;
 
+        /*
         println!(
             "{key_str}: sending a message to {} (round = {})",
             key_to_str(destination),
             session.current_round().0,
         );
+        */
 
         // This will happen in a host task
         accum.add_artifact(artifact)?;
@@ -87,7 +92,7 @@ where
 
     for preprocessed in cached_messages.drain(..) {
         // In production usage, this will happen in a spawned task.
-        println!("{key_str}: applying a cached message");
+        // println!("{key_str}: applying a cached message");
         let mut rng = OsRng;
         let result =
             session.process_message(&mut rng, preprocessed).unwrap();
@@ -108,6 +113,7 @@ where
     Res: ProtocolResult + Send + 'static,
 {
     if !session.can_finalize(accum)? {
+        /*
         let key_str = key_to_str(&session.verifier());
         tracing::info!(
             key = %key_str,
@@ -115,13 +121,14 @@ where
             message_round = message.round_number(),
             "handle_incoming",
         );
+        */
 
         // This can be checked if a timeout expired, to see
         // which nodes have not responded yet.
         let unresponsive_parties = session.missing_messages(accum)?;
         assert!(!unresponsive_parties.is_empty());
 
-        let message_round_number = message.round_number();
+        // let message_round_number = message.round_number();
         let (from, body) = message.into_body();
 
         // Perform quick checks before proceeding with the verification.
@@ -129,11 +136,13 @@ where
             session.preprocess_message(accum, &from, body).unwrap();
 
         if let Some(preprocessed) = preprocessed {
+            /*
             println!(
                 "{key_str}: applying a message from {} (round {})",
                 key_to_str(&from),
                 message_round_number,
             );
+            */
             let mut rng = OsRng;
             let result = session
                 .process_message(&mut rng, preprocessed)

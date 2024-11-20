@@ -11,9 +11,6 @@ pub mod frost;
 #[cfg(any(feature = "ecdsa", feature = "cggmp"))]
 pub mod recoverable_signature;
 
-#[cfg(feature = "cggmp")]
-pub mod meeting;
-
 #[cfg(any(feature = "cggmp", feature = "frost-ed25519"))]
 mod protocol;
 
