@@ -1,5 +1,5 @@
 //! Taproot Schnorr signatures compatible with Bitcoin (BIP-340).
-use mpc_driver::signers::schnorr::{self, Signature};
+use polysig_driver::signers::schnorr::{self, Signature};
 use std::borrow::Cow;
 use wasm_bindgen::prelude::{wasm_bindgen, JsError, JsValue};
 

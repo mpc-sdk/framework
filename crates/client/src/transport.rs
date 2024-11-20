@@ -1,6 +1,6 @@
 use crate::{Client, ClientOptions, EventLoop, Result};
 use async_trait::async_trait;
-use mpc_protocol::{serde_json::Value, MeetingId, SessionId, UserId};
+use polysig_protocol::{serde_json::Value, MeetingId, SessionId, UserId};
 use serde::Serialize;
 use std::collections::HashSet;
 

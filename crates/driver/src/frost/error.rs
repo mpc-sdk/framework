@@ -33,7 +33,7 @@ pub enum Error {
 
     /// Protocol library errors.
     #[error(transparent)]
-    Protocol(#[from] mpc_protocol::Error),
+    Protocol(#[from] polysig_protocol::Error),
 
     /// FROST library error.
     #[error(transparent)]

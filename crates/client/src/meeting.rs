@@ -9,7 +9,7 @@ use crate::{
     ServerOptions,
 };
 use futures::StreamExt;
-use mpc_protocol::{
+use polysig_protocol::{
     serde_json::Value, Event, Keypair, MeetingId, UserId,
 };
 use serde::{Deserialize, Serialize};

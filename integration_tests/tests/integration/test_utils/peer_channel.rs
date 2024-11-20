@@ -1,7 +1,7 @@
 use anyhow::Result;
 use futures::StreamExt;
-use mpc_client::{Client, EventLoop, NetworkTransport};
-use mpc_protocol::Event;
+use polysig_client::{Client, EventLoop, NetworkTransport};
+use polysig_protocol::Event;
 use tokio::sync::mpsc;
 
 use super::new_client;
@@ -53,7 +53,7 @@ pub async fn initiator_client<E>(
     shutdown_tx: mpsc::Sender<()>,
 ) -> Result<(), E>
 where
-    E: From<mpc_client::Error> + From<mpc_protocol::Error>,
+    E: From<polysig_client::Error> + From<polysig_protocol::Error>,
 {
     client.connect().await?;
 
@@ -95,7 +95,7 @@ pub async fn participant_client<E>(
     mut shutdown_rx: mpsc::Receiver<()>,
 ) -> Result<(), E>
 where
-    E: From<mpc_client::Error> + From<mpc_protocol::Error>,
+    E: From<polysig_client::Error> + From<polysig_protocol::Error>,
 {
     client.connect().await?;
 

@@ -22,7 +22,7 @@ use crate::{
     server::{Service, State},
     Result,
 };
-use mpc_protocol::{
+use polysig_protocol::{
     hex,
     snow::{params::NoiseParams, Builder},
     uuid::Uuid,

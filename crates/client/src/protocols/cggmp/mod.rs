@@ -6,7 +6,7 @@ use crate::{
     SessionParticipant, Transport,
 };
 use futures::StreamExt;
-use mpc_driver::{
+use polysig_driver::{
     recoverable_signature::RecoverableSignature,
     synedrion::{
         self,
@@ -15,7 +15,7 @@ use mpc_driver::{
         SchemeParams, SessionId, ThresholdKeyShare,
     },
 };
-use mpc_protocol::{
+use polysig_protocol::{
     Event, SessionId as ProtocolSessionId, SessionState,
 };
 use serde::{Deserialize, Serialize};
@@ -54,10 +54,10 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 /// Participant in the CGGMP protocol.
 pub type Participant =
-    mpc_driver::Participant<SigningKey, VerifyingKey>;
+    polysig_driver::Participant<SigningKey, VerifyingKey>;
 
 /// Options for each party.
-pub type PartyOptions = mpc_driver::PartyOptions<VerifyingKey>;
+pub type PartyOptions = polysig_driver::PartyOptions<VerifyingKey>;
 
 /// Run threshold DKG for the CGGMP protocol.
 pub async fn keygen<P: SchemeParams + 'static>(

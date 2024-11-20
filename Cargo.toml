@@ -16,10 +16,10 @@ exclude = [
 resolver = "2"
 
 [workspace.dependencies]
-mpc-client = { version = "0.7", path = "crates/client" }
-mpc-driver = { version = "0.7", path = "crates/driver" }
-mpc-protocol = { version = "0.7", path = "crates/protocol", features = ["zlib"] }
-mpc-relay-server = { version = "0.7", path = "crates/relay_server" }
+polysig-client = { version = "0.7", path = "crates/client" }
+polysig-driver = { version = "0.7", path = "crates/driver" }
+polysig-protocol = { version = "0.7", path = "crates/protocol", features = ["zlib"] }
+polysig-relay-server = { version = "0.7", path = "crates/relay_server" }
 
 anyhow = "1"
 thiserror = "1"

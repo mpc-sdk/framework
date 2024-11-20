@@ -9,18 +9,18 @@ default = ["full"]
 full = ["signers", "protocols"]
 signers = ["ecdsa", "eddsa", "schnorr"]
 protocols = ["cggmp", "frost-ed25519"]
-cggmp = ["mpc-driver/cggmp"]
-ecdsa = ["mpc-driver/ecdsa"]
-eddsa = ["mpc-driver/eddsa"]
-schnorr = ["mpc-driver/schnorr"]
-frost-ed25519 = ["mpc-driver/frost-ed25519"]
+cggmp = ["polysig-driver/cggmp"]
+ecdsa = ["polysig-driver/ecdsa"]
+eddsa = ["polysig-driver/eddsa"]
+schnorr = ["polysig-driver/schnorr"]
+frost-ed25519 = ["polysig-driver/frost-ed25519"]
 
 [dev-dependencies]
 ed25519-dalek.workspace = true
-mpc-client.workspace = true
-mpc-driver.workspace = true
-mpc-protocol.workspace = true
-mpc-relay-server.workspace = true
+polysig-client.workspace = true
+polysig-driver.workspace = true
+polysig-protocol.workspace = true
+polysig-relay-server.workspace = true
 anyhow.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true 

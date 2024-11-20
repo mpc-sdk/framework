@@ -1,13 +1,13 @@
 use super::make_signers;
 use anyhow::Result;
 use ed25519_dalek::SigningKey;
-use mpc_client::{
+use polysig_client::{
     frost::ed25519::keygen, ServerOptions, SessionOptions,
 };
-use mpc_driver::frost::ed25519::{
+use polysig_driver::frost::ed25519::{
     KeyShare, Participant, PartyOptions,
 };
-use mpc_protocol::{generate_keypair, Parameters};
+use polysig_protocol::{generate_keypair, Parameters};
 
 pub(super) async fn run_keygen(
     t: u16,

@@ -4,9 +4,9 @@ use crate::{
     Error, NetworkTransport, Result, Transport,
 };
 use async_trait::async_trait;
-use mpc_protocol::{hex, Event, SessionState};
+use polysig_protocol::{hex, Event, SessionState};
 
-use mpc_driver::{
+use polysig_driver::{
     cggmp::SignatureDriver as CggmpDriver,
     recoverable_signature::RecoverableSignature,
     synedrion::{

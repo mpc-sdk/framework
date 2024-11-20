@@ -1,7 +1,7 @@
 //! Start the websocket relay server.
 use anyhow::Result;
 use axum_server::Handle;
-use mpc_relay_server::{RelayServer, ServerConfig};
+use polysig_relay_server::{RelayServer, ServerConfig};
 use std::{net::SocketAddr, path::PathBuf, str::FromStr};
 
 /// Run a web server.

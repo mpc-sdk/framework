@@ -37,7 +37,7 @@ mod web;
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 pub use web::{WebClient as Client, WebEventLoop as EventLoop};
 
-use mpc_protocol::{
+use polysig_protocol::{
     hex, snow::params::NoiseParams, Chunk, Encoding, Keypair,
     OpaqueMessage, ProtocolState, RequestMessage, SealedEnvelope,
     SessionId, PATTERN,

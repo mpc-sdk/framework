@@ -1,11 +1,11 @@
 use anyhow::Result;
 use futures::StreamExt;
 
-use mpc_client::{
+use polysig_client::{
     NetworkTransport, SessionEventHandler, SessionInitiator,
     SessionParticipant, Transport,
 };
-use mpc_protocol::SessionState;
+use polysig_protocol::SessionState;
 
 use super::new_client;
 

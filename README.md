@@ -46,7 +46,7 @@ The library includes bindings for Webassembly to be used in the browser and for 
 ## Server Installation
 
 ```
-cargo install mpc-relay
+cargo install polysig-relay
 ```
 
 ## Documentation
@@ -110,7 +110,7 @@ The bindings and driver crates are released under the GPLv3 license and all othe
 [playwright]: https://playwright.dev
 [web-sys]: https://docs.rs/web-sys
 [tokio-tungstenite]: https://docs.rs/tokio-tungstenite
-[protocol]: https://docs.rs/mpc-protocol
-[server]: https://docs.rs/mpc-relay-server
-[client]: https://docs.rs/mpc-client
-[cli]: https://docs.rs/mpc-relay
+[protocol]: https://docs.rs/polysig-protocol
+[server]: https://docs.rs/polysig-relay-server
+[client]: https://docs.rs/polysig-client
+[cli]: https://docs.rs/polysig-relay

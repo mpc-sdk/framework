@@ -15,7 +15,7 @@ use tokio_tungstenite::{
     WebSocketStream,
 };
 
-use mpc_protocol::{
+use polysig_protocol::{
     channel::encrypt_server_channel, decode, encode, hex,
     http::StatusCode, serde_json::Value, snow::Builder, zlib,
     Encoding, Event, HandshakeMessage, JsonMessage, MeetingId,

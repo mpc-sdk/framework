@@ -1,6 +1,6 @@
 //! Signature generation for FROST.
 use async_trait::async_trait;
-use mpc_driver::{
+use polysig_driver::{
     frost::ed25519::{KeyShare, SignatureDriver as FrostDriver},
     frost_ed25519::{Identifier, Signature},
 };
@@ -9,7 +9,7 @@ use crate::{
     protocols::{Bridge, Driver},
     Error, NetworkTransport, Result, Transport,
 };
-use mpc_protocol::{hex, Event, SessionState};
+use polysig_protocol::{hex, Event, SessionState};
 
 /// FROST signing driver.
 pub struct SignatureDriver {

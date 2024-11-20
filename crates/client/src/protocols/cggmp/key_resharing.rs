@@ -4,10 +4,10 @@ use crate::{
     NetworkTransport, Transport,
 };
 use async_trait::async_trait;
-use mpc_protocol::{hex, Event, SessionState};
+use polysig_protocol::{hex, Event, SessionState};
 
 use super::{Error, Result};
-use mpc_driver::{
+use polysig_driver::{
     cggmp::KeyResharingDriver as CggmpDriver,
     synedrion::{
         ecdsa::{SigningKey, VerifyingKey},

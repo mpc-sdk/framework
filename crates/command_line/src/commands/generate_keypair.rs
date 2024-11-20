@@ -3,7 +3,7 @@ use anyhow::{bail, Result};
 use std::path::PathBuf;
 use tokio::{fs, io::AsyncWriteExt};
 
-use mpc_protocol::{encode_keypair, generate_keypair, hex};
+use polysig_protocol::{encode_keypair, generate_keypair, hex};
 
 /// Generate keypair and write to file.
 pub async fn run(

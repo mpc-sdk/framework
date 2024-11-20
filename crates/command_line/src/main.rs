@@ -1,3 +1,5 @@
+//! ***Moved to `polysig-relay`***.
+//!
 //! Command line tool for the websocket relay service that uses the
 //! [noise](https://noiseprotocol.org/) protocol for end-to-end
 //! encryption intended for multi-party computation and threshold
@@ -6,14 +8,14 @@
 //! # Installation
 //!
 //! ```no_run
-//! cargo install mpc-relay
+//! cargo install polysig-relay
 //! ```
 //! # Generate keypair
 //!
 //! First generate a keypair for the server:
 //!
 //! ```no_run
-//! mpc-relay generate-keypair server.pem
+//! polysig-relay generate-keypair server.pem
 //! ```
 //!
 //! # Configuration
@@ -29,7 +31,7 @@
 //! Start the relay websocket service:
 //!
 //! ```no_run
-//! mpc-relay start config.toml
+//! polysig-relay start config.toml
 //! ```
 
 #[doc(hidden)]

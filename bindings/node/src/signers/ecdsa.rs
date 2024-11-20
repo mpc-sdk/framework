@@ -1,6 +1,6 @@
 //! ECDSA signatures compatible with Ethereum.
 use anyhow::Error;
-use mpc_driver::{
+use polysig_driver::{
     recoverable_signature::RecoverableSignature,
     signers::ecdsa::{self, Signature},
 };
@@ -143,7 +143,7 @@ impl EcdsaSigner {
     /// Compute the Keccak256 digest of a message.
     #[napi]
     pub fn keccak256(message: Vec<u8>) -> Vec<u8> {
-        use mpc_driver::sha3::{Digest, Keccak256};
+        use polysig_driver::sha3::{Digest, Keccak256};
         let digest = Keccak256::new_with_prefix(&message);
         let hash = digest.finalize();
         hash.to_vec()

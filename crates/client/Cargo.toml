@@ -1,26 +1,26 @@
 [package]
-name = "mpc-client"
+name = "polysig-client"
 version = "0.7.1"
 edition = "2021"
 description = "Noise protocol websocket relay client for MPC/TSS applications"
 keywords = ["mpc", "tss", "relay", "crypto", "e2ee"]
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/mpc-sdk/framework"
+repository = "https://github.com/polysig/polysig"
 
 [features]
 default = ["full"]
 full = ["signers", "protocols"]
 signers = ["ecdsa", "eddsa", "schnorr"]
 protocols = ["cggmp", "frost-ed25519"]
-cggmp = ["mpc-driver/cggmp"]
-ecdsa = ["mpc-driver/ecdsa"]
-eddsa = ["mpc-driver/eddsa"]
-schnorr = ["mpc-driver/schnorr"]
-frost-ed25519 = ["mpc-driver/frost-ed25519"]
+cggmp = ["polysig-driver/cggmp"]
+ecdsa = ["polysig-driver/ecdsa"]
+eddsa = ["polysig-driver/eddsa"]
+schnorr = ["polysig-driver/schnorr"]
+frost-ed25519 = ["polysig-driver/frost-ed25519"]
 
 [dependencies]
-mpc-protocol.workspace = true
-mpc-driver.workspace = true
+polysig-protocol.workspace = true
+polysig-driver.workspace = true
 thiserror.workspace = true
 serde.workspace = true
 async-trait.workspace = true

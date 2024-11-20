@@ -1,6 +1,6 @@
 use crate::{Client, ClientOptions, EventLoop, Result, Transport};
 use async_trait::async_trait;
-use mpc_protocol::{hex, Event, Keypair, Parameters};
+use polysig_protocol::{hex, Event, Keypair, Parameters};
 use serde::{Deserialize, Serialize};
 
 mod bridge;

@@ -1,10 +1,10 @@
 [package]
-name = "mpc-node-bindings"
+name = "polysig-node-bindings"
 version = "0.7.0"
 edition = "2021"
 description = "Nodejs bindings to drive multi-party computation protocols"
 license = "MIT OR APACHE-2.0"
-repository = "https://github.com/mpc-sdk/framework"
+repository = "https://github.com/polysig-sdk/framework"
 
 [features]
 default = ["full"]
@@ -12,25 +12,25 @@ full = ["signers", "protocols"]
 signers = ["ecdsa", "eddsa", "schnorr"]
 protocols = ["cggmp", "frost-ed25519"]
 cggmp = [
-  "mpc-driver/cggmp",
+  "polysig-driver/cggmp",
   "dep:tokio",
   "napi/async",
   "napi/tokio",
   "napi/tokio_rt",
   "serde"
 ]
-ecdsa = ["mpc-driver/ecdsa"]
-eddsa = ["mpc-driver/eddsa"]
-frost-ed25519 = ["mpc-driver/frost-ed25519", "dep:tokio"]
-schnorr = ["mpc-driver/schnorr"]
+ecdsa = ["polysig-driver/ecdsa"]
+eddsa = ["polysig-driver/eddsa"]
+frost-ed25519 = ["polysig-driver/frost-ed25519", "dep:tokio"]
+schnorr = ["polysig-driver/schnorr"]
 
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
-mpc-client.workspace = true
-mpc-driver.workspace = true
-mpc-protocol.workspace = true
+polysig-client.workspace = true
+polysig-driver.workspace = true
+polysig-protocol.workspace = true
 anyhow.workspace = true
 serde_json.workspace = true
 tokio = { workspace = true, optional = true }

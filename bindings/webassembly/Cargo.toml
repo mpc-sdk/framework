@@ -1,15 +1,15 @@
 [package]
-name = "mpc-webassembly-bindings"
+name = "polysig-webassembly-bindings"
 version = "0.7.0"
 edition = "2021"
 description = "Webassembly bindings to drive multi-party computation protocols"
 
 [features]
-cggmp = ["mpc-driver/cggmp"]
-ecdsa = ["mpc-driver/ecdsa"]
-eddsa = ["mpc-driver/eddsa"]
-frost-ed25519 = ["mpc-driver/frost-ed25519"]
-schnorr = ["mpc-driver/schnorr"]
+cggmp = ["polysig-driver/cggmp"]
+ecdsa = ["polysig-driver/ecdsa"]
+eddsa = ["polysig-driver/eddsa"]
+frost-ed25519 = ["polysig-driver/frost-ed25519"]
+schnorr = ["polysig-driver/schnorr"]
 signers = ["ecdsa", "eddsa", "schnorr"]
 protocols = ["cggmp", "frost-ed25519"]
 full = ["signers", "protocols"]
@@ -24,9 +24,9 @@ tracing = [
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-mpc-client.workspace = true
-mpc-driver.workspace = true
-mpc-protocol.workspace = true
+polysig-client.workspace = true
+polysig-driver.workspace = true
+polysig-protocol.workspace = true
 rand.workspace = true
 log.workspace = true
 futures.workspace = true

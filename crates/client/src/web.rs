@@ -8,7 +8,7 @@ use serde::Serialize;
 use std::{collections::HashSet, pin::Pin, sync::Arc};
 use tokio::sync::{mpsc, RwLock};
 
-use mpc_protocol::{
+use polysig_protocol::{
     channel::encrypt_server_channel, decode, encode, hex,
     serde_json::Value, snow::Builder, zlib, Encoding, Event,
     HandshakeMessage, JsonMessage, MeetingId, OpaqueMessage,

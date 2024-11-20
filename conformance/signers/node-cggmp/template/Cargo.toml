@@ -6,7 +6,7 @@ publish = false
 
 [dependencies]
 anyhow = "1"
-mpc-protocol = { path = "../../../../protocol" }
+polysig-protocol = { path = "../../../../crates/protocol" }
 k256 = { version = "0.14.0-pre.2", default-features = false, features = ["serde", "pem", "ecdsa", "std"] }
 tokio = { version = "1", features = ["rt", "macros", "rt-multi-thread"] }
 tracing = "0.1"

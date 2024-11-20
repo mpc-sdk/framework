@@ -1,5 +1,5 @@
 //! Driver for the FROST Ed25519 protocol.
-use mpc_driver::{
+use polysig_driver::{
     frost::ed25519::{KeyShare, Participant, Signature},
     frost_ed25519::Identifier,
 };

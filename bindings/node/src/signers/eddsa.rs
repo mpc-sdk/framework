@@ -1,6 +1,6 @@
 //! EdDSA signatures compatible with Solana.
 use anyhow::Error;
-use mpc_driver::signers::eddsa::{self, Signature};
+use polysig_driver::signers::eddsa::{self, Signature};
 use napi::JsError;
 use napi_derive::napi;
 use std::borrow::Cow;

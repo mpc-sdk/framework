@@ -5,9 +5,9 @@ use crate::{
     Transport,
 };
 use futures::StreamExt;
-use mpc_protocol::{Event, SessionId, SessionState};
+use polysig_protocol::{Event, SessionId, SessionState};
 
-use mpc_driver::{Error, ProtocolDriver, Round};
+use polysig_driver::{Error, ProtocolDriver, Round};
 
 use super::public_key_to_str;
 

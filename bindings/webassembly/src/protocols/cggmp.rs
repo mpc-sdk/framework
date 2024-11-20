@@ -1,12 +1,12 @@
 //! Bindings for the CGGMP protocol.
-use mpc_client::SessionOptions;
-use mpc_driver::cggmp::{Participant, PartyOptions};
-use mpc_driver::synedrion::{
+use polysig_client::SessionOptions;
+use polysig_driver::cggmp::{Participant, PartyOptions};
+use polysig_driver::synedrion::{
     self,
     ecdsa::{SigningKey, VerifyingKey},
     SessionId,
 };
-use mpc_protocol::{hex, PATTERN};
+use polysig_protocol::{hex, PATTERN};
 use std::collections::BTreeSet;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::future_to_promise;
@@ -54,7 +54,7 @@ impl CggmpProtocol {
             .to_encoded_point(false)
             .as_bytes()
             .to_vec();
-        mpc_driver::address(&public_key)
+        polysig_driver::address(&public_key)
     }
 
     /// Distributed key generation.
@@ -74,7 +74,7 @@ impl CggmpProtocol {
         let participant = Participant::new(signer, verifier, party)
             .map_err(JsError::from)?;
         let fut = async move {
-            let key_share = mpc_client::cggmp::keygen::<Params>(
+            let key_share = polysig_client::cggmp::keygen::<Params>(
                 options,
                 participant,
                 SessionId::from_seed(&session_id_seed),
@@ -117,7 +117,7 @@ impl CggmpProtocol {
             message.as_slice().try_into().map_err(JsError::from)?;
 
         let fut = async move {
-            let signature = mpc_client::cggmp::sign(
+            let signature = polysig_client::cggmp::sign(
                 options,
                 participant,
                 SessionId::from_seed(&session_id_seed),
@@ -156,7 +156,7 @@ impl CggmpProtocol {
             .map_err(JsError::from)?;
 
         let fut = async move {
-            let key_share = mpc_client::cggmp::reshare(
+            let key_share = polysig_client::cggmp::reshare(
                 options,
                 participant,
                 SessionId::from_seed(&session_id_seed),
@@ -177,11 +177,11 @@ impl CggmpProtocol {
         &self,
         derivation_path: String,
     ) -> Result<JsValue, JsError> {
-        use mpc_driver::bip32::DerivationPath;
+        use polysig_driver::bip32::DerivationPath;
 
         let derivation_path: DerivationPath =
             derivation_path.parse()?;
-        let child_key = mpc_driver::cggmp::derive_bip32(
+        let child_key = polysig_driver::cggmp::derive_bip32(
             &self.key_share,
             &derivation_path,
         )?;
@@ -202,9 +202,9 @@ impl CggmpProtocol {
         } else {
             PATTERN.to_owned()
         };
-        let keypair = mpc_protocol::Keypair::new(pattern.parse()?)?;
+        let keypair = polysig_protocol::Keypair::new(pattern.parse()?)?;
         let public_key = hex::encode(keypair.public_key());
-        let pem = mpc_protocol::encode_keypair(&keypair);
+        let pem = polysig_protocol::encode_keypair(&keypair);
         Ok(serde_wasm_bindgen::to_value(&(pem, public_key))?)
     }
 }

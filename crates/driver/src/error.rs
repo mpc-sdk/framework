@@ -37,7 +37,7 @@ pub enum Error {
 
     /// Protocol library errors.
     #[error(transparent)]
-    Protocol(#[from] mpc_protocol::Error),
+    Protocol(#[from] polysig_protocol::Error),
 
     /// ECDSA library errors.
     #[cfg(any(feature = "cggmp", feature = "ecdsa",))]

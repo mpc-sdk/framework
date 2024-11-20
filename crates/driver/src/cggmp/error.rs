@@ -28,7 +28,7 @@ pub enum Error {
 
     /// Protocol library errors.
     #[error(transparent)]
-    Protocol(#[from] mpc_protocol::Error),
+    Protocol(#[from] polysig_protocol::Error),
 
     /// Error generated converting integers.
     #[error(transparent)]

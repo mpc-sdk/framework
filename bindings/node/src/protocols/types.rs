@@ -1,5 +1,5 @@
-use mpc_driver::synedrion::{self, ecdsa};
-use mpc_protocol::decode_keypair;
+use polysig_driver::synedrion::{self, ecdsa};
+use polysig_protocol::decode_keypair;
 use napi_derive::napi;
 use serde::{Deserialize, Serialize};
 
@@ -18,7 +18,7 @@ pub struct VerifyingKey {
 }
 
 impl TryFrom<VerifyingKey> for ecdsa::VerifyingKey {
-    type Error = mpc_driver::Error;
+    type Error = polysig_driver::Error;
 
     fn try_from(value: VerifyingKey) -> Result<Self, Self::Error> {
         Ok(ecdsa::VerifyingKey::from_sec1_bytes(&value.bytes)?)
@@ -31,8 +31,8 @@ pub struct Keypair {
     pub pem: String,
 }
 
-impl TryFrom<Keypair> for mpc_protocol::Keypair {
-    type Error = mpc_driver::Error;
+impl TryFrom<Keypair> for polysig_protocol::Keypair {
+    type Error = polysig_driver::Error;
 
     fn try_from(value: Keypair) -> Result<Self, Self::Error> {
         Ok(decode_keypair(value.pem)?)
@@ -46,9 +46,9 @@ pub struct Parameters {
     pub threshold: u16,
 }
 
-impl From<Parameters> for mpc_protocol::Parameters {
+impl From<Parameters> for polysig_protocol::Parameters {
     fn from(value: Parameters) -> Self {
-        mpc_protocol::Parameters {
+        polysig_protocol::Parameters {
             parties: value.parties,
             threshold: value.threshold,
         }
@@ -64,9 +64,9 @@ pub struct ServerOptions {
     pub pattern: Option<String>,
 }
 
-impl From<ServerOptions> for mpc_client::ServerOptions {
+impl From<ServerOptions> for polysig_client::ServerOptions {
     fn from(value: ServerOptions) -> Self {
-        mpc_client::ServerOptions {
+        polysig_client::ServerOptions {
             server_url: value.server_url,
             server_public_key: value.server_public_key,
             pattern: value.pattern,
@@ -82,11 +82,11 @@ pub struct SessionOptions {
     pub parameters: Parameters,
 }
 
-impl TryFrom<SessionOptions> for mpc_client::SessionOptions {
-    type Error = mpc_driver::Error;
+impl TryFrom<SessionOptions> for polysig_client::SessionOptions {
+    type Error = polysig_driver::Error;
 
     fn try_from(value: SessionOptions) -> Result<Self, Self::Error> {
-        Ok(mpc_client::SessionOptions {
+        Ok(polysig_client::SessionOptions {
             keypair: value.keypair.try_into()?,
             server: value.server.into(),
             parameters: value.parameters.into(),
@@ -104,15 +104,15 @@ pub struct PartyOptions {
     pub verifiers: Vec<VerifyingKey>,
 }
 
-impl TryFrom<PartyOptions> for mpc_driver::cggmp::PartyOptions {
-    type Error = mpc_driver::Error;
+impl TryFrom<PartyOptions> for polysig_driver::cggmp::PartyOptions {
+    type Error = polysig_driver::Error;
 
     fn try_from(value: PartyOptions) -> Result<Self, Self::Error> {
         let mut verifiers = Vec::with_capacity(value.verifiers.len());
         for verifier in value.verifiers {
             verifiers.push(verifier.try_into()?);
         }
-        Ok(mpc_driver::PartyOptions::new(
+        Ok(polysig_driver::PartyOptions::new(
             value.public_key,
             value.participants,
             value.is_initiator,
@@ -130,7 +130,7 @@ pub struct KeyShare {
 }
 
 impl TryFrom<ThresholdKeyShare> for KeyShare {
-    type Error = mpc_driver::Error;
+    type Error = polysig_driver::Error;
 
     fn try_from(
         value: ThresholdKeyShare,
@@ -142,7 +142,7 @@ impl TryFrom<ThresholdKeyShare> for KeyShare {
 }
 
 impl TryFrom<KeyShare> for ThresholdKeyShare {
-    type Error = mpc_driver::Error;
+    type Error = polysig_driver::Error;
 
     fn try_from(value: KeyShare) -> Result<Self, Self::Error> {
         Ok(serde_json::from_str(&value.inner)?)
@@ -158,7 +158,7 @@ pub struct RecoverableSignature {
 }
 
 impl From<RecoverableSignature>
-    for mpc_driver::recoverable_signature::RecoverableSignature
+    for polysig_driver::recoverable_signature::RecoverableSignature
 {
     fn from(value: RecoverableSignature) -> Self {
         Self {
@@ -168,11 +168,11 @@ impl From<RecoverableSignature>
     }
 }
 
-impl From<mpc_driver::recoverable_signature::RecoverableSignature>
+impl From<polysig_driver::recoverable_signature::RecoverableSignature>
     for RecoverableSignature
 {
     fn from(
-        value: mpc_driver::recoverable_signature::RecoverableSignature,
+        value: polysig_driver::recoverable_signature::RecoverableSignature,
     ) -> Self {
         Self {
             bytes: value.bytes,

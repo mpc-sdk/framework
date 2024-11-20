@@ -8,16 +8,16 @@ pub(crate) mod socket_close;
 pub(crate) mod native;
 pub use native::*;
 
-use mpc_client::{Client, ClientOptions, EventLoop};
-use mpc_protocol::{generate_keypair, Keypair};
+use polysig_client::{Client, ClientOptions, EventLoop};
+use polysig_protocol::{generate_keypair, Keypair};
 
 /// Create a new client connected to the mock server.
-pub async fn new_client<E: From<mpc_client::Error>>(
+pub async fn new_client<E: From<polysig_client::Error>>(
     server: &str,
     server_public_key: Vec<u8>,
 ) -> Result<(Client, EventLoop, Keypair), E> {
     let keypair = generate_keypair().map_err(|e| {
-        let err = mpc_client::Error::from(e);
+        let err = polysig_client::Error::from(e);
         err
     })?;
     let copy = keypair.clone();
@@ -27,7 +27,7 @@ pub async fn new_client<E: From<mpc_client::Error>>(
     Ok((client, event_loop, copy))
 }
 
-pub async fn new_client_with_keypair<E: From<mpc_client::Error>>(
+pub async fn new_client_with_keypair<E: From<polysig_client::Error>>(
     server: &str,
     server_public_key: Vec<u8>,
     keypair: Keypair,

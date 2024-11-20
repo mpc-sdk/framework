@@ -1,7 +1,7 @@
 //! Types for the protocol drivers.
 
 use crate::{Error, Result};
-use mpc_protocol::{hex, PartyNumber, RoundNumber};
+use polysig_protocol::{hex, PartyNumber, RoundNumber};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 #[cfg(feature = "cggmp")]
@@ -30,7 +30,7 @@ pub trait ProtocolDriver {
         + std::fmt::Debug
         + Send
         + Sync
-        + From<mpc_protocol::Error>
+        + From<polysig_protocol::Error>
         + 'static;
 
     /// Outgoing message type.

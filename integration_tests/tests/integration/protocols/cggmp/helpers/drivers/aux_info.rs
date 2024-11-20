@@ -2,9 +2,9 @@ use super::super::{
     execute_drivers, make_client_sessions, make_signers,
 };
 use anyhow::Result;
-use mpc_driver::synedrion::{SessionId, TestParams};
+use polysig_driver::synedrion::{SessionId, TestParams};
 
-use mpc_client::{
+use polysig_client::{
     cggmp::AuxGenDriver, wait_for_close, NetworkTransport,
 };
 use rand::{rngs::OsRng, Rng};

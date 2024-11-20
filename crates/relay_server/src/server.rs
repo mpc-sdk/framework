@@ -16,7 +16,7 @@ use axum_server::{tls_rustls::RustlsConfig, Handle};
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use uuid::Uuid;
 
-use mpc_protocol::{
+use polysig_protocol::{
     hex, uuid, Keypair, MeetingManager, SessionManager,
 };
 

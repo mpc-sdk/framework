@@ -33,7 +33,7 @@ pub use sha3;
 #[doc(hidden)]
 /// Compute the address of an uncompressed public key (65 bytes).
 pub fn address(public_key: &[u8]) -> String {
-    use mpc_protocol::hex;
+    use polysig_protocol::hex;
     use sha3::{Digest, Keccak256};
     // Remove the leading 0x04
     let bytes = &public_key[1..];

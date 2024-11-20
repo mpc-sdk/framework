@@ -2,10 +2,10 @@ use super::super::{
     execute_drivers, make_client_sessions, make_signers,
 };
 use anyhow::Result;
-use mpc_client::{
+use polysig_client::{
     cggmp::KeyGenDriver, wait_for_close, NetworkTransport,
 };
-use mpc_driver::synedrion::{SessionId, TestParams};
+use polysig_driver::synedrion::{SessionId, TestParams};
 use rand::{rngs::OsRng, Rng};
 
 pub async fn run_keygen(

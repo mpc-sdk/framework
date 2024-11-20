@@ -4,9 +4,9 @@ use crate::{
     Error, NetworkTransport, Result, Transport,
 };
 use async_trait::async_trait;
-use mpc_protocol::{hex, Event, SessionState};
+use polysig_protocol::{hex, Event, SessionState};
 
-use mpc_driver::{
+use polysig_driver::{
     frost::ed25519::{KeyGenDriver as FrostDriver, KeyShare},
     frost_ed25519::Identifier,
 };

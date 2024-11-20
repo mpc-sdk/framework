@@ -1,5 +1,5 @@
 use k256::ecdsa::SigningKey;
-use mpc_protocol::{decode_keypair, hex};
+use polysig_protocol::{decode_keypair, hex};
 use rand::{rngs::OsRng, Rng};
 use sha3::{Digest, Keccak256};
 use std::{fs, path::PathBuf};

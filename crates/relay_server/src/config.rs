@@ -1,5 +1,5 @@
 //! Server configuration.
-use mpc_protocol::{decode_keypair, hex, Keypair};
+use polysig_protocol::{decode_keypair, hex, Keypair};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use tokio::fs;

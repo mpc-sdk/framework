@@ -1,6 +1,6 @@
 use super::dkg_sign::{run_dkg, sign_t_2};
 use anyhow::Result;
-use mpc_driver::{bip32::DerivationPath, cggmp};
+use polysig_driver::{bip32::DerivationPath, cggmp};
 
 pub async fn run_dkg_derived_2_2(
     server: &str,
