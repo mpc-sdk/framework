@@ -64,9 +64,9 @@ pub struct ServerOptions {
     pub pattern: Option<String>,
 }
 
-impl From<ServerOptions> for mpc_driver::ServerOptions {
+impl From<ServerOptions> for mpc_client::ServerOptions {
     fn from(value: ServerOptions) -> Self {
-        mpc_driver::ServerOptions {
+        mpc_client::ServerOptions {
             server_url: value.server_url,
             server_public_key: value.server_public_key,
             pattern: value.pattern,
@@ -82,11 +82,11 @@ pub struct SessionOptions {
     pub parameters: Parameters,
 }
 
-impl TryFrom<SessionOptions> for mpc_driver::SessionOptions {
+impl TryFrom<SessionOptions> for mpc_client::SessionOptions {
     type Error = mpc_driver::Error;
 
     fn try_from(value: SessionOptions) -> Result<Self, Self::Error> {
-        Ok(mpc_driver::SessionOptions {
+        Ok(mpc_client::SessionOptions {
             keypair: value.keypair.try_into()?,
             server: value.server.into(),
             parameters: value.parameters.into(),

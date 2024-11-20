@@ -1,12 +1,10 @@
 //! Bindings for the CGGMP protocol.
+use mpc_client::SessionOptions;
+use mpc_driver::cggmp::{Participant, PartyOptions};
 use mpc_driver::synedrion::{
     self,
     ecdsa::{SigningKey, VerifyingKey},
     SessionId,
-};
-use mpc_driver::{
-    cggmp::{Participant, PartyOptions},
-    SessionOptions,
 };
 use mpc_protocol::{hex, PATTERN};
 use std::collections::BTreeSet;

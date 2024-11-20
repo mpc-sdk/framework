@@ -18,7 +18,7 @@ use super::types::{
 /// CGGMP protocol.
 #[napi]
 pub struct CggmpProtocol {
-    options: mpc_driver::SessionOptions,
+    options: mpc_client::SessionOptions,
     key_share: ThresholdKeyShare,
 }
 
@@ -30,7 +30,7 @@ impl CggmpProtocol {
         options: SessionOptions,
         key_share: KeyShare,
     ) -> Result<CggmpProtocol> {
-        let options: mpc_driver::SessionOptions =
+        let options: mpc_client::SessionOptions =
             options.try_into().map_err(Error::new)?;
         let key_share: ThresholdKeyShare =
             key_share.try_into().map_err(Error::new)?;
@@ -63,7 +63,7 @@ impl CggmpProtocol {
         session_id_seed: Vec<u8>,
         signer: Vec<u8>,
     ) -> Result<KeyShare> {
-        let options: mpc_driver::SessionOptions =
+        let options: mpc_client::SessionOptions =
             options.try_into().map_err(Error::new)?;
 
         let party: mpc_driver::cggmp::PartyOptions =

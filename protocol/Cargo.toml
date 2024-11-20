@@ -26,4 +26,4 @@ serde_json.workspace = true
 flate2 = { workspace = true, optional = true }
 
 [dev-dependencies]
-anyhow = "1"
+anyhow.workspace = true
