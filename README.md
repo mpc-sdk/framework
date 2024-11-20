@@ -43,18 +43,19 @@ The library includes bindings for Webassembly to be used in the browser and for 
 * [ ] FROST
 * [x] Schnorr
 
+## Documentation
+
+* [protocol][] Message types and encoding
+* [driver][] Signers and protocol drivers
+* [client][] Websocket client library
+* [server][] Websocket server library
+* [cli][] Command line interface for the server
+
 ## Server Installation
 
 ```
 cargo install polysig-relay
 ```
-
-## Documentation
-
-* [protocol][] Message types and encoding
-* [server][] Websocket server library
-* [client][] Websocket client library
-* [cli][] Command line interface for the server
 
 ## Development
 
@@ -111,6 +112,7 @@ The bindings and driver crates are released under the GPLv3 license and all othe
 [web-sys]: https://docs.rs/web-sys
 [tokio-tungstenite]: https://docs.rs/tokio-tungstenite
 [protocol]: https://docs.rs/polysig-protocol
-[server]: https://docs.rs/polysig-relay-server
+[driver]: https://docs.rs/polysig-driver
 [client]: https://docs.rs/polysig-client
+[server]: https://docs.rs/polysig-relay-server
 [cli]: https://docs.rs/polysig-relay
