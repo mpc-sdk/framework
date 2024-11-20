@@ -2,7 +2,7 @@
 
 Polysig is a library for single-party and multisig use cases for ECDSA, Schnorr and Ed25519 signature schemes.
 
-We refer to single-party implementations as *signers* and multisig as *protocols*; all of the multisig *protocols* are threshold signature schemes.
+We refer to single-party implementations as *signers* and multisig as *protocols*; all of the multisig *protocols* are threshold signature schemes. Supported protocols are [FROST][] and [CGGMP21][].
 
 Protocols communicate via an end-to-end encrypted relay server using the [noise protocol][] and websockets for the transport layer or if you already have a transport you can use the [driver](/crates/driver) crate directly.
 
@@ -16,8 +16,8 @@ The library includes bindings for Webassembly to be used in the browser and for 
 
 ### Protocols
 
-* `cggmp`: Enable the CGGMP21 protocol using [synedrion](https://docs.rs/synedrion/).
-* `frost-ed25519`: Enable the FROST Ed25519 protocol using  [frost-ed25519](https://docs.rs/frost-ed25519/).
+* `cggmp`: Enable the [CGGMP21][] protocol using [synedrion](https://docs.rs/synedrion/).
+* `frost-ed25519`: Enable the [FROST][] Ed25519 protocol using  [frost-ed25519](https://docs.rs/frost-ed25519/).
 
 ### Signers
 
@@ -106,6 +106,8 @@ For webassembly and node binding tests see the README files in the conformance d
 
 The bindings and driver crates are released under the GPLv3 license and all other code is either MIT or Apache-2.0.
 
+[CGGMP21]: https://eprint.iacr.org/2021/060
+[FROST]: https://datatracker.ietf.org/doc/rfc9591/
 [noise protocol]: https://noiseprotocol.org/
 [rust]: https://www.rust-lang.org/
 [playwright]: https://playwright.dev
