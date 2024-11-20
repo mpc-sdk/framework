@@ -62,26 +62,6 @@ macro_rules! client_impl {
                 unreachable!()
             }
         }
-
-        async fn relay_broadcast(
-            &mut self,
-            session_id: &SessionId,
-            recipient_public_keys: &[Vec<u8>],
-            payload: &[u8],
-            encoding: Encoding,
-        ) -> Result<()> {
-            for key in recipient_public_keys {
-                self.relay(
-                    key,
-                    payload,
-                    encoding,
-                    true,
-                    Some(*session_id),
-                )
-                .await?;
-            }
-            Ok(())
-        }
     };
 }
 
@@ -272,41 +252,6 @@ macro_rules! client_transport_impl {
             ) -> Result<()> {
                 let message = ServerMessage::CloseSession(session_id);
                 self.request(message).await
-            }
-
-            /// Broadcast a JSON message in the context of a session.
-            async fn broadcast_json<S>(
-                &mut self,
-                session_id: &SessionId,
-                recipient_public_keys: &[Vec<u8>],
-                payload: &S,
-            ) -> Result<()>
-            where
-                S: Serialize + Send + Sync,
-            {
-                self.relay_broadcast(
-                    session_id,
-                    recipient_public_keys,
-                    &JsonMessage::serialize(payload)?,
-                    Encoding::Json,
-                )
-                .await
-            }
-
-            /// Broadcast a binary message in the context of a session.
-            async fn broadcast_blob(
-                &mut self,
-                session_id: &SessionId,
-                recipient_public_keys: &[Vec<u8>],
-                payload: Vec<u8>,
-            ) -> Result<()> {
-                self.relay_broadcast(
-                    session_id,
-                    recipient_public_keys,
-                    &payload,
-                    Encoding::Blob,
-                )
-                .await
             }
 
             #[cfg(not(target_arch="wasm32"))]

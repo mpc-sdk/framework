@@ -142,47 +142,6 @@ impl NetworkTransport for Transport {
         }
     }
 
-    async fn broadcast_json<S>(
-        &mut self,
-        session_id: &SessionId,
-        recipient_public_keys: &[Vec<u8>],
-        payload: &S,
-    ) -> Result<()>
-    where
-        S: Serialize + Send + Sync,
-    {
-        match self {
-            Transport::Relay(client) => {
-                client
-                    .broadcast_json(
-                        session_id,
-                        recipient_public_keys,
-                        payload,
-                    )
-                    .await
-            }
-        }
-    }
-
-    async fn broadcast_blob(
-        &mut self,
-        session_id: &SessionId,
-        recipient_public_keys: &[Vec<u8>],
-        payload: Vec<u8>,
-    ) -> Result<()> {
-        match self {
-            Transport::Relay(client) => {
-                client
-                    .broadcast_blob(
-                        session_id,
-                        recipient_public_keys,
-                        payload,
-                    )
-                    .await
-            }
-        }
-    }
-
     async fn close(&self) -> Result<()> {
         match self {
             Transport::Relay(client) => client.close().await,
@@ -275,24 +234,6 @@ pub trait NetworkTransport {
     async fn close_session(
         &mut self,
         session_id: SessionId,
-    ) -> Result<()>;
-
-    /// Broadcast a JSON message in the context of a session.
-    async fn broadcast_json<S>(
-        &mut self,
-        session_id: &SessionId,
-        recipient_public_keys: &[Vec<u8>],
-        payload: &S,
-    ) -> Result<()>
-    where
-        S: Serialize + Send + Sync;
-
-    /// Broadcast a binary message in the context of a session.
-    async fn broadcast_blob(
-        &mut self,
-        session_id: &SessionId,
-        recipient_public_keys: &[Vec<u8>],
-        payload: Vec<u8>,
     ) -> Result<()>;
 
     /// Close the socket connection.
