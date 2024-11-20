@@ -62,7 +62,7 @@ pub enum Error {
     /// Javascript value error message.
     #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
     #[error("{0}")]
-    JsValue(serde_json::Value),
+    JsValue(mpc_protocol::serde_json::Value),
 
     /// Javascript error that could not be converted.
     #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
@@ -110,9 +110,10 @@ impl From<wasm_bindgen::JsValue> for Error {
         if let Some(s) = value.as_string() {
             Error::JsString(s)
         } else {
-            match serde_wasm_bindgen::from_value::<serde_json::Value>(
-                value,
-            ) {
+            match serde_wasm_bindgen::from_value::<
+                mpc_protocol::serde_json::Value,
+            >(value)
+            {
                 Ok(val) => Error::JsValue(val),
                 Err(_) => Error::JsError,
             }

@@ -344,7 +344,7 @@ impl ProtocolDriver for FrostDriver {
             let signing_package = self
                 .signing_package
                 .take()
-                .ok_or(Error::Round4TooEarly)?;
+                .ok_or(Error::Round3TooEarly)?;
 
             let group_signature = aggregate(
                 &signing_package,
