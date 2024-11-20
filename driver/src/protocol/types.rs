@@ -29,11 +29,6 @@ where
             .find(|v| *v == &verifying_key)
             .is_none()
         {
-            println!(
-                "not in constructor {:#?} {:#?}",
-                party.verifiers(),
-                verifying_key
-            );
             return Err(Error::NotVerifyingParty);
         }
         Ok(Self { signing_key, party })
