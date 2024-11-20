@@ -6,8 +6,9 @@ members = [
   "crates/command_line",
   "crates/driver",
   "integration_tests",
+  "crates/polysig",
   "crates/protocol",
-  "crates/relay_server",
+  "crates/relay_server", 
 ]
 exclude = [
   "conformance/signers/node-cggmp/template",
