@@ -1,5 +1,3 @@
-//! ***Moved to `polysig-relay`***.
-//!
 //! Command line tool for the websocket relay service that uses the
 //! [noise](https://noiseprotocol.org/) protocol for end-to-end
 //! encryption intended for multi-party computation and threshold

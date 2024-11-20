@@ -1,5 +1,3 @@
-//! ***Moved to `polysig-protocol`***.
-//!
 //! Relay service protocol types, encoding and helper functions.
 //!
 //! # Size Limitations

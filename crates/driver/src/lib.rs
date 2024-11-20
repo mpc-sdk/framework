@@ -1,5 +1,3 @@
-//! ***Moved to `polysig-driver`***.
-//!
 //! Drive multi-party computation protocols to completion.
 #![deny(missing_docs)]
 #![cfg_attr(all(doc, CHANNEL_NIGHTLY), feature(doc_auto_cfg))]
