@@ -993,6 +993,7 @@ dependencies = [
  "getrandom",
  "js-sys",
  "log",
+ "mpc-driver",
  "mpc-protocol",
  "serde",
  "serde-wasm-bindgen",
@@ -1018,7 +1019,6 @@ dependencies = [
  "futures",
  "getrandom",
  "k256",
- "mpc-client",
  "mpc-protocol",
  "rand",
  "rand_core",
@@ -1038,6 +1038,7 @@ name = "mpc-node-bindings"
 version = "0.7.0"
 dependencies = [
  "anyhow",
+ "mpc-client",
  "mpc-driver",
  "mpc-protocol",
  "napi",

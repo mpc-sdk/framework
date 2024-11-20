@@ -75,7 +75,7 @@ impl CggmpProtocol {
 
         let participant = Participant::new(signer, verifier, party)
             .map_err(Error::new)?;
-        let key_share = mpc_driver::cggmp::keygen::<Params>(
+        let key_share = mpc_client::cggmp::keygen::<Params>(
             options,
             participant,
             SessionId::from_seed(&session_id_seed),
@@ -115,7 +115,7 @@ impl CggmpProtocol {
         let key_share =
             self.key_share.to_key_share(&selected_parties);
 
-        let signature = mpc_driver::cggmp::sign(
+        let signature = mpc_client::cggmp::sign(
             options,
             participant,
             SessionId::from_seed(&session_id_seed),
@@ -162,7 +162,7 @@ impl CggmpProtocol {
         let participant = Participant::new(signer, verifier, party)
             .map_err(Error::new)?;
 
-        let key_share = mpc_driver::cggmp::reshare(
+        let key_share = mpc_client::cggmp::reshare(
             options,
             participant,
             SessionId::from_seed(&session_id_seed),

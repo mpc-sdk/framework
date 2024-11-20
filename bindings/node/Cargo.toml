@@ -31,6 +31,7 @@ full = ["signers", "protocols"]
 crate-type = ["cdylib"]
 
 [dependencies]
+mpc-client = { path = "../../client" }
 mpc-driver = { path = "../../driver" }
 mpc-protocol = { path = "../../protocol" }
 napi = { version = "3.0.0-alpha.16", features = ["anyhow", "serde-json", "napi9"]}
