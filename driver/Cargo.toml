@@ -8,18 +8,17 @@ license = "GPL-3.0"
 repository = "https://github.com/mpc-sdk/framework"
 
 [features]
+full = ["signers", "protocols"]
+signers = ["ecdsa", "eddsa", "schnorr"]
+protocols = ["cggmp", "frost-ed25519"]
 cggmp = ["k256", "synedrion", "bip32"]
 ecdsa = ["k256/ecdsa"]
 eddsa = ["ed25519", "ed25519-dalek"]
 frost-ed25519 = ["eddsa", "dep:frost-ed25519"]
 schnorr = ["ed25519", "k256/schnorr"]
-signers = ["ecdsa", "eddsa", "schnorr"]
-protocols = ["cggmp", "frost-ed25519"]
-full = ["protocols", "signers"]
 
 [dependencies]
 mpc-protocol = { version = "0.7", path = "../protocol" }
-# mpc-client = { version = "0.7", path = "../client" }
 thiserror = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

@@ -5,14 +5,15 @@ edition = "2021"
 publish = false
 
 [features]
-default = ["protocols", "signers"]
+default = ["full"]
+full = ["signers", "protocols"]
+signers = ["ecdsa", "eddsa", "schnorr"]
+protocols = ["cggmp", "frost-ed25519"]
 cggmp = ["mpc-driver/cggmp"]
 ecdsa = ["mpc-driver/ecdsa"]
 eddsa = ["mpc-driver/eddsa"]
 schnorr = ["mpc-driver/schnorr"]
 frost-ed25519 = ["mpc-driver/frost-ed25519"]
-signers = ["ecdsa", "eddsa", "schnorr"]
-protocols = ["cggmp", "frost-ed25519"]
 
 [dev-dependencies]
 mpc-client= { path = "../client" }
