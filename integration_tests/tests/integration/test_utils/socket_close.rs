@@ -1,6 +1,7 @@
 use anyhow::Result;
 use futures::StreamExt;
-use mpc_client::{Event, NetworkTransport};
+use polysig_client::NetworkTransport;
+use polysig_protocol::Event;
 
 use super::new_client;
 

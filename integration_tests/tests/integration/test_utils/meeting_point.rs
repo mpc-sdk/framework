@@ -1,12 +1,13 @@
 use anyhow::Result;
 use futures::{select, FutureExt, StreamExt};
-use mpc_protocol::{hex, UserId};
+use polysig_protocol::{hex, UserId};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 
 use super::new_client;
-use mpc_client::{Event, NetworkTransport, Transport};
+use polysig_client::{NetworkTransport, Transport};
+use polysig_protocol::Event;
 
 pub async fn run(
     server: &str,

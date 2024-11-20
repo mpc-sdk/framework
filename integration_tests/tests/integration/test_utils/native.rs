@@ -4,9 +4,9 @@ use axum_server::Handle;
 use std::{net::SocketAddr, thread};
 use tokio::{fs, sync::oneshot};
 
-use mpc_protocol::decode_keypair;
+use polysig_protocol::decode_keypair;
 
-use mpc_relay_server::{RelayServer, ServerConfig};
+use polysig_relay_server::{RelayServer, ServerConfig};
 
 const ADDR: &str = "127.0.0.1:0";
 

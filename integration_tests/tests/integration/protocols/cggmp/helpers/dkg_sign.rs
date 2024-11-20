@@ -1,14 +1,18 @@
 use anyhow::Result;
-use mpc_driver::{
-    cggmp::{keygen, sign, Participant, PartyOptions},
+use polysig_driver::{
+    cggmp::{Participant, PartyOptions},
     k256::ecdsa::{
         self, signature::hazmat::PrehashVerifier, SigningKey,
         VerifyingKey,
     },
     synedrion::{SessionId, TestParams, ThresholdKeyShare},
+};
+
+use polysig_client::{
+    cggmp::{keygen, sign},
     ServerOptions, SessionOptions,
 };
-use mpc_protocol::{generate_keypair, Parameters};
+use polysig_protocol::{generate_keypair, Parameters};
 use rand::{rngs::OsRng, Rng};
 use std::collections::BTreeSet;
 

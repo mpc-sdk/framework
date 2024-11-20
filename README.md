@@ -2,11 +2,17 @@
 
 Polysig is a library for single-party and multisig use cases for ECDSA, Schnorr and Ed25519 signature schemes.
 
-We refer to single-party implementations as *signers* and multisig as *protocols*. Protocols communicate via an end-to-end encrypted relay server using the [noise protocol][] and websockets for the transport layer.
+We refer to single-party implementations as *signers* and multisig as *protocols*; all of the multisig *protocols* are threshold signature schemes.
+
+Protocols communicate via an end-to-end encrypted relay server using the [noise protocol][] and websockets for the transport layer or if you already have a transport you can use the [driver](/crates/driver) crate directly.
 
 The library includes bindings for Webassembly to be used in the browser and for Nodejs; for multisig protocols the client implementation uses [web-sys][] for webassembly and [tokio-tungstenite][] for other platforms.
 
 ## Features
+
+* `full` Enable all protocols and signers.
+* `protocols` Enable all protocols.
+* `signers` Enable all signers.
 
 ### Protocols
 
@@ -37,18 +43,19 @@ The library includes bindings for Webassembly to be used in the browser and for 
 * [ ] FROST
 * [x] Schnorr
 
-## Server Installation
-
-```
-cargo install mpc-relay
-```
-
 ## Documentation
 
 * [protocol][] Message types and encoding
-* [server][] Websocket server library
+* [driver][] Signers and protocol drivers
 * [client][] Websocket client library
+* [server][] Websocket server library
 * [cli][] Command line interface for the server
+
+## Server Installation
+
+```
+cargo install polysig-relay
+```
 
 ## Development
 
@@ -104,7 +111,8 @@ The bindings and driver crates are released under the GPLv3 license and all othe
 [playwright]: https://playwright.dev
 [web-sys]: https://docs.rs/web-sys
 [tokio-tungstenite]: https://docs.rs/tokio-tungstenite
-[protocol]: https://docs.rs/mpc-protocol
-[server]: https://docs.rs/mpc-relay-server
-[client]: https://docs.rs/mpc-client
-[cli]: https://docs.rs/mpc-relay
+[protocol]: https://docs.rs/polysig-protocol
+[driver]: https://docs.rs/polysig-driver
+[client]: https://docs.rs/polysig-client
+[server]: https://docs.rs/polysig-relay-server
+[cli]: https://docs.rs/polysig-relay

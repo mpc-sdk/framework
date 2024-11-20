@@ -1,5 +1,5 @@
 {
-  "name": "@mpc-sdk/node-bindings",
+  "name": "@polysig/node-bindings",
   "private": true,
   "version": "0.0.0",
   "type": "module",

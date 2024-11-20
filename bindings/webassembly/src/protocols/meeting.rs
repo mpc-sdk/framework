@@ -1,6 +1,6 @@
 //! Bindings for meeting points.
-use mpc_driver::{meeting, MeetingOptions};
-use mpc_protocol::{hex, MeetingId, UserId};
+use polysig_client::meeting::{self, MeetingOptions};
+use polysig_protocol::{hex, MeetingId, UserId};
 use serde_json::Value;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::future_to_promise;

@@ -1,6 +1,7 @@
 use anyhow::Result;
 use futures::StreamExt;
-use mpc_client::{Client, Event, EventLoop, NetworkTransport};
+use polysig_client::{Client, EventLoop, NetworkTransport};
+use polysig_protocol::Event;
 use tokio::sync::mpsc;
 
 use super::new_client;
@@ -46,11 +47,14 @@ pub async fn run(
     Ok(())
 }
 
-pub async fn initiator_client<E: From<mpc_client::Error>>(
+pub async fn initiator_client<E>(
     mut client: Client,
     event_loop: EventLoop,
     shutdown_tx: mpsc::Sender<()>,
-) -> Result<(), E> {
+) -> Result<(), E>
+where
+    E: From<polysig_client::Error> + From<polysig_protocol::Error>,
+{
     client.connect().await?;
 
     let mut s = event_loop.run();
@@ -66,7 +70,9 @@ pub async fn initiator_client<E: From<mpc_client::Error>>(
             // start sending messages over the encrypted channel
             Event::PeerConnected { peer_key } => {
                 // Send the ping
-                client.send_json(&peer_key, "ping", None).await?;
+                client
+                    .send_json(&peer_key, &"ping".to_string(), None)
+                    .await?;
             }
             Event::JsonMessage { message, .. } => {
                 let message: &str = message.deserialize()?;
@@ -82,12 +88,15 @@ pub async fn initiator_client<E: From<mpc_client::Error>>(
     Ok(())
 }
 
-pub async fn participant_client<E: From<mpc_client::Error>>(
+pub async fn participant_client<E>(
     mut client: Client,
     event_loop: EventLoop,
     initiator_public_key: &[u8],
     mut shutdown_rx: mpsc::Receiver<()>,
-) -> Result<(), E> {
+) -> Result<(), E>
+where
+    E: From<polysig_client::Error> + From<polysig_protocol::Error>,
+{
     client.connect().await?;
 
     let mut s = event_loop.run();
@@ -119,7 +128,7 @@ pub async fn participant_client<E: From<mpc_client::Error>>(
                             Event::JsonMessage { peer_key, message, .. } => {
                                 let message: &str = message.deserialize()?;
                                 if message == "ping" {
-                                    client.send_json(&peer_key, "pong", None).await?;
+                                    client.send_json(&peer_key, &"pong".to_string(), None).await?;
                                 }
                             }
                             _ => {}

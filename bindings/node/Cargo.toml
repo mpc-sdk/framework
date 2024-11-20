@@ -1,54 +1,42 @@
 [package]
-name = "mpc-node-bindings"
+name = "polysig-node-bindings"
 version = "0.7.0"
 edition = "2021"
-description = "Nodejs bindings to drive multi-party computation protocols"
+description = "Nodejs bindings for the polysig library"
+license = "MIT OR APACHE-2.0"
+repository = "https://github.com/polysig/polysig"
 
 [features]
+default = ["full"]
+full = ["signers", "protocols"]
+signers = ["ecdsa", "eddsa", "schnorr"]
+protocols = ["cggmp", "frost-ed25519"]
 cggmp = [
-  "mpc-driver/cggmp",
-  "tokio",
+  "polysig-driver/cggmp",
+  "dep:tokio",
   "napi/async",
   "napi/tokio",
   "napi/tokio_rt",
   "serde"
 ]
-ecdsa = ["mpc-driver/ecdsa"]
-eddsa = ["mpc-driver/eddsa"]
-frost-ed25519 = ["mpc-driver/frost-ed25519"]
-schnorr = ["mpc-driver/schnorr"]
-signers = ["ecdsa", "eddsa", "schnorr"]
-protocols = ["cggmp", "frost-ed25519"]
-full = ["signers", "protocols"]
-
-# tracing = [
-#   "dep:tracing",
-#   "dep:tracing-subscriber", 
-#   "dep:tracing-subscriber-wasm"
-# ]
+ecdsa = ["polysig-driver/ecdsa"]
+eddsa = ["polysig-driver/eddsa"]
+frost-ed25519 = ["polysig-driver/frost-ed25519", "dep:tokio"]
+schnorr = ["polysig-driver/schnorr"]
 
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
-mpc-driver = { path = "../../driver" }
-mpc-protocol = { path = "../../protocol" }
+polysig-client.workspace = true
+polysig-driver.workspace = true
+polysig-protocol.workspace = true
+anyhow.workspace = true
+serde_json.workspace = true
+tokio = { workspace = true, optional = true }
+serde = { workspace = true, optional = true }
 napi = { version = "3.0.0-alpha.16", features = ["anyhow", "serde-json", "napi9"]}
 napi-derive = "3.0.0-alpha.15"
-anyhow = "1"
-serde_json = "1"
-tokio = { version = "1", features = ["rt", "rt-multi-thread"], optional = true }
-# mpc-client = { path = "../../client" }
-# rand = "0.8"
-# log = "0.4"
-# futures = "0.3"
-# serde_json = "1"
-# getrandom = {version = "0.2", features = ["js"]}
-serde = { version = "1", features = ["derive"], optional = true }
-
-# tracing = { version = "0.1", optional = true }
-# tracing-subscriber = { version = "0.3", optional = true }
-# tracing-subscriber-wasm = { version = "0.1", optional = true }
 
 [build-dependencies]
 napi-build = "1"

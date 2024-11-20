@@ -1,11 +1,13 @@
 use anyhow::Result;
 
-use mpc_client::{NetworkTransport, Transport};
-use mpc_driver::{
+use polysig_client::{
     cggmp::{
         AuxGenDriver, KeyInitDriver, KeyResharingDriver,
         SignatureDriver,
     },
+    wait_for_close, NetworkTransport, Transport,
+};
+use polysig_driver::{
     k256::ecdsa::{
         signature::hazmat::PrehashVerifier, SigningKey, VerifyingKey,
     },
@@ -14,9 +16,8 @@ use mpc_driver::{
         AuxInfo, KeyResharingInputs, KeyShare, NewHolder, OldHolder,
         PrehashedMessage, SessionId, TestParams, ThresholdKeyShare,
     },
-    wait_for_close,
 };
-use mpc_protocol::{Parameters, SessionState};
+use polysig_protocol::{Parameters, SessionState};
 use std::collections::BTreeSet;
 
 use super::super::{

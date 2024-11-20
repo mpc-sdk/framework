@@ -1,5 +1,5 @@
 use anyhow::Result;
-use mpc_driver::signers::schnorr::{SchnorrSigner, VerifyingKey};
+use polysig_driver::signers::schnorr::{SchnorrSigner, VerifyingKey};
 use serde::Deserialize;
 use std::borrow::Cow;
 

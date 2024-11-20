@@ -1,5 +1,5 @@
 use anyhow::Result;
-use mpc_driver::{
+use polysig_driver::{
     recoverable_signature::RecoverableSignature,
     signers::ecdsa::EcdsaSigner,
 };

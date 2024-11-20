@@ -44,19 +44,25 @@ dependencies = ["check-wasm", "test", "format"]
 [tasks.wasm-bindings]
 script = '''
 cd bindings/webassembly
-wasm-pack build --target web --scope mpc-sdk --features full
-'''
-
-[tasks.wasm-signers]
-script = '''
-cd bindings/webassembly
-wasm-pack build --target web --scope mpc-sdk --features signers
+wasm-pack build --target web --scope polysig --features full
 '''
 
 [tasks.wasm-bindings-debug]
 script = '''
 cd bindings/webassembly
-wasm-pack build --target web --scope mpc-sdk --features tracing,full
+wasm-pack build --target web --scope polysig --features tracing,full
+'''
+
+[tasks.wasm-signers]
+script = '''
+cd bindings/webassembly
+wasm-pack build --target web --scope polysig --features signers
+'''
+
+[tasks.wasm-protocols]
+script = '''
+cd bindings/webassembly
+wasm-pack build --target web --scope polysig --features signers
 '''
 
 [tasks.gen-server-key]
@@ -81,21 +87,6 @@ dependencies = ["gen-server-key"]
 script = '''
 cargo run -- start -b 127.0.0.1:8008 integration_tests/tests/config.toml
 '''
-
-[tasks.check-wasm]
-command = "cargo"
-args = [
-  "check",
-  "--all-features",
-  "--target",
-  "wasm32-unknown-unknown",
-  "-p",
-  "mpc-client",
-  "-p",
-  "mpc-driver",
-  "-p",
-  "mpc-bindings",
-]
 
 [tasks.genhtml]
 script = '''

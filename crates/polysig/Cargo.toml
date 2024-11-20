@@ -1,0 +1,14 @@
+[package]
+name = "polysig"
+version = "0.7.1"
+edition = "2021"
+description = "Polysig is a library for single-party and multisig use cases for ECDSA, Schnorr and Ed25519 signature schemes"
+keywords = ["mpc", "tss", "relay", "crypto", "e2ee"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/polysig/polysig"
+
+[dependencies]
+polysig-client.workspace = true
+polysig-driver.workspace = true
+polysig-protocol.workspace = true
+polysig-relay-server.workspace = true

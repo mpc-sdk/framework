@@ -1,14 +1,15 @@
 use crate::test_utils::new_client;
 use anyhow::Result;
 use futures::{Stream, StreamExt};
-use mpc_client::{NetworkTransport, Transport};
-use mpc_driver::{
+use polysig_client::{
+    Driver, NetworkTransport, SessionEventHandler, SessionHandler,
+    SessionInitiator, SessionParticipant, Transport,
+};
+use polysig_driver::{
     k256::ecdsa::{SigningKey, VerifyingKey},
     synedrion::PrehashedMessage,
-    Driver, SessionEventHandler, SessionHandler, SessionInitiator,
-    SessionParticipant,
 };
-use mpc_protocol::{Keypair, SessionState};
+use polysig_protocol::{Event, Keypair, SessionState};
 use rand::rngs::OsRng;
 use sha3::{Digest, Keccak256};
 use std::pin::Pin;
@@ -46,11 +47,7 @@ pub fn make_signers(
 }
 
 type SessionStream = Pin<
-    Box<
-        dyn Stream<
-                Item = Result<mpc_client::Event, mpc_client::Error>,
-            > + Send,
-    >,
+    Box<dyn Stream<Item = Result<Event, polysig_client::Error>> + Send>,
 >;
 
 /// Drive streams to prepare sessions.

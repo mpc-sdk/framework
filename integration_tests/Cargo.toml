@@ -5,29 +5,34 @@ edition = "2021"
 publish = false
 
 [features]
-cggmp = ["mpc-driver/cggmp"]
-ecdsa = ["mpc-driver/ecdsa"]
-eddsa = ["mpc-driver/eddsa"]
-schnorr = ["mpc-driver/schnorr"]
-frost-ed25519 = ["mpc-driver/frost-ed25519"]
+default = ["full"]
+full = ["signers", "protocols"]
+signers = ["ecdsa", "eddsa", "schnorr"]
+protocols = ["cggmp", "frost-ed25519"]
+cggmp = ["polysig-driver/cggmp"]
+ecdsa = ["polysig-driver/ecdsa"]
+eddsa = ["polysig-driver/eddsa"]
+schnorr = ["polysig-driver/schnorr"]
+frost-ed25519 = ["polysig-driver/frost-ed25519"]
 
 [dev-dependencies]
-mpc-client= { path = "../client" }
-mpc-driver = { path = "../driver" }
-mpc-protocol = { version = "0.7", path = "../protocol" }
-mpc-relay-server = { version = "0.7", path = "../relay_server" }
-anyhow = "1"
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-futures = "0.3"
-tokio-stream = "0.1"
-log = "0.4"
-sha2 = "0.10"
-sha3 = "0.10"
-serde = { version = "1", features = ["derive"]}
-serde_json = "1"
-rand = "0.8"
+ed25519-dalek.workspace = true
+polysig-client.workspace = true
+polysig-driver.workspace = true
+polysig-protocol.workspace = true
+polysig-relay-server.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true 
+futures.workspace = true
+tokio-stream.workspace = true
+log.workspace = true
+sha2.workspace = true
+sha3.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+rand.workspace = true
+hex.workspace = true
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "fs", "io-util" ] }
 axum-server = { version = "0.7", features = ["tls-rustls"] }
-hex = "0.4"
 csv = "1"

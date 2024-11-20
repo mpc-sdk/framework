@@ -1,0 +1,44 @@
+[package]
+name = "polysig-client"
+version = "0.7.1"
+edition = "2021"
+description = "Client for the polysig library"
+keywords = ["mpc", "tss", "relay", "crypto", "e2ee"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/polysig/polysig"
+
+[features]
+default = ["full"]
+full = ["signers", "protocols"]
+signers = ["ecdsa", "eddsa", "schnorr"]
+protocols = ["cggmp", "frost-ed25519"]
+cggmp = ["polysig-driver/cggmp"]
+ecdsa = ["polysig-driver/ecdsa"]
+eddsa = ["polysig-driver/eddsa"]
+schnorr = ["polysig-driver/schnorr"]
+frost-ed25519 = ["polysig-driver/frost-ed25519"]
+
+[dependencies]
+polysig-protocol.workspace = true
+polysig-driver.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+async-trait.workspace = true
+futures.workspace = true
+async-stream.workspace = true
+tracing.workspace = true
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio.workspace = true
+tokio-tungstenite.workspace = true
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+log.workspace = true
+getrandom.workspace = true
+tokio = { version = "1", features = ["sync", "macros"] }
+wasm-bindgen.workspace = true
+wasm-bindgen-futures.workspace = true
+serde-wasm-bindgen.workspace = true
+js-sys.workspace = true
+wasm-log.workspace = true
+web-sys.workspace = true

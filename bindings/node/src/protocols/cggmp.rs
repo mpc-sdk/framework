@@ -1,11 +1,11 @@
 //! Bindings for the CGGMP protocol.
 use anyhow::Error;
-use mpc_driver::cggmp::Participant;
-use mpc_driver::synedrion::{
+use polysig_driver::cggmp::Participant;
+use polysig_driver::synedrion::{
     ecdsa::{self, SigningKey},
     SessionId,
 };
-use mpc_protocol::{hex, PATTERN};
+use polysig_protocol::{hex, PATTERN};
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 use std::collections::BTreeSet;
@@ -18,7 +18,7 @@ use super::types::{
 /// CGGMP protocol.
 #[napi]
 pub struct CggmpProtocol {
-    options: mpc_driver::SessionOptions,
+    options: polysig_client::SessionOptions,
     key_share: ThresholdKeyShare,
 }
 
@@ -30,7 +30,7 @@ impl CggmpProtocol {
         options: SessionOptions,
         key_share: KeyShare,
     ) -> Result<CggmpProtocol> {
-        let options: mpc_driver::SessionOptions =
+        let options: polysig_client::SessionOptions =
             options.try_into().map_err(Error::new)?;
         let key_share: ThresholdKeyShare =
             key_share.try_into().map_err(Error::new)?;
@@ -52,7 +52,7 @@ impl CggmpProtocol {
             .to_encoded_point(false)
             .as_bytes()
             .to_vec();
-        mpc_driver::address(&public_key)
+        polysig_driver::address(&public_key)
     }
 
     /// Distributed key generation.
@@ -63,10 +63,10 @@ impl CggmpProtocol {
         session_id_seed: Vec<u8>,
         signer: Vec<u8>,
     ) -> Result<KeyShare> {
-        let options: mpc_driver::SessionOptions =
+        let options: polysig_client::SessionOptions =
             options.try_into().map_err(Error::new)?;
 
-        let party: mpc_driver::cggmp::PartyOptions =
+        let party: polysig_driver::cggmp::PartyOptions =
             party.try_into().map_err(Error::new)?;
 
         let signer: SigningKey =
@@ -75,7 +75,7 @@ impl CggmpProtocol {
 
         let participant = Participant::new(signer, verifier, party)
             .map_err(Error::new)?;
-        let key_share = mpc_driver::cggmp::keygen::<Params>(
+        let key_share = polysig_client::cggmp::keygen::<Params>(
             options,
             participant,
             SessionId::from_seed(&session_id_seed),
@@ -98,7 +98,7 @@ impl CggmpProtocol {
         message: String,
     ) -> Result<RecoverableSignature> {
         let options = self.options.clone();
-        let party: mpc_driver::cggmp::PartyOptions =
+        let party: polysig_driver::cggmp::PartyOptions =
             party.try_into().map_err(Error::new)?;
         let signer: SigningKey =
             signer.as_slice().try_into().map_err(Error::new)?;
@@ -115,7 +115,7 @@ impl CggmpProtocol {
         let key_share =
             self.key_share.to_key_share(&selected_parties);
 
-        let signature = mpc_driver::cggmp::sign(
+        let signature = polysig_client::cggmp::sign(
             options,
             participant,
             SessionId::from_seed(&session_id_seed),
@@ -144,7 +144,7 @@ impl CggmpProtocol {
         new_threshold: i64,
     ) -> Result<KeyShare> {
         let options = self.options.clone();
-        let party: mpc_driver::cggmp::PartyOptions =
+        let party: polysig_driver::cggmp::PartyOptions =
             party.try_into().map_err(Error::new)?;
         let signer: SigningKey =
             signer.as_slice().try_into().map_err(Error::new)?;
@@ -162,7 +162,7 @@ impl CggmpProtocol {
         let participant = Participant::new(signer, verifier, party)
             .map_err(Error::new)?;
 
-        let key_share = mpc_driver::cggmp::reshare(
+        let key_share = polysig_client::cggmp::reshare(
             options,
             participant,
             SessionId::from_seed(&session_id_seed),
@@ -185,10 +185,10 @@ impl CggmpProtocol {
         &self,
         derivation_path: String,
     ) -> std::result::Result<KeyShare, napi::JsError> {
-        use mpc_driver::bip32::DerivationPath;
+        use polysig_driver::bip32::DerivationPath;
         let derivation_path: DerivationPath =
             derivation_path.parse().map_err(Error::new)?;
-        let child_key = mpc_driver::cggmp::derive_bip32(
+        let child_key = polysig_driver::cggmp::derive_bip32(
             &self.key_share,
             &derivation_path,
         )
@@ -206,12 +206,12 @@ impl CggmpProtocol {
         env: Env,
     ) -> std::result::Result<napi::JsUnknown, JsError> {
         let pattern = pattern.unwrap_or_else(|| PATTERN.to_owned());
-        let keypair = mpc_protocol::Keypair::new(
+        let keypair = polysig_protocol::Keypair::new(
             pattern.parse().map_err(Error::new)?,
         )
         .map_err(Error::new)?;
         let public_key = hex::encode(keypair.public_key());
-        let pem = mpc_protocol::encode_keypair(&keypair);
+        let pem = polysig_protocol::encode_keypair(&keypair);
         Ok(env.to_js_value(&(pem, public_key)).map_err(Error::new)?)
     }
 }

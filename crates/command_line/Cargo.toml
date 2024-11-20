@@ -1,0 +1,18 @@
+[package]
+name = "polysig-relay"
+version = "0.7.1"
+edition = "2021"
+description = "Relay server for the polysig library"
+keywords = ["mpc", "tss", "relay", "crypto", "e2ee"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/polysig/polysig"
+
+[dependencies]
+polysig-protocol.workspace = true
+polysig-relay-server.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+clap.workspace = true
+tokio.workspace = true
+axum-server.workspace = true

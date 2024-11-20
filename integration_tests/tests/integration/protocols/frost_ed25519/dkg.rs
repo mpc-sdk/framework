@@ -1,13 +1,13 @@
 use super::make_signers;
 use anyhow::Result;
-use mpc_driver::{
-    frost::ed25519::{
-        ed25519_dalek::SigningKey, keygen, KeyShare, Participant,
-        PartyOptions,
-    },
-    ServerOptions, SessionOptions,
+use ed25519_dalek::SigningKey;
+use polysig_client::{
+    frost::ed25519::keygen, ServerOptions, SessionOptions,
 };
-use mpc_protocol::{generate_keypair, Parameters, SessionId};
+use polysig_driver::frost::ed25519::{
+    KeyShare, Participant, PartyOptions,
+};
+use polysig_protocol::{generate_keypair, Parameters};
 
 pub(super) async fn run_keygen(
     t: u16,
@@ -26,8 +26,6 @@ pub(super) async fn run_keygen(
         server_public_key: server_public_key.clone(),
         pattern: None,
     };
-
-    let keygen_session_id = SessionId::new_v4();
 
     let mut session_options = Vec::new();
     let mut public_keys = Vec::new();
@@ -69,7 +67,6 @@ pub(super) async fn run_keygen(
             let key_share = keygen(
                 opts,
                 Participant::new(signer, verifier, party)?,
-                keygen_session_id.clone(),
             )
             .await?;
             Ok::<_, anyhow::Error>(key_share)

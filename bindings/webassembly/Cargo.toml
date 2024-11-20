@@ -1,15 +1,16 @@
 [package]
-name = "mpc-webassembly-bindings"
+name = "polysig-webassembly-bindings"
 version = "0.7.0"
 edition = "2021"
-description = "Webassembly bindings to drive multi-party computation protocols"
+description = "Webassembly bindings for the polysig library"
+repository = "https://github.com/polysig/polysig"
 
 [features]
-cggmp = ["mpc-driver/cggmp"]
-ecdsa = ["mpc-driver/ecdsa"]
-eddsa = ["mpc-driver/eddsa"]
-frost-ed25519 = ["mpc-driver/frost-ed25519"]
-schnorr = ["mpc-driver/schnorr"]
+cggmp = ["polysig-driver/cggmp"]
+ecdsa = ["polysig-driver/ecdsa"]
+eddsa = ["polysig-driver/eddsa"]
+frost-ed25519 = ["polysig-driver/frost-ed25519"]
+schnorr = ["polysig-driver/schnorr"]
 signers = ["ecdsa", "eddsa", "schnorr"]
 protocols = ["cggmp", "frost-ed25519"]
 full = ["signers", "protocols"]
@@ -24,19 +25,20 @@ tracing = [
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-mpc-driver = { path = "../../driver" }
-mpc-protocol = { path = "../../protocol" }
-serde-wasm-bindgen = "0.6"
-wasm-bindgen-futures = "0.4"
-rand = "0.8"
-console_error_panic_hook = "0.1"
-log = "0.4"
-futures = "0.3"
-serde_json = "1"
-getrandom = {version = "0.2", features = ["js"]}
-wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
-serde = { version = "1", features = ["derive"] }
+polysig-client.workspace = true
+polysig-driver.workspace = true
+polysig-protocol.workspace = true
+rand.workspace = true
+log.workspace = true
+futures.workspace = true
+serde_json.workspace = true
+serde.workspace = true
+tracing = { workspace = true, optional = true }
+tracing-subscriber = { workspace = true, optional = true }
 
-tracing = { version = "0.1", optional = true }
-tracing-subscriber = { version = "0.3", optional = true }
-tracing-subscriber-wasm = { version = "0.1", optional = true }
+serde-wasm-bindgen.workspace = true
+wasm-bindgen-futures.workspace = true
+console_error_panic_hook.workspace = true
+getrandom.workspace = true
+wasm-bindgen.workspace = true
+tracing-subscriber-wasm = { workspace = true, optional = true }
