@@ -1,3 +1,5 @@
+//! ***Moved to `polysig-relay`***.
+//!
 //! Relay service websocket client using the [noise](https://noiseprotocol.org/)
 //! protocol for end-to-end encryption intended for multi-party computation
 //! and threshold signature applications.
