@@ -2,12 +2,12 @@
 members = [
   "bindings/node",
   "bindings/webassembly",
-  "client",
-  "command_line",
-  "driver",
+  "crates/client",
+  "crates/command_line",
+  "crates/driver",
   "integration_tests",
-  "protocol",
-  "relay_server",
+  "crates/protocol",
+  "crates/relay_server",
 ]
 exclude = [
   "conformance/signers/node-cggmp/template",
@@ -16,10 +16,10 @@ exclude = [
 resolver = "2"
 
 [workspace.dependencies]
-mpc-client = { version = "0.7", path = "client" }
-mpc-driver = { version = "0.7", path = "driver" }
-mpc-protocol = { version = "0.7", path = "protocol", features = ["zlib"] }
-mpc-relay-server = { version = "0.7", path = "relay_server" }
+mpc-client = { version = "0.7", path = "crates/client" }
+mpc-driver = { version = "0.7", path = "crates/driver" }
+mpc-protocol = { version = "0.7", path = "crates/protocol", features = ["zlib"] }
+mpc-relay-server = { version = "0.7", path = "crates/relay_server" }
 
 anyhow = "1"
 thiserror = "1"

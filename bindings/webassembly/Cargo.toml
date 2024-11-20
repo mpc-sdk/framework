@@ -24,20 +24,20 @@ tracing = [
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-mpc-client = { path = "../../client" }
-mpc-driver = { path = "../../driver" }
-mpc-protocol = { path = "../../protocol" }
+mpc-client.workspace = true
+mpc-driver.workspace = true
+mpc-protocol.workspace = true
+rand.workspace = true
+log.workspace = true
+futures.workspace = true
+serde_json.workspace = true
+serde.workspace = true
+tracing = { workspace = true, optional = true }
+tracing-subscriber = { workspace = true, optional = true }
+
 serde-wasm-bindgen = "0.6"
 wasm-bindgen-futures = "0.4"
-rand = "0.8"
 console_error_panic_hook = "0.1"
-log = "0.4"
-futures = "0.3"
-serde_json = "1"
 getrandom = {version = "0.2", features = ["js"]}
 wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
-serde = { version = "1", features = ["derive"] }
-
-tracing = { version = "0.1", optional = true }
-tracing-subscriber = { version = "0.3", optional = true }
 tracing-subscriber-wasm = { version = "0.1", optional = true }
