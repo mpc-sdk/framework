@@ -45,4 +45,8 @@ pub enum Error {
     /// Error generated decoding PEM data.
     #[error(transparent)]
     Pem(#[from] pem::PemError),
+
+    /// Error generated serializing or deserializing JSON.
+    #[error(transparent)]
+    Json(#[from] serde_json::Error),
 }

@@ -13,6 +13,7 @@ pub mod channel;
 mod constants;
 pub(crate) mod encoding;
 mod error;
+mod event;
 mod keypair;
 mod protocol;
 #[cfg(feature = "zlib")]
@@ -21,6 +22,7 @@ pub mod zlib;
 pub use constants::*;
 pub use encoding::{decode, encode, VERSION};
 pub use error::Error;
+pub use event::{Event, JsonMessage};
 pub use keypair::*;
 pub use protocol::*;
 

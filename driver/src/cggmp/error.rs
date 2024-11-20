@@ -35,6 +35,10 @@ pub enum Error {
     #[error(transparent)]
     Client(#[from] mpc_client::Error),
 
+    /// Protocol library errors.
+    #[error(transparent)]
+    Protocol(#[from] mpc_protocol::Error),
+
     /// Driver library error.
     #[error(transparent)]
     Driver(#[from] Box<crate::Error>),

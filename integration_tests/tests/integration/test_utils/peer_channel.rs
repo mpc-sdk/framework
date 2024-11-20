@@ -46,11 +46,14 @@ pub async fn run(
     Ok(())
 }
 
-pub async fn initiator_client<E: From<mpc_client::Error>>(
+pub async fn initiator_client<E>(
     mut client: Client,
     event_loop: EventLoop,
     shutdown_tx: mpsc::Sender<()>,
-) -> Result<(), E> {
+) -> Result<(), E>
+where
+    E: From<mpc_client::Error> + From<mpc_protocol::Error>,
+{
     client.connect().await?;
 
     let mut s = event_loop.run();
@@ -82,12 +85,15 @@ pub async fn initiator_client<E: From<mpc_client::Error>>(
     Ok(())
 }
 
-pub async fn participant_client<E: From<mpc_client::Error>>(
+pub async fn participant_client<E>(
     mut client: Client,
     event_loop: EventLoop,
     initiator_public_key: &[u8],
     mut shutdown_rx: mpsc::Receiver<()>,
-) -> Result<(), E> {
+) -> Result<(), E>
+where
+    E: From<mpc_client::Error> + From<mpc_protocol::Error>,
+{
     client.connect().await?;
 
     let mut s = event_loop.run();

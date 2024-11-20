@@ -47,7 +47,9 @@ pub struct RoundInfo {
 #[async_trait]
 pub trait Driver {
     /// Error type.
-    type Error: std::fmt::Debug + From<mpc_client::Error>;
+    type Error: std::fmt::Debug
+        + From<mpc_client::Error>
+        + From<mpc_protocol::Error>;
 
     /// Output yielded when the driver completes.
     type Output;
@@ -73,6 +75,7 @@ pub(crate) trait ProtocolDriver {
     /// Error type for results.
     type Error: std::fmt::Debug
         + From<mpc_client::Error>
+        + From<mpc_protocol::Error>
         + From<Box<crate::Error>>;
 
     /// Outgoing message type.
