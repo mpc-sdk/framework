@@ -13,7 +13,6 @@ pub use sign::SignatureDriver;
 
 use super::Error;
 use mpc_client::{NetworkTransport, Transport};
-use mpc_protocol::SessionId;
 
 use crate::{
     new_client, wait_for_close, wait_for_driver, wait_for_session,
@@ -42,7 +41,6 @@ const ROUND_3: u8 = 3;
 pub async fn keygen(
     options: SessionOptions,
     participant: Participant,
-    session_id: SessionId,
 ) -> crate::Result<(KeyPackage, PublicKeyPackage)> {
     let n = options.parameters.parties;
     let t = options.parameters.threshold;
@@ -93,7 +91,6 @@ pub async fn keygen(
     let key_gen = KeyGenDriver::new(
         transport,
         session,
-        session_id,
         n,
         t,
         identifiers,
@@ -114,7 +111,6 @@ pub async fn keygen(
 pub async fn sign(
     options: SessionOptions,
     participant: Participant,
-    session_id: SessionId,
     // Identifiers must match the KeyPackage identifiers!
     identifiers: Vec<Identifier>,
     key_share: KeyShare,
@@ -158,7 +154,6 @@ pub async fn sign(
     let driver = SignatureDriver::new(
         transport,
         session,
-        session_id,
         participant.signing_key().clone(),
         participant.party().verifiers().to_vec(),
         identifiers,

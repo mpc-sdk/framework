@@ -7,7 +7,7 @@ use mpc_driver::{
     },
     ServerOptions, SessionOptions,
 };
-use mpc_protocol::{generate_keypair, Parameters, SessionId};
+use mpc_protocol::{generate_keypair, Parameters};
 
 pub(super) async fn run_keygen(
     t: u16,
@@ -26,8 +26,6 @@ pub(super) async fn run_keygen(
         server_public_key: server_public_key.clone(),
         pattern: None,
     };
-
-    let keygen_session_id = SessionId::new_v4();
 
     let mut session_options = Vec::new();
     let mut public_keys = Vec::new();
@@ -69,7 +67,6 @@ pub(super) async fn run_keygen(
             let key_share = keygen(
                 opts,
                 Participant::new(signer, verifier, party)?,
-                keygen_session_id.clone(),
             )
             .await?;
             Ok::<_, anyhow::Error>(key_share)

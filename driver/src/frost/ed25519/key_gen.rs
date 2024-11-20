@@ -6,7 +6,7 @@ use frost_ed25519::{
     Identifier,
 };
 use mpc_client::{NetworkTransport, Transport};
-use mpc_protocol::{hex, Event, SessionId, SessionState};
+use mpc_protocol::{hex, Event, SessionState};
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, num::NonZeroU16};
@@ -34,7 +34,6 @@ impl KeyGenDriver {
     pub fn new(
         transport: Transport,
         session: SessionState,
-        session_id: SessionId,
         max_signers: u16,
         min_signers: u16,
         identifiers: Vec<Identifier>,
@@ -50,7 +49,6 @@ impl KeyGenDriver {
             })?;
 
         let driver = FrostDriver::new(
-            session_id,
             party_number,
             max_signers,
             min_signers,
@@ -99,8 +97,6 @@ impl From<KeyGenDriver> for Transport {
 /// FROST keygen driver.
 struct FrostDriver {
     #[allow(dead_code)]
-    session_id: SessionId,
-    #[allow(dead_code)]
     party_number: NonZeroU16,
     max_signers: u16,
     min_signers: u16,
@@ -121,7 +117,6 @@ struct FrostDriver {
 impl FrostDriver {
     /// Create a key generator.
     pub fn new(
-        session_id: SessionId,
         party_number: NonZeroU16,
         max_signers: u16,
         min_signers: u16,
@@ -136,7 +131,6 @@ impl FrostDriver {
             .ok_or(Error::IndexIdentifier(party_index))?;
 
         Ok(Self {
-            session_id,
             party_number,
             max_signers,
             min_signers,

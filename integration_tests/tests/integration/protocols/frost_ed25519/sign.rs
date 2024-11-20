@@ -9,9 +9,7 @@ use mpc_driver::{
     frost::frost_ed25519::{keys, Identifier},
     ServerOptions, SessionOptions,
 };
-use mpc_protocol::{
-    generate_keypair, Keypair, Parameters, SessionId,
-};
+use mpc_protocol::{generate_keypair, Keypair, Parameters};
 use std::collections::BTreeMap;
 
 struct SelectedSigners {
@@ -151,8 +149,6 @@ async fn check_sign(
 
     let message = make_signing_message();
 
-    let sign_session_id = SessionId::new_v4();
-
     let session_options = selected
         .keypairs
         .iter()
@@ -189,15 +185,8 @@ async fn check_sign(
         let ids = selected.identifiers.clone();
 
         tasks.push(tokio::task::spawn(async move {
-            let signature = sign(
-                opts,
-                participant,
-                sign_session_id.clone(),
-                ids,
-                key_share,
-                msg,
-            )
-            .await?;
+            let signature =
+                sign(opts, participant, ids, key_share, msg).await?;
             Ok::<_, anyhow::Error>(signature)
         }));
     }
