@@ -1,5 +1,6 @@
 //! Drive multi-party computation protocols to completion.
 #![deny(missing_docs)]
+#![forbid(unsafe_code)]
 #![cfg_attr(all(doc, CHANNEL_NIGHTLY), feature(doc_auto_cfg))]
 pub mod signers;
 

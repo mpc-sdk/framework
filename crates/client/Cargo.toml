@@ -42,3 +42,6 @@ serde-wasm-bindgen.workspace = true
 js-sys.workspace = true
 wasm-log.workspace = true
 web-sys.workspace = true
+
+[build-dependencies]
+rustc_version = "0.4.1"

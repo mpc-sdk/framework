@@ -3,6 +3,7 @@
 //! and threshold signature applications.
 
 #![deny(missing_docs)]
+#![forbid(unsafe_code)]
 
 mod config;
 mod error;
