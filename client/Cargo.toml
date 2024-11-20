@@ -51,6 +51,3 @@ features = [
   "ProgressEvent",
   "WebSocket",
 ]
-
-[dev-dependencies]
-anyhow = "1"
