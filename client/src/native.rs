@@ -18,7 +18,7 @@ use tokio_tungstenite::{
 use mpc_protocol::{
     channel::encrypt_server_channel, decode, encode, hex,
     http::StatusCode, serde_json::Value, snow::Builder, zlib,
-    Encoding, HandshakeMessage, JsonMessage, MeetingId,
+    Encoding, Event, HandshakeMessage, JsonMessage, MeetingId,
     OpaqueMessage, ProtocolState, RequestMessage, ResponseMessage,
     ServerMessage, SessionId, SessionRequest, TransparentMessage,
     UserId,
@@ -32,8 +32,7 @@ use super::{
     Peers, Server,
 };
 use crate::{
-    client_impl, client_transport_impl, ClientOptions, Error, Event,
-    Result,
+    client_impl, client_transport_impl, ClientOptions, Error, Result,
 };
 
 type WsMessage = Message;

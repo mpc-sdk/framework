@@ -6,9 +6,8 @@
 //! that should be included in a session.
 use crate::{Error, MeetingOptions, Result, ServerOptions};
 use futures::StreamExt;
-use mpc_client::Event;
 use mpc_client::{Client, ClientOptions, NetworkTransport};
-use mpc_protocol::{MeetingId, UserId};
+use mpc_protocol::{Event, MeetingId, UserId};
 use serde_json::Value;
 use std::collections::HashSet;
 

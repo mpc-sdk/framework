@@ -1,8 +1,8 @@
 use std::num::NonZeroU16;
 
 use futures::StreamExt;
-use mpc_client::{Event, EventStream, NetworkTransport, Transport};
-use mpc_protocol::{SessionId, SessionState};
+use mpc_client::{EventStream, NetworkTransport, Transport};
+use mpc_protocol::{Event, SessionId, SessionState};
 
 use crate::{
     public_key_to_str, Driver, Error, ProtocolDriver, Round,

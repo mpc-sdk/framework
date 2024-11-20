@@ -1,7 +1,7 @@
 //! Aux info generation for CGGMP.
 use async_trait::async_trait;
-use mpc_client::{Event, NetworkTransport, Transport};
-use mpc_protocol::{hex, SessionState};
+use mpc_client::{NetworkTransport, Transport};
+use mpc_protocol::{hex, Event, SessionState};
 use rand::rngs::OsRng;
 use std::collections::BTreeSet;
 

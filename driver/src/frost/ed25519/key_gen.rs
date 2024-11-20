@@ -5,8 +5,8 @@ use frost_ed25519::{
     keys::{dkg, KeyPackage, PublicKeyPackage},
     Identifier,
 };
-use mpc_client::{Event, NetworkTransport, Transport};
-use mpc_protocol::{hex, SessionId, SessionState};
+use mpc_client::{NetworkTransport, Transport};
+use mpc_protocol::{hex, Event, SessionId, SessionState};
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, num::NonZeroU16};

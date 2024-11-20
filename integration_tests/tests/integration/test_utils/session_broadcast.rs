@@ -3,8 +3,8 @@ use futures::{select, FutureExt, StreamExt};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use mpc_client::{Client, Event, NetworkTransport};
-use mpc_protocol::SessionState;
+use mpc_client::{Client, NetworkTransport};
+use mpc_protocol::{Event, SessionState};
 
 use super::new_client;
 

@@ -10,10 +10,10 @@ use tokio::sync::{mpsc, RwLock};
 
 use mpc_protocol::{
     channel::encrypt_server_channel, decode, encode, hex,
-    serde_json::Value, snow::Builder, zlib, Encoding,
-    HandshakeMessage, MeetingId, OpaqueMessage, ProtocolState,
-    RequestMessage, ResponseMessage, ServerMessage, SessionId,
-    SessionRequest, TransparentMessage, UserId,
+    serde_json::Value, snow::Builder, zlib, Encoding, Event,
+    HandshakeMessage, JsonMessage, MeetingId, OpaqueMessage,
+    ProtocolState, RequestMessage, ResponseMessage, ServerMessage,
+    SessionId, SessionRequest, TransparentMessage, UserId,
 };
 
 use crate::{
@@ -21,7 +21,7 @@ use crate::{
     event_loop::{
         event_loop_run_impl, EventLoop, EventStream, InternalMessage,
     },
-    ClientOptions, Error, Event, Peers, Result, Server,
+    ClientOptions, Error, Peers, Result, Server,
 };
 
 type WsMessage = Vec<u8>;

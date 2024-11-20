@@ -8,7 +8,7 @@ use mpc_driver::{
     Driver, SessionEventHandler, SessionHandler, SessionInitiator,
     SessionParticipant,
 };
-use mpc_protocol::{Keypair, SessionState};
+use mpc_protocol::{Event, Keypair, SessionState};
 use rand::rngs::OsRng;
 use sha3::{Digest, Keccak256};
 use std::pin::Pin;
@@ -46,11 +46,7 @@ pub fn make_signers(
 }
 
 type SessionStream = Pin<
-    Box<
-        dyn Stream<
-                Item = Result<mpc_client::Event, mpc_client::Error>,
-            > + Send,
-    >,
+    Box<dyn Stream<Item = Result<Event, mpc_client::Error>> + Send>,
 >;
 
 /// Drive streams to prepare sessions.

@@ -7,15 +7,13 @@ use tokio::sync::mpsc;
 
 use mpc_protocol::{
     channel::decrypt_server_channel, decode, hex, snow::Builder,
-    Encoding, HandshakeMessage, OpaqueMessage, ProtocolState,
+    Encoding, Event, HandshakeMessage, OpaqueMessage, ProtocolState,
     RequestMessage, ResponseMessage, SealedEnvelope, ServerMessage,
     SessionId, TransparentMessage,
 };
 
 use super::{decrypt_peer_channel, Peers, Server};
 use crate::{ClientOptions, Error, Result};
-
-pub use mpc_protocol::{Event, JsonMessage};
 
 /// Stream of events emitted by an event loop.
 pub type EventStream = BoxStream<'static, Result<Event>>;

@@ -1,8 +1,10 @@
 //! Driver for the CGGMP protocol.
 use crate::recoverable_signature::RecoverableSignature;
 use futures::StreamExt;
-use mpc_client::{Event, EventStream};
-use mpc_protocol::{SessionId as ProtocolSessionId, SessionState};
+use mpc_client::EventStream;
+use mpc_protocol::{
+    Event, SessionId as ProtocolSessionId, SessionState,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use synedrion::{
