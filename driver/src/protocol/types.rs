@@ -56,7 +56,7 @@ pub struct PartyOptions<V> {
     participants: Vec<Vec<u8>>,
     /// Whether this party is the session initiator.
     ///
-    /// The initiator is reponsible for disposing of a
+    /// The initiator is responsible for disposing of a
     /// session once a protocol completes.
     is_initiator: bool,
     /// Index of the party in the participants list.
