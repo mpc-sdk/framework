@@ -192,11 +192,11 @@ macro_rules! client_transport_impl {
                 session_id: Option<SessionId>,
             ) -> Result<()>
             where
-                S: Serialize + Send + Sync + ?Sized,
+                S: Serialize + Send + Sync,
             {
                 self.relay(
                     public_key,
-                    &serde_json::to_vec(payload)?,
+                    &JsonMessage::serialize(payload)?,
                     Encoding::Json,
                     false,
                     session_id,
@@ -282,12 +282,12 @@ macro_rules! client_transport_impl {
                 payload: &S,
             ) -> Result<()>
             where
-                S: Serialize + Send + Sync + ?Sized,
+                S: Serialize + Send + Sync,
             {
                 self.relay_broadcast(
                     session_id,
                     recipient_public_keys,
-                    &serde_json::to_vec(payload)?,
+                    &JsonMessage::serialize(payload)?,
                     Encoding::Json,
                 )
                 .await

@@ -11,7 +11,6 @@ repository = "https://github.com/mpc-sdk/framework"
 mpc-protocol = { version = "0.7", path = "../protocol", features = ["zlib"] }
 thiserror = "1"
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
 tracing = "0.1"
 async-trait = "0.1"
 futures = "0.3"

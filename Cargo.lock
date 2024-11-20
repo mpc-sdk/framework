@@ -1792,7 +1792,6 @@ dependencies = [
  "mpc-protocol",
  "serde",
  "serde-wasm-bindgen 0.6.5",
- "serde_json",
  "thiserror",
  "tokio",
  "tokio-tungstenite 0.23.1",

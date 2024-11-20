@@ -86,6 +86,13 @@ impl From<Vec<u8>> for JsonMessage {
 }
 
 impl JsonMessage {
+    /// Serialize a message.
+    pub fn serialize<T: serde::ser::Serialize>(
+        value: &T,
+    ) -> Result<Vec<u8>> {
+        Ok(serde_json::to_vec(value)?)
+    }
+
     /// Deserialize this message.
     pub fn deserialize<'a, T: serde::de::Deserialize<'a>>(
         &'a self,

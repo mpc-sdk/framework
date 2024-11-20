@@ -5,7 +5,6 @@ use futures::{
     StreamExt,
 };
 use serde::Serialize;
-use serde_json::Value;
 use std::{collections::HashSet, sync::Arc};
 use tokio::{
     net::TcpStream,
@@ -18,10 +17,11 @@ use tokio_tungstenite::{
 
 use mpc_protocol::{
     channel::encrypt_server_channel, decode, encode, hex,
-    http::StatusCode, snow::Builder, zlib, Encoding,
-    HandshakeMessage, MeetingId, OpaqueMessage, ProtocolState,
-    RequestMessage, ResponseMessage, ServerMessage, SessionId,
-    SessionRequest, TransparentMessage, UserId,
+    http::StatusCode, serde_json::Value, snow::Builder, zlib,
+    Encoding, HandshakeMessage, JsonMessage, MeetingId,
+    OpaqueMessage, ProtocolState, RequestMessage, ResponseMessage,
+    ServerMessage, SessionId, SessionRequest, TransparentMessage,
+    UserId,
 };
 
 use super::{

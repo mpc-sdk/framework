@@ -1,8 +1,7 @@
 use crate::{Client, ClientOptions, EventLoop, Result};
 use async_trait::async_trait;
-use mpc_protocol::{MeetingId, SessionId, UserId};
+use mpc_protocol::{serde_json::Value, MeetingId, SessionId, UserId};
 use serde::Serialize;
-use serde_json::Value;
 use std::collections::HashSet;
 
 /// Enumeration of available transports.
@@ -58,7 +57,7 @@ impl NetworkTransport for Transport {
         session_id: Option<SessionId>,
     ) -> Result<()>
     where
-        S: Serialize + Send + Sync + ?Sized,
+        S: Serialize + Send + Sync,
     {
         match self {
             Transport::Relay(client) => {
@@ -150,7 +149,7 @@ impl NetworkTransport for Transport {
         payload: &S,
     ) -> Result<()>
     where
-        S: Serialize + Send + Sync + ?Sized,
+        S: Serialize + Send + Sync,
     {
         match self {
             Transport::Relay(client) => {
@@ -231,7 +230,7 @@ pub trait NetworkTransport {
         session_id: Option<SessionId>,
     ) -> Result<()>
     where
-        S: Serialize + Send + Sync + ?Sized;
+        S: Serialize + Send + Sync;
 
     /// Send a binary message to a peer.
     async fn send_blob(
@@ -286,7 +285,7 @@ pub trait NetworkTransport {
         payload: &S,
     ) -> Result<()>
     where
-        S: Serialize + Send + Sync + ?Sized;
+        S: Serialize + Send + Sync;
 
     /// Broadcast a binary message in the context of a session.
     async fn broadcast_blob(

@@ -69,7 +69,9 @@ where
             // start sending messages over the encrypted channel
             Event::PeerConnected { peer_key } => {
                 // Send the ping
-                client.send_json(&peer_key, "ping", None).await?;
+                client
+                    .send_json(&peer_key, &"ping".to_string(), None)
+                    .await?;
             }
             Event::JsonMessage { message, .. } => {
                 let message: &str = message.deserialize()?;
@@ -125,7 +127,7 @@ where
                             Event::JsonMessage { peer_key, message, .. } => {
                                 let message: &str = message.deserialize()?;
                                 if message == "ping" {
-                                    client.send_json(&peer_key, "pong", None).await?;
+                                    client.send_json(&peer_key, &"pong".to_string(), None).await?;
                                 }
                             }
                             _ => {}

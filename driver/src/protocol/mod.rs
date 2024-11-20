@@ -2,10 +2,8 @@
 
 use crate::Result;
 use async_trait::async_trait;
-use mpc_client::{
-    Client, ClientOptions, Event, EventLoop, Transport,
-};
-use mpc_protocol::hex;
+use mpc_client::{Client, ClientOptions, EventLoop, Transport};
+use mpc_protocol::{hex, Event};
 
 mod bridge;
 mod round;

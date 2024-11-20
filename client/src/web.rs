@@ -5,16 +5,15 @@ use web_sys::{ErrorEvent, MessageEvent, WebSocket};
 use async_stream::stream;
 use futures::{stream::BoxStream, Sink, SinkExt, StreamExt};
 use serde::Serialize;
-use serde_json::Value;
 use std::{collections::HashSet, pin::Pin, sync::Arc};
 use tokio::sync::{mpsc, RwLock};
 
 use mpc_protocol::{
     channel::encrypt_server_channel, decode, encode, hex,
-    snow::Builder, zlib, Encoding, HandshakeMessage, MeetingId,
-    OpaqueMessage, ProtocolState, RequestMessage, ResponseMessage,
-    ServerMessage, SessionId, SessionRequest, TransparentMessage,
-    UserId,
+    serde_json::Value, snow::Builder, zlib, Encoding,
+    HandshakeMessage, MeetingId, OpaqueMessage, ProtocolState,
+    RequestMessage, ResponseMessage, ServerMessage, SessionId,
+    SessionRequest, TransparentMessage, UserId,
 };
 
 use crate::{
