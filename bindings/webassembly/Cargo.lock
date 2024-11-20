@@ -577,9 +577,9 @@ checksum = "28dea519a9695b9977216879a3ebfddf92f1c08c05d984f8996aecd6ecdc811d"
 
 [[package]]
 name = "flate2"
-version = "1.0.34"
+version = "1.0.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1b589b4dc103969ad3cf85c950899926ec64300a1a46d76c03a6072957036f0"
+checksum = "c936bfdafb507ebbf50b8074c54fa31c5be9a1e7e5f467dd659697041407d07c"
 dependencies = [
  "crc32fast",
  "miniz_oxide",
@@ -1169,6 +1169,7 @@ dependencies = [
  "getrandom",
  "js-sys",
  "log",
+ "mpc-driver",
  "mpc-protocol",
  "serde",
  "serde-wasm-bindgen 0.6.5",
@@ -1194,7 +1195,6 @@ dependencies = [
  "futures",
  "getrandom",
  "k256",
- "mpc-client",
  "mpc-protocol",
  "rand",
  "rand_core",
@@ -1236,6 +1236,7 @@ dependencies = [
  "futures",
  "getrandom",
  "log",
+ "mpc-client",
  "mpc-driver",
  "mpc-protocol",
  "rand",

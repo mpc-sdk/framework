@@ -1,5 +1,5 @@
 //! Bindings for meeting points.
-use mpc_driver::{meeting, MeetingOptions};
+use mpc_client::meeting::{self, MeetingOptions};
 use mpc_protocol::{hex, MeetingId, UserId};
 use serde_json::Value;
 use wasm_bindgen::prelude::*;

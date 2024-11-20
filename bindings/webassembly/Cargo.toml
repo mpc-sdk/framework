@@ -24,6 +24,7 @@ tracing = [
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+mpc-client = { path = "../../client" }
 mpc-driver = { path = "../../driver" }
 mpc-protocol = { path = "../../protocol" }
 serde-wasm-bindgen = "0.6"

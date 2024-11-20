@@ -6,9 +6,21 @@
 //! that should be included in a session.
 use crate::{Client, ClientOptions, Error, NetworkTransport, Result};
 use futures::StreamExt;
-use mpc_driver::{MeetingOptions, ServerOptions};
-use mpc_protocol::{serde_json::Value, Event, MeetingId, UserId};
+use mpc_driver::ServerOptions;
+use mpc_protocol::{
+    serde_json::Value, Event, Keypair, MeetingId, UserId,
+};
+use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
+
+/// Options for creating or joining a meeting point.
+#[derive(Serialize, Deserialize)]
+pub struct MeetingOptions {
+    /// Keypair for the participant.
+    pub keypair: Keypair,
+    /// Server options.
+    pub server: ServerOptions,
+}
 
 /// Create a new meeting point.
 pub async fn create(

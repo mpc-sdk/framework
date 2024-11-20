@@ -120,15 +120,6 @@ impl<V> PartyOptions<V> {
     }
 }
 
-/// Options for creating or joining a meeting point.
-#[derive(Serialize, Deserialize)]
-pub struct MeetingOptions {
-    /// Keypair for the participant.
-    pub keypair: Keypair,
-    /// Server options.
-    pub server: ServerOptions,
-}
-
 /// Server options.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

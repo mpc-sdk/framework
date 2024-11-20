@@ -76,7 +76,7 @@ impl CggmpProtocol {
         let participant = Participant::new(signer, verifier, party)
             .map_err(JsError::from)?;
         let fut = async move {
-            let key_share = mpc_driver::cggmp::keygen::<Params>(
+            let key_share = mpc_client::cggmp::keygen::<Params>(
                 options,
                 participant,
                 SessionId::from_seed(&session_id_seed),
@@ -119,7 +119,7 @@ impl CggmpProtocol {
             message.as_slice().try_into().map_err(JsError::from)?;
 
         let fut = async move {
-            let signature = mpc_driver::cggmp::sign(
+            let signature = mpc_client::cggmp::sign(
                 options,
                 participant,
                 SessionId::from_seed(&session_id_seed),
@@ -158,7 +158,7 @@ impl CggmpProtocol {
             .map_err(JsError::from)?;
 
         let fut = async move {
-            let key_share = mpc_driver::cggmp::reshare(
+            let key_share = mpc_client::cggmp::reshare(
                 options,
                 participant,
                 SessionId::from_seed(&session_id_seed),

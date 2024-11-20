@@ -5,8 +5,7 @@ mod types;
 
 pub use round::{Round, RoundMsg};
 pub use types::{
-    MeetingOptions, Participant, PartyOptions, ServerOptions,
-    SessionOptions,
+    Participant, PartyOptions, ServerOptions, SessionOptions,
 };
 
 #[cfg(feature = "cggmp")]
