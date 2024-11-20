@@ -1,12 +1,10 @@
 use super::make_signers;
 use anyhow::Result;
-use mpc_client::frost::ed25519::keygen;
-use mpc_driver::{
-    frost::ed25519::{
-        ed25519_dalek::SigningKey, KeyShare, Participant,
-        PartyOptions,
-    },
-    ServerOptions, SessionOptions,
+use mpc_client::{
+    frost::ed25519::keygen, ServerOptions, SessionOptions,
+};
+use mpc_driver::frost::ed25519::{
+    ed25519_dalek::SigningKey, KeyShare, Participant, PartyOptions,
 };
 use mpc_protocol::{generate_keypair, Parameters};
 

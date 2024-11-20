@@ -1,5 +1,8 @@
 use anyhow::Result;
-use mpc_client::cggmp::{keygen, reshare, sign};
+use mpc_client::{
+    cggmp::{keygen, reshare, sign},
+    ServerOptions, SessionOptions,
+};
 use mpc_driver::{
     cggmp::{Participant, PartyOptions},
     k256::ecdsa::{
@@ -7,7 +10,6 @@ use mpc_driver::{
         VerifyingKey,
     },
     synedrion::{SessionId, TestParams, ThresholdKeyShare},
-    ServerOptions, SessionOptions,
 };
 use mpc_protocol::{generate_keypair, Parameters};
 use rand::{rngs::OsRng, Rng};

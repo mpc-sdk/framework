@@ -2,13 +2,12 @@
 use mpc_driver::{
     frost::ed25519::{KeyShare, Participant, Signature},
     frost_ed25519::Identifier,
-    SessionOptions,
 };
 
 use crate::{
     new_client, wait_for_close, wait_for_driver, wait_for_session,
     wait_for_session_finish, Error, NetworkTransport, SessionHandler,
-    SessionInitiator, SessionParticipant, Transport,
+    SessionInitiator, SessionOptions, SessionParticipant, Transport,
 };
 
 mod key_gen;

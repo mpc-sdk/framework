@@ -4,9 +4,11 @@
 //! The meeting identifier is the shared secret that participants
 //! can use to exchange public keys so should only be given to parties
 //! that should be included in a session.
-use crate::{Client, ClientOptions, Error, NetworkTransport, Result};
+use crate::{
+    Client, ClientOptions, Error, NetworkTransport, Result,
+    ServerOptions,
+};
 use futures::StreamExt;
-use mpc_driver::ServerOptions;
 use mpc_protocol::{
     serde_json::Value, Event, Keypair, MeetingId, UserId,
 };

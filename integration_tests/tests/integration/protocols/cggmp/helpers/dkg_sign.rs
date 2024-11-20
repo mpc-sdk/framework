@@ -6,10 +6,12 @@ use mpc_driver::{
         VerifyingKey,
     },
     synedrion::{SessionId, TestParams, ThresholdKeyShare},
-    ServerOptions, SessionOptions,
 };
 
-use mpc_client::cggmp::{keygen, sign};
+use mpc_client::{
+    cggmp::{keygen, sign},
+    ServerOptions, SessionOptions,
+};
 use mpc_protocol::{generate_keypair, Parameters};
 use rand::{rngs::OsRng, Rng};
 use std::collections::BTreeSet;

@@ -1,7 +1,7 @@
 use crate::{Client, ClientOptions, EventLoop, Result, Transport};
 use async_trait::async_trait;
-use mpc_driver::SessionOptions;
-use mpc_protocol::{hex, Event};
+use mpc_protocol::{hex, Event, Keypair, Parameters};
+use serde::{Deserialize, Serialize};
 
 mod bridge;
 mod session;
@@ -21,6 +21,31 @@ pub use session::{
     wait_for_session, SessionEventHandler, SessionHandler,
     SessionInitiator, SessionParticipant,
 };
+
+/// Server options.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ServerOptions {
+    /// URL for the server.
+    pub server_url: String,
+    /// Server public key.
+    #[serde(with = "hex::serde")]
+    pub server_public_key: Vec<u8>,
+    /// Noise parameters pattern.
+    pub pattern: Option<String>,
+}
+
+/// Options used to drive a session to completion.
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionOptions {
+    /// Keypair for the participant.
+    pub keypair: Keypair,
+    /// Server options.
+    pub server: ServerOptions,
+    /// Parameters for key generation.
+    pub parameters: Parameters,
+}
 
 /// Drives a protocol to completion bridging between
 /// the network transport and local computation.

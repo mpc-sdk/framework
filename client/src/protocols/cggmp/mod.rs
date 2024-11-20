@@ -2,7 +2,8 @@
 use crate::{
     new_client, wait_for_close, wait_for_driver, wait_for_session,
     wait_for_session_finish, Error, EventStream, NetworkTransport,
-    SessionHandler, SessionInitiator, SessionParticipant, Transport,
+    SessionHandler, SessionInitiator, SessionOptions,
+    SessionParticipant, Transport,
 };
 use futures::StreamExt;
 use mpc_driver::{
@@ -13,7 +14,6 @@ use mpc_driver::{
         KeyResharingInputs, NewHolder, OldHolder, PrehashedMessage,
         SchemeParams, SessionId, ThresholdKeyShare,
     },
-    SessionOptions,
 };
 use mpc_protocol::{
     Event, SessionId as ProtocolSessionId, SessionState,

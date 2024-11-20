@@ -1,8 +1,119 @@
-//! Types passed across the Javascript/Webassembly boundary.
-use serde::{Deserialize, Serialize};
+//! Types for the protocol drivers.
 
 use crate::{Error, Result};
-use mpc_protocol::{hex, Keypair, Parameters};
+use mpc_protocol::{hex, PartyNumber, RoundNumber};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
+
+#[cfg(feature = "cggmp")]
+pub use synedrion::{self, bip32, k256};
+
+#[cfg(feature = "frost-ed25519")]
+pub use frost_ed25519;
+
+/// Information about the current found which
+/// can be retrieved from a driver.
+#[derive(Debug)]
+pub struct RoundInfo {
+    /// Whether the round is ready to be finalized.
+    pub can_finalize: bool,
+    /// Whether the round is an echo round.
+    pub is_echo: bool,
+    /// Round number.
+    pub round_number: u8,
+}
+
+/// Trait for implementations that drive
+/// protocol to completion.
+pub trait ProtocolDriver {
+    /// Error type for results.
+    type Error: std::error::Error
+        + std::fmt::Debug
+        + Send
+        + Sync
+        + From<mpc_protocol::Error>
+        + 'static;
+
+    /// Outgoing message type.
+    type Message: std::fmt::Debug + Round;
+
+    /// Output when the protocol is completed.
+    type Output;
+
+    /// Handle an incoming message.
+    fn handle_incoming(
+        &mut self,
+        message: Self::Message,
+    ) -> std::result::Result<(), Self::Error>;
+
+    /// Proceed to the next round.
+    fn proceed(
+        &mut self,
+    ) -> std::result::Result<Vec<Self::Message>, Self::Error>;
+
+    /// Information about the current round for the driver.
+    fn round_info(
+        &self,
+    ) -> std::result::Result<RoundInfo, Self::Error>;
+
+    /// Try to finalize a round if the protocol is completed
+    /// the result is returned.
+    ///
+    /// Must check with `can_finalize()` first.
+    fn try_finalize_round(
+        &mut self,
+    ) -> std::result::Result<Option<Self::Output>, Self::Error>;
+}
+
+/// Trait for round messages.
+pub trait Round: Serialize + DeserializeOwned + Send + Sync {
+    /// Round number.
+    #[allow(dead_code)]
+    fn round_number(&self) -> RoundNumber;
+
+    /// Receiver for a message.
+    fn receiver(&self) -> &PartyNumber;
+}
+
+/// Round message with additional meta data.
+///
+/// Used to ensure round messages are grouped together and
+/// out of order messages can thus be handled correctly.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RoundMsg<O, V>
+where
+    O: Send + Sync,
+{
+    pub(crate) round: RoundNumber,
+    pub(crate) sender: V,
+    pub(crate) receiver: PartyNumber,
+    pub(crate) body: O,
+}
+
+impl<O, V> RoundMsg<O, V>
+where
+    O: Serialize + Send + Sync + DeserializeOwned,
+    V: Serialize + Send + Sync + DeserializeOwned,
+{
+    /// Consume this message into the sender and body.
+    #[allow(dead_code)]
+    pub fn into_body(self) -> (V, O) {
+        (self.sender, self.body)
+    }
+}
+
+impl<O, V> Round for RoundMsg<O, V>
+where
+    O: Serialize + Send + Sync + DeserializeOwned,
+    V: Serialize + Send + Sync + DeserializeOwned,
+{
+    fn round_number(&self) -> RoundNumber {
+        self.round
+    }
+
+    fn receiver(&self) -> &PartyNumber {
+        &self.receiver
+    }
+}
 
 /// Participant in a protocol session.
 #[derive(Clone)]
@@ -118,29 +229,4 @@ impl<V> PartyOptions<V> {
     pub fn verifiers(&self) -> &[V] {
         self.verifiers.as_slice()
     }
-}
-
-/// Server options.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ServerOptions {
-    /// URL for the server.
-    pub server_url: String,
-    /// Server public key.
-    #[serde(with = "hex::serde")]
-    pub server_public_key: Vec<u8>,
-    /// Noise parameters pattern.
-    pub pattern: Option<String>,
-}
-
-/// Options used to drive a session to completion.
-#[derive(Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SessionOptions {
-    /// Keypair for the participant.
-    pub keypair: Keypair,
-    /// Server options.
-    pub server: ServerOptions,
-    /// Parameters for key generation.
-    pub parameters: Parameters,
 }
