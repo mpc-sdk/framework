@@ -2,7 +2,8 @@
 name = "polysig-webassembly-bindings"
 version = "0.7.0"
 edition = "2021"
-description = "Webassembly bindings to drive multi-party computation protocols"
+description = "Webassembly bindings for the polysig library"
+repository = "https://github.com/polysig/polysig"
 
 [features]
 cggmp = ["polysig-driver/cggmp"]

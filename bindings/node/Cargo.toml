@@ -2,9 +2,9 @@
 name = "polysig-node-bindings"
 version = "0.7.0"
 edition = "2021"
-description = "Nodejs bindings to drive multi-party computation protocols"
+description = "Nodejs bindings for the polysig library"
 license = "MIT OR APACHE-2.0"
-repository = "https://github.com/polysig-sdk/framework"
+repository = "https://github.com/polysig/polysig"
 
 [features]
 default = ["full"]
