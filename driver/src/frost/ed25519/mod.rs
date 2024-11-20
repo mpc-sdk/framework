@@ -4,7 +4,6 @@ use frost_ed25519::keys::{KeyPackage, PublicKeyPackage};
 mod key_gen;
 mod sign;
 
-pub use ed25519_dalek;
 pub use key_gen::KeyGenDriver;
 pub use sign::SignatureDriver;
 

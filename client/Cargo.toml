@@ -19,14 +19,14 @@ schnorr = ["mpc-driver/schnorr"]
 frost-ed25519 = ["mpc-driver/frost-ed25519"]
 
 [dependencies]
-mpc-protocol = { version = "0.7", path = "../protocol", features = ["zlib"] }
-mpc-driver = { version = "0.7", path = "../driver" }
-thiserror = "1"
-serde = { version = "1", features = ["derive"] }
-tracing = "0.1"
-async-trait = "0.1"
-futures = "0.3"
-async-stream = "0.3"
+mpc-protocol.workspace = true
+mpc-driver.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+async-trait.workspace = true
+futures.workspace = true
+async-stream.workspace = true
+tracing.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "sync", "macros", "time", "net"] }

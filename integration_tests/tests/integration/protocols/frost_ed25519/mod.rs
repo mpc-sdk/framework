@@ -1,8 +1,6 @@
 use crate::test_utils::{server_public_key, spawn_server};
 use anyhow::Result;
-use mpc_driver::frost::ed25519::ed25519_dalek::{
-    SigningKey, VerifyingKey,
-};
+use ed25519_dalek::{SigningKey, VerifyingKey};
 use rand::rngs::OsRng;
 
 mod dkg;

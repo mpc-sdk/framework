@@ -1872,6 +1872,7 @@ dependencies = [
  "anyhow",
  "axum-server",
  "csv",
+ "ed25519-dalek",
  "futures",
  "hex",
  "log",

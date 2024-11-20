@@ -16,10 +16,13 @@ schnorr = ["mpc-driver/schnorr"]
 frost-ed25519 = ["mpc-driver/frost-ed25519"]
 
 [dev-dependencies]
+ed25519-dalek.workspace = true
+
 mpc-client= { path = "../client" }
 mpc-driver = { path = "../driver" }
 mpc-protocol = { version = "0.7", path = "../protocol" }
 mpc-relay-server = { version = "0.7", path = "../relay_server" }
+
 anyhow = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
