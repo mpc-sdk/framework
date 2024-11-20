@@ -34,14 +34,9 @@ async-trait.workspace = true
 futures.workspace = true
 bip32 = { workspace = true, optional = true }
 rand.workspace = true
-tokio = { version = "1", features = ["sync"] }
-
-# WASM
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-getrandom = { version = "0.2", features = ["js"] }
-rand_core = { version = "0.6.4", features = ["getrandom"] }
-wasm-bindgen = { version = "0.2" }
+wasm-bindgen.workspace = true
 
 [build-dependencies]
 rustc_version = "0.4.1"
