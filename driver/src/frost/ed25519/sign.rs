@@ -1,6 +1,5 @@
 //! Signature generation for FROST.
 use async_trait::async_trait;
-use ed25519_dalek::{SigningKey, VerifyingKey};
 use frost_ed25519::{
     aggregate,
     round1::{self, SigningCommitments, SigningNonces},
@@ -37,8 +36,6 @@ impl SignatureDriver {
     pub fn new(
         transport: Transport,
         session: SessionState,
-        signer: SigningKey,
-        verifiers: Vec<VerifyingKey>,
         identifiers: Vec<Identifier>,
         min_signers: u16,
         key_share: KeyShare,
@@ -54,8 +51,6 @@ impl SignatureDriver {
 
         let driver = FrostDriver::new(
             party_number,
-            signer,
-            verifiers,
             identifiers,
             min_signers,
             key_share,
@@ -103,8 +98,6 @@ impl From<SignatureDriver> for Transport {
 struct FrostDriver {
     #[allow(dead_code)]
     party_number: NonZeroU16,
-    signer: SigningKey,
-    verifiers: Vec<VerifyingKey>,
     identifiers: Vec<Identifier>,
     id: Identifier,
     min_signers: u16,
@@ -121,8 +114,6 @@ impl FrostDriver {
     /// Create a driver.
     pub fn new(
         party_number: NonZeroU16,
-        signer: SigningKey,
-        verifiers: Vec<VerifyingKey>,
         identifiers: Vec<Identifier>,
         min_signers: u16,
         key_share: KeyShare,
@@ -136,8 +127,6 @@ impl FrostDriver {
 
         Ok(Self {
             party_number,
-            signer,
-            verifiers,
             identifiers,
             id,
             min_signers,

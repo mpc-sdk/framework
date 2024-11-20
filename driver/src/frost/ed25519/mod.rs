@@ -75,28 +75,14 @@ pub async fn keygen(
     let (transport, session) =
         wait_for_session(&mut stream, client_session).await?;
 
-    let verifiers = participant
-        .party()
-        .verifiers()
-        .iter()
-        .cloned()
-        .collect::<Vec<_>>();
-
     let mut identifiers: Vec<Identifier> =
         Vec::with_capacity(n.into());
     for index in 1..=n {
         identifiers.push(index.try_into().map_err(Error::from)?);
     }
 
-    let key_gen = KeyGenDriver::new(
-        transport,
-        session,
-        n,
-        t,
-        identifiers,
-        participant.signing_key().to_owned(),
-        verifiers,
-    )?;
+    let key_gen =
+        KeyGenDriver::new(transport, session, n, t, identifiers)?;
 
     let (transport, key_share) =
         wait_for_driver(&mut stream, key_gen).await?;
@@ -154,8 +140,6 @@ pub async fn sign(
     let driver = SignatureDriver::new(
         transport,
         session,
-        participant.signing_key().clone(),
-        participant.party().verifiers().to_vec(),
         identifiers,
         min_signers,
         key_share,

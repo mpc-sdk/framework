@@ -1,6 +1,5 @@
 //! Key generation for FROST Ed25519.
 use async_trait::async_trait;
-use ed25519_dalek::{SigningKey, VerifyingKey};
 use frost_ed25519::{
     keys::{dkg, KeyPackage, PublicKeyPackage},
     Identifier,
@@ -37,8 +36,6 @@ impl KeyGenDriver {
         max_signers: u16,
         min_signers: u16,
         identifiers: Vec<Identifier>,
-        signer: SigningKey,
-        verifiers: Vec<VerifyingKey>,
     ) -> Result<Self> {
         let party_number = session
             .party_number(transport.public_key())
@@ -53,8 +50,6 @@ impl KeyGenDriver {
             max_signers,
             min_signers,
             identifiers,
-            signer,
-            verifiers,
         )?;
 
         let bridge = Bridge {
@@ -102,8 +97,6 @@ struct FrostDriver {
     min_signers: u16,
     identifiers: Vec<Identifier>,
     id: Identifier,
-    signer: SigningKey,
-    verifiers: Vec<VerifyingKey>,
     round_number: u8,
     round1_package: Option<dkg::round1::SecretPackage>,
     received_round1_packages:
@@ -121,8 +114,6 @@ impl FrostDriver {
         max_signers: u16,
         min_signers: u16,
         identifiers: Vec<Identifier>,
-        signer: SigningKey,
-        verifiers: Vec<VerifyingKey>,
     ) -> Result<Self> {
         let party_index: usize = party_number.get() as usize;
         let self_index = party_index - 1;
@@ -136,8 +127,6 @@ impl FrostDriver {
             min_signers,
             identifiers,
             id,
-            signer,
-            verifiers,
             round_number: ROUND_1,
 
             round1_package: None,
