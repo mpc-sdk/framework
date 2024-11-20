@@ -151,7 +151,7 @@ impl FrostDriver {
 
 impl ProtocolDriver for FrostDriver {
     type Error = Error;
-    type Message = RoundMsg<DkgPackage, VerifyingKey>;
+    type Message = RoundMsg<DkgPackage, Identifier>;
     type Output = (KeyPackage, PublicKeyPackage);
 
     fn round_info(&self) -> Result<RoundInfo> {
@@ -201,7 +201,7 @@ impl ProtocolDriver for FrostDriver {
                             self.round_number.into(),
                         )
                         .unwrap(),
-                        sender: self.signer.verifying_key().clone(),
+                        sender: self.id.clone(),
                         receiver,
                         body: DkgPackage::Round1(
                             public_package.clone(),
@@ -250,7 +250,7 @@ impl ProtocolDriver for FrostDriver {
                             self.round_number.into(),
                         )
                         .unwrap(),
-                        sender: self.signer.verifying_key().clone(),
+                        sender: self.id.clone(),
                         receiver,
                         body: DkgPackage::Round2(package),
                     };
@@ -276,7 +276,7 @@ impl ProtocolDriver for FrostDriver {
             ROUND_1 => match message.body {
                 DkgPackage::Round1(package) => {
                     let party_index = self
-                        .verifiers
+                        .identifiers
                         .iter()
                         .position(|v| v == &message.sender)
                         .ok_or(Error::SenderVerifier)?;
@@ -299,7 +299,7 @@ impl ProtocolDriver for FrostDriver {
             ROUND_2 => match message.body {
                 DkgPackage::Round2(package) => {
                     let party_index = self
-                        .verifiers
+                        .identifiers
                         .iter()
                         .position(|v| v == &message.sender)
                         .ok_or(Error::SenderVerifier)?;

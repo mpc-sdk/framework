@@ -1,7 +1,5 @@
 [workspace]
 members = [
-  "bindings/node",
-  "bindings/webassembly",
   "client",
   "command_line",
   "driver",
@@ -10,6 +8,8 @@ members = [
   "relay_server",
 ]
 exclude = [
+  "bindings/node",
+  "bindings/webassembly",
   "conformance/signers/node-cggmp/template",
   "conformance/signers/webassembly-cggmp/template"
 ]

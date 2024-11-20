@@ -154,7 +154,7 @@ impl FrostDriver {
 
 impl ProtocolDriver for FrostDriver {
     type Error = Error;
-    type Message = RoundMsg<SignPackage, VerifyingKey>;
+    type Message = RoundMsg<SignPackage, Identifier>;
     type Output = Signature;
 
     fn round_info(&self) -> Result<RoundInfo> {
@@ -202,7 +202,7 @@ impl ProtocolDriver for FrostDriver {
                             self.round_number.into(),
                         )
                         .unwrap(),
-                        sender: self.signer.verifying_key().clone(),
+                        sender: self.id.clone(),
                         receiver,
                         body: SignPackage::Round1(
                             commitments.clone(),
@@ -253,7 +253,7 @@ impl ProtocolDriver for FrostDriver {
                             self.round_number.into(),
                         )
                         .unwrap(),
-                        sender: self.signer.verifying_key().clone(),
+                        sender: self.id.clone(),
                         receiver,
                         body: SignPackage::Round2(
                             signature_share.clone(),
@@ -285,7 +285,7 @@ impl ProtocolDriver for FrostDriver {
             ROUND_1 => match message.body {
                 SignPackage::Round1(commitments) => {
                     let party_index = self
-                        .verifiers
+                        .identifiers
                         .iter()
                         .position(|v| v == &message.sender)
                         .ok_or(Error::SenderVerifier)?;
@@ -307,7 +307,7 @@ impl ProtocolDriver for FrostDriver {
             ROUND_2 => match message.body {
                 SignPackage::Round2(signature_share) => {
                     let party_index = self
-                        .verifiers
+                        .identifiers
                         .iter()
                         .position(|v| v == &message.sender)
                         .ok_or(Error::SenderVerifier)?;
