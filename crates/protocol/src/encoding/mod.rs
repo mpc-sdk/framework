@@ -92,11 +92,6 @@ pub(crate) mod types {
     pub const OPAQUE_SERVER: u8 = 1;
     pub const OPAQUE_PEER: u8 = 2;
 
-    pub const MEETING_NEW: u8 = 1;
-    pub const MEETING_CREATED: u8 = 2;
-    pub const MEETING_JOIN: u8 = 3;
-    pub const MEETING_READY: u8 = 4;
-
     pub const SESSION_NEW: u8 = 5;
     pub const SESSION_CREATED: u8 = 6;
     pub const SESSION_READY: u8 = 7;

@@ -161,12 +161,6 @@ where
             ServerMessage::Error(code, message) => {
                 Err(Error::ServerError(code, message))
             }
-            ServerMessage::MeetingCreated(response) => {
-                Ok(Some(Event::MeetingCreated(response)))
-            }
-            ServerMessage::MeetingReady(response) => {
-                Ok(Some(Event::MeetingReady(response)))
-            }
             ServerMessage::SessionCreated(response) => {
                 Ok(Some(Event::SessionCreated(response)))
             }

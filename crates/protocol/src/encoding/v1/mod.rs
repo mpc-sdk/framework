@@ -218,30 +218,6 @@ impl Encodable for ServerMessage {
                 writer.write_u16(code).await?;
                 writer.write_string(message).await?;
             }
-            Self::NewMeeting {
-                owner_id,
-                slots,
-                data,
-            } => {
-                writer.write_bytes(owner_id.as_ref()).await?;
-                writer.write_u32(slots.len() as u32).await?;
-                for slot in slots {
-                    writer.write_bytes(slot.as_ref()).await?;
-                }
-                writer
-                    .write_string(serde_json::to_string(&data)?)
-                    .await?;
-            }
-            Self::MeetingCreated(response) => {
-                response.encode(writer).await?;
-            }
-            Self::JoinMeeting(meeting_id, user_id) => {
-                writer.write_bytes(meeting_id.as_bytes()).await?;
-                writer.write_bytes(user_id.as_ref()).await?;
-            }
-            Self::MeetingReady(response) => {
-                response.encode(writer).await?;
-            }
             Self::NewSession(request) => {
                 request.encode(writer).await?;
             }
@@ -295,54 +271,6 @@ impl Decodable for ServerMessage {
                     .map_err(encoding_error)?;
                 let message = reader.read_string().await?;
                 *self = ServerMessage::Error(code, message);
-            }
-            types::MEETING_NEW => {
-                let owner_id: [u8; 32] =
-                    reader.read_bytes(32).await?.try_into().unwrap();
-
-                let mut slots = HashSet::new();
-                let num_slots = reader.read_u32().await?;
-                for _ in 0..num_slots {
-                    let slot: [u8; 32] = reader
-                        .read_bytes(32)
-                        .await?
-                        .try_into()
-                        .unwrap();
-                    slots.insert(slot.into());
-                }
-                let data = reader.read_string().await?;
-                *self = ServerMessage::NewMeeting {
-                    owner_id: owner_id.into(),
-                    slots,
-                    data: serde_json::from_str(&data)?,
-                };
-            }
-            types::MEETING_CREATED => {
-                let mut meeting: MeetingState = Default::default();
-                meeting.decode(reader).await?;
-                *self = ServerMessage::MeetingCreated(meeting);
-            }
-            types::MEETING_JOIN => {
-                let meeting_id = MeetingId::from_bytes(
-                    reader
-                        .read_bytes(16)
-                        .await?
-                        .as_slice()
-                        .try_into()
-                        .map_err(encoding_error)?,
-                );
-                let user_id: [u8; 32] =
-                    reader.read_bytes(32).await?.try_into().unwrap();
-
-                *self = ServerMessage::JoinMeeting(
-                    meeting_id,
-                    user_id.into(),
-                );
-            }
-            types::MEETING_READY => {
-                let mut meeting: MeetingState = Default::default();
-                meeting.decode(reader).await?;
-                *self = ServerMessage::MeetingReady(meeting);
             }
             types::SESSION_NEW => {
                 let mut session: SessionRequest = Default::default();

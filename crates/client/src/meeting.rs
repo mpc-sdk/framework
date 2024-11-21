@@ -80,7 +80,7 @@ pub async fn join(
     meeting_id: MeetingId,
     user_id: Option<UserId>,
     data: MeetingData,
-) -> Result<(Vec<Vec<u8>>, Value)> {
+) -> Result<Vec<(UserId, MeetingData)>> {
     let ServerOptions { server_url, .. } = options.server;
     let options = ClientOptions::default();
     let url = options.url(&server_url);
@@ -94,13 +94,11 @@ pub async fn join(
     while let Some(event) = stream.next().await {
         let event = event?;
         match event {
-            Event::MeetingReady(meeting) => {
+            Event::Meeting(MeetingClientMessage::RoomReady {
+                participants,
+            }) => {
                 let _ = client.close().await;
-                let public_keys: Vec<Vec<u8>> = meeting
-                    .registered_participants
-                    .into_iter()
-                    .collect();
-                return Ok((public_keys, meeting.data));
+                return Ok(participants);
             }
             _ => {}
         }

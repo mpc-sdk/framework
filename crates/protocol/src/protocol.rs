@@ -183,25 +183,6 @@ pub enum ServerMessage {
     Noop,
     /// Return an error message to the client.
     Error(StatusCode, String),
-    /// Request a new meeting point.
-    NewMeeting {
-        /// The identifier for the owner of the meeting point.
-        ///
-        /// The owner id must exist in the set of slots.
-        owner_id: UserId,
-        /// Slots for participants in the meeting.
-        slots: HashSet<UserId>,
-        /// Data associated aith the meeting point.
-        data: Value,
-    },
-    /// Response to a new meeting point request.
-    MeetingCreated(MeetingState),
-    /// Participant joins a meeting.
-    JoinMeeting(MeetingId, UserId),
-    /// Notification dispatched to all participants
-    /// in a meeting when the limit for the meeting
-    /// has been reached.
-    MeetingReady(MeetingState),
     /// Request a new session.
     NewSession(SessionRequest),
     /// Register a peer connection in a session.
@@ -236,12 +217,6 @@ impl From<&ServerMessage> for u8 {
         match value {
             ServerMessage::Noop => types::NOOP,
             ServerMessage::Error(_, _) => types::ERROR,
-            ServerMessage::NewMeeting { .. } => types::MEETING_NEW,
-            ServerMessage::MeetingCreated(_) => {
-                types::MEETING_CREATED
-            }
-            ServerMessage::JoinMeeting(_, _) => types::MEETING_JOIN,
-            ServerMessage::MeetingReady(_) => types::MEETING_READY,
             ServerMessage::NewSession(_) => types::SESSION_NEW,
             ServerMessage::SessionConnection { .. } => {
                 types::SESSION_CONNECTION
