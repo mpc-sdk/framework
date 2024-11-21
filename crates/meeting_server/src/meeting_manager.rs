@@ -1,5 +1,4 @@
-use polysig_protocol::{MeetingId, UserId};
-use serde_json::Value;
+use polysig_protocol::{MeetingData, MeetingId, UserId};
 use std::{
     collections::{HashMap, HashSet},
     time::{Duration, SystemTime},
@@ -18,10 +17,10 @@ impl MeetingManager {
         owner_id: UserId,
         slots: HashSet<UserId>,
         conn_id: u64,
-        data: Value,
+        data: MeetingData,
     ) -> MeetingId {
         let meeting_id = MeetingId::new_v4();
-        let slots: HashMap<UserId, Option<(u64, Value)>> =
+        let slots: HashMap<UserId, Option<(u64, MeetingData)>> =
             slots.into_iter().map(|id| (id, None)).collect();
 
         let mut meeting = Meeting {
@@ -78,7 +77,7 @@ impl MeetingManager {
 #[derive(Debug)]
 pub struct Meeting {
     /// Map of user identifiers to public keys.
-    pub(crate) slots: HashMap<UserId, Option<(u64, Value)>>,
+    pub(crate) slots: HashMap<UserId, Option<(u64, MeetingData)>>,
     /// Last access time so the server can reap
     /// stale meetings.
     last_access: SystemTime,
@@ -90,7 +89,7 @@ impl Meeting {
         &mut self,
         user_id: UserId,
         conn_id: u64,
-        data: Value,
+        data: MeetingData,
     ) {
         self.slots.insert(user_id, Some((conn_id, data)));
         self.last_access = SystemTime::now();

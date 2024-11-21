@@ -122,11 +122,20 @@ impl From<&TransparentMessage> for u8 {
     }
 }
 
-// TODO: specifiy transport/signing public key fields
-type MeetingData = Value;
+/// Data for a meeting room participant.
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
+pub struct MeetingData {
+    /// Public key for the noise transport.
+    pub public_key: Vec<u8>,
+    /// Verifying key.
+    pub verifying_key: Vec<u8>,
+    /// Optional application specific associated data.
+    pub associated_data: Option<Value>,
+}
 
 /// Messages for the meeting server.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum MeetingServerMessage {
     /// Create a meeting room.
     NewRoom {
@@ -150,6 +159,7 @@ pub enum MeetingServerMessage {
 
 /// Messages for the meeting client.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum MeetingClientMessage {
     /// Meeting room was created.
     RoomCreated {

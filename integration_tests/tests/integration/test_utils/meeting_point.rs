@@ -1,6 +1,8 @@
 use anyhow::Result;
 use futures::StreamExt;
-use polysig_protocol::{MeetingClientMessage, MeetingId, UserId};
+use polysig_protocol::{
+    MeetingClientMessage, MeetingData, MeetingId, UserId,
+};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
@@ -11,10 +13,7 @@ use super::new_meeting_client;
 use polysig_client::{NetworkTransport, Transport};
 use polysig_protocol::Event;
 
-pub async fn run(
-    server: &str,
-    num_participants: usize,
-) -> Result<usize> {
+pub async fn run(server: &str, num_participants: u8) -> Result<u8> {
     // Create new clients
     let (client, event_loop) =
         new_meeting_client::<anyhow::Error>(server).await?;
@@ -59,7 +58,11 @@ pub async fn run(
     let creator = tokio::task::spawn(async move {
         // In the real world this would be the public keys
         // for each participant
-        let value = Value::Null;
+        let value = MeetingData {
+            public_key: vec![0],
+            verifying_key: vec![0],
+            associated_data: None,
+        };
 
         transport.new_meeting(init_id.clone(), slots, value).await?;
 
@@ -88,8 +91,10 @@ pub async fn run(
     });
     tasks.push(creator);
 
-    for ((client, event_loop), user_id) in
-        join_clients.into_iter().zip(join_ids.into_iter())
+    for (index, ((client, event_loop), user_id)) in join_clients
+        .into_iter()
+        .zip(join_ids.into_iter())
+        .enumerate()
     {
         let state = meeting.clone();
         tasks.push(tokio::task::spawn(async move {
@@ -101,7 +106,11 @@ pub async fn run(
                     lock.clone()
                 };
                 if let Some(meeting_id) = meeting_id {
-                    let value = Value::Null;
+                    let value = MeetingData {
+                        public_key: vec![index as u8 + 1],
+                        verifying_key: vec![index as u8 + 1],
+                        associated_data: None,
+                    };
                     transport
                         .join_meeting(meeting_id, user_id, value)
                         .await?;
@@ -141,5 +150,5 @@ pub async fn run(
     let all_equal = parties.windows(2).all(|w| w[0] == w[1]);
     assert!(all_equal);
 
-    Ok(num_results)
+    Ok(num_results as u8)
 }

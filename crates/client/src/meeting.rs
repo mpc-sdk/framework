@@ -10,7 +10,8 @@ use crate::{
 };
 use futures::StreamExt;
 use polysig_protocol::{
-    serde_json::Value, Event, Keypair, MeetingId, UserId,
+    serde_json::Value, Event, Keypair, MeetingClientMessage,
+    MeetingData, MeetingId, UserId,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -29,7 +30,7 @@ pub async fn create(
     options: MeetingOptions,
     identifiers: Vec<UserId>,
     initiator: UserId,
-    data: Value,
+    data: MeetingData,
 ) -> Result<MeetingId> {
     let num_ids = identifiers.len();
     let slots: HashSet<UserId> = identifiers.into_iter().collect();
@@ -47,17 +48,18 @@ pub async fn create(
     let url = options.url(&server_url);
     let (mut client, event_loop) = Client::new(&url, options).await?;
 
-    client
-        .new_meeting(initiator.clone(), slots.clone(), data.clone())
-        .await?;
+    client.new_meeting(initiator.clone(), slots, data).await?;
 
     let mut stream = event_loop.run();
     while let Some(event) = stream.next().await {
         let event = event?;
         match event {
-            Event::MeetingCreated(meeting) => {
+            Event::Meeting(MeetingClientMessage::RoomCreated {
+                meeting_id,
+                ..
+            }) => {
                 let _ = client.close().await;
-                return Ok(meeting.meeting_id);
+                return Ok(meeting_id);
             }
             _ => {}
         }
@@ -77,7 +79,7 @@ pub async fn join(
     options: MeetingOptions,
     meeting_id: MeetingId,
     user_id: Option<UserId>,
-    data: Value,
+    data: MeetingData,
 ) -> Result<(Vec<Vec<u8>>, Value)> {
     let ServerOptions { server_url, .. } = options.server;
     let options = ClientOptions::default();
@@ -85,9 +87,7 @@ pub async fn join(
     let (mut client, event_loop) = Client::new(&url, options).await?;
 
     if let Some(user_id) = &user_id {
-        client
-            .join_meeting(meeting_id, user_id.clone(), data)
-            .await?;
+        client.join_meeting(meeting_id, *user_id, data).await?;
     }
 
     let mut stream = event_loop.run();

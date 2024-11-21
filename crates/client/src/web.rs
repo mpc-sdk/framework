@@ -11,8 +11,8 @@ use tokio::sync::{mpsc, RwLock};
 use polysig_protocol::{
     channel::encrypt_server_channel, decode, encode, hex,
     serde_json::Value, snow::Builder, zlib, Encoding, Event,
-    HandshakeMessage, JsonMessage, MeetingClientMessage, MeetingId,
-    MeetingServerMessage, OpaqueMessage, ProtocolState,
+    HandshakeMessage, JsonMessage, MeetingClientMessage, MeetingData,
+    MeetingId, MeetingServerMessage, OpaqueMessage, ProtocolState,
     RequestMessage, ResponseMessage, ServerMessage, SessionId,
     SessionRequest, TransparentMessage, UserId,
 };

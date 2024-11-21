@@ -10,7 +10,7 @@ async fn integration_meeting_point() -> Result<()> {
     let (rx, _handle) = spawn_meeting_server()?;
     let addr = rx.await?;
     let server = format!("ws://{}", addr);
-    let expected_participants = 4;
+    let expected_participants = 5u8;
     let connected_participants =
         meeting_point::run(&server, expected_participants).await?;
     assert_eq!(expected_participants, connected_participants);
