@@ -48,7 +48,8 @@ The library includes bindings for Webassembly to be used in the browser and for 
 * [protocol][] Message types and encoding
 * [driver][] Signers and protocol drivers
 * [client][] Websocket client library
-* [server][] Websocket server library
+* [meeting-server][] Websocket meeting room server library
+* [relay-server][] Websocket relay server library
 * [cli][] Command line interface for the server
 
 ## Server Installation
@@ -116,5 +117,6 @@ The bindings and driver crates are released under the GPLv3 license and all othe
 [protocol]: https://docs.rs/polysig-protocol
 [driver]: https://docs.rs/polysig-driver
 [client]: https://docs.rs/polysig-client
-[server]: https://docs.rs/polysig-relay-server
-[cli]: https://docs.rs/polysig-relay
+[relay-server]: https://docs.rs/polysig-relay-server
+[meeting-server]: https://docs.rs/polysig-meeting-server
+[cli]: https://docs.rs/polysig-server

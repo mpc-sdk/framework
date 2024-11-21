@@ -2245,20 +2245,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "polysig-relay"
-version = "0.7.2"
-dependencies = [
- "anyhow",
- "axum-server",
- "clap",
- "polysig-protocol",
- "polysig-relay-server",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "polysig-relay-server"
 version = "0.7.1"
 dependencies = [
@@ -2281,6 +2267,20 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "url",
+]
+
+[[package]]
+name = "polysig-server"
+version = "0.7.3"
+dependencies = [
+ "anyhow",
+ "axum-server",
+ "clap",
+ "polysig-protocol",
+ "polysig-relay-server",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
