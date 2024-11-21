@@ -17,17 +17,18 @@ impl MeetingManager {
         &mut self,
         owner_id: UserId,
         slots: HashSet<UserId>,
+        conn_id: u64,
         data: Value,
     ) -> MeetingId {
         let meeting_id = MeetingId::new_v4();
-        let slots: HashMap<UserId, Option<Value>> =
+        let slots: HashMap<UserId, Option<(u64, Value)>> =
             slots.into_iter().map(|id| (id, None)).collect();
 
         let mut meeting = Meeting {
             slots,
             last_access: SystemTime::now(),
         };
-        meeting.join(owner_id, data);
+        meeting.join(owner_id, conn_id, data);
 
         self.meetings.insert(meeting_id, meeting);
         meeting_id
@@ -77,7 +78,7 @@ impl MeetingManager {
 #[derive(Debug)]
 pub struct Meeting {
     /// Map of user identifiers to public keys.
-    slots: HashMap<UserId, Option<Value>>,
+    pub(crate) slots: HashMap<UserId, Option<(u64, Value)>>,
     /// Last access time so the server can reap
     /// stale meetings.
     last_access: SystemTime,
@@ -85,8 +86,13 @@ pub struct Meeting {
 
 impl Meeting {
     /// Add a participant to this meeting.
-    pub fn join(&mut self, user_id: UserId, data: Value) {
-        self.slots.insert(user_id, Some(data));
+    pub fn join(
+        &mut self,
+        user_id: UserId,
+        conn_id: u64,
+        data: Value,
+    ) {
+        self.slots.insert(user_id, Some((conn_id, data)));
         self.last_access = SystemTime::now();
     }
 

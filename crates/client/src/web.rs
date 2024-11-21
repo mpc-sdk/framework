@@ -11,16 +11,17 @@ use tokio::sync::{mpsc, RwLock};
 use polysig_protocol::{
     channel::encrypt_server_channel, decode, encode, hex,
     serde_json::Value, snow::Builder, zlib, Encoding, Event,
-    HandshakeMessage, JsonMessage, MeetingId, MeetingServerMessage,
-    OpaqueMessage, ProtocolState, RequestMessage, ResponseMessage,
-    ServerMessage, SessionId, SessionRequest, TransparentMessage,
-    UserId,
+    HandshakeMessage, JsonMessage, MeetingClientMessage, MeetingId,
+    MeetingServerMessage, OpaqueMessage, ProtocolState,
+    RequestMessage, ResponseMessage, ServerMessage, SessionId,
+    SessionRequest, TransparentMessage, UserId,
 };
 
 use crate::{
     client_impl, client_transport_impl, encrypt_peer_channel,
     event_loop::{
-        event_loop_run_impl, EventLoop, EventStream, InternalMessage,
+        event_loop_run_impl, EventLoop, EventStream, IncomingMessage,
+        InternalMessage,
     },
     ClientOptions, Error, Peers, Result, Server,
 };
@@ -132,19 +133,6 @@ impl WebClient {
         let (outbound_tx, outbound_rx) =
             mpsc::unbounded_channel::<InternalMessage>();
 
-        /*
-        let builder = Builder::new(options.params()?);
-        let handshake = builder
-            .local_private_key(options.keypair.private_key())
-            .remote_public_key(&options.server_public_key)
-            .build_initiator()?;
-
-        // State for the server transport
-        let server = Arc::new(RwLock::new(Some(
-            ProtocolState::Handshake(Box::new(handshake)),
-        )));
-        */
-
         let server = if let (Some(keypair), Some(server_public_key)) =
             (&options.keypair, &options.server_public_key)
         {
@@ -186,7 +174,7 @@ impl WebClient {
 
         // Decoded socket messages are sent over this channel
         let (inbound_tx, inbound_rx) =
-            mpsc::unbounded_channel::<ResponseMessage>();
+            mpsc::unbounded_channel::<IncomingMessage>();
 
         let event_loop: WebEventLoop = EventLoop {
             options,
@@ -232,12 +220,19 @@ impl EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream> {
     /// Receive and decode socket messages then send to
     /// the messages channel.
     pub(crate) async fn read_message(
+        options: Arc<ClientOptions>,
         incoming: WsMessage,
-        event_proxy: &mut mpsc::UnboundedSender<ResponseMessage>,
+        event_proxy: &mut mpsc::UnboundedSender<IncomingMessage>,
     ) -> Result<()> {
         let inflated = zlib::inflate(&incoming)?;
-        let response: ResponseMessage = decode(&inflated).await?;
-        event_proxy.send(response)?;
+        if options.is_encrypted() {
+            let response: ResponseMessage = decode(&inflated).await?;
+            event_proxy.send(IncomingMessage::Response(response))?;
+        } else {
+            let response: MeetingClientMessage =
+                serde_json::from_slice(&inflated)?;
+            event_proxy.send(IncomingMessage::Meeting(response))?;
+        }
         Ok(())
     }
 

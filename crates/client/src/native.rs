@@ -18,16 +18,18 @@ use tokio_tungstenite::{
 use polysig_protocol::{
     channel::encrypt_server_channel, decode, encode, hex,
     http::StatusCode, serde_json::Value, snow::Builder, zlib,
-    Encoding, Event, HandshakeMessage, JsonMessage, MeetingId,
-    MeetingServerMessage, OpaqueMessage, ProtocolState,
-    RequestMessage, ResponseMessage, ServerMessage, SessionId,
-    SessionRequest, TransparentMessage, UserId,
+    Encoding, Event, HandshakeMessage, JsonMessage,
+    MeetingClientMessage, MeetingId, MeetingServerMessage,
+    OpaqueMessage, ProtocolState, RequestMessage, ResponseMessage,
+    ServerMessage, SessionId, SessionRequest, TransparentMessage,
+    UserId,
 };
 
 use super::{
     encrypt_peer_channel,
     event_loop::{
-        event_loop_run_impl, EventLoop, EventStream, InternalMessage,
+        event_loop_run_impl, EventLoop, EventStream, IncomingMessage,
+        InternalMessage,
     },
     Peers, Server,
 };
@@ -106,7 +108,7 @@ impl NativeClient {
 
         // Decoded socket messages are sent over this channel
         let (inbound_tx, inbound_rx) =
-            mpsc::unbounded_channel::<ResponseMessage>();
+            mpsc::unbounded_channel::<IncomingMessage>();
 
         let event_loop = EventLoop {
             options,
@@ -132,13 +134,24 @@ impl EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream> {
     /// Receive and decode socket messages then send to
     /// the messages channel.
     pub(crate) async fn read_message(
+        options: Arc<ClientOptions>,
         incoming: Message,
-        event_proxy: &mut mpsc::UnboundedSender<ResponseMessage>,
+        event_proxy: &mut mpsc::UnboundedSender<IncomingMessage>,
     ) -> Result<()> {
         if let Message::Binary(buffer) = incoming {
             let inflated = zlib::inflate(&buffer)?;
-            let response: ResponseMessage = decode(inflated).await?;
-            event_proxy.send(response)?;
+
+            if options.is_encrypted() {
+                let response: ResponseMessage =
+                    decode(inflated).await?;
+                event_proxy
+                    .send(IncomingMessage::Response(response))?;
+            } else {
+                let response: MeetingClientMessage =
+                    serde_json::from_slice(&inflated)?;
+                event_proxy
+                    .send(IncomingMessage::Meeting(response))?;
+            }
         }
         Ok(())
     }

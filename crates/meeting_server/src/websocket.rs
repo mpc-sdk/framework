@@ -20,7 +20,9 @@ use tokio::sync::Mutex;
 //use axum_macros::debug_handler;
 
 use crate::{server::State, Result};
-use polysig_protocol::{zlib, MeetingServerMessage};
+use polysig_protocol::{
+    zlib, MeetingClientMessage, MeetingServerMessage,
+};
 
 pub type Connection = Arc<Mutex<WebSocketConnection>>;
 
@@ -43,8 +45,8 @@ impl fmt::Debug for WebSocketConnection {
 
 impl WebSocketConnection {
     /// Send a buffer to the client at this socket.
-    pub async fn send(&mut self, buffer: Vec<u8>) -> Result<()> {
-        let deflated = zlib::deflate(&buffer)?;
+    pub async fn send(&mut self, buffer: &[u8]) -> Result<()> {
+        let deflated = zlib::deflate(buffer)?;
         self.writer.send(Message::Binary(deflated)).await?;
         Ok(())
     }
@@ -116,41 +118,113 @@ async fn read(
                     if let Ok(inflated) = zlib::inflate(&buffer) {
                         let message: MeetingServerMessage =
                             serde_json::from_slice(&inflated)?;
-
-                        println!("got message: {:#?}", message);
-
                         match message {
                             MeetingServerMessage::NewRoom {
                                 owner_id,
                                 slots,
                                 data,
                             } => {
+                                let conn_id = {
+                                    let conn = conn.lock().await;
+                                    conn.id
+                                };
                                 let mut state = state.write().await;
-                                state.meetings.new_meeting(
-                                    owner_id, slots, data,
-                                );
+                                let meeting_id =
+                                    state.meetings.new_meeting(
+                                        owner_id, slots, conn_id,
+                                        data,
+                                    );
+
+                                let mut socket = conn.lock().await;
+                                let response = MeetingClientMessage::RoomCreated {
+                                    meeting_id,
+                                    owner_id,
+                                };
+                                let buffer =
+                                    serde_json::to_vec(&response)?;
+                                socket.send(&buffer).await?;
                             }
                             MeetingServerMessage::JoinRoom {
                                 meeting_id,
                                 user_id,
                                 data,
                             } => {
-                                let mut state = state.write().await;
-                                if let Some(meeting) = state
-                                    .meetings
-                                    .get_meeting_mut(&meeting_id)
-                                {
-                                    meeting.join(user_id, data);
+                                let conn_id = {
+                                    let conn = conn.lock().await;
+                                    conn.id
+                                };
 
-                                    if meeting.is_full() {
-                                        todo!("broadcast to all meeting participants");
+                                let is_full = {
+                                    let mut state =
+                                        state.write().await;
+                                    if let Some(meeting) = state
+                                        .meetings
+                                        .get_meeting_mut(&meeting_id)
+                                    {
+                                        meeting.join(
+                                            user_id, conn_id, data,
+                                        );
+                                        meeting.is_full()
+                                    } else {
+                                        tracing::warn!(id = %meeting_id, "no meeting");
+                                        false
+                                    }
+                                };
+
+                                let result = if is_full {
+                                    let mut state =
+                                        state.write().await;
+                                    if let Some(meeting) = state
+                                        .meetings
+                                        .remove_meeting(&meeting_id)
+                                    {
+                                        let mut participants =
+                                            Vec::with_capacity(
+                                                meeting.slots.len(),
+                                            );
+                                        let mut sockets =
+                                            Vec::with_capacity(
+                                                meeting.slots.len(),
+                                            );
+                                        for (user_id, value) in
+                                            meeting.slots
+                                        {
+                                            let (conn_id, data) =
+                                                value.unwrap();
+                                            participants.push((
+                                                user_id, data,
+                                            ));
+                                            sockets.push(conn_id);
+                                        }
+
+                                        Some((sockets, participants))
+                                    } else {
+                                        None
                                     }
                                 } else {
-                                    tracing::warn!(id = %meeting_id, "no meeting");
+                                    None
+                                };
+
+                                if let Some((sockets, participants)) =
+                                    result
+                                {
+                                    let message = MeetingClientMessage::RoomReady { participants };
+                                    let buffer =
+                                        serde_json::to_vec(&message)?;
+
+                                    let state = state.read().await;
+                                    for conn_id in sockets {
+                                        if let Some(conn) = state
+                                            .connections
+                                            .get(&conn_id)
+                                        {
+                                            let mut conn =
+                                                conn.lock().await;
+                                            conn.send(&buffer)
+                                                .await?;
+                                        }
+                                    }
                                 }
-                                // state
-                                //     .meetings
-                                //     .join_meeting(user_id, data);
                             }
                         }
                     } else {

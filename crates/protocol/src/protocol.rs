@@ -122,6 +122,9 @@ impl From<&TransparentMessage> for u8 {
     }
 }
 
+// TODO: specifiy transport/signing public key fields
+type MeetingData = Value;
+
 /// Messages for the meeting server.
 #[derive(Debug, Serialize, Deserialize)]
 pub enum MeetingServerMessage {
@@ -132,7 +135,7 @@ pub enum MeetingServerMessage {
         /// Slots for all participants.
         slots: HashSet<UserId>,
         /// Data for this participant.
-        data: Value,
+        data: MeetingData,
     },
     /// Join a meeting room.
     JoinRoom {
@@ -141,7 +144,24 @@ pub enum MeetingServerMessage {
         /// User identifier.
         user_id: UserId,
         /// Data for this participant.
-        data: Value,
+        data: MeetingData,
+    },
+}
+
+/// Messages for the meeting client.
+#[derive(Debug, Serialize, Deserialize)]
+pub enum MeetingClientMessage {
+    /// Meeting room was created.
+    RoomCreated {
+        /// Meeting identifier.
+        meeting_id: MeetingId,
+        /// Owner identifier.
+        owner_id: UserId,
+    },
+    /// Meeting room is ready.
+    RoomReady {
+        /// Participants that have joined the room.
+        participants: Vec<(UserId, MeetingData)>,
     },
 }
 

@@ -1,6 +1,6 @@
 use anyhow::Result;
 use futures::StreamExt;
-use polysig_protocol::{MeetingState, UserId};
+use polysig_protocol::{MeetingClientMessage, MeetingId, UserId};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
@@ -45,7 +45,7 @@ pub async fn run(
 
     let mut tasks = Vec::new();
 
-    let meeting: Arc<Mutex<Option<MeetingState>>> =
+    let meeting: Arc<Mutex<Option<MeetingId>>> =
         Arc::new(Mutex::new(None));
 
     // Prepare enough slots for all participants
@@ -66,20 +66,25 @@ pub async fn run(
         while let Some(event) = stream.next().await {
             let event = event?;
             match event {
-                Event::MeetingCreated(meeting) => {
-                    // In the real world the initiator needs
-                    // to share the meeting/user identifiers with
-                    // all the participants
+                Event::Meeting(
+                    MeetingClientMessage::RoomCreated {
+                        meeting_id,
+                        ..
+                    },
+                ) => {
                     let mut writer = state.lock().await;
-                    *writer = Some(meeting);
+                    *writer = Some(meeting_id);
                 }
-                Event::MeetingReady(_) => {
-                    break;
+                Event::Meeting(MeetingClientMessage::RoomReady {
+                    participants,
+                }) => {
+                    transport.close().await?;
+                    return Ok::<_, anyhow::Error>(participants);
                 }
                 _ => {}
             }
         }
-        Ok::<_, anyhow::Error>(())
+        unreachable!();
     });
     tasks.push(creator);
 
@@ -90,23 +95,29 @@ pub async fn run(
         tasks.push(tokio::task::spawn(async move {
             let mut stream = event_loop.run();
             let mut transport: Transport = client.into();
-            'main: loop {
-                let lock = state.lock().await;
-                if let Some(meeting) = &*lock {
+            loop {
+                let meeting_id = {
+                    let lock = state.lock().await;
+                    lock.clone()
+                };
+                if let Some(meeting_id) = meeting_id {
                     let value = Value::Null;
                     transport
-                        .join_meeting(
-                            meeting.meeting_id,
-                            user_id,
-                            value,
-                        )
+                        .join_meeting(meeting_id, user_id, value)
                         .await?;
 
                     while let Some(event) = stream.next().await {
                         let event = event?;
                         match event {
-                            Event::MeetingReady(_) => {
-                                break 'main;
+                            Event::Meeting(
+                                MeetingClientMessage::RoomReady {
+                                    participants,
+                                },
+                            ) => {
+                                transport.close().await?;
+                                return Ok::<_, anyhow::Error>(
+                                    participants,
+                                );
                             }
                             _ => {}
                         }
@@ -116,14 +127,19 @@ pub async fn run(
                         .await;
                 }
             }
-            Ok::<_, anyhow::Error>(())
         }));
     }
 
+    let mut parties = Vec::new();
     let results = futures::future::try_join_all(tasks).await?;
     let num_results = results.len();
     for result in results {
-        result?;
+        let participants = result?;
+        parties.push(participants);
     }
+
+    let all_equal = parties.windows(2).all(|w| w[0] == w[1]);
+    assert!(all_equal);
+
     Ok(num_results)
 }

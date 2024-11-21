@@ -7,9 +7,9 @@ use tokio::sync::mpsc;
 
 use polysig_protocol::{
     channel::decrypt_server_channel, decode, hex, snow::Builder,
-    Encoding, Event, HandshakeMessage, OpaqueMessage, ProtocolState,
-    RequestMessage, ResponseMessage, SealedEnvelope, ServerMessage,
-    SessionId, TransparentMessage,
+    Encoding, Event, HandshakeMessage, MeetingClientMessage,
+    OpaqueMessage, ProtocolState, RequestMessage, ResponseMessage,
+    SealedEnvelope, ServerMessage, SessionId, TransparentMessage,
 };
 
 use super::{decrypt_peer_channel, Peers, Server};
@@ -34,6 +34,15 @@ pub enum InternalMessage {
     Close,
 }
 
+#[doc(hidden)]
+#[derive(Debug)]
+pub enum IncomingMessage {
+    /// Encrypted response message.
+    Response(ResponseMessage),
+    /// Meeting client message.
+    Meeting(MeetingClientMessage),
+}
+
 /// Event loop for a client.
 pub struct EventLoop<M, E, R, W>
 where
@@ -45,8 +54,8 @@ where
     pub(crate) options: Arc<ClientOptions>,
     pub(crate) ws_reader: R,
     pub(crate) ws_writer: W,
-    pub(crate) inbound_tx: mpsc::UnboundedSender<ResponseMessage>,
-    pub(crate) inbound_rx: mpsc::UnboundedReceiver<ResponseMessage>,
+    pub(crate) inbound_tx: mpsc::UnboundedSender<IncomingMessage>,
+    pub(crate) inbound_rx: mpsc::UnboundedReceiver<IncomingMessage>,
     pub(crate) outbound_tx: mpsc::UnboundedSender<InternalMessage>,
     pub(crate) outbound_rx: mpsc::UnboundedReceiver<InternalMessage>,
     pub(crate) server: Server,
@@ -367,6 +376,7 @@ macro_rules! event_loop_run_impl {
                             match message_in {
                                 Ok(message) => {
                                     if let Err(e) = Self::read_message(
+                                        options.clone(),
                                         message,
                                         &mut self.inbound_tx,
                                     ).await {
@@ -379,20 +389,27 @@ macro_rules! event_loop_run_impl {
                             }
                         },
                         Some(event_message) = self.inbound_rx.recv() => {
-                            match Self::handle_incoming_message(
-                                options.clone(),
-                                server.clone(),
-                                peers.clone(),
-                                event_message,
-                                self.outbound_tx.clone(),
-                            ).await {
-                                Ok(Some(event)) => {
-                                    yield Ok(event);
+                            match event_message {
+                                IncomingMessage::Response(message) => {
+                                    match Self::handle_incoming_message(
+                                        options.clone(),
+                                        server.clone(),
+                                        peers.clone(),
+                                        message,
+                                        self.outbound_tx.clone(),
+                                    ).await {
+                                        Ok(Some(event)) => {
+                                            yield Ok(event);
+                                        }
+                                        Err(e) => {
+                                            yield Err(e)
+                                        }
+                                        _ => {}
+                                    }
                                 }
-                                Err(e) => {
-                                    yield Err(e)
+                                IncomingMessage::Meeting(message) => {
+                                    yield Ok(Event::Meeting(message))
                                 }
-                                _ => {}
                             }
                         },
                     );
