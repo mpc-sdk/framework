@@ -2168,6 +2168,7 @@ dependencies = [
  "log",
  "polysig-client",
  "polysig-driver",
+ "polysig-meeting-server",
  "polysig-protocol",
  "polysig-relay-server",
  "rand",
@@ -2179,6 +2180,31 @@ dependencies = [
  "tokio-stream",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "polysig-meeting-server"
+version = "0.7.1"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "axum",
+ "axum-macros",
+ "axum-server",
+ "binary-stream",
+ "futures",
+ "polysig-protocol",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tokio-stream",
+ "tokio-tungstenite 0.23.1",
+ "toml",
+ "tower-http",
+ "tracing",
+ "tracing-subscriber",
+ "url",
 ]
 
 [[package]]
@@ -2220,11 +2246,12 @@ dependencies = [
 
 [[package]]
 name = "polysig-relay"
-version = "0.7.1"
+version = "0.7.2"
 dependencies = [
  "anyhow",
  "axum-server",
  "clap",
+ "polysig-meeting-server",
  "polysig-protocol",
  "polysig-relay-server",
  "tokio",

@@ -1,3 +1,5 @@
+//! Moved to ***`polysig-server`***.
+//!
 //! Command line tool for the websocket relay service that uses the
 //! [noise](https://noiseprotocol.org/) protocol for end-to-end
 //! encryption intended for multi-party computation and threshold
@@ -34,7 +36,7 @@
 
 #[doc(hidden)]
 #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
-mod commands;
+mod relay;
 
 #[doc(hidden)]
 #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
@@ -44,7 +46,7 @@ mod cli {
     use clap::{Parser, Subcommand};
     use std::path::PathBuf;
 
-    use super::commands;
+    use super::relay;
 
     #[derive(Parser, Debug)]
     #[clap(author, version, about, long_about = None)]
@@ -96,10 +98,8 @@ mod cli {
                 force,
                 public_key,
             } => {
-                commands::generate_keypair::run(
-                    file, force, public_key,
-                )
-                .await?
+                relay::generate_keypair::run(file, force, public_key)
+                    .await?
             }
             Command::Start {
                 session_interval,
@@ -107,7 +107,7 @@ mod cli {
                 bind,
                 config,
             } => {
-                commands::start::run(
+                relay::start::run(
                     bind,
                     config,
                     session_interval,
@@ -130,7 +130,7 @@ pub async fn main() -> anyhow::Result<()> {
     tracing_subscriber::registry()
         .with(tracing_subscriber::EnvFilter::new(
             std::env::var("RUST_LOG")
-                .unwrap_or_else(|_| "mpc_relay=debug".into()),
+                .unwrap_or_else(|_| "polysig_server=debug".into()),
         ))
         .with(tracing_subscriber::fmt::layer().without_time())
         .init();

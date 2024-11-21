@@ -1,14 +1,16 @@
 [package]
 name = "polysig-relay"
-version = "0.7.1"
+version = "0.7.2"
 edition = "2021"
 description = "Relay server for the polysig library"
 keywords = ["mpc", "tss", "relay", "crypto", "e2ee"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/polysig/polysig"
+default-run = "polysig-relay"
 
 [dependencies]
 polysig-protocol.workspace = true
+polysig-meeting-server.workspace = true
 polysig-relay-server.workspace = true
 anyhow.workspace = true
 tracing.workspace = true
@@ -16,3 +18,11 @@ tracing-subscriber.workspace = true
 clap.workspace = true
 tokio.workspace = true
 axum-server.workspace = true
+
+[[bin]]
+path = "src/relay_server.rs"
+name = "polysig-relay"
+
+[[bin]]
+path = "src/meeting_server.rs"
+name = "polysig-meeting"
