@@ -1,15 +1,11 @@
 use crate::{encoding::types, PartyNumber, Result, TAGLEN};
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use snow::{HandshakeState, TransportState};
 use std::{
     collections::{HashMap, HashSet},
     time::{Duration, SystemTime},
 };
-
-/// Identifier for meeting points.
-pub type MeetingId = uuid::Uuid;
 
 /// Identifier for sessions.
 pub type SessionId = uuid::Uuid;
@@ -120,59 +116,6 @@ impl From<&TransparentMessage> for u8 {
             }
         }
     }
-}
-
-/// Data for a meeting room participant.
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
-pub struct MeetingData {
-    /// Public key for the noise transport.
-    pub public_key: Vec<u8>,
-    /// Verifying key.
-    pub verifying_key: Vec<u8>,
-    /// Optional application specific associated data.
-    pub associated_data: Option<Value>,
-}
-
-/// Messages for the meeting server.
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum MeetingRequest {
-    /// Create a meeting room.
-    NewRoom {
-        /// Owner identifier.
-        owner_id: UserId,
-        /// Slots for all participants.
-        slots: HashSet<UserId>,
-        /// Data for this participant.
-        data: MeetingData,
-    },
-    /// Join a meeting room.
-    JoinRoom {
-        /// Meeting identifier.
-        meeting_id: MeetingId,
-        /// User identifier.
-        user_id: UserId,
-        /// Data for this participant.
-        data: MeetingData,
-    },
-}
-
-/// Messages for the meeting client.
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum MeetingResponse {
-    /// Meeting room was created.
-    RoomCreated {
-        /// Meeting identifier.
-        meeting_id: MeetingId,
-        /// Owner identifier.
-        owner_id: UserId,
-    },
-    /// Meeting room is ready.
-    RoomReady {
-        /// Participants that have joined the room.
-        participants: Vec<(UserId, MeetingData)>,
-    },
 }
 
 /// Message sent between the server and a client.
