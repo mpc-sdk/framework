@@ -11,38 +11,21 @@ use futures::{
     SinkExt, StreamExt,
 };
 
-use serde::Deserialize;
-
 use std::{fmt, sync::Arc};
 use tokio::sync::{mpsc, RwLock};
 
 //use axum_macros::debug_handler;
 
-use crate::{
-    server::{Service, State},
-    Result,
-};
-use polysig_protocol::{hex, uuid::Uuid, zlib};
+use crate::{server::State, Result};
+use polysig_protocol::{uuid::Uuid, zlib, MeetingServerMessage};
 
 pub type Connection = Arc<RwLock<WebSocketConnection>>;
-
-/// Query string for initiating websocket connections.
-#[derive(Debug, Deserialize)]
-pub struct WebSocketQuery {
-    /// Public key offered by the client socket.
-    #[serde(with = "hex::serde")]
-    pub public_key: Vec<u8>,
-}
 
 /// State for the websocket  connection for a single
 /// authenticated client.
 pub struct WebSocketConnection {
     /// Unique identifier for the socket connection.
     pub(crate) id: Uuid,
-    /// Outoing channel for messages sent to clients.
-    pub(crate) outgoing: mpsc::Sender<Message>,
-    // Incoming channel for messages received from clients.
-    pub(crate) incoming: mpsc::Sender<Vec<u8>>,
 }
 
 impl fmt::Debug for WebSocketConnection {
@@ -68,36 +51,34 @@ impl WebSocketConnection {
 //#[debug_handler]
 pub async fn upgrade(
     Extension(state): Extension<State>,
-    Extension(service): Extension<Service>,
     ws: WebSocketUpgrade,
 ) -> std::result::Result<Response, StatusCode> {
     tracing::debug!("websocket upgrade request");
 
-    let mut writer = state.write().await;
+    /*
+     */
 
     let id = Uuid::new_v4();
-    let (outgoing_tx, outgoing_rx) = mpsc::channel::<Message>(32);
-    let (incoming, service_reader) = mpsc::channel::<Vec<u8>>(32);
-
-    let conn = Arc::new(RwLock::new(WebSocketConnection {
-        id,
-        outgoing: outgoing_tx.clone(),
-        incoming,
-    }));
+    let conn = Arc::new(RwLock::new(WebSocketConnection { id }));
     let socket_conn = Arc::clone(&conn);
-    drop(writer);
+
+    {
+        let mut writer = state.write().await;
+        // TODO: keep track of connections
+        // writer
+    }
 
     let socket_state = Arc::clone(&state);
     Ok(ws.on_upgrade(move |socket| {
-        service
-            .listen_socket(Arc::clone(&socket_conn), service_reader);
-        handle_socket(
-            socket,
-            socket_state,
-            socket_conn,
-            outgoing_rx,
-            outgoing_tx,
-        )
+        /*
+        tokio::spawn(listen(
+            Arc::clone(&self.state),
+            Arc::clone(&conn),
+            reader,
+        ));
+        */
+
+        handle_socket(socket, socket_state, socket_conn)
     }))
 }
 
@@ -120,30 +101,23 @@ async fn handle_socket(
     socket: WebSocket,
     state: State,
     conn: Connection,
-    outgoing_rx: mpsc::Receiver<Message>,
-    outgoing_tx: mpsc::Sender<Message>,
 ) {
     let (writer, reader) = socket.split();
 
+    /*
     tokio::spawn(write(
         writer,
         Arc::clone(&state),
         Arc::clone(&conn),
-        outgoing_rx,
     ));
-    tokio::spawn(read(
-        reader,
-        Arc::clone(&state),
-        Arc::clone(&conn),
-        outgoing_tx,
-    ));
+    */
+    tokio::spawn(read(reader, Arc::clone(&state), Arc::clone(&conn)));
 }
 
 async fn read(
     mut receiver: SplitStream<WebSocket>,
     state: State,
     conn: Connection,
-    outgoing_tx: mpsc::Sender<Message>,
 ) -> Result<()> {
     /*
     let tx = {
@@ -157,22 +131,23 @@ async fn read(
             Ok(msg) => match msg {
                 Message::Text(_) => {}
                 Message::Binary(buffer) => {
-                    println!("SERVER got a message...");
-                    /*
                     if let Ok(inflated) = zlib::inflate(&buffer) {
-                        tx.send(inflated).await?;
+                        let message: MeetingServerMessage =
+                            serde_json::from_slice(&inflated)?;
+
+                        println!("got message: {:#?}", message);
                     } else {
                         tracing::warn!(
                             "could not inflate message buffer"
                         );
                     }
-                    */
                 }
                 Message::Ping(_) => {}
                 Message::Pong(_) => {}
-                Message::Close(frame) => {
-                    let _ =
-                        outgoing_tx.send(Message::Close(frame)).await;
+                Message::Close(_frame) => {
+                    disconnect(state, Arc::clone(&conn)).await;
+                    // let _ =
+                    //     outgoing_tx.send(Message::Close(frame)).await;
                     return Ok(());
                 }
             },
@@ -186,11 +161,11 @@ async fn read(
     Ok(())
 }
 
+/*
 async fn write(
     mut sender: SplitSink<WebSocket, Message>,
     state: State,
     conn: Connection,
-    mut outgoing_rx: mpsc::Receiver<Message>,
 ) -> Result<()> {
     while let Some(message) = outgoing_rx.recv().await {
         if let Err(error) = sender.send(message).await {
@@ -201,3 +176,4 @@ async fn write(
     }
     Ok(())
 }
+*/

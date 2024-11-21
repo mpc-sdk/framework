@@ -1,32 +1,26 @@
 use futures::StreamExt;
-use std::{
-    collections::HashMap, net::SocketAddr, sync::Arc, time::Duration,
-};
+use std::{net::SocketAddr, sync::Arc, time::Duration};
 use tokio::sync::RwLock;
 use tokio_stream::wrappers::IntervalStream;
 
 use axum::{
     extract::Extension,
-    http::{HeaderValue, Method, StatusCode},
-    response::{IntoResponse, Response},
+    http::{HeaderValue, Method},
     routing::get,
     Router,
 };
 use axum_server::{tls_rustls::RustlsConfig, Handle};
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 
-use polysig_protocol::{uuid, MeetingManager, SessionManager};
-
 use crate::{
     config::{ServerConfig, TlsConfig},
+    meeting_manager::MeetingManager,
     Result,
 };
 
-use crate::service::RelayService;
-
 pub type State = Arc<RwLock<ServerState>>;
-pub(crate) type Service = Arc<RelayService>;
 
+/*
 async fn purge_expired(state: State, interval_secs: u64) {
     let interval =
         tokio::time::interval(Duration::from_secs(interval_secs));
@@ -52,6 +46,7 @@ async fn purge_expired(state: State, interval_secs: u64) {
         }
     }
 }
+*/
 
 pub struct ServerState {
     /// Server config.
@@ -59,9 +54,6 @@ pub struct ServerState {
 
     /// Meeting point manager.
     pub(crate) meetings: MeetingManager,
-
-    /// Session manager.
-    pub(crate) sessions: SessionManager,
 }
 
 /// Relay web server.
@@ -76,7 +68,6 @@ impl MeetingServer {
             state: Arc::new(RwLock::new(ServerState {
                 config,
                 meetings: Default::default(),
-                sessions: Default::default(),
             })),
         }
     }
@@ -88,15 +79,17 @@ impl MeetingServer {
         handle: Handle,
     ) -> Result<()> {
         let reader = self.state.read().await;
-        let interval = reader.config.session.interval;
+        // let interval = reader.config.session.interval;
         let tls = reader.config.tls.as_ref().cloned();
         drop(reader);
 
+        /*
         // Spawn task to reap expired sessions
         tokio::task::spawn(purge_expired(
             Arc::clone(&self.state),
             interval,
         ));
+        */
 
         if let Some(tls) = tls {
             self.run_tls(addr, handle, tls).await
@@ -157,13 +150,11 @@ impl MeetingServer {
             //.expose_headers(vec![])
             .allow_origin(origins);
 
-        let service = Arc::new(RelayService::new(Arc::clone(&state)));
         let mut app =
             Router::new().route("/", get(crate::websocket::upgrade));
         app = app
             .layer(cors)
             .layer(TraceLayer::new_for_http())
-            .layer(Extension(service))
             .layer(Extension(state));
         Ok(app)
     }

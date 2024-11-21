@@ -122,26 +122,27 @@ impl From<&TransparentMessage> for u8 {
     }
 }
 
-/// Create a new meeting room.
+/// Messages for the meeting server.
 #[derive(Debug, Serialize, Deserialize)]
-pub struct NewMeeting {
-    /// Owner identifier.
-    pub owner_id: UserId,
-    /// Slots for all participants.
-    pub slots: HashSet<UserId>,
-    /// Data for this participant.
-    pub data: Value,
-}
-
-/// Join a meeting room.
-#[derive(Debug, Serialize, Deserialize)]
-pub struct JoinMeeting {
-    /// Meeting identifier.
-    pub meeting_id: MeetingId,
-    /// User identifier.
-    pub user_id: UserId,
-    /// Data for this participant.
-    pub data: Value,
+pub enum MeetingServerMessage {
+    /// Create a meeting room.
+    NewRoom {
+        /// Owner identifier.
+        owner_id: UserId,
+        /// Slots for all participants.
+        slots: HashSet<UserId>,
+        /// Data for this participant.
+        data: Value,
+    },
+    /// Join a meeting room.
+    JoinRoom {
+        /// Meeting identifier.
+        meeting_id: MeetingId,
+        /// User identifier.
+        user_id: UserId,
+        /// Data for this participant.
+        data: Value,
+    },
 }
 
 /// Message sent between the server and a client.
@@ -497,6 +498,7 @@ impl Session {
 }
 
 /// Meeting point information.
+#[deprecated]
 #[derive(Debug)]
 pub struct Meeting {
     /// Map of user identifiers to public keys.
@@ -538,6 +540,7 @@ impl Meeting {
 }
 
 /// Manages a collection of meeting points.
+#[deprecated]
 #[derive(Default)]
 pub struct MeetingManager {
     meetings: HashMap<MeetingId, Meeting>,

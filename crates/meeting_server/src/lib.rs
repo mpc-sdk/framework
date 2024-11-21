@@ -5,8 +5,8 @@
 
 mod config;
 mod error;
+mod meeting_manager;
 mod server;
-mod service;
 mod websocket;
 
 pub use config::ServerConfig;
