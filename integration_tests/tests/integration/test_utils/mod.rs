@@ -52,8 +52,8 @@ pub async fn new_client_with_keypair<
     keypair: Keypair,
 ) -> Result<(Client, EventLoop), E> {
     let options = ClientOptions {
-        keypair,
-        server_public_key,
+        keypair: Some(keypair),
+        server_public_key: Some(server_public_key),
         pattern: None,
     };
     let url = options.url(server);

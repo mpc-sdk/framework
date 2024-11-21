@@ -217,7 +217,9 @@ where
 
             let builder = Builder::new(options.params()?);
             let mut responder = builder
-                .local_private_key(options.keypair.private_key())
+                .local_private_key(
+                    options.keypair.as_ref().unwrap().private_key(),
+                )
                 .remote_public_key(public_key.as_ref())
                 .build_responder()?;
 

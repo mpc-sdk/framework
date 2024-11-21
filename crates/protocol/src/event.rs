@@ -6,7 +6,7 @@ pub enum Event {
     /// is completed.
     ServerConnected {
         /// Public key of the server.
-        server_key: Vec<u8>,
+        server_key: Option<Vec<u8>>,
     },
     /// Event dispatched when a handshake with a peer
     /// has been completed.

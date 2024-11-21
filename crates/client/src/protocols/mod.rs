@@ -73,8 +73,8 @@ pub(crate) async fn new_client(
 ) -> Result<(Client, EventLoop)> {
     let server_url = options.server.server_url;
     let options = ClientOptions {
-        keypair: options.keypair,
-        server_public_key: options.server.server_public_key,
+        keypair: Some(options.keypair),
+        server_public_key: Some(options.server.server_public_key),
         pattern: options.server.pattern,
     };
     let url = options.url(&server_url);

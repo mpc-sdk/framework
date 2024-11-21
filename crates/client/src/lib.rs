@@ -48,11 +48,12 @@ pub(crate) type Peers = Arc<RwLock<HashMap<Vec<u8>, ProtocolState>>>;
 pub(crate) type Server = Arc<RwLock<Option<ProtocolState>>>;
 
 /// Options used to create a new websocket client.
+#[derive(Default)]
 pub struct ClientOptions {
     /// Client static keypair.
-    pub keypair: Keypair,
+    pub keypair: Option<Keypair>,
     /// Public key for the server to connect to.
-    pub server_public_key: Vec<u8>,
+    pub server_public_key: Option<Vec<u8>>,
     /// Noise parameters pattern.
     ///
     /// If no pattern is specified the default noise parameters
@@ -67,11 +68,15 @@ impl ClientOptions {
     /// parameter necessary for connecting to the server.
     pub fn url(&self, server: &str) -> String {
         let server = server.trim_end_matches('/');
-        format!(
-            "{}/?public_key={}",
-            server,
-            hex::encode(self.keypair.public_key())
-        )
+        if let Some(keypair) = &self.keypair {
+            format!(
+                "{}/?public_key={}",
+                server,
+                hex::encode(keypair.public_key())
+            )
+        } else {
+            server.to_string()
+        }
     }
 
     /// Parse noise parameters from the pattern.

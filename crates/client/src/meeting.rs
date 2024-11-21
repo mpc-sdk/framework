@@ -42,16 +42,8 @@ pub async fn create(
         return Err(Error::MeetingInitiatorNotExist);
     }
 
-    let ServerOptions {
-        server_url,
-        server_public_key,
-        ..
-    } = options.server;
-    let options = ClientOptions {
-        keypair: options.keypair,
-        server_public_key,
-        pattern: None,
-    };
+    let ServerOptions { server_url, .. } = options.server;
+    let options = ClientOptions::default();
     let url = options.url(&server_url);
     let (mut client, event_loop) = Client::new(&url, options).await?;
 
@@ -93,16 +85,8 @@ pub async fn join(
     meeting_id: MeetingId,
     user_id: Option<UserId>,
 ) -> Result<(Vec<Vec<u8>>, Value)> {
-    let ServerOptions {
-        server_url,
-        server_public_key,
-        ..
-    } = options.server;
-    let options = ClientOptions {
-        keypair: options.keypair,
-        server_public_key,
-        pattern: None,
-    };
+    let ServerOptions { server_url, .. } = options.server;
+    let options = ClientOptions::default();
     let url = options.url(&server_url);
     let (mut client, event_loop) = Client::new(&url, options).await?;
 

@@ -131,6 +131,7 @@ impl WebClient {
         let (outbound_tx, outbound_rx) =
             mpsc::unbounded_channel::<InternalMessage>();
 
+        /*
         let builder = Builder::new(options.params()?);
         let handshake = builder
             .local_private_key(options.keypair.private_key())
@@ -141,6 +142,24 @@ impl WebClient {
         let server = Arc::new(RwLock::new(Some(
             ProtocolState::Handshake(Box::new(handshake)),
         )));
+        */
+
+        let server = if let (Some(keypair), Some(server_public_key)) =
+            (&options.keypair, &options.server_public_key)
+        {
+            let builder = Builder::new(options.params()?);
+            let handshake = builder
+                .local_private_key(keypair.private_key())
+                .remote_public_key(server_public_key)
+                .build_initiator()?;
+
+            // State for the server transport
+            Arc::new(RwLock::new(Some(ProtocolState::Handshake(
+                Box::new(handshake),
+            ))))
+        } else {
+            Arc::new(RwLock::new(None))
+        };
 
         let peers = Arc::new(RwLock::new(Default::default()));
         let options = Arc::new(options);

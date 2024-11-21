@@ -74,7 +74,7 @@ macro_rules! client_transport_impl {
 
             /// The public key for this client.
             fn public_key(&self) -> &[u8] {
-                self.options.keypair.public_key()
+                self.options.keypair.as_ref().unwrap().public_key()
             }
 
             /// Perform initial handshake with the server.
@@ -131,7 +131,7 @@ macro_rules! client_transport_impl {
 
                 let builder = Builder::new(self.options.params()?);
                 let handshake = builder
-                    .local_private_key(self.options.keypair.private_key())
+                    .local_private_key(self.options.keypair.as_ref().unwrap().private_key())
                     .remote_public_key(public_key.as_ref())
                     .build_initiator()?;
                 let peer_state =

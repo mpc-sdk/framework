@@ -73,21 +73,27 @@ impl NativeClient {
 
         let (ws_writer, ws_reader) = stream.split();
 
-        let builder = Builder::new(options.params()?);
-        let handshake = builder
-            .local_private_key(options.keypair.private_key())
-            .remote_public_key(&options.server_public_key)
-            .build_initiator()?;
+        let server = if let (Some(keypair), Some(server_public_key)) =
+            (&options.keypair, &options.server_public_key)
+        {
+            let builder = Builder::new(options.params()?);
+            let handshake = builder
+                .local_private_key(keypair.private_key())
+                .remote_public_key(server_public_key)
+                .build_initiator()?;
+
+            // State for the server transport
+            Arc::new(RwLock::new(Some(ProtocolState::Handshake(
+                Box::new(handshake),
+            ))))
+        } else {
+            Arc::new(RwLock::new(None))
+        };
 
         // Channel for writing outbound messages to send
         // to the server
         let (outbound_tx, outbound_rx) =
             mpsc::unbounded_channel::<InternalMessage>();
-
-        // State for the server transport
-        let server = Arc::new(RwLock::new(Some(
-            ProtocolState::Handshake(Box::new(handshake)),
-        )));
 
         let peers = Arc::new(RwLock::new(Default::default()));
         let options = Arc::new(options);
