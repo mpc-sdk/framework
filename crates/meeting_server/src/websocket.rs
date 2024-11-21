@@ -21,7 +21,7 @@ use tokio::sync::Mutex;
 
 use crate::{server::State, Result};
 use polysig_protocol::{
-    zlib, MeetingClientMessage, MeetingServerMessage,
+    zlib, MeetingResponse, MeetingRequest,
 };
 
 pub type Connection = Arc<Mutex<WebSocketConnection>>;
@@ -116,10 +116,10 @@ async fn read(
                 Message::Text(_) => {}
                 Message::Binary(buffer) => {
                     if let Ok(inflated) = zlib::inflate(&buffer) {
-                        let message: MeetingServerMessage =
+                        let message: MeetingRequest =
                             serde_json::from_slice(&inflated)?;
                         match message {
-                            MeetingServerMessage::NewRoom {
+                            MeetingRequest::NewRoom {
                                 owner_id,
                                 slots,
                                 data,
@@ -136,7 +136,7 @@ async fn read(
                                     );
 
                                 let mut socket = conn.lock().await;
-                                let response = MeetingClientMessage::RoomCreated {
+                                let response = MeetingResponse::RoomCreated {
                                     meeting_id,
                                     owner_id,
                                 };
@@ -144,7 +144,7 @@ async fn read(
                                     serde_json::to_vec(&response)?;
                                 socket.send(&buffer).await?;
                             }
-                            MeetingServerMessage::JoinRoom {
+                            MeetingRequest::JoinRoom {
                                 meeting_id,
                                 user_id,
                                 data,
@@ -208,7 +208,7 @@ async fn read(
                                 if let Some((sockets, participants)) =
                                     result
                                 {
-                                    let message = MeetingClientMessage::RoomReady { participants };
+                                    let message = MeetingResponse::RoomReady { participants };
                                     let buffer =
                                         serde_json::to_vec(&message)?;
 

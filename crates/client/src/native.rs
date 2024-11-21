@@ -18,8 +18,8 @@ use tokio_tungstenite::{
 use polysig_protocol::{
     channel::encrypt_server_channel, decode, encode, hex,
     http::StatusCode, snow::Builder, zlib, Encoding, Event,
-    HandshakeMessage, JsonMessage, MeetingClientMessage, MeetingData,
-    MeetingId, MeetingServerMessage, OpaqueMessage, ProtocolState,
+    HandshakeMessage, JsonMessage, MeetingResponse, MeetingData,
+    MeetingId, MeetingRequest, OpaqueMessage, ProtocolState,
     RequestMessage, ResponseMessage, ServerMessage, SessionId,
     SessionRequest, TransparentMessage, UserId,
 };
@@ -146,7 +146,7 @@ impl EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream> {
                 event_proxy
                     .send(IncomingMessage::Response(response))?;
             } else {
-                let response: MeetingClientMessage =
+                let response: MeetingResponse =
                     serde_json::from_slice(&inflated)?;
                 event_proxy
                     .send(IncomingMessage::Meeting(response))?;

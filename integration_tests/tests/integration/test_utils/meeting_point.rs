@@ -1,7 +1,7 @@
 use anyhow::Result;
 use futures::StreamExt;
 use polysig_protocol::{
-    MeetingClientMessage, MeetingData, MeetingId, UserId,
+    MeetingResponse, MeetingData, MeetingId, UserId,
 };
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
@@ -69,7 +69,7 @@ pub async fn run(server: &str, num_participants: u8) -> Result<u8> {
             let event = event?;
             match event {
                 Event::Meeting(
-                    MeetingClientMessage::RoomCreated {
+                    MeetingResponse::RoomCreated {
                         meeting_id,
                         ..
                     },
@@ -77,7 +77,7 @@ pub async fn run(server: &str, num_participants: u8) -> Result<u8> {
                     let mut writer = state.lock().await;
                     *writer = Some(meeting_id);
                 }
-                Event::Meeting(MeetingClientMessage::RoomReady {
+                Event::Meeting(MeetingResponse::RoomReady {
                     participants,
                 }) => {
                     transport.close().await?;
@@ -118,7 +118,7 @@ pub async fn run(server: &str, num_participants: u8) -> Result<u8> {
                         let event = event?;
                         match event {
                             Event::Meeting(
-                                MeetingClientMessage::RoomReady {
+                                MeetingResponse::RoomReady {
                                     participants,
                                 },
                             ) => {

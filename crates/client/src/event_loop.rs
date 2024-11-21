@@ -7,7 +7,7 @@ use tokio::sync::mpsc;
 
 use polysig_protocol::{
     channel::decrypt_server_channel, decode, hex, snow::Builder,
-    Encoding, Event, HandshakeMessage, MeetingClientMessage,
+    Encoding, Event, HandshakeMessage, MeetingResponse,
     OpaqueMessage, ProtocolState, RequestMessage, ResponseMessage,
     SealedEnvelope, ServerMessage, SessionId, TransparentMessage,
 };
@@ -40,7 +40,7 @@ pub enum IncomingMessage {
     /// Encrypted response message.
     Response(ResponseMessage),
     /// Meeting client message.
-    Meeting(MeetingClientMessage),
+    Meeting(MeetingResponse),
 }
 
 /// Event loop for a client.

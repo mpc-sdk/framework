@@ -1,4 +1,4 @@
-use crate::{MeetingClientMessage, Result, SessionId, SessionState};
+use crate::{MeetingResponse, Result, SessionId, SessionState};
 /// Events dispatched by the event loop stream.
 #[derive(Debug)]
 pub enum Event {
@@ -34,7 +34,7 @@ pub enum Event {
     },
 
     /// Meeting room events.
-    Meeting(MeetingClientMessage),
+    Meeting(MeetingResponse),
 
     /// Event dispatched when a session has been created.
     SessionCreated(SessionState),

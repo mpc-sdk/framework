@@ -216,7 +216,7 @@ macro_rules! client_transport_impl {
                 slots: HashSet<UserId>,
                 data: MeetingData,
             ) -> Result<()> {
-                let message = MeetingServerMessage::NewRoom {
+                let message = MeetingRequest::NewRoom {
                     owner_id,
                     slots,
                     data,
@@ -232,7 +232,7 @@ macro_rules! client_transport_impl {
                 user_id: UserId,
                 data: MeetingData,
             ) -> Result<()> {
-                let message = MeetingServerMessage::JoinRoom {
+                let message = MeetingRequest::JoinRoom {
                     meeting_id,
                     user_id,
                     data,

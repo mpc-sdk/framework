@@ -10,7 +10,7 @@ use crate::{
 };
 use futures::StreamExt;
 use polysig_protocol::{
-    Event, Keypair, MeetingClientMessage, MeetingData, MeetingId,
+    Event, Keypair, MeetingResponse, MeetingData, MeetingId,
     UserId,
 };
 use serde::{Deserialize, Serialize};
@@ -54,7 +54,7 @@ pub async fn create(
     while let Some(event) = stream.next().await {
         let event = event?;
         match event {
-            Event::Meeting(MeetingClientMessage::RoomCreated {
+            Event::Meeting(MeetingResponse::RoomCreated {
                 meeting_id,
                 ..
             }) => {
@@ -94,7 +94,7 @@ pub async fn join(
     while let Some(event) = stream.next().await {
         let event = event?;
         match event {
-            Event::Meeting(MeetingClientMessage::RoomReady {
+            Event::Meeting(MeetingResponse::RoomReady {
                 participants,
             }) => {
                 let _ = client.close().await;

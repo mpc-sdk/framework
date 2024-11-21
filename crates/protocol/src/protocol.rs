@@ -136,7 +136,7 @@ pub struct MeetingData {
 /// Messages for the meeting server.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub enum MeetingServerMessage {
+pub enum MeetingRequest {
     /// Create a meeting room.
     NewRoom {
         /// Owner identifier.
@@ -160,7 +160,7 @@ pub enum MeetingServerMessage {
 /// Messages for the meeting client.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub enum MeetingClientMessage {
+pub enum MeetingResponse {
     /// Meeting room was created.
     RoomCreated {
         /// Meeting identifier.
