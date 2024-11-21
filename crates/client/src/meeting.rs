@@ -10,8 +10,8 @@ use crate::{
 };
 use futures::StreamExt;
 use polysig_protocol::{
-    serde_json::Value, Event, Keypair, MeetingClientMessage,
-    MeetingData, MeetingId, UserId,
+    Event, Keypair, MeetingClientMessage, MeetingData, MeetingId,
+    UserId,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;

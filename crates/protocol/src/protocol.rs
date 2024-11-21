@@ -502,119 +502,6 @@ impl Session {
     }
 }
 
-/// Meeting point information.
-#[deprecated]
-#[derive(Debug)]
-pub struct Meeting {
-    /// Map of user identifiers to public keys.
-    slots: HashMap<UserId, Option<Vec<u8>>>,
-
-    /// Last access time so the server can reap
-    /// stale meetings.
-    last_access: SystemTime,
-
-    /// Associated data for the meeting.
-    data: Value,
-}
-
-impl Meeting {
-    /// Add a participant public key to this meeting.
-    pub fn join(&mut self, user_id: UserId, public_key: Vec<u8>) {
-        self.slots.insert(user_id, Some(public_key));
-        self.last_access = SystemTime::now();
-    }
-
-    /// Whether this meeting point is full.
-    pub fn is_full(&self) -> bool {
-        self.slots.values().all(|s| s.is_some())
-    }
-
-    /// Public keys of the meeting participants.
-    pub fn participants(&self) -> Vec<Vec<u8>> {
-        self.slots
-            .values()
-            .filter(|s| s.is_some())
-            .map(|s| s.as_ref().unwrap().to_owned())
-            .collect()
-    }
-
-    /// Associated data.
-    pub fn data(&self) -> &Value {
-        &self.data
-    }
-}
-
-/// Manages a collection of meeting points.
-#[deprecated]
-#[derive(Default)]
-pub struct MeetingManager {
-    meetings: HashMap<MeetingId, Meeting>,
-}
-
-impl MeetingManager {
-    /// Create a new meeting point.
-    pub fn new_meeting(
-        &mut self,
-        owner_key: Vec<u8>,
-        owner_id: UserId,
-        slots: HashSet<UserId>,
-        data: Value,
-    ) -> MeetingId {
-        let meeting_id = MeetingId::new_v4();
-        let slots: HashMap<UserId, Option<Vec<u8>>> =
-            slots.into_iter().map(|id| (id, None)).collect();
-
-        let mut meeting = Meeting {
-            slots,
-            last_access: SystemTime::now(),
-            data,
-        };
-        meeting.join(owner_id, owner_key);
-
-        self.meetings.insert(meeting_id, meeting);
-        meeting_id
-    }
-
-    /// Remove a meeting.
-    pub fn remove_meeting(
-        &mut self,
-        id: &MeetingId,
-    ) -> Option<Meeting> {
-        self.meetings.remove(id)
-    }
-
-    /// Get a meeting.
-    pub fn get_meeting(&self, id: &MeetingId) -> Option<&Meeting> {
-        self.meetings.get(id)
-    }
-
-    /// Get a mutable meeting.
-    pub fn get_meeting_mut(
-        &mut self,
-        id: &MeetingId,
-    ) -> Option<&mut Meeting> {
-        self.meetings.get_mut(id)
-    }
-
-    /// Get the keys of meetings that have expired.
-    pub fn expired_keys(&self, timeout: u64) -> Vec<MeetingId> {
-        self.meetings
-            .iter()
-            .filter(|(_, v)| {
-                let now = SystemTime::now();
-                let ttl = Duration::from_millis(timeout * 1000);
-                if let Some(current) = v.last_access.checked_add(ttl)
-                {
-                    current < now
-                } else {
-                    false
-                }
-            })
-            .map(|(k, _)| *k)
-            .collect::<Vec<_>>()
-    }
-}
-
 /// Manages a collection of sessions.
 #[derive(Default)]
 pub struct SessionManager {
@@ -690,17 +577,6 @@ impl SessionManager {
             .map(|(k, _)| *k)
             .collect::<Vec<_>>()
     }
-}
-
-/// Response from creating a meeting point.
-#[derive(Default, Debug, Clone)]
-pub struct MeetingState {
-    /// Meeting identifier.
-    pub meeting_id: MeetingId,
-    /// Public keys of the registered participants.
-    pub registered_participants: Vec<Vec<u8>>,
-    /// Data for the meeting state.
-    pub data: Value,
 }
 
 /// Request to create a new session.

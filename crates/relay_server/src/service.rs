@@ -9,9 +9,9 @@ use tokio_stream::wrappers::IntervalStream;
 
 use polysig_protocol::{
     channel::{decrypt_server_channel, encrypt_server_channel},
-    decode, encode, hex, Encoding, HandshakeMessage, MeetingState,
-    OpaqueMessage, ProtocolState, RequestMessage, ResponseMessage,
-    ServerMessage, SessionState, TransparentMessage,
+    decode, encode, hex, Encoding, HandshakeMessage, OpaqueMessage,
+    ProtocolState, RequestMessage, ResponseMessage, ServerMessage,
+    SessionState, TransparentMessage,
 };
 
 use crate::{server::State, websocket::Connection, Error, Result};

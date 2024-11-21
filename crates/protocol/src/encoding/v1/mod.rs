@@ -3,17 +3,16 @@ use binary_stream::futures::{
     BinaryReader, BinaryWriter, Decodable, Encodable,
 };
 use futures::io::{AsyncRead, AsyncSeek, AsyncWrite};
-use std::{collections::HashSet, io::Result};
+use std::io::Result;
 
 use crate::{
     encoding::{
         decode_preamble, encode_preamble, encoding_error, types,
         MAX_BUFFER_SIZE,
     },
-    Chunk, Encoding, Error, HandshakeMessage, MeetingId,
-    MeetingState, OpaqueMessage, RequestMessage, ResponseMessage,
-    SealedEnvelope, ServerMessage, SessionId, SessionRequest,
-    SessionState, TransparentMessage,
+    Chunk, Encoding, Error, HandshakeMessage, OpaqueMessage,
+    RequestMessage, ResponseMessage, SealedEnvelope, ServerMessage,
+    SessionId, SessionRequest, SessionState, TransparentMessage,
 };
 
 /// Version for binary encoding.
@@ -653,53 +652,6 @@ impl Decodable for SessionRequest {
             let key = decode_buffer(reader).await?;
             self.participant_keys.push(key);
         }
-        Ok(())
-    }
-}
-
-#[async_trait]
-impl Encodable for MeetingState {
-    async fn encode<W: AsyncWrite + AsyncSeek + Unpin + Send>(
-        &self,
-        writer: &mut BinaryWriter<W>,
-    ) -> Result<()> {
-        writer.write_bytes(self.meeting_id.as_bytes()).await?;
-        writer
-            .write_u16(self.registered_participants.len() as u16)
-            .await?;
-        for key in &self.registered_participants {
-            encode_buffer(writer, key).await?;
-        }
-        writer
-            .write_string(serde_json::to_string(&self.data)?)
-            .await?;
-        Ok(())
-    }
-}
-
-#[async_trait]
-impl Decodable for MeetingState {
-    async fn decode<R: AsyncRead + AsyncSeek + Unpin + Send>(
-        &mut self,
-        reader: &mut BinaryReader<R>,
-    ) -> Result<()> {
-        self.meeting_id = MeetingId::from_bytes(
-            reader
-                .read_bytes(16)
-                .await?
-                .as_slice()
-                .try_into()
-                .map_err(encoding_error)?,
-        );
-        let size = reader.read_u16().await? as usize;
-        for _ in 0..size {
-            let key = decode_buffer(reader).await?;
-            self.registered_participants.push(key);
-        }
-
-        let data = reader.read_string().await?;
-        self.data = serde_json::from_str(&data)?;
-
         Ok(())
     }
 }

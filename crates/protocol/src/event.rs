@@ -1,7 +1,4 @@
-use crate::{
-    MeetingClientMessage, MeetingState, Result, SessionId,
-    SessionState,
-};
+use crate::{MeetingClientMessage, Result, SessionId, SessionState};
 /// Events dispatched by the event loop stream.
 #[derive(Debug)]
 pub enum Event {
@@ -38,17 +35,6 @@ pub enum Event {
 
     /// Meeting room events.
     Meeting(MeetingClientMessage),
-
-    /// Event dispatched when a meeting has been created.
-    #[deprecated]
-    MeetingCreated(MeetingState),
-
-    /// Event dispatched when a meeting is ready.
-    ///
-    /// A meeting is ready when the limit for the meeting point
-    /// has been reached.
-    #[deprecated]
-    MeetingReady(MeetingState),
 
     /// Event dispatched when a session has been created.
     SessionCreated(SessionState),
