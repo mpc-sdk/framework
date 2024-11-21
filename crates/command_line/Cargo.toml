@@ -10,7 +10,7 @@ default-run = "polysig-relay"
 
 [dependencies]
 polysig-protocol.workspace = true
-# polysig-meeting-server.workspace = true
+polysig-meeting-server.workspace = true
 polysig-relay-server.workspace = true
 anyhow.workspace = true
 tracing.workspace = true
@@ -23,6 +23,6 @@ axum-server.workspace = true
 path = "src/relay_server.rs"
 name = "polysig-relay"
 
-# [[bin]]
-# path = "src/meeting_server.rs"
-# name = "polysig-meeting"
+[[bin]]
+path = "src/meeting_server.rs"
+name = "polysig-meeting"
