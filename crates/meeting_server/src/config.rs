@@ -1,14 +1,10 @@
 //! Server configuration.
-use polysig_protocol::{decode_keypair, hex, Keypair};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use tokio::fs;
 use url::Url;
 
 use crate::{Error, Result};
-
-/// Environment variable name for a keypair.
-const ENV_PEM: &str = "MPC_RELAY_KEYPAIR";
 
 /// Configuration for the web server.
 #[derive(Default, Serialize, Deserialize)]

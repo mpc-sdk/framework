@@ -1,6 +1,9 @@
 use polysig_protocol::{MeetingId, UserId};
 use serde_json::Value;
-use std::{collections::{HashMap, HashSet} time::{SystemTime, Duration}};
+use std::{
+    collections::{HashMap, HashSet},
+    time::{Duration, SystemTime},
+};
 
 /// Manages a collection of meeting points.
 #[derive(Default)]

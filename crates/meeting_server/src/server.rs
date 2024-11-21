@@ -1,6 +1,8 @@
 use futures::StreamExt;
+use std::collections::HashMap;
+use std::sync::atomic::AtomicU64;
 use std::{net::SocketAddr, sync::Arc, time::Duration};
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
 use tokio_stream::wrappers::IntervalStream;
 
 use axum::{
@@ -15,6 +17,7 @@ use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use crate::{
     config::{ServerConfig, TlsConfig},
     meeting_manager::MeetingManager,
+    websocket::WebSocketConnection,
     Result,
 };
 
@@ -52,8 +55,15 @@ pub struct ServerState {
     /// Server config.
     pub(crate) config: ServerConfig,
 
+    /// Socket connections.
+    pub(crate) connections:
+        HashMap<u64, Arc<Mutex<WebSocketConnection>>>,
+
     /// Meeting point manager.
     pub(crate) meetings: MeetingManager,
+
+    /// Identifier for connections.
+    pub(crate) id: AtomicU64,
 }
 
 /// Relay web server.
@@ -67,7 +77,9 @@ impl MeetingServer {
         Self {
             state: Arc::new(RwLock::new(ServerState {
                 config,
+                connections: Default::default(),
                 meetings: Default::default(),
+                id: AtomicU64::new(1),
             })),
         }
     }

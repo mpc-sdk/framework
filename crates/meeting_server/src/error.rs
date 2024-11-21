@@ -1,5 +1,5 @@
 use axum::extract::ws::Message;
-use polysig_protocol::{MeetingId, SessionId};
+use polysig_protocol::MeetingId;
 use std::path::PathBuf;
 use thiserror::Error;
 
