@@ -315,20 +315,6 @@ async fn wait_for_session_ready(
     }
 }
 
-async fn notify_meeting_ready(
-    state: State,
-    meeting: MeetingState,
-) -> Result<()> {
-    let public_keys: Vec<_> = meeting
-        .registered_participants
-        .iter()
-        .map(|key| key.to_vec())
-        .collect();
-    let message = ServerMessage::MeetingReady(meeting);
-    notify_peers(state, public_keys, message).await?;
-    Ok(())
-}
-
 async fn notify_session_ready(
     state: State,
     session: SessionState,
@@ -427,86 +413,6 @@ async fn service(
     message: ServerMessage,
 ) -> Result<Option<ServerMessage>> {
     match message {
-        ServerMessage::NewMeeting {
-            owner_id,
-            slots,
-            data,
-        } => {
-            // Meeting initiator is automatically a
-            // registered participant
-            let registered_participants =
-                vec![public_key.as_ref().to_vec()];
-
-            let meeting_id = {
-                let mut writer = state.write().await;
-                let meeting_id = writer.meetings.new_meeting(
-                    public_key.as_ref().to_vec(),
-                    owner_id,
-                    slots,
-                    data.clone(),
-                );
-                meeting_id
-            };
-
-            let response = MeetingState {
-                meeting_id,
-                registered_participants,
-                data,
-            };
-
-            Ok(Some(ServerMessage::MeetingCreated(response)))
-        }
-        ServerMessage::JoinMeeting(meeting_id, user_id) => {
-            let from_public_key = {
-                let reader = conn.read().await;
-                reader.public_key.clone()
-            };
-
-            let result = {
-                let mut writer = state.write().await;
-                if let Some(meeting) =
-                    writer.meetings.get_meeting_mut(&meeting_id)
-                {
-                    if meeting.is_full() {
-                        Err(Error::MeetingFull(meeting_id))
-                    } else {
-                        meeting.join(user_id, from_public_key);
-
-                        let meeting_state = if meeting.is_full() {
-                            Some(MeetingState {
-                                meeting_id,
-                                registered_participants: meeting
-                                    .participants(),
-                                data: meeting.data().clone(),
-                            })
-                        } else {
-                            None
-                        };
-
-                        Ok(meeting_state)
-                    }
-                } else {
-                    Err(Error::MeetingNotFound(meeting_id))
-                }
-            };
-
-            match result {
-                Ok(meeting_state) => {
-                    if let Some(target) = meeting_state {
-                        if let Err(e) = notify_meeting_ready(
-                            Arc::clone(&state),
-                            target,
-                        )
-                        .await
-                        {
-                            tracing::error!("{:#?}", e);
-                        }
-                    }
-                    Ok(None)
-                }
-                Err(e) => Err(e),
-            }
-        }
         ServerMessage::NewSession(request) => {
             let mut all_participants =
                 vec![public_key.as_ref().to_vec()];

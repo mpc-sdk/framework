@@ -23,7 +23,6 @@ use crate::{
 
 pub type State = Arc<RwLock<ServerState>>;
 
-/*
 async fn purge_expired(state: State, interval_secs: u64) {
     let interval =
         tokio::time::interval(Duration::from_secs(interval_secs));
@@ -38,18 +37,8 @@ async fn purge_expired(state: State, interval_secs: u64) {
         for key in expired_meetings {
             writer.meetings.remove_meeting(&key);
         }
-
-        let expired_sessions = writer
-            .sessions
-            .expired_keys(writer.config.session.timeout);
-        tracing::debug!(
-            expired_sessions = %expired_sessions.len());
-        for key in expired_sessions {
-            writer.sessions.remove_session(&key);
-        }
     }
 }
-*/
 
 pub struct ServerState {
     /// Server config.
@@ -91,17 +80,15 @@ impl MeetingServer {
         handle: Handle,
     ) -> Result<()> {
         let reader = self.state.read().await;
-        // let interval = reader.config.session.interval;
+        let interval = reader.config.session.interval;
         let tls = reader.config.tls.as_ref().cloned();
         drop(reader);
 
-        /*
         // Spawn task to reap expired sessions
         tokio::task::spawn(purge_expired(
             Arc::clone(&self.state),
             interval,
         ));
-        */
 
         if let Some(tls) = tls {
             self.run_tls(addr, handle, tls).await

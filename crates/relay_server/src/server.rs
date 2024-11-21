@@ -16,9 +16,7 @@ use axum_server::{tls_rustls::RustlsConfig, Handle};
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use uuid::Uuid;
 
-use polysig_protocol::{
-    hex, uuid, Keypair, MeetingManager, SessionManager,
-};
+use polysig_protocol::{hex, uuid, Keypair, SessionManager};
 
 use crate::{
     config::{ServerConfig, TlsConfig},
@@ -36,14 +34,6 @@ async fn purge_expired(state: State, interval_secs: u64) {
     let mut stream = IntervalStream::new(interval);
     while stream.next().await.is_some() {
         let mut writer = state.write().await;
-        let expired_meetings = writer
-            .meetings
-            .expired_keys(writer.config.session.timeout);
-        tracing::debug!(
-            expired_meetings = %expired_meetings.len());
-        for key in expired_meetings {
-            writer.meetings.remove_meeting(&key);
-        }
 
         let expired_sessions = writer
             .sessions
@@ -71,9 +61,6 @@ pub struct ServerState {
     /// Now the hashmap key is the client's public key.
     pub(crate) active: HashMap<Vec<u8>, Connection>,
 
-    /// Meeting point manager.
-    pub(crate) meetings: MeetingManager,
-
     /// Session manager.
     pub(crate) sessions: SessionManager,
 }
@@ -92,7 +79,6 @@ impl RelayServer {
                 config,
                 pending: Default::default(),
                 active: Default::default(),
-                meetings: Default::default(),
                 sessions: Default::default(),
             })),
         }

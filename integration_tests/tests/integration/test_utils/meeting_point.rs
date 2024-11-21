@@ -3,7 +3,6 @@ use futures::StreamExt;
 use polysig_protocol::{
     MeetingClientMessage, MeetingData, MeetingId, UserId,
 };
-use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 use std::{sync::Arc, time::Duration};

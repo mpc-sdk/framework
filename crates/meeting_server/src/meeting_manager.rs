@@ -41,10 +41,12 @@ impl MeetingManager {
         self.meetings.remove(id)
     }
 
+    /*
     /// Get a meeting.
     pub fn get_meeting(&self, id: &MeetingId) -> Option<&Meeting> {
         self.meetings.get(id)
     }
+    */
 
     /// Get a mutable meeting.
     pub fn get_meeting_mut(
