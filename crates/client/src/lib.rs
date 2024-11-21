@@ -62,6 +62,11 @@ pub struct ClientOptions {
 }
 
 impl ClientOptions {
+    /// Determine if this client expects to use an encrypted channel.
+    pub fn is_encrypted(&self) -> bool {
+        self.keypair.is_some() && self.server_public_key.is_some()
+    }
+
     /// Build a connection URL for the given server.
     ///
     /// This method appends the public key query string

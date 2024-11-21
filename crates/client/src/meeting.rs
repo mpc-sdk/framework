@@ -45,6 +45,7 @@ pub async fn create(
     let ServerOptions { server_url, .. } = options.server;
     let options = ClientOptions::default();
     let url = options.url(&server_url);
+    println!("CREATE MEETING {}", url);
     let (mut client, event_loop) = Client::new(&url, options).await?;
 
     client.connect().await?;

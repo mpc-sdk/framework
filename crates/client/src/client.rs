@@ -79,28 +79,29 @@ macro_rules! client_transport_impl {
 
             /// Perform initial handshake with the server.
             async fn connect(&mut self) -> Result<()> {
-                let request = {
-                    let mut state = self.server.write().await;
+                if self.options.is_encrypted() {
+                    let request = {
+                        let mut state = self.server.write().await;
 
-                    let (len, payload) = match &mut *state {
-                        Some(ProtocolState::Handshake(initiator)) => {
-                            let mut request = vec![0u8; 1024];
-                            let len =
-                                initiator.write_message(&[], &mut request)?;
-                            (len, request)
-                        }
-                        _ => return Err(Error::NotHandshakeState),
+                        let (len, payload) = match &mut *state {
+                            Some(ProtocolState::Handshake(initiator)) => {
+                                let mut request = vec![0u8; 1024];
+                                let len =
+                                    initiator.write_message(&[], &mut request)?;
+                                (len, request)
+                            }
+                            _ => return Err(Error::NotHandshakeState),
+                        };
+
+                        RequestMessage::Transparent(
+                            TransparentMessage::ServerHandshake(
+                                HandshakeMessage::Initiator(len, payload),
+                            ),
+                        )
                     };
 
-                    RequestMessage::Transparent(
-                        TransparentMessage::ServerHandshake(
-                            HandshakeMessage::Initiator(len, payload),
-                        ),
-                    )
-                };
-
-                self.outbound_tx.send(InternalMessage::Request(request))?;
-
+                    self.outbound_tx.send(InternalMessage::Request(request))?;
+                }
                 Ok(())
             }
 
