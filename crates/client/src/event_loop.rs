@@ -25,6 +25,11 @@ pub type EventStream = BoxStream<'static, Result<Event>>;
 pub enum InternalMessage {
     /// Send a request.
     Request(RequestMessage),
+    /// Send a buffer.
+    ///
+    /// Used for meeting points which do not
+    /// go over an encrypted channel.
+    Buffer(Vec<u8>),
     /// Close the connection.
     Close,
 }
@@ -339,6 +344,12 @@ macro_rules! event_loop_run_impl {
                             match message_out {
                                 InternalMessage::Request(request) => {
                                     if let Err(e) = self.send_message(request).await {
+                                        tracing::warn!(error = %e);
+                                        yield Err(e)
+                                    }
+                                }
+                                InternalMessage::Buffer(buffer) => {
+                                    if let Err(e) = self.send_buffer(&buffer).await {
                                         tracing::warn!(error = %e);
                                         yield Err(e)
                                     }

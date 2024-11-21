@@ -62,6 +62,13 @@ macro_rules! client_impl {
                 unreachable!()
             }
         }
+
+        /// Send a buffer.
+        async fn send(&mut self, buffer: Vec<u8>) -> Result<()> {
+            Ok(self
+                .outbound_tx
+                .send(InternalMessage::Buffer(buffer))?)
+        }
     };
 }
 
@@ -209,11 +216,13 @@ macro_rules! client_transport_impl {
                 slots: HashSet<UserId>,
                 data: Value,
             ) -> Result<()> {
-                /*
-                let message = ServerMessage::NewMeeting { owner_id, slots, data };
-                self.request(message).await
-                */
-                todo!("send unencrypted request...");
+                let message = NewMeeting {
+                    owner_id,
+                    slots,
+                    data,
+                };
+                let buffer = serde_json::to_vec(&message)?;
+                self.send(buffer).await
             }
 
             /// Join a meeting point.
@@ -221,12 +230,15 @@ macro_rules! client_transport_impl {
                 &mut self,
                 meeting_id: MeetingId,
                 user_id: UserId,
+                data: Value,
             ) -> Result<()> {
-                /*
-                let message = ServerMessage::JoinMeeting(meeting_id, user_id);
-                self.request(message).await
-                */
-                todo!("send unencrypted request...");
+                let message = JoinMeeting {
+                    meeting_id,
+                    user_id,
+                    data,
+                };
+                let buffer = serde_json::to_vec(&message)?;
+                self.send(buffer).await
             }
 
             /// Create a new session.

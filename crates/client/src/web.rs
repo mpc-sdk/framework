@@ -11,9 +11,10 @@ use tokio::sync::{mpsc, RwLock};
 use polysig_protocol::{
     channel::encrypt_server_channel, decode, encode, hex,
     serde_json::Value, snow::Builder, zlib, Encoding, Event,
-    HandshakeMessage, JsonMessage, MeetingId, OpaqueMessage,
-    ProtocolState, RequestMessage, ResponseMessage, ServerMessage,
-    SessionId, SessionRequest, TransparentMessage, UserId,
+    HandshakeMessage, JoinMeeting, JsonMessage, MeetingId,
+    NewMeeting, OpaqueMessage, ProtocolState, RequestMessage,
+    ResponseMessage, ServerMessage, SessionId, SessionRequest,
+    TransparentMessage, UserId,
 };
 
 use crate::{
@@ -246,16 +247,30 @@ impl EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream> {
         message: RequestMessage,
     ) -> Result<()> {
         let encoded = encode(&message).await?;
-        let deflated = zlib::deflate(&encoded)?;
+        self.send_buffer(&encoded).await
+    }
+
+    /// Send a buffer to the socket and flush the stream.
+    pub(crate) async fn send_buffer(
+        &mut self,
+        buffer: &[u8],
+    ) -> Result<()> {
+        let deflated = zlib::deflate(buffer)?;
+
+        tracing::debug!(
+            encoded_length = buffer.len(),
+            deflated_length = deflated.len(),
+            "send_buffer"
+        );
+
         self.ws_writer
             .send(deflated)
             .await
             .map_err(|_| Error::WebSocketSend)?;
-        Ok(self
-            .ws_writer
+        self.ws_writer
             .flush()
             .await
-            .map_err(|_| Error::WebSocketSend)?)
+            .map_err(|_| Error::WebSocketSend)
     }
 
     async fn handle_close_message(self) -> Result<()> {

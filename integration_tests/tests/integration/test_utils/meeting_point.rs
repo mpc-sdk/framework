@@ -93,8 +93,13 @@ pub async fn run(
             'main: loop {
                 let lock = state.lock().await;
                 if let Some(meeting) = &*lock {
+                    let value = Value::Null;
                     transport
-                        .join_meeting(meeting.meeting_id, user_id)
+                        .join_meeting(
+                            meeting.meeting_id,
+                            user_id,
+                            value,
+                        )
                         .await?;
 
                     while let Some(event) = stream.next().await {

@@ -16,7 +16,9 @@ pub type SessionId = uuid::Uuid;
 
 /// User identifier wraps an SHA-256 hash of a
 /// unique arbitrary value.
-#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
+#[derive(
+    Debug, Clone, Copy, Hash, Eq, PartialEq, Serialize, Deserialize,
+)]
 pub struct UserId([u8; 32]);
 
 impl AsRef<[u8; 32]> for UserId {
@@ -118,6 +120,28 @@ impl From<&TransparentMessage> for u8 {
             }
         }
     }
+}
+
+/// Create a new meeting room.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct NewMeeting {
+    /// Owner identifier.
+    pub owner_id: UserId,
+    /// Slots for all participants.
+    pub slots: HashSet<UserId>,
+    /// Data for this participant.
+    pub data: Value,
+}
+
+/// Join a meeting room.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct JoinMeeting {
+    /// Meeting identifier.
+    pub meeting_id: MeetingId,
+    /// User identifier.
+    pub user_id: UserId,
+    /// Data for this participant.
+    pub data: Value,
 }
 
 /// Message sent between the server and a client.

@@ -77,6 +77,7 @@ pub async fn join(
     options: MeetingOptions,
     meeting_id: MeetingId,
     user_id: Option<UserId>,
+    data: Value,
 ) -> Result<(Vec<Vec<u8>>, Value)> {
     let ServerOptions { server_url, .. } = options.server;
     let options = ClientOptions::default();
@@ -84,7 +85,9 @@ pub async fn join(
     let (mut client, event_loop) = Client::new(&url, options).await?;
 
     if let Some(user_id) = &user_id {
-        client.join_meeting(meeting_id, user_id.clone()).await?;
+        client
+            .join_meeting(meeting_id, user_id.clone(), data)
+            .await?;
     }
 
     let mut stream = event_loop.run();
