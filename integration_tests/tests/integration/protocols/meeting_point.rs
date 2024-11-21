@@ -1,15 +1,15 @@
 use anyhow::Result;
 
 use crate::test_utils::{
-    meeting_point, server_public_key, spawn_server,
+    meeting_point, server_public_key, spawn_meeting_server,
 };
 
 /// Mimics a meeting point flow for two participants.
 #[tokio::test]
 async fn integration_meeting_point() -> Result<()> {
-    //crate::test_utils::init_tracing();
+    crate::test_utils::init_tracing();
 
-    let (rx, _handle) = spawn_server()?;
+    let (rx, _handle) = spawn_meeting_server()?;
     let addr = rx.await?;
     let server = format!("ws://{}", addr);
 
