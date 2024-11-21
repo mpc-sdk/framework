@@ -16,7 +16,7 @@ pub type SessionId = uuid::Uuid;
 
 /// User identifier wraps an SHA-256 hash of a
 /// unique arbitrary value.
-#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
 pub struct UserId([u8; 32]);
 
 impl AsRef<[u8; 32]> for UserId {

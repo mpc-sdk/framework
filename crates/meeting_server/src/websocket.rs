@@ -157,6 +157,7 @@ async fn read(
             Ok(msg) => match msg {
                 Message::Text(_) => {}
                 Message::Binary(buffer) => {
+                    println!("SERVER got a message...");
                     /*
                     if let Ok(inflated) = zlib::inflate(&buffer) {
                         tx.send(inflated).await?;

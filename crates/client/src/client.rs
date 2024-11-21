@@ -72,7 +72,7 @@ macro_rules! client_transport_impl {
         #[async_trait::async_trait]
         impl crate::NetworkTransport for $kind {
 
-            /// The public key for this client.
+            /// Public key for this client.
             fn public_key(&self) -> &[u8] {
                 self.options.keypair.as_ref().unwrap().public_key()
             }
@@ -209,8 +209,11 @@ macro_rules! client_transport_impl {
                 slots: HashSet<UserId>,
                 data: Value,
             ) -> Result<()> {
+                /*
                 let message = ServerMessage::NewMeeting { owner_id, slots, data };
                 self.request(message).await
+                */
+                todo!("send unencrypted request...");
             }
 
             /// Join a meeting point.
@@ -219,8 +222,11 @@ macro_rules! client_transport_impl {
                 meeting_id: MeetingId,
                 user_id: UserId,
             ) -> Result<()> {
+                /*
                 let message = ServerMessage::JoinMeeting(meeting_id, user_id);
                 self.request(message).await
+                */
+                todo!("send unencrypted request...");
             }
 
             /// Create a new session.

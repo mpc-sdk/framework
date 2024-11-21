@@ -45,24 +45,16 @@ pub async fn create(
     let ServerOptions { server_url, .. } = options.server;
     let options = ClientOptions::default();
     let url = options.url(&server_url);
-    println!("CREATE MEETING {}", url);
     let (mut client, event_loop) = Client::new(&url, options).await?;
 
-    client.connect().await?;
+    client
+        .new_meeting(initiator.clone(), slots.clone(), data.clone())
+        .await?;
 
     let mut stream = event_loop.run();
     while let Some(event) = stream.next().await {
         let event = event?;
         match event {
-            Event::ServerConnected { .. } => {
-                client
-                    .new_meeting(
-                        initiator.clone(),
-                        slots.clone(),
-                        data.clone(),
-                    )
-                    .await?;
-            }
             Event::MeetingCreated(meeting) => {
                 let _ = client.close().await;
                 return Ok(meeting.meeting_id);
@@ -78,7 +70,7 @@ pub async fn create(
 /// When all participants have joined the meeting point the public
 /// keys of all participants are returned.
 ///
-/// When  the user identifier is not given then the user is
+/// When the user identifier is not given then the user is
 /// the creator of the meeting point who has already been
 /// registered as a participant when creating the meeting.
 pub async fn join(
@@ -91,19 +83,14 @@ pub async fn join(
     let url = options.url(&server_url);
     let (mut client, event_loop) = Client::new(&url, options).await?;
 
-    client.connect().await?;
+    if let Some(user_id) = &user_id {
+        client.join_meeting(meeting_id, user_id.clone()).await?;
+    }
 
     let mut stream = event_loop.run();
     while let Some(event) = stream.next().await {
         let event = event?;
         match event {
-            Event::ServerConnected { .. } => {
-                if let Some(user_id) = &user_id {
-                    client
-                        .join_meeting(meeting_id, user_id.clone())
-                        .await?;
-                }
-            }
             Event::MeetingReady(meeting) => {
                 let _ = client.close().await;
                 let public_keys: Vec<Vec<u8>> = meeting
