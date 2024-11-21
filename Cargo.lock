@@ -2251,7 +2251,6 @@ dependencies = [
  "anyhow",
  "axum-server",
  "clap",
- "polysig-meeting-server",
  "polysig-protocol",
  "polysig-relay-server",
  "tokio",
