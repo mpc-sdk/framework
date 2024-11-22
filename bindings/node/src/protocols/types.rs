@@ -1,7 +1,8 @@
-use polysig_driver::synedrion::{self, ecdsa};
-use polysig_protocol::decode_keypair;
 use napi_derive::napi;
+use polysig_driver::synedrion::{self, ecdsa};
+use polysig_protocol::{self as protocol, decode_keypair};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 #[cfg(not(debug_assertions))]
 pub(super) type Params = synedrion::ProductionParams;
@@ -179,4 +180,70 @@ impl From<polysig_driver::recoverable_signature::RecoverableSignature>
             recovery_id: value.recovery_id,
         }
     }
+}
+
+#[napi(object)]
+#[derive(Serialize, Deserialize, Debug)]
+pub struct UserId {
+    /// User identifier.
+    pub id: Vec<u8>,
+}
+
+impl TryFrom<UserId> for protocol::UserId {
+    type Error = anyhow::Error;
+
+    fn try_from(value: UserId) -> Result<Self, Self::Error> {
+        let buf: [u8; 32] = value.id.as_slice().try_into()?;
+        Ok(buf.into())
+    }
+}
+
+impl From<protocol::UserId> for UserId {
+    fn from(value: protocol::UserId) -> Self {
+        Self {
+            id: value.as_ref().to_vec(),
+        }
+    }
+}
+
+#[napi(object)]
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct MeetingData {
+    /// Transport public key.
+    pub public_key: Vec<u8>,
+    /// Verifiying key.
+    pub verifying_key: Vec<u8>,
+    /// Optional associated data.
+    pub associated_data: Option<Value>,
+}
+
+impl From<MeetingData> for protocol::MeetingData {
+    fn from(value: MeetingData) -> Self {
+        protocol::MeetingData {
+            public_key: value.public_key,
+            verifying_key: value.verifying_key,
+            associated_data: value.associated_data,
+        }
+    }
+}
+
+impl From<protocol::MeetingData> for MeetingData {
+    fn from(value: protocol::MeetingData) -> Self {
+        MeetingData {
+            public_key: value.public_key,
+            verifying_key: value.verifying_key,
+            associated_data: value.associated_data,
+        }
+    }
+}
+
+#[napi(object)]
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct MeetingItem {
+    /// User identifiers.
+    pub user_id: UserId,
+    /// Data for the user.
+    pub data: MeetingData,
 }

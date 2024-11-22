@@ -12,7 +12,6 @@ use futures::StreamExt;
 use polysig_protocol::{
     Event, MeetingData, MeetingId, MeetingResponse, UserId,
 };
-use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
 /// Create a new meeting point.

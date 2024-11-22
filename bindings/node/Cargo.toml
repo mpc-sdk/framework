@@ -12,6 +12,7 @@ full = ["signers", "protocols"]
 signers = ["ecdsa", "eddsa", "schnorr"]
 protocols = ["cggmp", "frost-ed25519"]
 cggmp = [
+  "polysig-client/cggmp",
   "polysig-driver/cggmp",
   "dep:tokio",
   "napi/async",
@@ -21,7 +22,15 @@ cggmp = [
 ]
 ecdsa = ["polysig-driver/ecdsa"]
 eddsa = ["polysig-driver/eddsa"]
-frost-ed25519 = ["polysig-driver/frost-ed25519", "dep:tokio"]
+frost-ed25519 = [
+  "polysig-driver/frost-ed25519",
+  "polysig-client/frost-ed25519",
+  "dep:tokio",
+  "napi/async",
+  "napi/tokio",
+  "napi/tokio_rt",
+  "serde"
+]
 schnorr = ["polysig-driver/schnorr"]
 
 [lib]

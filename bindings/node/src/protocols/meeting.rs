@@ -1,72 +1,69 @@
 //! Bindings for meeting points.
-use super::types::ServerOptions;
+use super::types::{MeetingData, MeetingItem, UserId};
 use anyhow::Result;
 use napi_derive::napi;
-use polysig_protocol::{hex, MeetingData, MeetingId, UserId};
+use polysig_client::{meeting, ServerOptions};
+use polysig_protocol as protocol;
 
 /// Create a meeting point used to exchange public keys.
 #[napi(js_name = "createMeeting")]
-pub fn create_meeting(
-    options: ServerOptions,
-    /*
+pub async fn create_meeting(
+    server_url: String,
     identifiers: Vec<UserId>,
     initiator: UserId,
     data: MeetingData,
-    */
-) -> Result<()> {
-    /*
-    let options: MeetingOptions =
-        serde_wasm_bindgen::from_value(options)?;
-    let identifiers = parse_user_identifiers(identifiers)?;
-    let initiator = parse_user_id(initiator)?;
-    */
-
-    /*
-    let data: Value = serde_wasm_bindgen::from_value(data)?;
-    let fut = async move {
-        let meeting_id =
-            meeting::create(options, identifiers, initiator, data)
-                .await?;
-        Ok(serde_wasm_bindgen::to_value(&meeting_id)?)
+) -> Result<String> {
+    let options = ServerOptions {
+        server_url,
+        server_public_key: Default::default(),
+        pattern: None,
     };
-    Ok(future_to_promise(fut).into())
-    */
 
-    todo!();
+    let mut ids = Vec::with_capacity(identifiers.len());
+    for id in identifiers {
+        ids.push(id.try_into()?);
+    }
+
+    Ok(meeting::create(
+        options,
+        ids,
+        initiator.try_into()?,
+        data.into(),
+    )
+    .await?
+    .to_string())
 }
 
 /// Join a meeting point used to exchange public keys.
 #[napi(js_name = "joinMeeting")]
-pub fn join_meeting(
-    options: ServerOptions,
-    /*
-    meeting_id: MeetingId,
-    user_id: UserId,
+pub async fn join_meeting(
+    server_url: String,
+    meeting_id: String,
+    user_id: Option<UserId>,
     data: MeetingData,
-    */
-) -> Result<()> {
-    /*
-    let options: MeetingOptions =
-        serde_wasm_bindgen::from_value(options)?;
-    let meeting_id: MeetingId =
-        meeting_id.parse().map_err(JsError::from)?;
-    let user_id: Option<String> =
-        serde_wasm_bindgen::from_value(user_id)?;
+) -> Result<Vec<MeetingItem>> {
+    let options = ServerOptions {
+        server_url,
+        server_public_key: Default::default(),
+        pattern: None,
+    };
+    let meeting_id: protocol::MeetingId = meeting_id.parse()?;
     let user_id = if let Some(user_id) = user_id {
-        Some(parse_user_id(user_id)?)
+        Some(user_id.try_into()?)
     } else {
         None
     };
+    let results =
+        meeting::join(options, meeting_id, user_id, data.into())
+            .await?;
 
-    let fut = async move {
-        let (public_keys, data) =
-            meeting::join(options, meeting_id, user_id).await?;
-        let public_keys: Vec<String> =
-            public_keys.into_iter().map(|v| hex::encode(v)).collect();
-        Ok(serde_wasm_bindgen::to_value(&(public_keys, data))?)
-    };
-    Ok(future_to_promise(fut).into())
-    */
+    let mut output = Vec::with_capacity(results.len());
+    for result in results {
+        output.push(MeetingItem {
+            user_id: result.0.into(),
+            data: result.1.into(),
+        })
+    }
 
-    todo!();
+    Ok(output)
 }

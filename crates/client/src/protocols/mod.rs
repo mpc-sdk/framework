@@ -4,7 +4,7 @@ use polysig_protocol::{hex, Event, Keypair, Parameters};
 use serde::{Deserialize, Serialize};
 
 mod bridge;
-mod meeting;
+pub mod meeting;
 mod session;
 
 #[cfg(feature = "cggmp")]
@@ -17,7 +17,6 @@ pub(crate) use bridge::Bridge;
 pub use bridge::{
     wait_for_close, wait_for_driver, wait_for_session_finish,
 };
-pub use meeting::*;
 
 pub use session::{
     wait_for_session, SessionEventHandler, SessionHandler,
