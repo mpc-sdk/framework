@@ -11,4 +11,5 @@ repository = "https://github.com/polysig/polysig"
 polysig-client.workspace = true
 polysig-driver.workspace = true
 polysig-protocol.workspace = true
+polysig-meeting-server.workspace = true
 polysig-relay-server.workspace = true

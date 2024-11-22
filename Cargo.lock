@@ -2103,6 +2103,7 @@ version = "0.7.1"
 dependencies = [
  "polysig-client",
  "polysig-driver",
+ "polysig-meeting-server",
  "polysig-protocol",
  "polysig-relay-server",
 ]
