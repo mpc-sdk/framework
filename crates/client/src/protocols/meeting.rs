@@ -11,7 +11,7 @@ use polysig_protocol::{
 };
 use std::collections::HashSet;
 
-/// Create a new meeting point.
+/// Create a new meeting room.
 pub async fn create(
     server_url: &str,
     identifiers: Vec<UserId>,
@@ -32,7 +32,7 @@ pub async fn create(
     let (mut client, event_loop) =
         Client::new(server_url, options).await?;
 
-    client.new_meeting(initiator.clone(), slots).await?;
+    client.new_meeting(initiator, slots).await?;
 
     let mut stream = event_loop.run();
     while let Some(event) = stream.next().await {
@@ -51,14 +51,10 @@ pub async fn create(
     unreachable!();
 }
 
-/// Join a meeting point.
+/// Join a meeting room.
 ///
 /// When all participants have joined the meeting point the public
 /// keys of all participants are returned.
-///
-/// When the user identifier is not given then the user is
-/// the creator of the meeting point who has already been
-/// registered as a participant when creating the meeting.
 pub async fn join(
     server_url: &str,
     meeting_id: MeetingId,

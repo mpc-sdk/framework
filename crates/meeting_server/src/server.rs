@@ -35,7 +35,7 @@ async fn purge_expired(state: State, interval_secs: u64) {
         tracing::debug!(
             expired_meetings = %expired_meetings.len());
         for key in expired_meetings {
-            writer.meetings.remove_meeting(&key);
+            writer.meetings.remove_room(&key);
         }
     }
 }

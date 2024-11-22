@@ -124,7 +124,7 @@ async fn read(
                                 let mut state = state.write().await;
                                 let meeting_id = state
                                     .meetings
-                                    .new_meeting(owner_id, slots);
+                                    .new_room(owner_id, slots);
 
                                 let mut socket = conn.lock().await;
                                 let response =
@@ -151,7 +151,7 @@ async fn read(
                                         state.write().await;
                                     if let Some(meeting) = state
                                         .meetings
-                                        .get_meeting_mut(&meeting_id)
+                                        .room_mut(&meeting_id)
                                     {
                                         meeting.join(
                                             user_id, conn_id, data,
@@ -168,7 +168,7 @@ async fn read(
                                         state.write().await;
                                     if let Some(meeting) = state
                                         .meetings
-                                        .remove_meeting(&meeting_id)
+                                        .remove_room(&meeting_id)
                                     {
                                         let mut participants =
                                             Vec::with_capacity(

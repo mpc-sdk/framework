@@ -4,61 +4,52 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-/// Manages a collection of meeting points.
+/// Manages a collection of meeting rooms.
 #[derive(Default)]
 pub struct MeetingManager {
-    meetings: HashMap<MeetingId, Meeting>,
+    rooms: HashMap<MeetingId, MeetingRoom>,
 }
 
 impl MeetingManager {
-    /// Create a new meeting point.
-    pub fn new_meeting(
+    /// Create a new meeting room.
+    pub fn new_room(
         &mut self,
         owner_id: UserId,
         slots: HashSet<UserId>,
-        // conn_id: u64,
-        // data: MeetingData,
     ) -> MeetingId {
         let meeting_id = MeetingId::new_v4();
         let slots: HashMap<UserId, Option<(u64, MeetingData)>> =
             slots.into_iter().map(|id| (id, None)).collect();
 
-        let meeting = Meeting {
+        let meeting = MeetingRoom {
             owner_id,
             slots,
             last_access: SystemTime::now(),
         };
 
-        self.meetings.insert(meeting_id, meeting);
+        self.rooms.insert(meeting_id, meeting);
         meeting_id
     }
 
-    /// Remove a meeting.
-    pub fn remove_meeting(
+    /// Remove a meeting room.
+    pub fn remove_room(
         &mut self,
         id: &MeetingId,
-    ) -> Option<Meeting> {
-        self.meetings.remove(id)
+    ) -> Option<MeetingRoom> {
+        self.rooms.remove(id)
     }
 
-    /*
-    /// Get a meeting.
-    pub fn get_meeting(&self, id: &MeetingId) -> Option<&Meeting> {
-        self.meetings.get(id)
-    }
-    */
-
-    /// Get a mutable meeting.
-    pub fn get_meeting_mut(
+    /// Mutable meeting room.
+    pub fn room_mut(
         &mut self,
         id: &MeetingId,
-    ) -> Option<&mut Meeting> {
-        self.meetings.get_mut(id)
+    ) -> Option<&mut MeetingRoom> {
+        self.rooms.get_mut(id)
     }
 
-    /// Get the keys of meetings that have expired.
+    /// Keys of meetings that have expired.
     pub fn expired_keys(&self, timeout: u64) -> Vec<MeetingId> {
-        self.meetings
+        self.rooms
             .iter()
             .filter(|(_, v)| {
                 let now = SystemTime::now();
@@ -77,8 +68,9 @@ impl MeetingManager {
 
 /// Meeting point information.
 #[derive(Debug)]
-pub struct Meeting {
+pub(crate) struct MeetingRoom {
     /// Owner that created the meeting.
+    #[allow(dead_code)]
     pub(crate) owner_id: UserId,
     /// Map of user identifiers to public keys.
     pub(crate) slots: HashMap<UserId, Option<(u64, MeetingData)>>,
@@ -87,7 +79,7 @@ pub struct Meeting {
     last_access: SystemTime,
 }
 
-impl Meeting {
+impl MeetingRoom {
     /// Add a participant to this meeting.
     pub fn join(
         &mut self,
