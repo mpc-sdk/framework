@@ -39,7 +39,7 @@ pub use sign::SignatureDriver;
 /// notify clients that are not participating
 /// that their key init phase is completed.
 #[derive(Serialize, Deserialize)]
-pub struct KeyInitAck {
+pub(crate) struct KeyInitAck {
     /// Index of the party.
     pub party_index: usize,
     /// Verifying key from the generated threshold key share.
