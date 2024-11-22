@@ -1,23 +1,26 @@
 //! Bindings for meeting points.
-use polysig_client::meeting::{self, MeetingOptions};
-use polysig_protocol::{hex, MeetingId, UserId};
-use serde_json::Value;
+use polysig_client::{meeting, ServerOptions};
+use polysig_protocol::{hex, MeetingData, MeetingId, UserId};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::future_to_promise;
 
 /// Create a meeting point used to exchange public keys.
 #[wasm_bindgen(js_name = "createMeeting")]
 pub fn create_meeting(
-    options: JsValue,
+    server_url: String,
     identifiers: JsValue,
     initiator: String,
     data: JsValue,
 ) -> Result<JsValue, JsError> {
-    let options: MeetingOptions =
-        serde_wasm_bindgen::from_value(options)?;
+    let options = ServerOptions {
+        server_url,
+        server_public_key: Default::default(),
+        pattern: None,
+    };
+
     let identifiers = parse_user_identifiers(identifiers)?;
     let initiator = parse_user_id(initiator)?;
-    let data: Value = serde_wasm_bindgen::from_value(data)?;
+    let data: MeetingData = serde_wasm_bindgen::from_value(data)?;
     let fut = async move {
         let meeting_id =
             meeting::create(options, identifiers, initiator, data)
@@ -30,12 +33,16 @@ pub fn create_meeting(
 /// Join a meeting point used to exchange public keys.
 #[wasm_bindgen(js_name = "joinMeeting")]
 pub fn join_meeting(
-    options: JsValue,
+    server_url: String,
     meeting_id: String,
     user_id: JsValue,
+    data: JsValue,
 ) -> Result<JsValue, JsError> {
-    let options: MeetingOptions =
-        serde_wasm_bindgen::from_value(options)?;
+    let options = ServerOptions {
+        server_url,
+        server_public_key: Default::default(),
+        pattern: None,
+    };
     let meeting_id: MeetingId =
         meeting_id.parse().map_err(JsError::from)?;
     let user_id: Option<String> =
@@ -45,13 +52,12 @@ pub fn join_meeting(
     } else {
         None
     };
+    let data: MeetingData = serde_wasm_bindgen::from_value(data)?;
 
     let fut = async move {
-        let (public_keys, data) =
-            meeting::join(options, meeting_id, user_id).await?;
-        let public_keys: Vec<String> =
-            public_keys.into_iter().map(|v| hex::encode(v)).collect();
-        Ok(serde_wasm_bindgen::to_value(&(public_keys, data))?)
+        let results =
+            meeting::join(options, meeting_id, user_id, data).await?;
+        Ok(serde_wasm_bindgen::to_value(&results)?)
     };
     Ok(future_to_promise(fut).into())
 }

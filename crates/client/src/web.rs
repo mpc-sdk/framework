@@ -10,11 +10,11 @@ use tokio::sync::{mpsc, RwLock};
 
 use polysig_protocol::{
     channel::encrypt_server_channel, decode, encode, hex,
-    serde_json::Value, snow::Builder, zlib, Encoding, Event,
-    HandshakeMessage, JsonMessage, MeetingResponse, MeetingData,
-    MeetingId, MeetingRequest, OpaqueMessage, ProtocolState,
-    RequestMessage, ResponseMessage, ServerMessage, SessionId,
-    SessionRequest, TransparentMessage, UserId,
+    snow::Builder, zlib, Encoding, Event, HandshakeMessage,
+    JsonMessage, MeetingData, MeetingId, MeetingRequest,
+    MeetingResponse, OpaqueMessage, ProtocolState, RequestMessage,
+    ResponseMessage, ServerMessage, SessionId, SessionRequest,
+    TransparentMessage, UserId,
 };
 
 use crate::{
