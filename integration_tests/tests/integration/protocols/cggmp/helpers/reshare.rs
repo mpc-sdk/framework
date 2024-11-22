@@ -1,6 +1,6 @@
 use anyhow::Result;
 use polysig_client::{
-    cggmp::{keygen, reshare, sign},
+    cggmp::{dkg, reshare, sign},
     ServerOptions, SessionOptions,
 };
 use polysig_driver::{
@@ -116,7 +116,7 @@ async fn run_dkg(
 
         let verifier = signer.verifying_key().clone();
         tasks.push(tokio::task::spawn(async move {
-            let key_share = keygen(
+            let key_share = dkg(
                 opts,
                 Participant::new(signer, verifier, party)?,
                 keygen_session_id.clone(),

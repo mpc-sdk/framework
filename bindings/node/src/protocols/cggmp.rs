@@ -1,13 +1,13 @@
 //! Bindings for the CGGMP protocol.
 use anyhow::Error;
+use napi::bindgen_prelude::*;
+use napi_derive::napi;
 use polysig_driver::cggmp::Participant;
 use polysig_driver::synedrion::{
     ecdsa::{self, SigningKey},
     SessionId,
 };
 use polysig_protocol::{hex, PATTERN};
-use napi::bindgen_prelude::*;
-use napi_derive::napi;
 use std::collections::BTreeSet;
 
 use super::types::{
@@ -75,7 +75,7 @@ impl CggmpProtocol {
 
         let participant = Participant::new(signer, verifier, party)
             .map_err(Error::new)?;
-        let key_share = polysig_client::cggmp::keygen::<Params>(
+        let key_share = polysig_client::cggmp::dkg::<Params>(
             options,
             participant,
             SessionId::from_seed(&session_id_seed),

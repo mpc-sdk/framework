@@ -51,7 +51,7 @@ pub(crate) struct KeyInitAck {
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// Run threshold DKG for the CGGMP protocol.
-pub async fn keygen<P: SchemeParams + 'static>(
+pub async fn dkg<P: SchemeParams + 'static>(
     options: SessionOptions,
     participant: Participant,
     session_id: SessionId,
