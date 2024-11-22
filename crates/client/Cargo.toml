@@ -1,6 +1,6 @@
 [package]
 name = "polysig-client"
-version = "0.7.1"
+version = "0.7.2"
 edition = "2021"
 description = "Client for the polysig library"
 keywords = ["mpc", "tss", "relay", "crypto", "e2ee"]
