@@ -29,11 +29,17 @@ mod key_refresh;
 mod key_resharing;
 mod sign;
 
+#[doc(hidden)]
 pub use aux_gen::AuxGenDriver;
+#[doc(hidden)]
 pub use key_gen::KeyGenDriver;
+#[doc(hidden)]
 pub use key_init::KeyInitDriver;
+#[doc(hidden)]
 pub use key_refresh::KeyRefreshDriver;
+#[doc(hidden)]
 pub use key_resharing::KeyResharingDriver;
+#[doc(hidden)]
 pub use sign::SignatureDriver;
 
 /// Message sent by key init participants to
