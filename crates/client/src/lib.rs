@@ -13,7 +13,6 @@
 mod client;
 mod error;
 mod event_loop;
-pub mod meeting;
 mod protocols;
 mod transport;
 

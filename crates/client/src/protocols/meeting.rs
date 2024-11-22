@@ -10,24 +10,14 @@ use crate::{
 };
 use futures::StreamExt;
 use polysig_protocol::{
-    Event, Keypair, MeetingResponse, MeetingData, MeetingId,
-    UserId,
+    Event, MeetingData, MeetingId, MeetingResponse, UserId,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
-/// Options for creating or joining a meeting point.
-#[derive(Serialize, Deserialize)]
-pub struct MeetingOptions {
-    /// Keypair for the participant.
-    pub keypair: Keypair,
-    /// Server options.
-    pub server: ServerOptions,
-}
-
 /// Create a new meeting point.
 pub async fn create(
-    options: MeetingOptions,
+    options: ServerOptions,
     identifiers: Vec<UserId>,
     initiator: UserId,
     data: MeetingData,
@@ -43,7 +33,7 @@ pub async fn create(
         return Err(Error::MeetingInitiatorNotExist);
     }
 
-    let ServerOptions { server_url, .. } = options.server;
+    let ServerOptions { server_url, .. } = options;
     let options = ClientOptions::default();
     let url = options.url(&server_url);
     let (mut client, event_loop) = Client::new(&url, options).await?;
@@ -76,12 +66,12 @@ pub async fn create(
 /// the creator of the meeting point who has already been
 /// registered as a participant when creating the meeting.
 pub async fn join(
-    options: MeetingOptions,
+    options: ServerOptions,
     meeting_id: MeetingId,
     user_id: Option<UserId>,
     data: MeetingData,
 ) -> Result<Vec<(UserId, MeetingData)>> {
-    let ServerOptions { server_url, .. } = options.server;
+    let ServerOptions { server_url, .. } = options;
     let options = ClientOptions::default();
     let url = options.url(&server_url);
     let (mut client, event_loop) = Client::new(&url, options).await?;
