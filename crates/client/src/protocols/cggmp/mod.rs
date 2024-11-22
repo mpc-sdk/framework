@@ -7,6 +7,7 @@ use crate::{
 };
 use futures::StreamExt;
 use polysig_driver::{
+    cggmp::Participant,
     recoverable_signature::RecoverableSignature,
     synedrion::{
         self,
@@ -46,18 +47,8 @@ pub(crate) struct KeyInitAck {
     pub key_share_verifying_key: VerifyingKey,
 }
 
-/// Key share.
-pub type KeyShare<P> = ThresholdKeyShare<P, VerifyingKey>;
-
 /// Result type for the CGGMP protocol.
 pub type Result<T> = std::result::Result<T, Error>;
-
-/// Participant in the CGGMP protocol.
-pub type Participant =
-    polysig_driver::Participant<SigningKey, VerifyingKey>;
-
-/// Options for each party.
-pub type PartyOptions = polysig_driver::PartyOptions<VerifyingKey>;
 
 /// Run threshold DKG for the CGGMP protocol.
 pub async fn keygen<P: SchemeParams + 'static>(
