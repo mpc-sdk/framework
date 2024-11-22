@@ -43,6 +43,24 @@ The library includes bindings for Webassembly to be used in the browser and for 
 * [ ] FROST
 * [x] Schnorr
 
+## Meeting Rooms
+
+For protocols to be executed the participants need to exchange public key information. To facilitate this we provide the [meeting-server][] which allows for meeting rooms to be created and all participants to be notified once all public keys are available.
+
+The [meeting-server][] is intentionally distinct from the [relay-server][] so the relay server has no knowledge of the public key exchange.
+
+There are two identifiers for meeting rooms the `MeetingId` and a `UserId` for each participant. The `UserId` is a 32-byte identifier which is typically generated using a hash (such as SHA256) of some unique information. The information could be the participant's email address or other unique identifier.
+
+The creator of the meeting room submits all the user identifiers (including their own) and the server will assign slots and return a `MeetingId`.
+
+The meeting room creator then needs to share the `MeetingId` and each participant's assigned `UserId` with each of the participants. Typically this would be done in the form of a URL.
+
+All participants must then join the meeting room using their assigned slot (usually via a URL link) and publish their public keys to the server. Each participant must share both the `public_key` which is the public key for the noise protocol and the `verifying_key` which is used to verify authenticity when exchanging protocol round messages.
+
+Once all participants have joined the room the server will send a broadcast notification including all the participant identifiers and public keys.
+
+Now the participants are ready to begin executing a protocol session.
+
 ## Documentation
 
 * [protocol][] Message types and encoding
