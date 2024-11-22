@@ -45,7 +45,7 @@ The library includes bindings for Webassembly to be used in the browser and for 
 
 ## Meeting Rooms
 
-For protocols to be executed the participants need to exchange public key information. To facilitate this we provide the [meeting-server][] which allows for meeting rooms to be created and all participants to be notified once all public keys are available.
+For protocols to be executed the participants need to exchange public key information. To facilitate this we provide the [meeting-server][] which allows for meeting rooms to be created and all participants to be notified once all public keys are available. The client library provides [high-level functions](https://docs.rs/polysig-client/latest/polysig_client/meeting/index.html) for creating and joining rooms. These functions are also exposed in the bindings.
 
 The [meeting-server][] is intentionally distinct from the [relay-server][] so the relay server has no knowledge of the public key exchange.
 
