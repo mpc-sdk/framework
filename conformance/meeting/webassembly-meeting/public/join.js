@@ -24,8 +24,6 @@ const userData = {
   associatedData: null,
 };
 
-console.log("join...", meetingId);
-
 const participants = await joinMeeting(
   serverUrl, meetingId, userId, userData);
 
