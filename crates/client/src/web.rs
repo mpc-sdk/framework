@@ -52,8 +52,12 @@ impl WebClient {
         server: &str,
         options: ClientOptions,
     ) -> Result<(WebClient, WebEventLoop)> {
+        tracing::info!("web::websocket {}", server);
+
         let ws = WebSocket::new(server)?;
         ws.set_binary_type(web_sys::BinaryType::Arraybuffer);
+
+        tracing::info!("web::websocket::created");
 
         let (ws_msg_tx, mut ws_msg_rx) = mpsc::channel(32);
         let msg_tx = Box::new(ws_msg_tx);
@@ -86,14 +90,14 @@ impl WebClient {
                                         decode(&inflated)
                                             .await
                                             .unwrap();
-                                    log::error!(
+                                    tracing::error!(
                                         "send error {:#?}",
                                         message
                                     );
                                 }
                             }
                         } else {
-                            log::warn!(
+                            tracing::warn!(
                                 "unknown message event: {:?}",
                                 e.data()
                             );
@@ -109,12 +113,14 @@ impl WebClient {
 
         let onerror_callback =
             Closure::<dyn FnMut(_)>::new(move |e: ErrorEvent| {
-                log::error!("error event: {:?}", e.as_string());
+                tracing::error!("error event: {:?}", e.as_string());
             });
         ws.set_onerror(Some(
             onerror_callback.as_ref().unchecked_ref(),
         ));
         onerror_callback.forget();
+
+        tracing::info!("web::websocket::set_onerror::callback");
 
         let (open_tx, mut open_rx) = mpsc::channel(1);
 
@@ -125,8 +131,13 @@ impl WebClient {
         });
         ws.set_onopen(Some(onopen_callback.as_ref().unchecked_ref()));
 
+        tracing::info!("web::websocket::set_onopen::callback");
+
         let _ = open_rx.recv().await;
+        ws.set_onopen(None);
         drop(open_rx);
+
+        tracing::info!("web::websocket::onopen");
 
         // Channel for writing outbound messages to send
         // to the server
@@ -152,6 +163,8 @@ impl WebClient {
 
         let peers = Arc::new(RwLock::new(Default::default()));
         let options = Arc::new(options);
+
+        tracing::info!("web::websocket::create_client");
 
         let client = WebClient {
             ws: ws.clone(),

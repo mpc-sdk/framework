@@ -1,14 +1,13 @@
 {
-  "name": "webassembly-cggmp",
+  "name": "webassembly-meeting",
   "private": true,
   "version": "1.0.0",
-  "description": "Example and test spec for CGGMP signing using the webassembly bindings",
+  "description": "Example and test spec for meeting rooms using the webassembly bindings",
   "scripts": {
-      "build": "npm run build:wasm && npm run build:template",
+      "build": "npm run build:wasm",
       "build:wasm": "./scripts/build-wasm.sh",
-      "build:template": "cd template && cargo run",
       "dev": "vite public",
-      "relay": "./scripts/relay-server.sh",
+      "meeting": "./scripts/meeting-server.sh",
       "test": "playwright test",
       "test:ui": "playwright test --ui",
       "test:headed": "playwright test --headed"

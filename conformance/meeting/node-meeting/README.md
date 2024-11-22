@@ -1,4 +1,4 @@
-# Meeting room Test (node)
+# Meeting Room Test (node)
 
 ## Prerequisites
 

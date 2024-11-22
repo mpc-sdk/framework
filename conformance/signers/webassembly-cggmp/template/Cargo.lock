@@ -802,7 +802,7 @@ dependencies = [
 
 [[package]]
 name = "polysig-protocol"
-version = "0.7.1"
+version = "0.7.2"
 dependencies = [
  "async-trait",
  "binary-stream",
@@ -811,6 +811,7 @@ dependencies = [
  "http",
  "log",
  "pem",
+ "rustc_version",
  "serde",
  "serde_json",
  "snow",

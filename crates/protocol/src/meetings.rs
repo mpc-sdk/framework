@@ -8,6 +8,7 @@ pub type MeetingId = uuid::Uuid;
 
 /// Data for a meeting room participant.
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct MeetingData {
     /// Public key for the noise transport.
     pub public_key: Vec<u8>,
