@@ -60,12 +60,3 @@ pub async fn new_client_with_keypair<
     let (client, event_loop) = Client::new(&url, options).await?;
     Ok((client, event_loop))
 }
-
-pub async fn new_meeting_client<E: From<polysig_client::Error>>(
-    server: &str,
-) -> Result<(Client, EventLoop), E> {
-    let options = ClientOptions::default();
-    let url = options.url(server);
-    let (client, event_loop) = Client::new(&url, options).await?;
-    Ok((client, event_loop))
-}

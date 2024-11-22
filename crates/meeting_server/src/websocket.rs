@@ -20,9 +20,7 @@ use tokio::sync::Mutex;
 //use axum_macros::debug_handler;
 
 use crate::{server::State, Result};
-use polysig_protocol::{
-    zlib, MeetingResponse, MeetingRequest,
-};
+use polysig_protocol::{zlib, MeetingRequest, MeetingResponse};
 
 pub type Connection = Arc<Mutex<WebSocketConnection>>;
 
@@ -122,24 +120,18 @@ async fn read(
                             MeetingRequest::NewRoom {
                                 owner_id,
                                 slots,
-                                data,
                             } => {
-                                let conn_id = {
-                                    let conn = conn.lock().await;
-                                    conn.id
-                                };
                                 let mut state = state.write().await;
-                                let meeting_id =
-                                    state.meetings.new_meeting(
-                                        owner_id, slots, conn_id,
-                                        data,
-                                    );
+                                let meeting_id = state
+                                    .meetings
+                                    .new_meeting(owner_id, slots);
 
                                 let mut socket = conn.lock().await;
-                                let response = MeetingResponse::RoomCreated {
-                                    meeting_id,
-                                    owner_id,
-                                };
+                                let response =
+                                    MeetingResponse::RoomCreated {
+                                        meeting_id,
+                                        owner_id,
+                                    };
                                 let buffer =
                                     serde_json::to_vec(&response)?;
                                 socket.send(&buffer).await?;
@@ -208,7 +200,10 @@ async fn read(
                                 if let Some((sockets, participants)) =
                                     result
                                 {
-                                    let message = MeetingResponse::RoomReady { participants };
+                                    let message =
+                                        MeetingResponse::RoomReady {
+                                            participants,
+                                        };
                                     let buffer =
                                         serde_json::to_vec(&message)?;
 

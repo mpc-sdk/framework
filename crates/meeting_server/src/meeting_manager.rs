@@ -16,18 +16,18 @@ impl MeetingManager {
         &mut self,
         owner_id: UserId,
         slots: HashSet<UserId>,
-        conn_id: u64,
-        data: MeetingData,
+        // conn_id: u64,
+        // data: MeetingData,
     ) -> MeetingId {
         let meeting_id = MeetingId::new_v4();
         let slots: HashMap<UserId, Option<(u64, MeetingData)>> =
             slots.into_iter().map(|id| (id, None)).collect();
 
-        let mut meeting = Meeting {
+        let meeting = Meeting {
+            owner_id,
             slots,
             last_access: SystemTime::now(),
         };
-        meeting.join(owner_id, conn_id, data);
 
         self.meetings.insert(meeting_id, meeting);
         meeting_id
@@ -78,6 +78,8 @@ impl MeetingManager {
 /// Meeting point information.
 #[derive(Debug)]
 pub struct Meeting {
+    /// Owner that created the meeting.
+    pub(crate) owner_id: UserId,
     /// Map of user identifiers to public keys.
     pub(crate) slots: HashMap<UserId, Option<(u64, MeetingData)>>,
     /// Last access time so the server can reap

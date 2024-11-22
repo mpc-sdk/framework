@@ -214,12 +214,10 @@ macro_rules! client_transport_impl {
                 &mut self,
                 owner_id: UserId,
                 slots: HashSet<UserId>,
-                data: MeetingData,
             ) -> Result<()> {
                 let message = MeetingRequest::NewRoom {
                     owner_id,
                     slots,
-                    data,
                 };
                 let buffer = serde_json::to_vec(&message)?;
                 self.send(buffer).await

@@ -27,8 +27,6 @@ pub enum MeetingRequest {
         owner_id: UserId,
         /// Slots for all participants.
         slots: HashSet<UserId>,
-        /// Data for this participant.
-        data: MeetingData,
     },
     /// Join a meeting room.
     JoinRoom {

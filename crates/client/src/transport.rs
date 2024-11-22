@@ -87,11 +87,10 @@ impl NetworkTransport for Transport {
         &mut self,
         owner_id: UserId,
         slots: HashSet<UserId>,
-        data: MeetingData,
     ) -> Result<()> {
         match self {
             Transport::Relay(client) => {
-                client.new_meeting(owner_id, slots, data).await
+                client.new_meeting(owner_id, slots).await
             }
         }
     }
@@ -205,7 +204,6 @@ pub trait NetworkTransport {
         &mut self,
         owner_id: UserId,
         slots: HashSet<UserId>,
-        data: MeetingData,
     ) -> Result<()>;
 
     /// Join a meeting point.

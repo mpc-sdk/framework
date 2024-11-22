@@ -1,50 +1,29 @@
 use anyhow::Result;
-use futures::StreamExt;
-use polysig_protocol::{
-    MeetingResponse, MeetingData, MeetingId, UserId,
-};
+use polysig_protocol::{MeetingData, UserId};
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
-use std::{sync::Arc, time::Duration};
-use tokio::sync::Mutex;
 
-use super::new_meeting_client;
-use polysig_client::{NetworkTransport, Transport};
-use polysig_protocol::Event;
+use polysig_client::meeting;
 
 pub async fn run(server: &str, num_participants: u8) -> Result<u8> {
-    // Create new clients
-    let (client, event_loop) =
-        new_meeting_client::<anyhow::Error>(server).await?;
-
     // Identifiers can be any arbitrary value, in the real world
     // this might be the hash of a nickname or email address
     let init_id: [u8; 32] =
         Sha256::digest("initiator".as_bytes()).try_into().unwrap();
     let init_id: UserId = init_id.into();
 
-    let mut transport: Transport = client.into();
-
-    let mut join_clients = Vec::new();
-    for _ in 1..num_participants {
-        join_clients
-            .push(new_meeting_client::<anyhow::Error>(server).await?);
-    }
-
+    let mut owner_id = None;
     let mut join_ids: HashSet<UserId> = HashSet::new();
-    for i in 1..num_participants {
+    for i in 0..num_participants {
         let part_id =
             Sha256::digest(format!("participant_{}", i).as_bytes());
         let part_id: [u8; 32] = part_id.try_into().unwrap();
-        join_ids.insert(part_id.try_into()?);
+        let user_id: UserId = part_id.try_into()?;
+        if i == 0 {
+            owner_id = Some(user_id.clone());
+        }
+        join_ids.insert(user_id);
     }
-
-    let mut stream = event_loop.run();
-
-    let mut tasks = Vec::new();
-
-    let meeting: Arc<Mutex<Option<MeetingId>>> =
-        Arc::new(Mutex::new(None));
 
     // Prepare enough slots for all participants
     let mut slots = HashSet::new();
@@ -53,88 +32,32 @@ pub async fn run(server: &str, num_participants: u8) -> Result<u8> {
         slots.insert(id.clone());
     }
 
-    let state = meeting.clone();
-    let creator = tokio::task::spawn(async move {
-        // In the real world this would be the public keys
-        // for each participant
-        let value = MeetingData {
-            public_key: vec![0],
-            verifying_key: vec![0],
-            associated_data: None,
-        };
+    let meeting_id = meeting::create(
+        server,
+        join_ids.clone().into_iter().collect::<Vec<_>>(),
+        owner_id.unwrap(),
+    )
+    .await?;
 
-        transport.new_meeting(init_id.clone(), slots, value).await?;
-
-        while let Some(event) = stream.next().await {
-            let event = event?;
-            match event {
-                Event::Meeting(
-                    MeetingResponse::RoomCreated {
-                        meeting_id,
-                        ..
-                    },
-                ) => {
-                    let mut writer = state.lock().await;
-                    *writer = Some(meeting_id);
-                }
-                Event::Meeting(MeetingResponse::RoomReady {
-                    participants,
-                }) => {
-                    transport.close().await?;
-                    return Ok::<_, anyhow::Error>(participants);
-                }
-                _ => {}
-            }
-        }
-        unreachable!();
-    });
-    tasks.push(creator);
-
-    for (index, ((client, event_loop), user_id)) in join_clients
-        .into_iter()
-        .zip(join_ids.into_iter())
-        .enumerate()
-    {
-        let state = meeting.clone();
+    let mut tasks = Vec::new();
+    for (index, user_id) in join_ids.into_iter().enumerate() {
+        let server_url = server.to_owned();
         tasks.push(tokio::task::spawn(async move {
-            let mut stream = event_loop.run();
-            let mut transport: Transport = client.into();
-            loop {
-                let meeting_id = {
-                    let lock = state.lock().await;
-                    lock.clone()
-                };
-                if let Some(meeting_id) = meeting_id {
-                    let value = MeetingData {
-                        public_key: vec![index as u8 + 1],
-                        verifying_key: vec![index as u8 + 1],
-                        associated_data: None,
-                    };
-                    transport
-                        .join_meeting(meeting_id, user_id, value)
-                        .await?;
+            let value = MeetingData {
+                public_key: vec![index as u8 + 1],
+                verifying_key: vec![index as u8 + 1],
+                associated_data: None,
+            };
 
-                    while let Some(event) = stream.next().await {
-                        let event = event?;
-                        match event {
-                            Event::Meeting(
-                                MeetingResponse::RoomReady {
-                                    participants,
-                                },
-                            ) => {
-                                transport.close().await?;
-                                return Ok::<_, anyhow::Error>(
-                                    participants,
-                                );
-                            }
-                            _ => {}
-                        }
-                    }
-                } else {
-                    tokio::time::sleep(Duration::from_millis(5))
-                        .await;
-                }
-            }
+            let results = meeting::join(
+                &server_url,
+                meeting_id.clone(),
+                user_id,
+                value,
+            )
+            .await?;
+
+            Ok::<_, anyhow::Error>(results)
         }));
     }
 

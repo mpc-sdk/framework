@@ -1,0 +1,16 @@
+{
+  "name": "node-meeting",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Example and test spec for meeting room using the node bindings",
+  "scripts": {
+      "build": "./build.sh",
+      "build:template": "cd template && cargo run",
+      "meeting": "./scripts/meeting-server.sh",
+      "test": "node tests/meeting.spec.js"
+  },
+  "type": "module",
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

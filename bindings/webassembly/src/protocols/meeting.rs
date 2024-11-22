@@ -1,5 +1,5 @@
 //! Bindings for meeting points.
-use polysig_client::{meeting, ServerOptions};
+use polysig_client::meeting;
 use polysig_protocol::{hex, MeetingData, MeetingId, UserId};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::future_to_promise;
@@ -10,20 +10,12 @@ pub fn create_meeting(
     server_url: String,
     identifiers: JsValue,
     initiator: String,
-    data: JsValue,
 ) -> Result<JsValue, JsError> {
-    let options = ServerOptions {
-        server_url,
-        server_public_key: Default::default(),
-        pattern: None,
-    };
-
     let identifiers = parse_user_identifiers(identifiers)?;
     let initiator = parse_user_id(initiator)?;
-    let data: MeetingData = serde_wasm_bindgen::from_value(data)?;
     let fut = async move {
         let meeting_id =
-            meeting::create(options, identifiers, initiator, data)
+            meeting::create(&server_url, identifiers, initiator)
                 .await?;
         Ok(serde_wasm_bindgen::to_value(&meeting_id)?)
     };
@@ -38,25 +30,16 @@ pub fn join_meeting(
     user_id: JsValue,
     data: JsValue,
 ) -> Result<JsValue, JsError> {
-    let options = ServerOptions {
-        server_url,
-        server_public_key: Default::default(),
-        pattern: None,
-    };
     let meeting_id: MeetingId =
         meeting_id.parse().map_err(JsError::from)?;
-    let user_id: Option<String> =
-        serde_wasm_bindgen::from_value(user_id)?;
-    let user_id = if let Some(user_id) = user_id {
-        Some(parse_user_id(user_id)?)
-    } else {
-        None
-    };
+    let user_id: String = serde_wasm_bindgen::from_value(user_id)?;
+    let user_id = parse_user_id(user_id)?;
     let data: MeetingData = serde_wasm_bindgen::from_value(data)?;
 
     let fut = async move {
         let results =
-            meeting::join(options, meeting_id, user_id, data).await?;
+            meeting::join(&server_url, meeting_id, user_id, data)
+                .await?;
         Ok(serde_wasm_bindgen::to_value(&results)?)
     };
     Ok(future_to_promise(fut).into())
