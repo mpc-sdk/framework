@@ -57,7 +57,7 @@ impl CggmpProtocol {
 
     /// Distributed key generation.
     #[napi]
-    pub async fn keygen(
+    pub async fn dkg(
         options: SessionOptions,
         party: PartyOptions,
         session_id_seed: Vec<u8>,

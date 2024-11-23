@@ -20,6 +20,8 @@
 //! ```no_run
 //! polysig-meeting config.toml
 //! ```
+#![deny(missing_docs)]
+#![forbid(unsafe_code)]
 
 use anyhow::Result;
 use axum_server::Handle;
@@ -77,6 +79,7 @@ async fn start_server(
     Ok(())
 }
 
+/// Parse arguments and run the program.
 async fn run() -> Result<()> {
     let args = MeetingService::parse();
     start_server(

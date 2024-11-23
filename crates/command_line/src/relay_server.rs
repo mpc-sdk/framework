@@ -33,6 +33,8 @@
 //! ```no_run
 //! polysig-relay start config.toml
 //! ```
+#![deny(missing_docs)]
+#![forbid(unsafe_code)]
 
 use anyhow::{bail, Result};
 use axum_server::Handle;
@@ -43,6 +45,7 @@ use std::path::PathBuf;
 use std::{net::SocketAddr, str::FromStr};
 use tokio::{fs, io::AsyncWriteExt};
 
+/// Relay websocket server.
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 struct RelayService {
@@ -50,6 +53,7 @@ struct RelayService {
     cmd: Command,
 }
 
+/// Program commands.
 #[derive(Debug, Subcommand)]
 enum Command {
     /// Generate PEM-encoded keypair and write to file.
@@ -139,6 +143,7 @@ async fn start_server(
     Ok(())
 }
 
+/// Parse arguments and run the program.
 async fn run() -> Result<()> {
     let args = RelayService::parse();
     match args.cmd {
