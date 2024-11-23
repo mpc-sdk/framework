@@ -10,13 +10,8 @@ use crate::{
     SessionInitiator, SessionOptions, SessionParticipant, Transport,
 };
 
-mod key_gen;
-mod sign;
-
-#[doc(hidden)]
-pub use key_gen::KeyGenDriver;
-#[doc(hidden)]
-pub use sign::SignatureDriver;
+pub mod dkg;
+pub mod sign;
 
 /// Run threshold DKG for the FROST protocol.
 pub async fn dkg(
@@ -63,7 +58,7 @@ pub async fn dkg(
     }
 
     let key_gen =
-        KeyGenDriver::new(transport, session, n, t, identifiers)?;
+        dkg::new_driver(transport, session, n, t, identifiers)?;
 
     let (transport, key_share) =
         wait_for_driver(&mut stream, key_gen).await?;
@@ -118,7 +113,7 @@ pub async fn sign(
     let protocol_session_id = session.session_id;
 
     // Wait for message to be signed
-    let driver = SignatureDriver::new(
+    let driver = sign::new_driver(
         transport,
         session,
         identifiers,
