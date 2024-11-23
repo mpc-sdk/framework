@@ -1,6 +1,6 @@
 [package]
 name = "polysig-driver"
-version = "0.7.1"
+version = "0.8.0"
 edition = "2021"
 description = "Signers and drivers for multisig threshold protocols"
 keywords = ["mpc", "tss", "relay", "crypto", "e2ee"]

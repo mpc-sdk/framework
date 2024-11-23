@@ -2110,7 +2110,7 @@ dependencies = [
 
 [[package]]
 name = "polysig-client"
-version = "0.7.2"
+version = "0.8.0"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -2136,7 +2136,7 @@ dependencies = [
 
 [[package]]
 name = "polysig-driver"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "async-trait",
  "bip32",
@@ -2186,7 +2186,7 @@ dependencies = [
 
 [[package]]
 name = "polysig-meeting-server"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2211,7 +2211,7 @@ dependencies = [
 
 [[package]]
 name = "polysig-node-bindings"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "anyhow",
  "napi",
@@ -2227,7 +2227,7 @@ dependencies = [
 
 [[package]]
 name = "polysig-protocol"
-version = "0.7.2"
+version = "0.8.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2248,7 +2248,7 @@ dependencies = [
 
 [[package]]
 name = "polysig-relay-server"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2273,7 +2273,7 @@ dependencies = [
 
 [[package]]
 name = "polysig-server"
-version = "0.7.3"
+version = "0.8.0"
 dependencies = [
  "anyhow",
  "axum-server",
@@ -2288,7 +2288,7 @@ dependencies = [
 
 [[package]]
 name = "polysig-webassembly-bindings"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "console_error_panic_hook",
  "futures",

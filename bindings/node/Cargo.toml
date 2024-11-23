@@ -1,6 +1,6 @@
 [package]
 name = "polysig-node-bindings"
-version = "0.7.0"
+version = "0.8.0"
 edition = "2021"
 description = "Nodejs bindings for the polysig library"
 license = "MIT OR APACHE-2.0"

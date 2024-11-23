@@ -73,7 +73,7 @@ Now the participants are ready to begin executing a protocol session.
 ## Server Installation
 
 ```
-cargo install polysig-relay
+cargo install polysig-server
 ```
 
 ## Development

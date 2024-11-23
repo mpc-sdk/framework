@@ -1,6 +1,6 @@
 [package]
 name = "polysig-webassembly-bindings"
-version = "0.7.0"
+version = "0.8.0"
 edition = "2021"
 description = "Webassembly bindings for the polysig library"
 repository = "https://github.com/polysig/polysig"

@@ -1,6 +1,6 @@
 [package]
 name = "polysig-relay-server"
-version = "0.7.1"
+version = "0.8.0"
 edition = "2021"
 description = "Relay server for the polysig library"
 keywords = ["mpc", "tss", "relay", "crypto", "e2ee"]
