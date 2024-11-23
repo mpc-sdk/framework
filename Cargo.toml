@@ -20,7 +20,7 @@ resolver = "2"
 [workspace.dependencies]
 polysig-client = { version = "0.8", path = "crates/client" }
 polysig-driver = { version = "0.8", path = "crates/driver" }
-polysig-protocol = { version = "0.8", path = "crates/protocol", features = ["zlib"] }
+polysig-protocol = { version = "0.8", path = "crates/protocol" }
 polysig-meeting-server = { version = "0.8", path = "crates/meeting_server" }
 polysig-relay-server = { version = "0.8", path = "crates/relay_server" }
 
