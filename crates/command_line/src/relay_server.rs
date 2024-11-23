@@ -3,6 +3,8 @@
 //! encryption intended for multi-party computation and threshold
 //! signature applications.
 //!
+//! See [polysig_relay_server::ServerConfig] for configuration details.
+//!
 //! # Installation
 //!
 //! ```no_run
@@ -32,94 +34,138 @@
 //! polysig-relay start config.toml
 //! ```
 
-#[doc(hidden)]
-#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
-mod relay;
+use anyhow::{bail, Result};
+use axum_server::Handle;
+use clap::{Parser, Subcommand};
+use polysig_protocol::hex;
+use polysig_relay_server::{RelayServer, ServerConfig};
+use std::path::PathBuf;
+use std::{net::SocketAddr, str::FromStr};
+use tokio::{fs, io::AsyncWriteExt};
 
-#[doc(hidden)]
-#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
-mod cli {
+#[derive(Parser, Debug)]
+#[clap(author, version, about, long_about = None)]
+struct RelayService {
+    #[clap(subcommand)]
+    cmd: Command,
+}
 
-    use anyhow::Result;
-    use clap::{Parser, Subcommand};
-    use std::path::PathBuf;
+#[derive(Debug, Subcommand)]
+enum Command {
+    /// Generate PEM-encoded keypair and write to file.
+    GenerateKeypair {
+        /// Force overwrite if the file exists.
+        #[clap(short, long)]
+        force: bool,
 
-    use super::relay;
+        /// Write hex-encoded public key to a file.
+        #[clap(long)]
+        public_key: Option<PathBuf>,
 
-    #[derive(Parser, Debug)]
-    #[clap(author, version, about, long_about = None)]
-    pub struct RelayServer {
-        #[clap(subcommand)]
-        cmd: Command,
+        /// Write keypair to this file.
+        file: PathBuf,
+    },
+
+    /// Start a relay websocket service.
+    Start {
+        /// Override the interval to poll for expired sessions in seconds.
+        #[clap(long)]
+        session_interval: Option<u64>,
+
+        /// Override the default session timeout in seconds.
+        #[clap(long)]
+        session_timeout: Option<u64>,
+
+        /// Bind to host:port.
+        #[clap(short, long, default_value = "0.0.0.0:7007")]
+        bind: String,
+
+        /// Config file to load.
+        config: PathBuf,
+    },
+}
+
+/// Generate keypair and write to file.
+async fn generate_keypair(
+    path: PathBuf,
+    force: bool,
+    public_key: Option<PathBuf>,
+) -> Result<()> {
+    if fs::try_exists(&path).await? && !force {
+        bail!(
+            "file {} already exists, use --force to overwrite",
+            path.display()
+        );
     }
 
-    #[derive(Debug, Subcommand)]
-    pub enum Command {
-        /// Generate PEM-encoded keypair and write to file.
-        GenerateKeypair {
-            /// Force overwrite if the file exists.
-            #[clap(short, long)]
-            force: bool,
+    let keypair = polysig_protocol::generate_keypair()?;
+    let pem = polysig_protocol::encode_keypair(&keypair);
 
-            /// Write hex-encoded public key to a file.
-            #[clap(long)]
-            public_key: Option<PathBuf>,
+    let mut file = fs::File::create(&path).await?;
+    file.write_all(pem.as_bytes()).await?;
+    file.flush().await?;
 
-            /// Write keypair to this file.
-            file: PathBuf,
-        },
+    println!("{}", hex::encode(keypair.public_key()));
 
-        /// Start a relay websocket service.
-        Start {
-            /// Override the interval to poll for expired sessions in seconds.
-            #[clap(long)]
-            session_interval: Option<u64>,
-
-            /// Override the default session timeout in seconds.
-            #[clap(long)]
-            session_timeout: Option<u64>,
-
-            /// Bind to host:port.
-            #[clap(short, long, default_value = "0.0.0.0:7007")]
-            bind: String,
-
-            /// Config file to load.
-            config: PathBuf,
-        },
+    if let Some(public_key) = public_key {
+        let public_key_hex = hex::encode(keypair.public_key());
+        fs::write(public_key, public_key_hex.as_bytes()).await?;
     }
 
-    pub(super) async fn run() -> Result<()> {
-        let args = RelayServer::parse();
-        match args.cmd {
-            Command::GenerateKeypair {
-                file,
-                force,
-                public_key,
-            } => {
-                relay::generate_keypair::run(file, force, public_key)
-                    .await?
-            }
-            Command::Start {
-                session_interval,
-                session_timeout,
+    Ok(())
+}
+
+/// Start the web server.
+async fn start_server(
+    bind: String,
+    config: PathBuf,
+    interval: Option<u64>,
+    session_timeout: Option<u64>,
+) -> Result<()> {
+    let (mut config, keypair) = ServerConfig::load(&config).await?;
+
+    if let Some(interval) = interval {
+        config.session.interval = interval;
+    }
+
+    if let Some(session_timeout) = session_timeout {
+        config.session.timeout = session_timeout;
+    }
+
+    let handle = Handle::new();
+    let addr = SocketAddr::from_str(&bind)?;
+    let server = RelayServer::new(config, keypair);
+    server.start(addr, handle).await?;
+    Ok(())
+}
+
+async fn run() -> Result<()> {
+    let args = RelayService::parse();
+    match args.cmd {
+        Command::GenerateKeypair {
+            file,
+            force,
+            public_key,
+        } => generate_keypair(file, force, public_key).await?,
+        Command::Start {
+            session_interval,
+            session_timeout,
+            bind,
+            config,
+        } => {
+            start_server(
                 bind,
                 config,
-            } => {
-                relay::start::run(
-                    bind,
-                    config,
-                    session_interval,
-                    session_timeout,
-                )
-                .await?
-            }
+                session_interval,
+                session_timeout,
+            )
+            .await?
         }
-        Ok(())
     }
+    Ok(())
 }
 
 #[doc(hidden)]
-#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
 #[tokio::main]
 pub async fn main() -> anyhow::Result<()> {
     use tracing_subscriber::{
@@ -127,19 +173,16 @@ pub async fn main() -> anyhow::Result<()> {
     };
     tracing_subscriber::registry()
         .with(tracing_subscriber::EnvFilter::new(
-            std::env::var("RUST_LOG")
-                .unwrap_or_else(|_| "polysig_server=debug".into()),
+            std::env::var("RUST_LOG").unwrap_or_else(|_| {
+                "polysig_relay_server=info".into()
+            }),
         ))
         .with(tracing_subscriber::fmt::layer().without_time())
         .init();
 
-    if let Err(e) = cli::run().await {
+    if let Err(e) = run().await {
         tracing::error!("{}", e);
     }
 
     Ok(())
 }
-
-#[doc(hidden)]
-#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
-pub fn main() {}

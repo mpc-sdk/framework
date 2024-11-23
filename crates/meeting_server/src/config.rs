@@ -10,7 +10,7 @@ use crate::{Error, Result};
 #[derive(Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct ServerConfig {
-    /// Settings for session management.
+    /// Settings for meeting room session management.
     pub session: SessionConfig,
 
     /// Configuration for TLS encryption.

@@ -1,53 +1,95 @@
-//! Command line tool for the polysig websocket meeting room service.
+//! Command line tool for the polysig websocket meeting room service,
+//! see [polysig_meeting_server::ServerConfig] for configuration details.
+//!
+//! # Installation
+//!
+//! ```no_run
+//! cargo install polysig-server
+//! ```
+//!
+//! # Server
+//!
+//! Start the meeting room websocket service with a default config:
+//!
+//! ```no_run
+//! polysig-meeting
+//! ```
+//!
+//! Or pass a config file:
+//!
+//! ```no_run
+//! polysig-meeting config.toml
+//! ```
 
-#[doc(hidden)]
-#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
-mod meeting;
+use anyhow::Result;
+use axum_server::Handle;
+use clap::Parser;
+use polysig_meeting_server::{MeetingServer, ServerConfig};
+use std::path::PathBuf;
+use std::{net::SocketAddr, str::FromStr};
 
-#[doc(hidden)]
-#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
-mod cli {
+/// Meeting room websocket server.
+#[derive(Parser, Debug)]
+#[clap(author, version, about, long_about = None)]
+struct MeetingService {
+    /// Override the interval to poll for expired meeting
+    /// rooms in seconds.
+    #[clap(long)]
+    room_interval: Option<u64>,
 
-    use anyhow::Result;
-    use clap::Parser;
-    use std::path::PathBuf;
+    /// Override the default meeting room timeout in seconds.
+    #[clap(long)]
+    room_timeout: Option<u64>,
 
-    use super::meeting;
+    /// Bind to host:port.
+    #[clap(short, long, default_value = "0.0.0.0:7070")]
+    bind: String,
 
-    #[derive(Parser, Debug)]
-    #[clap(author, version, about, long_about = None)]
-    pub struct MeetingServer {
-        /// Override the interval to poll for expired sessions in seconds.
-        #[clap(long)]
-        session_interval: Option<u64>,
+    /// Config file to load.
+    config: Option<PathBuf>,
+}
 
-        /// Override the default session timeout in seconds.
-        #[clap(long)]
-        session_timeout: Option<u64>,
+/// Start the server.
+async fn start_server(
+    bind: String,
+    config: Option<PathBuf>,
+    interval: Option<u64>,
+    timeout: Option<u64>,
+) -> Result<()> {
+    let mut config = if let Some(path) = config {
+        ServerConfig::load(&path).await?
+    } else {
+        Default::default()
+    };
 
-        /// Bind to host:port.
-        #[clap(short, long, default_value = "0.0.0.0:7070")]
-        bind: String,
-
-        /// Config file to load.
-        config: PathBuf,
+    if let Some(interval) = interval {
+        config.session.interval = interval;
     }
 
-    pub(super) async fn run() -> Result<()> {
-        let args = MeetingServer::parse();
-        meeting::start::run(
-            args.bind,
-            args.config,
-            args.session_interval,
-            args.session_timeout,
-        )
-        .await?;
-        Ok(())
+    if let Some(timeout) = timeout {
+        config.session.timeout = timeout;
     }
+
+    let handle = Handle::new();
+    let addr = SocketAddr::from_str(&bind)?;
+    let server = MeetingServer::new(config);
+    server.start(addr, handle).await?;
+    Ok(())
+}
+
+async fn run() -> Result<()> {
+    let args = MeetingService::parse();
+    start_server(
+        args.bind,
+        args.config,
+        args.room_interval,
+        args.room_timeout,
+    )
+    .await?;
+    Ok(())
 }
 
 #[doc(hidden)]
-#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
 #[tokio::main]
 pub async fn main() -> anyhow::Result<()> {
     use tracing_subscriber::{
@@ -55,19 +97,16 @@ pub async fn main() -> anyhow::Result<()> {
     };
     tracing_subscriber::registry()
         .with(tracing_subscriber::EnvFilter::new(
-            std::env::var("RUST_LOG")
-                .unwrap_or_else(|_| "polysig_server=debug".into()),
+            std::env::var("RUST_LOG").unwrap_or_else(|_| {
+                "polysig_meeting_server=info".into()
+            }),
         ))
         .with(tracing_subscriber::fmt::layer().without_time())
         .init();
 
-    if let Err(e) = cli::run().await {
+    if let Err(e) = run().await {
         tracing::error!("{}", e);
     }
 
     Ok(())
 }
-
-#[doc(hidden)]
-#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
-pub fn main() {}
