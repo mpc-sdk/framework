@@ -79,32 +79,32 @@ pub trait Round: Serialize + DeserializeOwned + Send + Sync {
 /// Used to ensure round messages are grouped together and
 /// out of order messages can thus be handled correctly.
 #[derive(Debug, Serialize, Deserialize)]
-pub struct RoundMessage<O, V>
+pub struct RoundMessage<Body, Verifier>
 where
-    O: Send + Sync,
+    Body: Send + Sync,
 {
     pub(crate) round: RoundNumber,
-    pub(crate) sender: V,
+    pub(crate) sender: Verifier,
     pub(crate) receiver: PartyNumber,
-    pub(crate) body: O,
+    pub(crate) body: Body,
 }
 
-impl<O, V> RoundMessage<O, V>
+impl<Body, Verifier> RoundMessage<Body, Verifier>
 where
-    O: Serialize + Send + Sync + DeserializeOwned,
-    V: Serialize + Send + Sync + DeserializeOwned,
+    Body: Serialize + Send + Sync + DeserializeOwned,
+    Verifier: Serialize + Send + Sync + DeserializeOwned,
 {
     /// Consume this message into the sender and body.
     #[allow(dead_code)]
-    pub fn into_body(self) -> (V, O) {
-        (self.sender, self.body)
+    pub fn into_body(self) -> (Body, Verifier) {
+        (self.body, self.sender)
     }
 }
 
-impl<O, V> Round for RoundMessage<O, V>
+impl<Body, Verifier> Round for RoundMessage<Body, Verifier>
 where
-    O: Serialize + Send + Sync + DeserializeOwned,
-    V: Serialize + Send + Sync + DeserializeOwned,
+    Body: Serialize + Send + Sync + DeserializeOwned,
+    Verifier: Serialize + Send + Sync + DeserializeOwned,
 {
     fn round_number(&self) -> RoundNumber {
         self.round
@@ -117,22 +117,22 @@ where
 
 /// Participant in a protocol session.
 #[derive(Clone)]
-pub struct Participant<S, V> {
+pub struct Participant<Signer, Verifier> {
     /// Signing key for this participant.
-    signing_key: S,
+    signing_key: Signer,
     /// Options for this participant.
-    party: PartyOptions<V>,
+    party: PartyOptions<Verifier>,
 }
 
-impl<S, V> Participant<S, V>
+impl<Signer, Verifier> Participant<Signer, Verifier>
 where
-    V: PartialEq + std::fmt::Debug,
+    Verifier: PartialEq + std::fmt::Debug,
 {
     /// Create a new participant.
     pub fn new(
-        signing_key: S,
-        verifying_key: V,
-        party: PartyOptions<V>,
+        signing_key: Signer,
+        verifying_key: Verifier,
+        party: PartyOptions<Verifier>,
     ) -> Result<Self> {
         if party
             .verifiers()
@@ -146,12 +146,12 @@ where
     }
 
     /// Participant signing key.
-    pub fn signing_key(&self) -> &S {
+    pub fn signing_key(&self) -> &Signer {
         &self.signing_key
     }
 
     /// Participant party information.
-    pub fn party(&self) -> &PartyOptions<V> {
+    pub fn party(&self) -> &PartyOptions<Verifier> {
         &self.party
     }
 }
@@ -159,7 +159,7 @@ where
 /// Options for a party participating in a protocol.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct PartyOptions<V> {
+pub struct PartyOptions<Verifier> {
     /// Public key of this party.
     #[serde(with = "hex::serde")]
     public_key: Vec<u8>,
@@ -173,16 +173,16 @@ pub struct PartyOptions<V> {
     /// Index of the party in the participants list.
     party_index: usize,
     /// Verifying keys for all participants.
-    verifiers: Vec<V>,
+    verifiers: Vec<Verifier>,
 }
 
-impl<V> PartyOptions<V> {
+impl<Verifier> PartyOptions<Verifier> {
     /// Create new party participant options.
     pub fn new(
         public_key: Vec<u8>,
         participants: Vec<Vec<u8>>,
         is_initiator: bool,
-        verifiers: Vec<V>,
+        verifiers: Vec<Verifier>,
     ) -> Result<Self> {
         let party_index = participants
             .iter()
@@ -226,7 +226,7 @@ impl<V> PartyOptions<V> {
     }
 
     /// Participant verifying keys.
-    pub fn verifiers(&self) -> &[V] {
+    pub fn verifiers(&self) -> &[Verifier] {
         self.verifiers.as_slice()
     }
 }

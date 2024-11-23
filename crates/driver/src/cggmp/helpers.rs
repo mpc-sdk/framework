@@ -129,7 +129,7 @@ where
         assert!(!unresponsive_parties.is_empty());
 
         // let message_round_number = message.round_number();
-        let (from, body) = message.into_body();
+        let (body, from) = message.into_body();
 
         // Perform quick checks before proceeding with the verification.
         let preprocessed =
