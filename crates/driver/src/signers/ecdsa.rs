@@ -116,7 +116,7 @@ impl<'a> EcdsaSigner<'a> {
     /// The final message is a UTF-8 string, encoded as follows:
     /// `"\x19Ethereum Signed Message:\n" + message.length + message`
     ///
-    /// This message is then hashed using [Keccak-256](keccak256).
+    /// This message is then hashed using Keccak-256.
     ///
     /// [EIP-191]: https://eips.ethereum.org/EIPS/eip-191
     pub fn hash_message<T: AsRef<[u8]>>(message: T) -> impl Digest {

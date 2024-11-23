@@ -33,34 +33,18 @@ pub struct TlsConfig {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct SessionConfig {
-    /// Timeout for sessions in seconds.
+    /// Timeout for meeting rooms in seconds.
     ///
-    /// Sessions that have not seen any message activity
+    /// Meeting rooms that have not seen any message activity
     /// for this amount of time are marked for deletion.
     ///
     /// Default is 5 minutes.
     pub timeout: u64,
 
-    /// Interval in seconds to reap expired sessions.
+    /// Interval in seconds to reap expired meeting rooms.
     ///
     /// Default is every 15 minutes.
     pub interval: u64,
-
-    /// The interval used to poll a session for the ready
-    /// and active states.
-    ///
-    /// A session is ready when all participants have completed
-    /// the server handshake and is active when all participants
-    /// have established their peer connections.
-    ///
-    /// Default is 15 seconds.
-    pub wait_interval: u64,
-
-    /// Wait timeout controls the timeout when waiting
-    /// for all clients in a session to become active.
-    ///
-    /// Default is 5 minutes.
-    pub wait_timeout: u64,
 }
 
 impl Default for SessionConfig {
@@ -68,8 +52,6 @@ impl Default for SessionConfig {
         Self {
             timeout: 300,
             interval: 900,
-            wait_interval: 15,
-            wait_timeout: 300,
         }
     }
 }
@@ -86,11 +68,6 @@ impl ServerConfig {
 
         if config.session.interval <= config.session.timeout {
             return Err(Error::SessionTimeoutConfig);
-        }
-
-        if config.session.wait_timeout <= config.session.wait_interval
-        {
-            return Err(Error::SessionWaitConfig);
         }
 
         let dir = Self::directory(path.as_ref())?;
