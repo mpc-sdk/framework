@@ -16,7 +16,7 @@ The library includes bindings for Webassembly to be used in the browser and for 
 
 ### Protocols
 
-* `cggmp`: Enable the [CGGMP21][] protocol using [synedrion](https://docs.rs/synedrion/).
+* `cggmp`: Enable the [CGGMP21][] protocol using [synedrion][].
 * `frost-ed25519`: Enable the [FROST][] Ed25519 protocol using  [frost-ed25519](https://docs.rs/frost-ed25519/).
 
 ### Signers
@@ -123,6 +123,8 @@ For webassembly and node binding tests see the README files in the conformance d
 
 ## License
 
+The server code is licensed under AGPL-3.0 and the client code is licensed as either MIT or Apache-2.0 except when the `cggmp` feature is enabled which triggers the AGPL-3.0 license via the [synedrion][] library.
+
 The bindings and driver crates are released under the GPLv3 license and all other code is either MIT or Apache-2.0.
 
 [CGGMP21]: https://eprint.iacr.org/2021/060
@@ -138,3 +140,4 @@ The bindings and driver crates are released under the GPLv3 license and all othe
 [relay-server]: https://docs.rs/polysig-relay-server
 [meeting-server]: https://docs.rs/polysig-meeting-server
 [cli]: https://docs.rs/polysig-server
+[synedrion]: https://docs.rs/synedrion/
