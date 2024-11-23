@@ -79,7 +79,7 @@ pub trait Round: Serialize + DeserializeOwned + Send + Sync {
 /// Used to ensure round messages are grouped together and
 /// out of order messages can thus be handled correctly.
 #[derive(Debug, Serialize, Deserialize)]
-pub struct RoundMsg<O, V>
+pub struct RoundMessage<O, V>
 where
     O: Send + Sync,
 {
@@ -89,7 +89,7 @@ where
     pub(crate) body: O,
 }
 
-impl<O, V> RoundMsg<O, V>
+impl<O, V> RoundMessage<O, V>
 where
     O: Serialize + Send + Sync + DeserializeOwned,
     V: Serialize + Send + Sync + DeserializeOwned,
@@ -101,7 +101,7 @@ where
     }
 }
 
-impl<O, V> Round for RoundMsg<O, V>
+impl<O, V> Round for RoundMessage<O, V>
 where
     O: Serialize + Send + Sync + DeserializeOwned,
     V: Serialize + Send + Sync + DeserializeOwned,

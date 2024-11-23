@@ -16,7 +16,7 @@ use synedrion::{
 
 use crate::{
     recoverable_signature::RecoverableSignature, ProtocolDriver,
-    RoundInfo, RoundMsg,
+    RoundInfo, RoundMessage,
 };
 
 use super::MessageOut;
@@ -87,7 +87,7 @@ where
     P: SchemeParams + 'static,
 {
     type Error = Error;
-    type Message = RoundMsg<MessageOut, VerifyingKey>;
+    type Message = RoundMessage<MessageOut, VerifyingKey>;
     type Output = RecoverableSignature;
 
     fn round_info(&self) -> Result<RoundInfo> {

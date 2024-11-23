@@ -14,7 +14,7 @@ use synedrion::{
     SessionId,
 };
 
-use crate::{ProtocolDriver, RoundInfo, RoundMsg};
+use crate::{ProtocolDriver, RoundInfo, RoundMessage};
 
 use super::MessageOut;
 
@@ -78,7 +78,7 @@ where
     P: SchemeParams + 'static,
 {
     type Error = Error;
-    type Message = RoundMsg<MessageOut, VerifyingKey>;
+    type Message = RoundMessage<MessageOut, VerifyingKey>;
     type Output =
         (KeyShareChange<P, VerifyingKey>, AuxInfo<P, VerifyingKey>);
 

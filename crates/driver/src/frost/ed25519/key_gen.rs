@@ -6,7 +6,7 @@ use std::{collections::BTreeMap, num::NonZeroU16};
 
 use crate::{
     frost::{Error, Result},
-    ProtocolDriver, RoundInfo, RoundMsg,
+    ProtocolDriver, RoundInfo, RoundMessage,
 };
 
 use super::{KeyShare, ROUND_1, ROUND_2, ROUND_3};
@@ -68,7 +68,7 @@ impl KeyGenDriver {
 
 impl ProtocolDriver for KeyGenDriver {
     type Error = Error;
-    type Message = RoundMsg<DkgPackage, Identifier>;
+    type Message = RoundMessage<DkgPackage, Identifier>;
     type Output = KeyShare;
 
     fn round_info(&self) -> Result<RoundInfo> {
@@ -113,7 +113,7 @@ impl ProtocolDriver for KeyGenDriver {
                     let receiver =
                         NonZeroU16::new((index + 1) as u16).unwrap();
 
-                    let message = RoundMsg {
+                    let message = RoundMessage {
                         round: NonZeroU16::new(
                             self.round_number.into(),
                         )
@@ -162,7 +162,7 @@ impl ProtocolDriver for KeyGenDriver {
                     let receiver =
                         NonZeroU16::new((index + 1) as u16).unwrap();
 
-                    let message = RoundMsg {
+                    let message = RoundMessage {
                         round: NonZeroU16::new(
                             self.round_number.into(),
                         )

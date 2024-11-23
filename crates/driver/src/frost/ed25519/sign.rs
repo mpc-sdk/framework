@@ -12,7 +12,7 @@ use std::num::NonZeroU16;
 
 use crate::{
     frost::{Error, Result},
-    ProtocolDriver, RoundInfo, RoundMsg,
+    ProtocolDriver, RoundInfo, RoundMessage,
 };
 
 use super::{KeyShare, ROUND_1, ROUND_2, ROUND_3};
@@ -72,7 +72,7 @@ impl SignatureDriver {
 
 impl ProtocolDriver for SignatureDriver {
     type Error = Error;
-    type Message = RoundMsg<SignPackage, Identifier>;
+    type Message = RoundMessage<SignPackage, Identifier>;
     type Output = Signature;
 
     fn round_info(&self) -> Result<RoundInfo> {
@@ -115,7 +115,7 @@ impl ProtocolDriver for SignatureDriver {
 
                     let receiver =
                         NonZeroU16::new((index + 1) as u16).unwrap();
-                    let message = RoundMsg {
+                    let message = RoundMessage {
                         round: NonZeroU16::new(
                             self.round_number.into(),
                         )
@@ -166,7 +166,7 @@ impl ProtocolDriver for SignatureDriver {
 
                     let receiver =
                         NonZeroU16::new((index + 1) as u16).unwrap();
-                    let message = RoundMsg {
+                    let message = RoundMessage {
                         round: NonZeroU16::new(
                             self.round_number.into(),
                         )
