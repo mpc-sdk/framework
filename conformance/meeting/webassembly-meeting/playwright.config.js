@@ -9,9 +9,6 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   
-  // Only one worker so each browser test runs in serial
-  workers: 1,
-
   use: {
     trace: 'on-first-retry',
   },

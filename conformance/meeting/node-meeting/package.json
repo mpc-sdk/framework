@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "Example and test spec for meeting rooms using the node bindings",
   "scripts": {
-      "build": "./build.sh",
+      "build": "./scripts/build.sh",
       "meeting": "./scripts/meeting-server.sh",
       "test": "node tests/meeting.spec.js"
   },
