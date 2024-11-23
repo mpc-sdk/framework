@@ -74,7 +74,7 @@ impl CggmpProtocol {
         let participant = Participant::new(signer, verifier, party)
             .map_err(JsError::from)?;
         let fut = async move {
-            let key_share = polysig_client::cggmp::keygen::<Params>(
+            let key_share = polysig_client::cggmp::dkg::<Params>(
                 options,
                 participant,
                 SessionId::from_seed(&session_id_seed),
@@ -202,7 +202,8 @@ impl CggmpProtocol {
         } else {
             PATTERN.to_owned()
         };
-        let keypair = polysig_protocol::Keypair::new(pattern.parse()?)?;
+        let keypair =
+            polysig_protocol::Keypair::new(pattern.parse()?)?;
         let public_key = hex::encode(keypair.public_key());
         let pem = polysig_protocol::encode_keypair(&keypair);
         Ok(serde_wasm_bindgen::to_value(&(pem, public_key))?)

@@ -1,7 +1,7 @@
 [workspace]
 members = [
-  "bindings/node",
-  "bindings/webassembly",
+  "crates/bindings/node",
+  "crates/bindings/webassembly",
   "crates/client",
   "crates/command_line",
   "crates/driver",
