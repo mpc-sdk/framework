@@ -3,6 +3,7 @@ name = "polysig-webassembly-bindings"
 version = "0.8.0"
 edition = "2021"
 description = "Webassembly bindings for the polysig library"
+license = "MIT OR Apache-2.0"
 repository = "https://github.com/polysig/polysig"
 
 [features]

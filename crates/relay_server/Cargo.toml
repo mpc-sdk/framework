@@ -4,7 +4,7 @@ version = "0.8.0"
 edition = "2021"
 description = "Relay server for the polysig library"
 keywords = ["mpc", "tss", "relay", "crypto", "e2ee"]
-license = "MIT OR Apache-2.0"
+license = "AGPL-3.0"
 repository = "https://github.com/polysig/polysig"
 
 [dependencies]
