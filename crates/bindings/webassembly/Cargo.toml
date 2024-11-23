@@ -42,3 +42,6 @@ console_error_panic_hook.workspace = true
 getrandom.workspace = true
 wasm-bindgen.workspace = true
 tracing-subscriber-wasm = { workspace = true, optional = true }
+
+[build-dependencies]
+rustc_version = "0.4.1"

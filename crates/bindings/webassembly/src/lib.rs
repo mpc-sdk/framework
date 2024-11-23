@@ -1,5 +1,6 @@
-//! Webassembly bindings for the web platform.
+//! Webassembly bindings for the polysig library.
 #![deny(missing_docs)]
+#![forbid(unsafe_code)]
 
 /// Threshold signature protocols.
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
