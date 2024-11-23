@@ -125,8 +125,6 @@ For webassembly and node binding tests see the README files in the conformance d
 
 The server code is licensed under AGPL-3.0 and the client code is licensed as either MIT or Apache-2.0 except when the `cggmp` feature is enabled which triggers the AGPL-3.0 license via the [synedrion][] library.
 
-The bindings and driver crates are released under the GPLv3 license and all other code is either MIT or Apache-2.0.
-
 [CGGMP21]: https://eprint.iacr.org/2021/060
 [FROST]: https://datatracker.ietf.org/doc/rfc9591/
 [noise protocol]: https://noiseprotocol.org/
