@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use polysig_protocol::{hex, Event, SessionState};
 
 use polysig_driver::{
-    frost::ed25519::{KeyGenDriver as FrostDriver, KeyShare},
+    frost::ed25519::{DkgDriver as FrostDriver, KeyShare},
     frost_ed25519::Identifier,
 };
 

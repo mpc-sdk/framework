@@ -30,6 +30,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 ed25519 = { version = "2.2.3" }
 ed25519-dalek = { version = "2", features = ["rand_core", "serde"] }
+frost-core = { version = "2" }
 frost-ed25519 = { version = "2" }
 synedrion = { version = "0.2.0" }
 k256 = { version = "0.13", default-features = false, features = ["pem", "serde", "std"] }

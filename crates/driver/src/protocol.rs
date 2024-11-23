@@ -34,7 +34,10 @@ pub trait ProtocolDriver {
         + 'static;
 
     /// Outgoing message type.
-    type Message: std::fmt::Debug + Round;
+    type Message: std::fmt::Debug
+        + Round
+        + Serialize
+        + DeserializeOwned;
 
     /// Output when the protocol is completed.
     type Output;
@@ -65,7 +68,7 @@ pub trait ProtocolDriver {
 }
 
 /// Trait for round messages.
-pub trait Round: Serialize + DeserializeOwned + Send + Sync {
+pub trait Round: Send + Sync {
     /// Round number.
     #[allow(dead_code)]
     fn round_number(&self) -> RoundNumber;
@@ -91,7 +94,7 @@ where
 
 impl<Body, Verifier> RoundMessage<Body, Verifier>
 where
-    Body: Serialize + Send + Sync + DeserializeOwned,
+    Body: Send + Sync,
     Verifier: Serialize + Send + Sync + DeserializeOwned,
 {
     /// Consume this message into the sender and body.
@@ -103,7 +106,7 @@ where
 
 impl<Body, Verifier> Round for RoundMessage<Body, Verifier>
 where
-    Body: Serialize + Send + Sync + DeserializeOwned,
+    Body: Send + Sync,
     Verifier: Serialize + Send + Sync + DeserializeOwned,
 {
     fn round_number(&self) -> RoundNumber {
