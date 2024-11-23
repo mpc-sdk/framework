@@ -13,11 +13,13 @@ use crate::{
 mod key_gen;
 mod sign;
 
+#[doc(hidden)]
 pub use key_gen::KeyGenDriver;
+#[doc(hidden)]
 pub use sign::SignatureDriver;
 
 /// Run threshold DKG for the FROST protocol.
-pub async fn keygen(
+pub async fn dkg(
     options: SessionOptions,
     participant: Participant,
 ) -> crate::Result<KeyShare> {

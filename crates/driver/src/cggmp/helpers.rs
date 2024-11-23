@@ -9,7 +9,7 @@ use synedrion::{
     ProtocolResult,
 };
 
-use crate::{RoundInfo, RoundMsg};
+use crate::{RoundInfo, RoundMessage};
 
 use super::MessageOut;
 
@@ -37,7 +37,7 @@ pub fn proceed<Res>(
         PreprocessedMessage<Signature, VerifyingKey>,
     >,
     key: &VerifyingKey,
-) -> Result<Vec<RoundMsg<MessageOut, VerifyingKey>>>
+) -> Result<Vec<RoundMessage<MessageOut, VerifyingKey>>>
 where
     Res: ProtocolResult + Send + 'static,
 {
@@ -82,7 +82,7 @@ where
         let round: NonZeroU16 =
             (session.current_round().0 as u16).try_into()?;
 
-        outgoing.push(RoundMsg {
+        outgoing.push(RoundMessage {
             body: message,
             sender: key.clone(),
             receiver,
@@ -107,7 +107,7 @@ where
 pub fn handle_incoming<Res>(
     session: &mut Session<Res, Signature, SigningKey, VerifyingKey>,
     accum: &mut RoundAccumulator<Signature, VerifyingKey>,
-    message: RoundMsg<MessageOut, VerifyingKey>,
+    message: RoundMessage<MessageOut, VerifyingKey>,
 ) -> Result<()>
 where
     Res: ProtocolResult + Send + 'static,
@@ -129,7 +129,7 @@ where
         assert!(!unresponsive_parties.is_empty());
 
         // let message_round_number = message.round_number();
-        let (from, body) = message.into_body();
+        let (body, from) = message.into_body();
 
         // Perform quick checks before proceeding with the verification.
         let preprocessed =

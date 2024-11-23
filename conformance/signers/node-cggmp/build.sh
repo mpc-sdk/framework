@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 
+set -e
+
 mkdir -p build
 
-cd ../../../bindings/node
+cd ../../../crates/bindings/node
 npm run build-cggmp
 
-cp -f build/cggmp/release/* ../../conformance/signers/node-cggmp/build/
+cp -f build/cggmp/release/* ../../../conformance/signers/node-cggmp/build/

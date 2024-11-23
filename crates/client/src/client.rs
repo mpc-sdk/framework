@@ -62,6 +62,13 @@ macro_rules! client_impl {
                 unreachable!()
             }
         }
+
+        /// Send a buffer.
+        async fn send(&mut self, buffer: Vec<u8>) -> Result<()> {
+            Ok(self
+                .outbound_tx
+                .send(InternalMessage::Buffer(buffer))?)
+        }
     };
 }
 
@@ -72,35 +79,36 @@ macro_rules! client_transport_impl {
         #[async_trait::async_trait]
         impl crate::NetworkTransport for $kind {
 
-            /// The public key for this client.
+            /// Public key for this client.
             fn public_key(&self) -> &[u8] {
-                self.options.keypair.public_key()
+                self.options.keypair.as_ref().unwrap().public_key()
             }
 
             /// Perform initial handshake with the server.
             async fn connect(&mut self) -> Result<()> {
-                let request = {
-                    let mut state = self.server.write().await;
+                if self.options.is_encrypted() {
+                    let request = {
+                        let mut state = self.server.write().await;
 
-                    let (len, payload) = match &mut *state {
-                        Some(ProtocolState::Handshake(initiator)) => {
-                            let mut request = vec![0u8; 1024];
-                            let len =
-                                initiator.write_message(&[], &mut request)?;
-                            (len, request)
-                        }
-                        _ => return Err(Error::NotHandshakeState),
+                        let (len, payload) = match &mut *state {
+                            Some(ProtocolState::Handshake(initiator)) => {
+                                let mut request = vec![0u8; 1024];
+                                let len =
+                                    initiator.write_message(&[], &mut request)?;
+                                (len, request)
+                            }
+                            _ => return Err(Error::NotHandshakeState),
+                        };
+
+                        RequestMessage::Transparent(
+                            TransparentMessage::ServerHandshake(
+                                HandshakeMessage::Initiator(len, payload),
+                            ),
+                        )
                     };
 
-                    RequestMessage::Transparent(
-                        TransparentMessage::ServerHandshake(
-                            HandshakeMessage::Initiator(len, payload),
-                        ),
-                    )
-                };
-
-                self.outbound_tx.send(InternalMessage::Request(request))?;
-
+                    self.outbound_tx.send(InternalMessage::Request(request))?;
+                }
                 Ok(())
             }
 
@@ -131,7 +139,7 @@ macro_rules! client_transport_impl {
 
                 let builder = Builder::new(self.options.params()?);
                 let handshake = builder
-                    .local_private_key(self.options.keypair.private_key())
+                    .local_private_key(self.options.keypair.as_ref().unwrap().private_key())
                     .remote_public_key(public_key.as_ref())
                     .build_initiator()?;
                 let peer_state =
@@ -206,10 +214,13 @@ macro_rules! client_transport_impl {
                 &mut self,
                 owner_id: UserId,
                 slots: HashSet<UserId>,
-                data: Value,
             ) -> Result<()> {
-                let message = ServerMessage::NewMeeting { owner_id, slots, data };
-                self.request(message).await
+                let message = MeetingRequest::NewRoom {
+                    owner_id,
+                    slots,
+                };
+                let buffer = serde_json::to_vec(&message)?;
+                self.send(buffer).await
             }
 
             /// Join a meeting point.
@@ -217,9 +228,15 @@ macro_rules! client_transport_impl {
                 &mut self,
                 meeting_id: MeetingId,
                 user_id: UserId,
+                data: PublicKeys,
             ) -> Result<()> {
-                let message = ServerMessage::JoinMeeting(meeting_id, user_id);
-                self.request(message).await
+                let message = MeetingRequest::JoinRoom {
+                    meeting_id,
+                    user_id,
+                    data,
+                };
+                let buffer = serde_json::to_vec(&message)?;
+                self.send(buffer).await
             }
 
             /// Create a new session.

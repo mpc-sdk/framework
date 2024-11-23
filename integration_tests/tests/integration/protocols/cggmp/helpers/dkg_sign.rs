@@ -9,7 +9,7 @@ use polysig_driver::{
 };
 
 use polysig_client::{
-    cggmp::{keygen, sign},
+    cggmp::{dkg, sign},
     ServerOptions, SessionOptions,
 };
 use polysig_protocol::{generate_keypair, Parameters};
@@ -106,7 +106,7 @@ pub(super) async fn run_dkg(
 
         let verifier = signer.verifying_key().clone();
         tasks.push(tokio::task::spawn(async move {
-            let key_share = keygen(
+            let key_share = dkg(
                 opts,
                 Participant::new(signer, verifier, party)?,
                 keygen_session_id.clone(),

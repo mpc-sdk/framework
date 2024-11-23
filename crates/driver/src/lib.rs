@@ -1,4 +1,5 @@
-//! Drive multi-party computation protocols to completion.
+//! Drivers to run multi-party computation protocols to completion
+//! and single-party signer implementations.
 #![deny(missing_docs)]
 #![forbid(unsafe_code)]
 #![cfg_attr(all(doc, CHANNEL_NIGHTLY), feature(doc_auto_cfg))]

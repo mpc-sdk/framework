@@ -7,9 +7,9 @@ use tokio::sync::mpsc;
 
 use polysig_protocol::{
     channel::decrypt_server_channel, decode, hex, snow::Builder,
-    Encoding, Event, HandshakeMessage, OpaqueMessage, ProtocolState,
-    RequestMessage, ResponseMessage, SealedEnvelope, ServerMessage,
-    SessionId, TransparentMessage,
+    Encoding, Event, HandshakeMessage, MeetingResponse,
+    OpaqueMessage, ProtocolState, RequestMessage, ResponseMessage,
+    SealedEnvelope, ServerMessage, SessionId, TransparentMessage,
 };
 
 use super::{decrypt_peer_channel, Peers, Server};
@@ -25,8 +25,22 @@ pub type EventStream = BoxStream<'static, Result<Event>>;
 pub enum InternalMessage {
     /// Send a request.
     Request(RequestMessage),
+    /// Send a buffer.
+    ///
+    /// Used for meeting points which do not
+    /// go over an encrypted channel.
+    Buffer(Vec<u8>),
     /// Close the connection.
     Close,
+}
+
+#[doc(hidden)]
+#[derive(Debug)]
+pub enum IncomingMessage {
+    /// Encrypted response message.
+    Response(ResponseMessage),
+    /// Meeting client message.
+    Meeting(MeetingResponse),
 }
 
 /// Event loop for a client.
@@ -40,8 +54,8 @@ where
     pub(crate) options: Arc<ClientOptions>,
     pub(crate) ws_reader: R,
     pub(crate) ws_writer: W,
-    pub(crate) inbound_tx: mpsc::UnboundedSender<ResponseMessage>,
-    pub(crate) inbound_rx: mpsc::UnboundedReceiver<ResponseMessage>,
+    pub(crate) inbound_tx: mpsc::UnboundedSender<IncomingMessage>,
+    pub(crate) inbound_rx: mpsc::UnboundedReceiver<IncomingMessage>,
     pub(crate) outbound_tx: mpsc::UnboundedSender<InternalMessage>,
     pub(crate) outbound_rx: mpsc::UnboundedReceiver<InternalMessage>,
     pub(crate) server: Server,
@@ -147,12 +161,6 @@ where
             ServerMessage::Error(code, message) => {
                 Err(Error::ServerError(code, message))
             }
-            ServerMessage::MeetingCreated(response) => {
-                Ok(Some(Event::MeetingCreated(response)))
-            }
-            ServerMessage::MeetingReady(response) => {
-                Ok(Some(Event::MeetingReady(response)))
-            }
             ServerMessage::SessionCreated(response) => {
                 Ok(Some(Event::SessionCreated(response)))
             }
@@ -217,7 +225,9 @@ where
 
             let builder = Builder::new(options.params()?);
             let mut responder = builder
-                .local_private_key(options.keypair.private_key())
+                .local_private_key(
+                    options.keypair.as_ref().unwrap().private_key(),
+                )
                 .remote_public_key(public_key.as_ref())
                 .build_responder()?;
 
@@ -341,6 +351,12 @@ macro_rules! event_loop_run_impl {
                                         yield Err(e)
                                     }
                                 }
+                                InternalMessage::Buffer(buffer) => {
+                                    if let Err(e) = self.send_buffer(&buffer).await {
+                                        tracing::warn!(error = %e);
+                                        yield Err(e)
+                                    }
+                                }
                                 InternalMessage::Close => {
                                     if let Err(e) = self.handle_close_message().await {
                                         yield Err(e)
@@ -354,6 +370,7 @@ macro_rules! event_loop_run_impl {
                             match message_in {
                                 Ok(message) => {
                                     if let Err(e) = Self::read_message(
+                                        options.clone(),
                                         message,
                                         &mut self.inbound_tx,
                                     ).await {
@@ -366,20 +383,27 @@ macro_rules! event_loop_run_impl {
                             }
                         },
                         Some(event_message) = self.inbound_rx.recv() => {
-                            match Self::handle_incoming_message(
-                                options.clone(),
-                                server.clone(),
-                                peers.clone(),
-                                event_message,
-                                self.outbound_tx.clone(),
-                            ).await {
-                                Ok(Some(event)) => {
-                                    yield Ok(event);
+                            match event_message {
+                                IncomingMessage::Response(message) => {
+                                    match Self::handle_incoming_message(
+                                        options.clone(),
+                                        server.clone(),
+                                        peers.clone(),
+                                        message,
+                                        self.outbound_tx.clone(),
+                                    ).await {
+                                        Ok(Some(event)) => {
+                                            yield Ok(event);
+                                        }
+                                        Err(e) => {
+                                            yield Err(e)
+                                        }
+                                        _ => {}
+                                    }
                                 }
-                                Err(e) => {
-                                    yield Err(e)
+                                IncomingMessage::Meeting(message) => {
+                                    yield Ok(Event::Meeting(message))
                                 }
-                                _ => {}
                             }
                         },
                     );

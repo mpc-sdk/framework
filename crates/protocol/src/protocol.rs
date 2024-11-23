@@ -1,22 +1,20 @@
 use crate::{encoding::types, PartyNumber, Result, TAGLEN};
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use snow::{HandshakeState, TransportState};
 use std::{
     collections::{HashMap, HashSet},
     time::{Duration, SystemTime},
 };
 
-/// Identifier for meeting points.
-pub type MeetingId = uuid::Uuid;
-
 /// Identifier for sessions.
 pub type SessionId = uuid::Uuid;
 
 /// User identifier wraps an SHA-256 hash of a
 /// unique arbitrary value.
-#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+#[derive(
+    Debug, Clone, Copy, Hash, Eq, PartialEq, Serialize, Deserialize,
+)]
 pub struct UserId([u8; 32]);
 
 impl AsRef<[u8; 32]> for UserId {
@@ -128,25 +126,6 @@ pub enum ServerMessage {
     Noop,
     /// Return an error message to the client.
     Error(StatusCode, String),
-    /// Request a new meeting point.
-    NewMeeting {
-        /// The identifier for the owner of the meeting point.
-        ///
-        /// The owner id must exist in the set of slots.
-        owner_id: UserId,
-        /// Slots for participants in the meeting.
-        slots: HashSet<UserId>,
-        /// Data associated aith the meeting point.
-        data: Value,
-    },
-    /// Response to a new meeting point request.
-    MeetingCreated(MeetingState),
-    /// Participant joins a meeting.
-    JoinMeeting(MeetingId, UserId),
-    /// Notification dispatched to all participants
-    /// in a meeting when the limit for the meeting
-    /// has been reached.
-    MeetingReady(MeetingState),
     /// Request a new session.
     NewSession(SessionRequest),
     /// Register a peer connection in a session.
@@ -181,12 +160,6 @@ impl From<&ServerMessage> for u8 {
         match value {
             ServerMessage::Noop => types::NOOP,
             ServerMessage::Error(_, _) => types::ERROR,
-            ServerMessage::NewMeeting { .. } => types::MEETING_NEW,
-            ServerMessage::MeetingCreated(_) => {
-                types::MEETING_CREATED
-            }
-            ServerMessage::JoinMeeting(_, _) => types::MEETING_JOIN,
-            ServerMessage::MeetingReady(_) => types::MEETING_READY,
             ServerMessage::NewSession(_) => types::SESSION_NEW,
             ServerMessage::SessionConnection { .. } => {
                 types::SESSION_CONNECTION
@@ -472,117 +445,6 @@ impl Session {
     }
 }
 
-/// Meeting point information.
-#[derive(Debug)]
-pub struct Meeting {
-    /// Map of user identifiers to public keys.
-    slots: HashMap<UserId, Option<Vec<u8>>>,
-
-    /// Last access time so the server can reap
-    /// stale meetings.
-    last_access: SystemTime,
-
-    /// Associated data for the meeting.
-    data: Value,
-}
-
-impl Meeting {
-    /// Add a participant public key to this meeting.
-    pub fn join(&mut self, user_id: UserId, public_key: Vec<u8>) {
-        self.slots.insert(user_id, Some(public_key));
-        self.last_access = SystemTime::now();
-    }
-
-    /// Whether this meeting point is full.
-    pub fn is_full(&self) -> bool {
-        self.slots.values().all(|s| s.is_some())
-    }
-
-    /// Public keys of the meeting participants.
-    pub fn participants(&self) -> Vec<Vec<u8>> {
-        self.slots
-            .values()
-            .filter(|s| s.is_some())
-            .map(|s| s.as_ref().unwrap().to_owned())
-            .collect()
-    }
-
-    /// Associated data.
-    pub fn data(&self) -> &Value {
-        &self.data
-    }
-}
-
-/// Manages a collection of meeting points.
-#[derive(Default)]
-pub struct MeetingManager {
-    meetings: HashMap<MeetingId, Meeting>,
-}
-
-impl MeetingManager {
-    /// Create a new meeting point.
-    pub fn new_meeting(
-        &mut self,
-        owner_key: Vec<u8>,
-        owner_id: UserId,
-        slots: HashSet<UserId>,
-        data: Value,
-    ) -> MeetingId {
-        let meeting_id = MeetingId::new_v4();
-        let slots: HashMap<UserId, Option<Vec<u8>>> =
-            slots.into_iter().map(|id| (id, None)).collect();
-
-        let mut meeting = Meeting {
-            slots,
-            last_access: SystemTime::now(),
-            data,
-        };
-        meeting.join(owner_id, owner_key);
-
-        self.meetings.insert(meeting_id, meeting);
-        meeting_id
-    }
-
-    /// Remove a meeting.
-    pub fn remove_meeting(
-        &mut self,
-        id: &MeetingId,
-    ) -> Option<Meeting> {
-        self.meetings.remove(id)
-    }
-
-    /// Get a meeting.
-    pub fn get_meeting(&self, id: &MeetingId) -> Option<&Meeting> {
-        self.meetings.get(id)
-    }
-
-    /// Get a mutable meeting.
-    pub fn get_meeting_mut(
-        &mut self,
-        id: &MeetingId,
-    ) -> Option<&mut Meeting> {
-        self.meetings.get_mut(id)
-    }
-
-    /// Get the keys of meetings that have expired.
-    pub fn expired_keys(&self, timeout: u64) -> Vec<MeetingId> {
-        self.meetings
-            .iter()
-            .filter(|(_, v)| {
-                let now = SystemTime::now();
-                let ttl = Duration::from_millis(timeout * 1000);
-                if let Some(current) = v.last_access.checked_add(ttl)
-                {
-                    current < now
-                } else {
-                    false
-                }
-            })
-            .map(|(k, _)| *k)
-            .collect::<Vec<_>>()
-    }
-}
-
 /// Manages a collection of sessions.
 #[derive(Default)]
 pub struct SessionManager {
@@ -658,17 +520,6 @@ impl SessionManager {
             .map(|(k, _)| *k)
             .collect::<Vec<_>>()
     }
-}
-
-/// Response from creating a meeting point.
-#[derive(Default, Debug, Clone)]
-pub struct MeetingState {
-    /// Meeting identifier.
-    pub meeting_id: MeetingId,
-    /// Public keys of the registered participants.
-    pub registered_participants: Vec<Vec<u8>>,
-    /// Data for the meeting state.
-    pub data: Value,
 }
 
 /// Request to create a new session.

@@ -1,5 +1,6 @@
-//! Relay service websocket client using the [noise](https://noiseprotocol.org/)
-//! protocol for end-to-end encryption intended for multi-party computation
+//! Meeting room and relay service websocket client using
+//! the [noise](https://noiseprotocol.org/) protocol for
+//! end-to-end encryption intended for multi-party computation
 //! and threshold signature applications.
 //!
 //! To support the web platform this client library uses
@@ -8,13 +9,11 @@
 //! [tokio-tunsgtenite](https://docs.rs/tokio-tungstenite/latest/tokio_tungstenite/).
 
 #![deny(missing_docs)]
-#![forbid(unsafe_code)]
 #![cfg_attr(all(doc, CHANNEL_NIGHTLY), feature(doc_auto_cfg))]
 
 mod client;
 mod error;
 mod event_loop;
-pub mod meeting;
 mod protocols;
 mod transport;
 
@@ -49,11 +48,12 @@ pub(crate) type Peers = Arc<RwLock<HashMap<Vec<u8>, ProtocolState>>>;
 pub(crate) type Server = Arc<RwLock<Option<ProtocolState>>>;
 
 /// Options used to create a new websocket client.
+#[derive(Default)]
 pub struct ClientOptions {
     /// Client static keypair.
-    pub keypair: Keypair,
+    pub keypair: Option<Keypair>,
     /// Public key for the server to connect to.
-    pub server_public_key: Vec<u8>,
+    pub server_public_key: Option<Vec<u8>>,
     /// Noise parameters pattern.
     ///
     /// If no pattern is specified the default noise parameters
@@ -62,17 +62,26 @@ pub struct ClientOptions {
 }
 
 impl ClientOptions {
+    /// Determine if this client expects to use an encrypted channel.
+    pub fn is_encrypted(&self) -> bool {
+        self.keypair.is_some() && self.server_public_key.is_some()
+    }
+
     /// Build a connection URL for the given server.
     ///
     /// This method appends the public key query string
     /// parameter necessary for connecting to the server.
     pub fn url(&self, server: &str) -> String {
         let server = server.trim_end_matches('/');
-        format!(
-            "{}/?public_key={}",
-            server,
-            hex::encode(self.keypair.public_key())
-        )
+        if let Some(keypair) = &self.keypair {
+            format!(
+                "{}/?public_key={}",
+                server,
+                hex::encode(keypair.public_key())
+            )
+        } else {
+            server.to_string()
+        }
     }
 
     /// Parse noise parameters from the pattern.

@@ -1,4 +1,4 @@
-const module = await import("/pkg/mpc_webassembly_bindings.js");
+const module = await import("/pkg/polysig_webassembly_bindings.js");
 
 // Initialize the webassembly
 await module.default();
@@ -48,7 +48,7 @@ const signParty = {
 try {
 
   // Start key generation
-  const keyShare = await CggmpProtocol.keygen(
+  const keyShare = await CggmpProtocol.dkg(
     options,
     party,
     fromHexString(keygenSessionIdSeed),

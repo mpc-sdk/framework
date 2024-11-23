@@ -1,0 +1,31 @@
+[package]
+name = "polysig-meeting-server"
+version = "0.8.0"
+edition = "2021"
+description = "Meeting rooms for the polysig library"
+keywords = ["mpc", "tss", "relay", "crypto", "e2ee"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/polysig/polysig"
+
+[dependencies]
+polysig-protocol.workspace = true
+thiserror.workspace = true
+binary-stream.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+async-trait.workspace = true
+futures.workspace = true
+tokio-stream.workspace = true
+url.workspace = true
+toml.workspace = true
+axum.workspace = true
+axum-macros.workspace = true
+axum-server.workspace = true
+tower-http.workspace = true
+tokio.workspace = true
+tokio-tungstenite.workspace = true
+
+[dev-dependencies]
+anyhow.workspace = true

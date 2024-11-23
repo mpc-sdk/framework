@@ -1,4 +1,4 @@
-use crate::{MeetingState, Result, SessionId, SessionState};
+use crate::{MeetingResponse, Result, SessionId, SessionState};
 /// Events dispatched by the event loop stream.
 #[derive(Debug)]
 pub enum Event {
@@ -6,7 +6,7 @@ pub enum Event {
     /// is completed.
     ServerConnected {
         /// Public key of the server.
-        server_key: Vec<u8>,
+        server_key: Option<Vec<u8>>,
     },
     /// Event dispatched when a handshake with a peer
     /// has been completed.
@@ -33,14 +33,8 @@ pub enum Event {
         session_id: Option<SessionId>,
     },
 
-    /// Event dispatched when a meeting has been created.
-    MeetingCreated(MeetingState),
-
-    /// Event dispatched when a meeting is ready.
-    ///
-    /// A meeting is ready when the limit for the meeting point
-    /// has been reached.
-    MeetingReady(MeetingState),
+    /// Meeting room events.
+    Meeting(MeetingResponse),
 
     /// Event dispatched when a session has been created.
     SessionCreated(SessionState),

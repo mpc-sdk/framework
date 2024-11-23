@@ -1,11 +1,12 @@
 [workspace]
 members = [
-  "bindings/node",
-  "bindings/webassembly",
+  "crates/bindings/node",
+  "crates/bindings/webassembly",
   "crates/client",
   "crates/command_line",
   "crates/driver",
   "integration_tests",
+  "crates/meeting_server",
   "crates/polysig",
   "crates/protocol",
   "crates/relay_server", 
@@ -17,10 +18,11 @@ exclude = [
 resolver = "2"
 
 [workspace.dependencies]
-polysig-client = { version = "0.7", path = "crates/client" }
-polysig-driver = { version = "0.7", path = "crates/driver" }
-polysig-protocol = { version = "0.7", path = "crates/protocol", features = ["zlib"] }
-polysig-relay-server = { version = "0.7", path = "crates/relay_server" }
+polysig-client = { version = "0.8", path = "crates/client" }
+polysig-driver = { version = "0.8", path = "crates/driver" }
+polysig-protocol = { version = "0.8", path = "crates/protocol", features = ["zlib"] }
+polysig-meeting-server = { version = "0.8", path = "crates/meeting_server" }
+polysig-relay-server = { version = "0.8", path = "crates/relay_server" }
 
 anyhow = "1"
 thiserror = "1"

@@ -1,0 +1,5 @@
+[session]
+timeout = 300
+interval = 900
+wait-interval = 1
+wait-timeout = 60

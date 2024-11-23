@@ -14,7 +14,7 @@ use synedrion::{
     ThresholdKeyShare,
 };
 
-use crate::{ProtocolDriver, RoundInfo, RoundMsg};
+use crate::{ProtocolDriver, RoundInfo, RoundMessage};
 
 use super::MessageOut;
 
@@ -80,7 +80,7 @@ where
     P: SchemeParams + 'static,
 {
     type Error = Error;
-    type Message = RoundMsg<MessageOut, VerifyingKey>;
+    type Message = RoundMessage<MessageOut, VerifyingKey>;
     type Output = ThresholdKeyShare<P, VerifyingKey>;
 
     fn round_info(&self) -> Result<RoundInfo> {

@@ -7,6 +7,12 @@
 
 ## Setup
 
+Install dependencies for the node bindings, from the top-level of the repository:
+
+```
+(cd crates/bindings/node && npm install)
+```
+
 Build the templates and node bindings:
 
 ```

@@ -17,17 +17,18 @@ use tokio_tungstenite::{
 
 use polysig_protocol::{
     channel::encrypt_server_channel, decode, encode, hex,
-    http::StatusCode, serde_json::Value, snow::Builder, zlib,
-    Encoding, Event, HandshakeMessage, JsonMessage, MeetingId,
-    OpaqueMessage, ProtocolState, RequestMessage, ResponseMessage,
-    ServerMessage, SessionId, SessionRequest, TransparentMessage,
-    UserId,
+    http::StatusCode, snow::Builder, zlib, Encoding, Event,
+    HandshakeMessage, JsonMessage, MeetingResponse, PublicKeys,
+    MeetingId, MeetingRequest, OpaqueMessage, ProtocolState,
+    RequestMessage, ResponseMessage, ServerMessage, SessionId,
+    SessionRequest, TransparentMessage, UserId,
 };
 
 use super::{
     encrypt_peer_channel,
     event_loop::{
-        event_loop_run_impl, EventLoop, EventStream, InternalMessage,
+        event_loop_run_impl, EventLoop, EventStream, IncomingMessage,
+        InternalMessage,
     },
     Peers, Server,
 };
@@ -73,21 +74,27 @@ impl NativeClient {
 
         let (ws_writer, ws_reader) = stream.split();
 
-        let builder = Builder::new(options.params()?);
-        let handshake = builder
-            .local_private_key(options.keypair.private_key())
-            .remote_public_key(&options.server_public_key)
-            .build_initiator()?;
+        let server = if let (Some(keypair), Some(server_public_key)) =
+            (&options.keypair, &options.server_public_key)
+        {
+            let builder = Builder::new(options.params()?);
+            let handshake = builder
+                .local_private_key(keypair.private_key())
+                .remote_public_key(server_public_key)
+                .build_initiator()?;
+
+            // State for the server transport
+            Arc::new(RwLock::new(Some(ProtocolState::Handshake(
+                Box::new(handshake),
+            ))))
+        } else {
+            Arc::new(RwLock::new(None))
+        };
 
         // Channel for writing outbound messages to send
         // to the server
         let (outbound_tx, outbound_rx) =
             mpsc::unbounded_channel::<InternalMessage>();
-
-        // State for the server transport
-        let server = Arc::new(RwLock::new(Some(
-            ProtocolState::Handshake(Box::new(handshake)),
-        )));
 
         let peers = Arc::new(RwLock::new(Default::default()));
         let options = Arc::new(options);
@@ -100,7 +107,7 @@ impl NativeClient {
 
         // Decoded socket messages are sent over this channel
         let (inbound_tx, inbound_rx) =
-            mpsc::unbounded_channel::<ResponseMessage>();
+            mpsc::unbounded_channel::<IncomingMessage>();
 
         let event_loop = EventLoop {
             options,
@@ -126,13 +133,24 @@ impl EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream> {
     /// Receive and decode socket messages then send to
     /// the messages channel.
     pub(crate) async fn read_message(
+        options: Arc<ClientOptions>,
         incoming: Message,
-        event_proxy: &mut mpsc::UnboundedSender<ResponseMessage>,
+        event_proxy: &mut mpsc::UnboundedSender<IncomingMessage>,
     ) -> Result<()> {
         if let Message::Binary(buffer) = incoming {
             let inflated = zlib::inflate(&buffer)?;
-            let response: ResponseMessage = decode(inflated).await?;
-            event_proxy.send(response)?;
+
+            if options.is_encrypted() {
+                let response: ResponseMessage =
+                    decode(inflated).await?;
+                event_proxy
+                    .send(IncomingMessage::Response(response))?;
+            } else {
+                let response: MeetingResponse =
+                    serde_json::from_slice(&inflated)?;
+                event_proxy
+                    .send(IncomingMessage::Meeting(response))?;
+            }
         }
         Ok(())
     }
@@ -143,12 +161,20 @@ impl EventLoop<WsMessage, WsError, WsReadStream, WsWriteStream> {
         message: RequestMessage,
     ) -> Result<()> {
         let encoded = encode(&message).await?;
-        let deflated = zlib::deflate(&encoded)?;
+        self.send_buffer(&encoded).await
+    }
+
+    /// Send a message to the socket and flush the stream.
+    pub(crate) async fn send_buffer(
+        &mut self,
+        buffer: &[u8],
+    ) -> Result<()> {
+        let deflated = zlib::deflate(buffer)?;
 
         tracing::debug!(
-            encoded_length = encoded.len(),
+            encoded_length = buffer.len(),
             deflated_length = deflated.len(),
-            "send_message"
+            "send_buffer"
         );
 
         let message = Message::Binary(deflated);

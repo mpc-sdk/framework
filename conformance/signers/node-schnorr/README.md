@@ -10,7 +10,7 @@
 Install dependencies for the node bindings, from the top-level of the repository:
 
 ```
-(cd bindings/node && npm install)
+(cd crates/bindings/node && npm install)
 ```
 
 Then in this directory build the bindings:

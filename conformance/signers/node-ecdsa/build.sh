@@ -2,7 +2,7 @@
 
 mkdir -p build
 
-cd ../../../bindings/node
+cd ../../../crates/bindings/node
 npm run build-ecdsa
 
-cp -f build/ecdsa/release/* ../../conformance/signers/node-ecdsa/build
+cp -f build/ecdsa/release/* ../../../conformance/signers/node-ecdsa/build

@@ -43,25 +43,25 @@ dependencies = ["check-wasm", "test", "format"]
 
 [tasks.wasm-bindings]
 script = '''
-cd bindings/webassembly
+cd crates/bindings/webassembly
 wasm-pack build --target web --scope polysig --features full
 '''
 
 [tasks.wasm-bindings-debug]
 script = '''
-cd bindings/webassembly
+cd crates/bindings/webassembly
 wasm-pack build --target web --scope polysig --features tracing,full
 '''
 
 [tasks.wasm-signers]
 script = '''
-cd bindings/webassembly
+cd crates/bindings/webassembly
 wasm-pack build --target web --scope polysig --features signers
 '''
 
 [tasks.wasm-protocols]
 script = '''
-cd bindings/webassembly
+cd crates/bindings/webassembly
 wasm-pack build --target web --scope polysig --features signers
 '''
 

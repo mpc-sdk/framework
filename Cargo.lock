@@ -2099,17 +2099,18 @@ dependencies = [
 
 [[package]]
 name = "polysig"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "polysig-client",
  "polysig-driver",
+ "polysig-meeting-server",
  "polysig-protocol",
  "polysig-relay-server",
 ]
 
 [[package]]
 name = "polysig-client"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -2122,6 +2123,7 @@ dependencies = [
  "rustc_version",
  "serde",
  "serde-wasm-bindgen 0.6.5",
+ "serde_json",
  "thiserror",
  "tokio",
  "tokio-tungstenite 0.23.1",
@@ -2134,7 +2136,7 @@ dependencies = [
 
 [[package]]
 name = "polysig-driver"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "async-trait",
  "bip32",
@@ -2168,6 +2170,7 @@ dependencies = [
  "log",
  "polysig-client",
  "polysig-driver",
+ "polysig-meeting-server",
  "polysig-protocol",
  "polysig-relay-server",
  "rand",
@@ -2182,59 +2185,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "polysig-node-bindings"
-version = "0.7.0"
-dependencies = [
- "anyhow",
- "napi",
- "napi-build 1.2.1",
- "napi-derive",
- "polysig-client",
- "polysig-driver",
- "polysig-protocol",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "polysig-protocol"
-version = "0.7.1"
-dependencies = [
- "anyhow",
- "async-trait",
- "binary-stream",
- "flate2",
- "futures",
- "hex",
- "http 1.1.0",
- "log",
- "pem",
- "rustc_version",
- "serde",
- "serde_json",
- "snow",
- "thiserror",
- "uuid",
-]
-
-[[package]]
-name = "polysig-relay"
-version = "0.7.1"
-dependencies = [
- "anyhow",
- "axum-server",
- "clap",
- "polysig-protocol",
- "polysig-relay-server",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "polysig-relay-server"
-version = "0.7.1"
+name = "polysig-meeting-server"
+version = "0.8.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2258,8 +2210,85 @@ dependencies = [
 ]
 
 [[package]]
+name = "polysig-node-bindings"
+version = "0.8.0"
+dependencies = [
+ "anyhow",
+ "napi",
+ "napi-build 1.2.1",
+ "napi-derive",
+ "polysig-client",
+ "polysig-driver",
+ "polysig-protocol",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "polysig-protocol"
+version = "0.8.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "binary-stream",
+ "flate2",
+ "futures",
+ "hex",
+ "http 1.1.0",
+ "log",
+ "pem",
+ "rustc_version",
+ "serde",
+ "serde_json",
+ "snow",
+ "thiserror",
+ "uuid",
+]
+
+[[package]]
+name = "polysig-relay-server"
+version = "0.8.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "axum",
+ "axum-macros",
+ "axum-server",
+ "binary-stream",
+ "futures",
+ "polysig-protocol",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tokio-stream",
+ "tokio-tungstenite 0.23.1",
+ "toml",
+ "tower-http",
+ "tracing",
+ "tracing-subscriber",
+ "url",
+]
+
+[[package]]
+name = "polysig-server"
+version = "0.8.0"
+dependencies = [
+ "anyhow",
+ "axum-server",
+ "clap",
+ "polysig-meeting-server",
+ "polysig-protocol",
+ "polysig-relay-server",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "polysig-webassembly-bindings"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "console_error_panic_hook",
  "futures",

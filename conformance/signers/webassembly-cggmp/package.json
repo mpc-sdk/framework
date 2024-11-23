@@ -10,8 +10,8 @@
       "dev": "vite public",
       "relay": "./scripts/relay-server.sh",
       "test": "playwright test",
-      "test-ui": "playwright test --ui",
-      "test-headed": "playwright test --headed"
+      "test:ui": "playwright test --ui",
+      "test:headed": "playwright test --headed"
   },
   "type": "module",
   "keywords": [],

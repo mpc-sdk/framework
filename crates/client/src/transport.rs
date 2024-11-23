@@ -1,6 +1,6 @@
 use crate::{Client, ClientOptions, EventLoop, Result};
 use async_trait::async_trait;
-use polysig_protocol::{serde_json::Value, MeetingId, SessionId, UserId};
+use polysig_protocol::{PublicKeys, MeetingId, SessionId, UserId};
 use serde::Serialize;
 use std::collections::HashSet;
 
@@ -87,11 +87,10 @@ impl NetworkTransport for Transport {
         &mut self,
         owner_id: UserId,
         slots: HashSet<UserId>,
-        data: Value,
     ) -> Result<()> {
         match self {
             Transport::Relay(client) => {
-                client.new_meeting(owner_id, slots, data).await
+                client.new_meeting(owner_id, slots).await
             }
         }
     }
@@ -100,10 +99,11 @@ impl NetworkTransport for Transport {
         &mut self,
         meeting_id: MeetingId,
         user_id: UserId,
+        data: PublicKeys,
     ) -> Result<()> {
         match self {
             Transport::Relay(client) => {
-                client.join_meeting(meeting_id, user_id).await
+                client.join_meeting(meeting_id, user_id, data).await
             }
         }
     }
@@ -204,7 +204,6 @@ pub trait NetworkTransport {
         &mut self,
         owner_id: UserId,
         slots: HashSet<UserId>,
-        data: Value,
     ) -> Result<()>;
 
     /// Join a meeting point.
@@ -212,6 +211,7 @@ pub trait NetworkTransport {
         &mut self,
         meeting_id: MeetingId,
         user_id: UserId,
+        data: PublicKeys,
     ) -> Result<()>;
 
     /// Create a new session.

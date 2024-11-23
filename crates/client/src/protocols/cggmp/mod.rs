@@ -7,6 +7,7 @@ use crate::{
 };
 use futures::StreamExt;
 use polysig_driver::{
+    cggmp::Participant,
     recoverable_signature::RecoverableSignature,
     synedrion::{
         self,
@@ -28,39 +29,35 @@ mod key_refresh;
 mod key_resharing;
 mod sign;
 
+#[doc(hidden)]
 pub use aux_gen::AuxGenDriver;
+#[doc(hidden)]
 pub use key_gen::KeyGenDriver;
+#[doc(hidden)]
 pub use key_init::KeyInitDriver;
+#[doc(hidden)]
 pub use key_refresh::KeyRefreshDriver;
+#[doc(hidden)]
 pub use key_resharing::KeyResharingDriver;
+#[doc(hidden)]
 pub use sign::SignatureDriver;
 
 /// Message sent by key init participants to
 /// notify clients that are not participating
 /// that their key init phase is completed.
 #[derive(Serialize, Deserialize)]
-pub struct KeyInitAck {
+pub(crate) struct KeyInitAck {
     /// Index of the party.
     pub party_index: usize,
     /// Verifying key from the generated threshold key share.
     pub key_share_verifying_key: VerifyingKey,
 }
 
-/// Key share.
-pub type KeyShare<P> = ThresholdKeyShare<P, VerifyingKey>;
-
 /// Result type for the CGGMP protocol.
 pub type Result<T> = std::result::Result<T, Error>;
 
-/// Participant in the CGGMP protocol.
-pub type Participant =
-    polysig_driver::Participant<SigningKey, VerifyingKey>;
-
-/// Options for each party.
-pub type PartyOptions = polysig_driver::PartyOptions<VerifyingKey>;
-
 /// Run threshold DKG for the CGGMP protocol.
-pub async fn keygen<P: SchemeParams + 'static>(
+pub async fn dkg<P: SchemeParams + 'static>(
     options: SessionOptions,
     participant: Participant,
     session_id: SessionId,

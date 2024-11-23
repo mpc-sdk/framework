@@ -51,7 +51,7 @@ const signParty = {
 try {
 
   // Start key generation
-  const keyShare = await CggmpProtocol.keygen(
+  const keyShare = await CggmpProtocol.dkg(
     options,
     party,
     Array.from(fromHexString(keygenSessionIdSeed)),

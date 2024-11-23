@@ -1,6 +1,6 @@
 [package]
 name = "polysig-client"
-version = "0.7.1"
+version = "0.8.0"
 edition = "2021"
 description = "Client for the polysig library"
 keywords = ["mpc", "tss", "relay", "crypto", "e2ee"]
@@ -27,6 +27,7 @@ async-trait.workspace = true
 futures.workspace = true
 async-stream.workspace = true
 tracing.workspace = true
+serde_json.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio.workspace = true

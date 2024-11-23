@@ -2,7 +2,7 @@ use super::make_signers;
 use anyhow::Result;
 use ed25519_dalek::SigningKey;
 use polysig_client::{
-    frost::ed25519::keygen, ServerOptions, SessionOptions,
+    frost::ed25519::dkg, ServerOptions, SessionOptions,
 };
 use polysig_driver::frost::ed25519::{
     KeyShare, Participant, PartyOptions,
@@ -64,11 +64,9 @@ pub(super) async fn run_keygen(
 
         let verifier = signer.verifying_key().clone();
         tasks.push(tokio::task::spawn(async move {
-            let key_share = keygen(
-                opts,
-                Participant::new(signer, verifier, party)?,
-            )
-            .await?;
+            let key_share =
+                dkg(opts, Participant::new(signer, verifier, party)?)
+                    .await?;
             Ok::<_, anyhow::Error>(key_share)
         }));
     }
