@@ -58,7 +58,7 @@ impl CggmpProtocol {
     }
 
     /// Distributed key generation.
-    pub fn keygen(
+    pub fn dkg(
         options: JsValue,
         party: JsValue,
         session_id_seed: Vec<u8>,
