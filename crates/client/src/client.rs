@@ -228,7 +228,7 @@ macro_rules! client_transport_impl {
                 &mut self,
                 meeting_id: MeetingId,
                 user_id: UserId,
-                data: MeetingData,
+                data: PublicKeys,
             ) -> Result<()> {
                 let message = MeetingRequest::JoinRoom {
                     meeting_id,

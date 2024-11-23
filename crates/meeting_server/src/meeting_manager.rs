@@ -1,4 +1,4 @@
-use polysig_protocol::{MeetingData, MeetingId, UserId};
+use polysig_protocol::{PublicKeys, MeetingId, UserId};
 use std::{
     collections::{HashMap, HashSet},
     time::{Duration, SystemTime},
@@ -18,7 +18,7 @@ impl MeetingManager {
         slots: HashSet<UserId>,
     ) -> MeetingId {
         let meeting_id = MeetingId::new_v4();
-        let slots: HashMap<UserId, Option<(u64, MeetingData)>> =
+        let slots: HashMap<UserId, Option<(u64, PublicKeys)>> =
             slots.into_iter().map(|id| (id, None)).collect();
 
         let meeting = MeetingRoom {
@@ -73,7 +73,7 @@ pub(crate) struct MeetingRoom {
     #[allow(dead_code)]
     pub(crate) owner_id: UserId,
     /// Map of user identifiers to public keys.
-    pub(crate) slots: HashMap<UserId, Option<(u64, MeetingData)>>,
+    pub(crate) slots: HashMap<UserId, Option<(u64, PublicKeys)>>,
     /// Last access time so the server can reap
     /// stale meetings.
     last_access: SystemTime,
@@ -85,7 +85,7 @@ impl MeetingRoom {
         &mut self,
         user_id: UserId,
         conn_id: u64,
-        data: MeetingData,
+        data: PublicKeys,
     ) {
         self.slots.insert(user_id, Some((conn_id, data)));
         self.last_access = SystemTime::now();

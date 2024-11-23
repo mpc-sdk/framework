@@ -18,7 +18,7 @@ use tokio_tungstenite::{
 use polysig_protocol::{
     channel::encrypt_server_channel, decode, encode, hex,
     http::StatusCode, snow::Builder, zlib, Encoding, Event,
-    HandshakeMessage, JsonMessage, MeetingResponse, MeetingData,
+    HandshakeMessage, JsonMessage, MeetingResponse, PublicKeys,
     MeetingId, MeetingRequest, OpaqueMessage, ProtocolState,
     RequestMessage, ResponseMessage, ServerMessage, SessionId,
     SessionRequest, TransparentMessage, UserId,

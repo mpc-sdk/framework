@@ -1,6 +1,6 @@
 //! Bindings for meeting points.
 use polysig_client::meeting;
-use polysig_protocol::{MeetingData, MeetingId, UserId};
+use polysig_protocol::{PublicKeys, MeetingId, UserId};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::future_to_promise;
 
@@ -35,7 +35,7 @@ pub fn join_meeting(
     let meeting_id: MeetingId =
         meeting_id.parse().map_err(JsError::from)?;
     let user_id = parse_user_id(user_id)?;
-    let data: MeetingData = serde_wasm_bindgen::from_value(data)?;
+    let data: PublicKeys = serde_wasm_bindgen::from_value(data)?;
 
     let fut = async move {
         let results =

@@ -1,5 +1,5 @@
 //! Bindings for meeting points.
-use super::types::{MeetingData, MeetingItem, UserId};
+use super::types::{PublicKeys, MeetingItem, UserId};
 use anyhow::Result;
 use napi_derive::napi;
 use polysig_client::meeting;
@@ -28,7 +28,7 @@ pub async fn join_meeting(
     server_url: String,
     meeting_id: String,
     user_id: UserId,
-    data: MeetingData,
+    data: PublicKeys,
 ) -> Result<Vec<MeetingItem>> {
     let meeting_id: protocol::MeetingId = meeting_id.parse()?;
     let results = meeting::join(

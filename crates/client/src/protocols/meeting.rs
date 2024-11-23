@@ -7,7 +7,7 @@
 use crate::{Client, ClientOptions, Error, NetworkTransport, Result};
 use futures::StreamExt;
 use polysig_protocol::{
-    Event, MeetingData, MeetingId, MeetingResponse, UserId,
+    Event, PublicKeys, MeetingId, MeetingResponse, UserId,
 };
 use std::collections::HashSet;
 
@@ -59,8 +59,8 @@ pub async fn join(
     server_url: &str,
     meeting_id: MeetingId,
     user_id: UserId,
-    data: MeetingData,
-) -> Result<Vec<(UserId, MeetingData)>> {
+    data: PublicKeys,
+) -> Result<Vec<(UserId, PublicKeys)>> {
     let options = ClientOptions::default();
     let (mut client, event_loop) =
         Client::new(server_url, options).await?;

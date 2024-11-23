@@ -209,7 +209,7 @@ impl From<protocol::UserId> for UserId {
 #[napi(object)]
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct MeetingData {
+pub struct PublicKeys {
     /// Transport public key.
     pub public_key: Vec<u8>,
     /// Verifiying key.
@@ -218,9 +218,9 @@ pub struct MeetingData {
     pub associated_data: Option<Value>,
 }
 
-impl From<MeetingData> for protocol::MeetingData {
-    fn from(value: MeetingData) -> Self {
-        protocol::MeetingData {
+impl From<PublicKeys> for protocol::PublicKeys {
+    fn from(value: PublicKeys) -> Self {
+        protocol::PublicKeys {
             public_key: value.public_key,
             verifying_key: value.verifying_key,
             associated_data: value.associated_data,
@@ -228,9 +228,9 @@ impl From<MeetingData> for protocol::MeetingData {
     }
 }
 
-impl From<protocol::MeetingData> for MeetingData {
-    fn from(value: protocol::MeetingData) -> Self {
-        MeetingData {
+impl From<protocol::PublicKeys> for PublicKeys {
+    fn from(value: protocol::PublicKeys) -> Self {
+        PublicKeys {
             public_key: value.public_key,
             verifying_key: value.verifying_key,
             associated_data: value.associated_data,
@@ -245,5 +245,5 @@ pub struct MeetingItem {
     /// User identifiers.
     pub user_id: UserId,
     /// Data for the user.
-    pub data: MeetingData,
+    pub data: PublicKeys,
 }

@@ -6,10 +6,10 @@ use std::collections::HashSet;
 /// Identifier for meeting points.
 pub type MeetingId = uuid::Uuid;
 
-/// Data for a meeting room participant.
+/// Public keys for a participant.
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct MeetingData {
+pub struct PublicKeys {
     /// Public key for the noise transport.
     pub public_key: Vec<u8>,
     /// Verifying key.
@@ -36,7 +36,7 @@ pub enum MeetingRequest {
         /// User identifier.
         user_id: UserId,
         /// Data for this participant.
-        data: MeetingData,
+        data: PublicKeys,
     },
 }
 
@@ -54,6 +54,6 @@ pub enum MeetingResponse {
     /// Meeting room is ready.
     RoomReady {
         /// Participants that have joined the room.
-        participants: Vec<(UserId, MeetingData)>,
+        participants: Vec<(UserId, PublicKeys)>,
     },
 }

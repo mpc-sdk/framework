@@ -1,5 +1,5 @@
 use anyhow::Result;
-use polysig_protocol::{MeetingData, UserId};
+use polysig_protocol::{PublicKeys, UserId};
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 
@@ -43,7 +43,7 @@ pub async fn run(server: &str, num_participants: u8) -> Result<u8> {
     for (index, user_id) in join_ids.into_iter().enumerate() {
         let server_url = server.to_owned();
         tasks.push(tokio::task::spawn(async move {
-            let value = MeetingData {
+            let value = PublicKeys {
                 public_key: vec![index as u8 + 1],
                 verifying_key: vec![index as u8 + 1],
                 associated_data: None,
