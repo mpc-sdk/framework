@@ -1,4 +1,4 @@
-//! Driver for the FROST Ed25519 protocol.
+//! Driver for the FROST Secp256k1 Taproot protocol.
 use frost_secp256k1_tr::keys::{KeyPackage, PublicKeyPackage};
 
 mod dkg;

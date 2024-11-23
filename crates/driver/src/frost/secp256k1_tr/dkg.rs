@@ -1,8 +1,9 @@
-//! Key generation for FROST Secp256k1 (Taproot).
+//! Key generation for FROST Secp256k1 Taproot protocol.
 use frost_secp256k1_tr::{
     keys::dkg::{self, part1, part2, part3},
     Identifier,
 };
+use polysig_protocol::Parameters;
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, num::NonZeroU16};

@@ -1,4 +1,4 @@
-//! Signature generation for FROST Secp256k1 (Taproot).
+//! Signature generation for FROST Secp256k1 Taproot protocol.
 use frost_secp256k1_tr::{
     aggregate,
     round1::{self, SigningCommitments, SigningNonces},

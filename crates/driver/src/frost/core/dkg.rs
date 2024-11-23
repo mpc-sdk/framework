@@ -19,8 +19,7 @@ macro_rules! frost_dkg_impl {
         pub struct DkgDriver {
             #[allow(dead_code)]
             party_number: NonZeroU16,
-            max_signers: u16,
-            min_signers: u16,
+            params: Parameters,
             identifiers: Vec<$id>,
             id: Identifier,
             round_number: u8,
@@ -36,8 +35,7 @@ macro_rules! frost_dkg_impl {
             /// Create a key generator.
             pub fn new(
                 party_number: NonZeroU16,
-                max_signers: u16,
-                min_signers: u16,
+                params: Parameters,
                 identifiers: Vec<$id>,
             ) -> Result<Self> {
                 let party_index: usize = party_number.get() as usize;
@@ -48,8 +46,7 @@ macro_rules! frost_dkg_impl {
 
                 Ok(Self {
                     party_number,
-                    max_signers,
-                    min_signers,
+                    params,
                     identifiers,
                     id,
                     round_number: ROUND_1,
@@ -100,8 +97,8 @@ macro_rules! frost_dkg_impl {
                         let (private_package, public_package) =
                             $part1(
                                 self.id.clone(),
-                                self.max_signers,
-                                self.min_signers,
+                                self.params.parties,
+                                self.params.threshold,
                                 &mut OsRng,
                             )?;
 

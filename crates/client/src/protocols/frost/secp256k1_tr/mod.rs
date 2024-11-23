@@ -15,8 +15,8 @@ use crate::{
     SessionInitiator, SessionOptions, SessionParticipant, Transport,
 };
 
-pub mod dkg;
-pub mod sign;
+mod dkg;
+mod sign;
 
 frost_dkg_impl!();
 frost_sign_impl!();

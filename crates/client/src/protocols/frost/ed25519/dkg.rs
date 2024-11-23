@@ -1,6 +1,6 @@
 //! Distributed key generation for FROST Ed25519.
 use crate::{Error, NetworkTransport, Result, Transport};
-use polysig_protocol::{hex, SessionState};
+use polysig_protocol::{hex, Parameters, SessionState};
 
 use polysig_driver::{
     frost::ed25519::{DkgDriver as FrostDriver, KeyShare},
@@ -17,8 +17,7 @@ pub type DkgDriver = crate::protocols::frost::core::dkg::DkgDriver<
 pub fn new_driver(
     transport: Transport,
     session: SessionState,
-    max_signers: u16,
-    min_signers: u16,
+    params: Parameters,
     identifiers: Vec<Identifier>,
 ) -> Result<DkgDriver> {
     let party_number = session
@@ -29,12 +28,7 @@ pub fn new_driver(
         ))
     })?;
 
-    let driver = FrostDriver::new(
-        party_number,
-        max_signers,
-        min_signers,
-        identifiers,
-    )?;
+    let driver = FrostDriver::new(party_number, params, identifiers)?;
 
     Ok(DkgDriver::new(transport, session, party_number, driver))
 }

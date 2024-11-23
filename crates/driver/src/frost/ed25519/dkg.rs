@@ -3,6 +3,7 @@ use frost_ed25519::{
     keys::dkg::{self, part1, part2, part3},
     Identifier,
 };
+use polysig_protocol::Parameters;
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, num::NonZeroU16};

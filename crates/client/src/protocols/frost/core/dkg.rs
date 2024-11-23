@@ -81,8 +81,7 @@ macro_rules! frost_dkg_impl {
             options: SessionOptions,
             participant: Participant,
         ) -> crate::Result<KeyShare> {
-            let n = options.parameters.parties;
-            let t = options.parameters.threshold;
+            let params = options.parameters;
 
             // Create the client
             let (client, event_loop) = new_client(options).await?;
@@ -117,8 +116,8 @@ macro_rules! frost_dkg_impl {
                 wait_for_session(&mut stream, client_session).await?;
 
             let mut identifiers: Vec<Identifier> =
-                Vec::with_capacity(n.into());
-            for index in 1..=n {
+                Vec::with_capacity(params.parties.into());
+            for index in 1..=params.parties {
                 identifiers
                     .push(index.try_into().map_err(Error::from)?);
             }
@@ -126,8 +125,7 @@ macro_rules! frost_dkg_impl {
             let key_gen = dkg::new_driver(
                 transport,
                 session,
-                n,
-                t,
+                params,
                 identifiers,
             )?;
 

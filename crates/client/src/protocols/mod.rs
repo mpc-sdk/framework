@@ -10,7 +10,7 @@ mod session;
 #[cfg(feature = "cggmp")]
 pub mod cggmp;
 
-#[cfg(feature = "frost-ed25519")]
+#[cfg(feature = "frost")]
 pub mod frost;
 
 pub(crate) use bridge::Bridge;
