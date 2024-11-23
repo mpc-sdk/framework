@@ -19,6 +19,15 @@ mod protocol;
 #[cfg(any(feature = "cggmp", feature = "frost"))]
 pub use protocol::*;
 
+#[cfg(feature = "cggmp")]
+pub use synedrion::{self, bip32, k256};
+
+#[cfg(feature = "frost-ed25519")]
+pub use frost_ed25519;
+
+#[cfg(feature = "frost-secp256k1-tr")]
+pub use frost_secp256k1_tr;
+
 pub use error::Error;
 
 /// Result type for the driver library.

@@ -1,7 +1,8 @@
-//! Driver for the FROST Ed25519 protocol.
+//! Driver for the FROST Secp256k1 Taproot protocol.
+
 use polysig_driver::{
-    frost::ed25519::{KeyShare, Participant, Signature},
-    frost_ed25519::Identifier,
+    frost::secp256k1_tr::{KeyShare, Participant, Signature},
+    frost_secp256k1_tr::Identifier,
 };
 
 use crate::{

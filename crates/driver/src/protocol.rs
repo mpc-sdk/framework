@@ -4,12 +4,6 @@ use crate::{Error, Result};
 use polysig_protocol::{hex, PartyNumber, RoundNumber};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
-#[cfg(feature = "cggmp")]
-pub use synedrion::{self, bip32, k256};
-
-#[cfg(feature = "frost-ed25519")]
-pub use frost_ed25519;
-
 /// Information about the current found which
 /// can be retrieved from a driver.
 #[derive(Debug)]

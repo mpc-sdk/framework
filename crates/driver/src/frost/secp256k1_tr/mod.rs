@@ -20,4 +20,4 @@ pub type PartyOptions =
 /// Key share for this protocol.
 pub type KeyShare = (KeyPackage, PublicKeyPackage);
 /// Signature for this protocol.
-pub type Signature = frost_ed25519::Signature;
+pub type Signature = frost_secp256k1_tr::Signature;
