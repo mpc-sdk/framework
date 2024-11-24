@@ -88,16 +88,47 @@ impl Keypair {
     pub fn private_key(&self) -> &[u8] {
         &self.private
     }
-}
 
-/// Generate a keypair for the noise protocol using the
-/// standard pattern.
-#[deprecated]
-pub fn generate_keypair() -> Result<Keypair> {
-    Keypair::new_params(PATTERN.parse()?)
+    /// Encode as PEM.
+    pub fn encode_pem(&self) -> String {
+        let pattern_pem = Pem::new(PEM_PATTERN, PATTERN.as_bytes());
+        let public_pem =
+            Pem::new(PEM_PUBLIC, self.public_key().to_vec());
+        let private_pem =
+            Pem::new(PEM_PRIVATE, self.private_key().to_vec());
+        pem::encode_many(&[pattern_pem, public_pem, private_pem])
+    }
+
+    /// Decode from PEM.
+    pub fn decode_pem(keypair: impl AsRef<[u8]>) -> Result<Keypair> {
+        let mut pems = pem::parse_many(keypair)?;
+        if pems.len() == 3 {
+            let (first, second, third) =
+                (pems.remove(0), pems.remove(0), pems.remove(0));
+            if (PEM_PATTERN, PEM_PUBLIC, PEM_PRIVATE)
+                == (first.tag(), second.tag(), third.tag())
+            {
+                if first.into_contents() != PATTERN.as_bytes() {
+                    return Err(Error::PatternMismatch(
+                        PATTERN.to_string(),
+                    ));
+                }
+
+                Ok(Keypair {
+                    public: second.into_contents(),
+                    private: third.into_contents(),
+                })
+            } else {
+                Err(Error::BadKeypairPem)
+            }
+        } else {
+            Err(Error::BadKeypairPem)
+        }
+    }
 }
 
 /// Encode a keypair into a PEM-encoded string.
+#[deprecated]
 pub fn encode_keypair(keypair: &Keypair) -> String {
     let pattern_pem = Pem::new(PEM_PATTERN, PATTERN.as_bytes());
     let public_pem =
@@ -108,6 +139,7 @@ pub fn encode_keypair(keypair: &Keypair) -> String {
 }
 
 /// Decode from a PEM-encoded string into a keypair.
+#[deprecated]
 pub fn decode_keypair(keypair: impl AsRef<[u8]>) -> Result<Keypair> {
     let mut pems = pem::parse_many(keypair)?;
     if pems.len() == 3 {
