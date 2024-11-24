@@ -1,12 +1,12 @@
 //! Bindings for the CGGMP protocol.
 use polysig_client::SessionOptions;
-use polysig_driver::cggmp::{self, Participant};
+use polysig_driver::cggmp::{self, KeySharePem, Participant};
 use polysig_driver::synedrion::{
     self,
     ecdsa::{SigningKey, VerifyingKey},
     SessionId,
 };
-use polysig_protocol::{hex, pem};
+use polysig_protocol::hex;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use wasm_bindgen::prelude::*;
@@ -19,8 +19,6 @@ type Params = synedrion::TestParams;
 
 type ThresholdKeyShare =
     synedrion::ThresholdKeyShare<Params, VerifyingKey>;
-
-const TAG_V1: &str = "CGGMP KEY SHARE v1";
 
 /// Options for a party participating in a protocol.
 ///
@@ -74,12 +72,10 @@ impl CggmpProtocol {
     ) -> Result<CggmpProtocol, JsError> {
         let options: SessionOptions =
             serde_wasm_bindgen::from_value(options)?;
-        let key_share: String =
+        let key_share: KeySharePem =
             serde_wasm_bindgen::from_value(key_share)?;
-        let key_share = pem::parse(&key_share)?;
         let key_share: ThresholdKeyShare =
-            serde_json::from_slice(key_share.contents())
-                .map_err(JsError::from)?;
+            (&key_share).try_into().map_err(JsError::from)?;
         Ok(Self { options, key_share })
     }
 
@@ -125,10 +121,8 @@ impl CggmpProtocol {
             )
             .await?;
 
-            let key_share = serde_json::to_vec(&key_share)
-                .map_err(JsError::from)?;
-            let key_share = pem::Pem::new(TAG_V1, key_share);
-            let key_share = pem::encode(&key_share);
+            let key_share: KeySharePem =
+                (&key_share).try_into().map_err(JsError::from)?;
 
             Ok(serde_wasm_bindgen::to_value(&key_share)?)
         };
@@ -199,9 +193,14 @@ impl CggmpProtocol {
         let account_verifying_key: VerifyingKey =
             serde_wasm_bindgen::from_value(account_verifying_key)?;
 
-        // FIXME
-        let key_share: Option<ThresholdKeyShare> =
+        let key_share: Option<KeySharePem> =
             serde_wasm_bindgen::from_value(key_share)?;
+        let key_share: Option<ThresholdKeyShare> =
+            if let Some(key_share) = key_share {
+                Some((&key_share).try_into().map_err(JsError::from)?)
+            } else {
+                None
+            };
 
         let participant =
             Participant::new(signer, verifier, party.try_into()?)

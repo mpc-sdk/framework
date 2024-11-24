@@ -1,9 +1,15 @@
 //! Driver for the CGGMP protocol.
+use serde::{Deserialize, Serialize};
 use synedrion::{
     bip32::DerivationPath,
     ecdsa::{self, SigningKey, VerifyingKey},
     MessageBundle, SchemeParams, ThresholdKeyShare,
 };
+
+use polysig_protocol::pem;
+
+const TAG: &str = "CGGMP KEY SHARE";
+const PEM_V1: u16 = 1;
 
 mod aux_gen;
 mod error;
@@ -26,6 +32,64 @@ type MessageOut = MessageBundle<ecdsa::Signature>;
 
 /// Key share.
 pub type KeyShare<P> = ThresholdKeyShare<P, VerifyingKey>;
+
+/// Threshold key share encoded as a PEM.
+///
+/// The actual threshold key share struct internally
+/// uses `BTreeMap` which when passed over the webassembly
+/// bindings will be converted to a Javascript `Map` however
+/// the `Map` type is not natively supported in `JSON.stringify`
+/// and `JSON.parse` without implementing custom replacer and
+/// reviver functions which is cumbersome.
+///
+/// Therefore, to make sharing threshold key shares across the
+/// Javacript/Webassembly bindings more ergonomic we first encode
+/// the key share to JSON and then encode as a PEM.
+///
+/// A version number is included to allow us to recognize changes
+/// in the upstream library `ThresholdKeyShare` struct.
+#[derive(Serialize, Deserialize)]
+pub struct KeySharePem {
+    /// CGGMP protocol version.
+    pub version: u16,
+    /// PEM-encoded key share contents.
+    pub contents: String,
+}
+
+impl<P> TryFrom<&KeyShare<P>> for KeySharePem
+where
+    P: SchemeParams,
+{
+    type Error = polysig_protocol::Error;
+
+    fn try_from(
+        value: &KeyShare<P>,
+    ) -> std::result::Result<Self, Self::Error> {
+        let key_share = serde_json::to_vec(value)?;
+        let key_share = pem::Pem::new(TAG, key_share);
+        let key_share = pem::encode(&key_share);
+        Ok(Self {
+            version: PEM_V1,
+            contents: key_share,
+        })
+    }
+}
+
+impl<P> TryFrom<&KeySharePem> for KeyShare<P>
+where
+    P: SchemeParams,
+{
+    type Error = polysig_protocol::Error;
+
+    fn try_from(
+        value: &KeySharePem,
+    ) -> std::result::Result<Self, Self::Error> {
+        let key_share = pem::parse(&value.contents)?;
+        let key_share: KeyShare<P> =
+            serde_json::from_slice(key_share.contents())?;
+        Ok(key_share)
+    }
+}
 
 /// Result type for the CGGMP protocol.
 pub type Result<T> = std::result::Result<T, Error>;
