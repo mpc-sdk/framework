@@ -5,7 +5,7 @@
 use anyhow::{bail, Result};
 use clap::{Parser, Subcommand};
 use polysig_driver::PartyKeys;
-use polysig_protocol::{hex, Keypair, SigningKeyType};
+use polysig_protocol::{hex, KeyType, Keypair};
 use rand::rngs::OsRng;
 use std::fs;
 use std::io::Write;
@@ -47,7 +47,7 @@ enum Command {
 
         /// Type of key to generate.
         #[clap(short, long)]
-        key_type: SigningKeyType,
+        key_type: KeyType,
 
         /// Write keys to this file as JSON.
         file: Option<PathBuf>,
@@ -78,7 +78,7 @@ fn generate_test_keys(
     path: Option<PathBuf>,
     force: bool,
     num: u8,
-    key_type: SigningKeyType,
+    key_type: KeyType,
 ) -> Result<()> {
     if let Some(path) = &path {
         if path.exists() && !force {
@@ -93,33 +93,35 @@ fn generate_test_keys(
     for _ in 0..num {
         let encrypt = Keypair::generate()?;
         let (private, public) = match key_type {
-            SigningKeyType::Ecdsa => {
+            KeyType::Ecdsa => {
                 let signer =
                     k256::ecdsa::SigningKey::random(&mut OsRng);
                 let verifier =
                     signer.verifying_key().to_sec1_bytes().to_vec();
                 (signer.to_bytes().to_vec(), verifier)
             }
-            SigningKeyType::Ed25519 => {
+            KeyType::Ed25519 => {
                 let signer =
                     ed25519_dalek::SigningKey::generate(&mut OsRng);
                 let verifier =
                     signer.verifying_key().to_bytes().to_vec();
                 (signer.to_bytes().to_vec(), verifier)
             }
-            SigningKeyType::Schnorr => {
+            KeyType::Schnorr => {
                 let signer =
                     k256::schnorr::SigningKey::random(&mut OsRng);
                 let verifier =
                     signer.verifying_key().to_bytes().to_vec();
                 (signer.to_bytes().to_vec(), verifier)
             }
+            KeyType::Noise => {
+                bail!("noise key type is not supported for test keys")
+            }
         };
 
         let party = PartyKeys {
             encrypt,
-            sign: Keypair::new(private, public),
-            key_type,
+            sign: Keypair::new(private, public, key_type),
         };
         keys.push(party);
     }

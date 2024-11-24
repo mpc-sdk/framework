@@ -8,10 +8,12 @@ use pem::Pem;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-/// Type of supported signing keys.
+/// Type of supported keys.
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub enum SigningKeyType {
+pub enum KeyType {
+    /// Noise protocol encryption key.
+    Noise,
     /// ECDSA signing key.
     Ecdsa,
     /// Ed25519 signing key.
@@ -20,12 +22,13 @@ pub enum SigningKeyType {
     Schnorr,
 }
 
-impl fmt::Display for SigningKeyType {
+impl fmt::Display for KeyType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "{}",
             match self {
+                Self::Noise => "noise",
                 Self::Ecdsa => "ecdsa",
                 Self::Ed25519 => "ed25519",
                 Self::Schnorr => "schnorr",
@@ -34,19 +37,16 @@ impl fmt::Display for SigningKeyType {
     }
 }
 
-impl std::str::FromStr for SigningKeyType {
+impl std::str::FromStr for KeyType {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self> {
         Ok(match s {
+            "noise" => Self::Noise,
             "ecdsa" => Self::Ecdsa,
             "ed25519" => Self::Ed25519,
             "schnorr" => Self::Schnorr,
-            _ => {
-                return Err(Error::UnknownSigningKeyType(
-                    s.to_owned(),
-                ))
-            }
+            _ => return Err(Error::UnknownKeyType(s.to_owned())),
         })
     }
 }
@@ -56,6 +56,9 @@ impl std::str::FromStr for SigningKeyType {
 pub struct Keypair {
     private: Vec<u8>,
     public: Vec<u8>,
+    /// Type of the signing key.
+    #[serde(rename = "type")]
+    key_type: KeyType,
 }
 
 impl Keypair {
@@ -65,8 +68,16 @@ impl Keypair {
     }
 
     /// Create a keypair from private and public keys.
-    pub fn new(private: Vec<u8>, public: Vec<u8>) -> Self {
-        Self { private, public }
+    pub fn new(
+        private: Vec<u8>,
+        public: Vec<u8>,
+        key_type: KeyType,
+    ) -> Self {
+        Self {
+            private,
+            public,
+            key_type,
+        }
     }
 
     /// Generate a new keypair from noise parameters.
@@ -76,6 +87,7 @@ impl Keypair {
         Ok(Self {
             private: keypair.private,
             public: keypair.public,
+            key_type: KeyType::Noise,
         })
     }
 
@@ -117,6 +129,7 @@ impl Keypair {
                 Ok(Keypair {
                     public: second.into_contents(),
                     private: third.into_contents(),
+                    key_type: KeyType::Noise,
                 })
             } else {
                 Err(Error::BadKeypairPem)
@@ -157,6 +170,7 @@ pub fn decode_keypair(keypair: impl AsRef<[u8]>) -> Result<Keypair> {
             Ok(Keypair {
                 public: second.into_contents(),
                 private: third.into_contents(),
+                key_type: KeyType::Noise,
             })
         } else {
             Err(Error::BadKeypairPem)

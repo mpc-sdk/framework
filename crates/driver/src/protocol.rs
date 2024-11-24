@@ -1,9 +1,7 @@
 //! Types for the protocol drivers.
 
 use crate::{Error, Result};
-use polysig_protocol::{
-    hex, Keypair, PartyNumber, RoundNumber, SigningKeyType,
-};
+use polysig_protocol::{hex, Keypair, PartyNumber, RoundNumber};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 /// Keys for a protocol participant.
@@ -14,9 +12,6 @@ pub struct PartyKeys {
     pub encrypt: Keypair,
     /// Signing key.
     pub sign: Keypair,
-    /// Type of the signing key.
-    #[serde(rename = "type")]
-    pub key_type: SigningKeyType,
 }
 
 /// Information about the current found which

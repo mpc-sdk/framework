@@ -32,13 +32,18 @@ impl TryFrom<VerifyingKey> for ecdsa::VerifyingKey {
 pub struct Keypair {
     pub private: Vec<u8>,
     pub public: Vec<u8>,
+    pub r#type: String,
 }
 
 impl TryFrom<Keypair> for protocol::Keypair {
     type Error = polysig_driver::Error;
 
     fn try_from(value: Keypair) -> Result<Self, Self::Error> {
-        Ok(protocol::Keypair::new(value.private, value.public))
+        Ok(protocol::Keypair::new(
+            value.private,
+            value.public,
+            value.r#type.parse()?,
+        ))
     }
 }
 
