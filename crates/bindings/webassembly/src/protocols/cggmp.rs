@@ -6,7 +6,7 @@ use polysig_driver::synedrion::{
     ecdsa::{SigningKey, VerifyingKey},
     SessionId,
 };
-use polysig_protocol::hex;
+use polysig_protocol::{hex, pem};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use wasm_bindgen::prelude::*;
@@ -17,7 +17,10 @@ type Params = synedrion::ProductionParams;
 #[cfg(debug_assertions)]
 type Params = synedrion::TestParams;
 
-type KeyShare = synedrion::ThresholdKeyShare<Params, VerifyingKey>;
+type ThresholdKeyShare =
+    synedrion::ThresholdKeyShare<Params, VerifyingKey>;
+
+const TAG: &str = "CGGMP KEY SHARE";
 
 /// Options for a party participating in a protocol.
 ///
@@ -58,7 +61,7 @@ impl TryFrom<PartyOptions> for cggmp::PartyOptions {
 #[wasm_bindgen]
 pub struct CggmpProtocol {
     options: SessionOptions,
-    key_share: KeyShare,
+    key_share: ThresholdKeyShare,
 }
 
 #[wasm_bindgen]
@@ -71,8 +74,12 @@ impl CggmpProtocol {
     ) -> Result<CggmpProtocol, JsError> {
         let options: SessionOptions =
             serde_wasm_bindgen::from_value(options)?;
-        let key_share: KeyShare =
+        let key_share: String =
             serde_wasm_bindgen::from_value(key_share)?;
+        let key_share = pem::parse(&key_share)?;
+        let key_share: ThresholdKeyShare =
+            serde_json::from_slice(key_share.contents())
+                .map_err(JsError::from)?;
         Ok(Self { options, key_share })
     }
 
@@ -117,6 +124,11 @@ impl CggmpProtocol {
                 SessionId::from_seed(&session_id_seed),
             )
             .await?;
+
+            let key_share = serde_json::to_vec(&key_share)
+                .map_err(JsError::from)?;
+            let key_share = pem::Pem::new(TAG, key_share);
+            let key_share = pem::encode(&key_share);
 
             Ok(serde_wasm_bindgen::to_value(&key_share)?)
         };
@@ -170,7 +182,6 @@ impl CggmpProtocol {
     /// Reshare key shares.
     pub fn reshare(
         &self,
-        // options: JsValue,
         party: JsValue,
         session_id_seed: Vec<u8>,
         signer: Vec<u8>,
@@ -187,8 +198,11 @@ impl CggmpProtocol {
         let verifier = signer.verifying_key().clone();
         let account_verifying_key: VerifyingKey =
             serde_wasm_bindgen::from_value(account_verifying_key)?;
-        let key_share: Option<KeyShare> =
+
+        // FIXME
+        let key_share: Option<ThresholdKeyShare> =
             serde_wasm_bindgen::from_value(key_share)?;
+
         let participant =
             Participant::new(signer, verifier, party.try_into()?)
                 .map_err(JsError::from)?;

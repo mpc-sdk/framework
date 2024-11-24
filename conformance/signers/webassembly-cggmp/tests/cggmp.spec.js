@@ -9,15 +9,6 @@ const partyKeys = require('./ecdsa.json');
 
 const URL = process.env.TEST_URL || "http://localhost:5173";
 
-function reviver(key, value) {
-  if(typeof value === 'object' && value !== null) {
-    if (value.dataType === 'Map') {
-      return new Map(value.value);
-    }
-  }
-  return value;
-}
-
 // Convert from a hex-encoded string.
 function fromHexString(hex) {
   return new Uint8Array(hex.match(/.{1,2}/g).map((byte) => parseInt(byte, 16)));
@@ -99,10 +90,8 @@ test("CGGMP: keygen and sign message", async ({ context, page }) => {
 
   const keyShares = [];
   for (const page of pages) {
-      const keyShare = JSON.parse(await page.textContent(".key-share"), reviver);
+      const keyShare = JSON.parse(await page.textContent(".key-share"));
       keyShares.push(keyShare);
-
-    console.log(keyShare);
   }
   
   // Sign
@@ -118,11 +107,6 @@ test("CGGMP: keygen and sign message", async ({ context, page }) => {
   let index = 0;
   for (const keyShare of signers) {
     const partyIndex = indices[index];
-
-    // Hack for serde not handling a phantom property
-    // on ThresholdKeyShare as expected
-    keyShare.phantom = null;
-
     const pageData = {
       partyIndex,
       indices,

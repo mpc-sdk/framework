@@ -42,23 +42,8 @@ const keyShare = await CggmpProtocol.dkg(
   signer,
 );
 
-function replacer(key, value) {
-  if(value instanceof Map) {
-    return {
-      dataType: 'Map',
-      value: Array.from(value.entries()),
-    };
-  } else {
-    return value;
-  }
-}
-
-
-console.log(keyShare);
-// console.log(JSON.stringify(keyShare, replacer));
-
 const el = document.getElementById("key-share");
-el.innerHTML = `<p class="key-share">${JSON.stringify({partyIndex, keyShare}, replacer)}</p>`;
+el.innerHTML = `<p class="key-share">${JSON.stringify({partyIndex, keyShare})}</p>`;
 
 /*
 // Convert from a hex-encoded string.
