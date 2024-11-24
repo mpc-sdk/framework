@@ -20,7 +20,7 @@ type Params = synedrion::TestParams;
 type ThresholdKeyShare =
     synedrion::ThresholdKeyShare<Params, VerifyingKey>;
 
-const TAG: &str = "CGGMP KEY SHARE";
+const TAG_V1: &str = "CGGMP KEY SHARE v1";
 
 /// Options for a party participating in a protocol.
 ///
@@ -127,7 +127,7 @@ impl CggmpProtocol {
 
             let key_share = serde_json::to_vec(&key_share)
                 .map_err(JsError::from)?;
-            let key_share = pem::Pem::new(TAG, key_share);
+            let key_share = pem::Pem::new(TAG_V1, key_share);
             let key_share = pem::encode(&key_share);
 
             Ok(serde_wasm_bindgen::to_value(&key_share)?)
