@@ -3,7 +3,7 @@ import {
 } from 'node:worker_threads';
 import fs from 'fs';
 
-const keygenScript = './tests/keygen.js';
+const dkgScript = './tests/dkg.js';
 const signScript = './tests/sign.js';
 
 // Convert from a hex-encoded string.
@@ -11,7 +11,7 @@ function fromHexString(hex) {
   return new Uint8Array(hex.match(/.{1,2}/g).map((byte) => parseInt(byte, 16)));
 }
 
-const keygenSessionIdSeed = "ee507039fb7b14bf8190f300c66732110b401a68ba8e0d3fa464809972d33489";
+const dkgSessionIdSeed = "ee507039fb7b14bf8190f300c66732110b401a68ba8e0d3fa464809972d33489";
 const signSessionIdSeed = "289e497ac7c2640adda5bf9bf0e9a05833f1807d1c4dce3f73e3483513bfa25e";
 const serverKey = fs.readFileSync(
   "../../../integration_tests/tests/server_public_key.txt", "utf8");
@@ -31,12 +31,12 @@ let tasks = [];
 
 for (let i = 0;i < parameters.parties;i++) {
   tasks.push(new Promise((resolve, reject) => {
-    const worker = new Worker(keygenScript, {
+    const worker = new Worker(dkgScript, {
       workerData: {
         partyIndex: i,
         server,
         parameters,
-        sessionIdSeed: Array.from(fromHexString(keygenSessionIdSeed)),
+        sessionIdSeed: Array.from(fromHexString(dkgSessionIdSeed)),
       }
     });
 
