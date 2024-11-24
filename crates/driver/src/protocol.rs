@@ -1,8 +1,24 @@
 //! Types for the protocol drivers.
 
 use crate::{Error, Result};
-use polysig_protocol::{hex, PartyNumber, RoundNumber};
+use polysig_protocol::{
+    hex, Keypair, PartyNumber, RoundNumber, SigningKeyType,
+};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
+
+/// Keys for a protocol participant.
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PartyKeys {
+    /// Noise transport keypair.
+    pub encrypt: Keypair,
+    /// Signing key.
+    #[serde(with = "hex::serde")]
+    pub sign: Vec<u8>,
+    /// Type of the signing key.
+    #[serde(rename = "type")]
+    pub key_type: SigningKeyType,
+}
 
 /// Information about the current found which
 /// can be retrieved from a driver.
@@ -72,9 +88,6 @@ pub trait Round: Send + Sync {
 }
 
 /// Round message with additional meta data.
-///
-/// Used to ensure round messages are grouped together and
-/// out of order messages can thus be handled correctly.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RoundMessage<Body, Verifier>
 where

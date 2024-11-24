@@ -206,7 +206,7 @@ impl CggmpProtocol {
         env: Env,
     ) -> std::result::Result<napi::JsUnknown, JsError> {
         let pattern = pattern.unwrap_or_else(|| PATTERN.to_owned());
-        let keypair = polysig_protocol::Keypair::new(
+        let keypair = polysig_protocol::Keypair::new_params(
             pattern.parse().map_err(Error::new)?,
         )
         .map_err(Error::new)?;

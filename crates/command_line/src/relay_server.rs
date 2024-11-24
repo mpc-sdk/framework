@@ -15,7 +15,7 @@
 //! First generate a keypair for the server:
 //!
 //! ```no_run
-//! polysig-relay generate-keypair server.pem
+//! polysig-keygen keypair server.pem
 //! ```
 //!
 //! # Configuration

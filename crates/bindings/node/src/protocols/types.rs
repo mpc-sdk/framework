@@ -1,6 +1,6 @@
 use napi_derive::napi;
 use polysig_driver::synedrion::{self, ecdsa};
-use polysig_protocol::{self as protocol, decode_keypair};
+use polysig_protocol as protocol;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -26,17 +26,19 @@ impl TryFrom<VerifyingKey> for ecdsa::VerifyingKey {
     }
 }
 
+/// Keypair for the noise transport.
 #[napi(object)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Keypair {
-    pub pem: String,
+    pub private: Vec<u8>,
+    pub public: Vec<u8>,
 }
 
-impl TryFrom<Keypair> for polysig_protocol::Keypair {
+impl TryFrom<Keypair> for protocol::Keypair {
     type Error = polysig_driver::Error;
 
     fn try_from(value: Keypair) -> Result<Self, Self::Error> {
-        Ok(decode_keypair(value.pem)?)
+        Ok(protocol::Keypair::new(value.private, value.public))
     }
 }
 

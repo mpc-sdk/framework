@@ -1,0 +1,181 @@
+//! Command line tool to generate keys.
+#![deny(missing_docs)]
+#![forbid(unsafe_code)]
+
+use anyhow::{bail, Result};
+use clap::{Parser, Subcommand};
+use polysig_driver::PartyKeys;
+use polysig_protocol::{hex, Keypair, SigningKeyType};
+use rand::rngs::OsRng;
+use std::fs;
+use std::io::Write;
+use std::path::PathBuf;
+
+/// Meeting room websocket server.
+#[derive(Parser, Debug)]
+#[clap(author, version, about, long_about = None)]
+struct KeygenService {
+    #[clap(subcommand)]
+    cmd: Command,
+}
+
+/// Program commands.
+#[derive(Debug, Subcommand)]
+enum Command {
+    /// Generate PEM-encoded keypair and write to file.
+    Keypair {
+        /// Force overwrite if the file exists.
+        #[clap(short, long)]
+        force: bool,
+
+        /// Write hex-encoded public key to a file.
+        #[clap(long)]
+        public_key: Option<PathBuf>,
+
+        /// Write keypair to this file.
+        file: PathBuf,
+    },
+    /// Generate key material for a number of parties.
+    TestKeys {
+        /// Force overwrite if the file exists.
+        #[clap(short, long)]
+        force: bool,
+
+        /// Number of keys to generate.
+        #[clap(short, long)]
+        num: u8,
+
+        /// Type of key to generate.
+        #[clap(short, long)]
+        key_type: SigningKeyType,
+
+        /// Write keys to this file as JSON.
+        file: Option<PathBuf>,
+    },
+}
+
+/// Parse arguments and run the program.
+fn run() -> Result<()> {
+    let args = KeygenService::parse();
+    match args.cmd {
+        Command::Keypair {
+            force,
+            public_key,
+            file,
+        } => generate_keypair(file, force, public_key)?,
+        Command::TestKeys {
+            num,
+            force,
+            key_type,
+            file,
+        } => generate_test_keys(file, force, num, key_type)?,
+    }
+    Ok(())
+}
+
+/// Generate test keys.
+fn generate_test_keys(
+    path: Option<PathBuf>,
+    force: bool,
+    num: u8,
+    key_type: SigningKeyType,
+) -> Result<()> {
+    if let Some(path) = &path {
+        if path.exists() && !force {
+            bail!(
+                "file {} already exists, use --force to overwrite",
+                path.display()
+            );
+        }
+    }
+
+    let mut keys = Vec::with_capacity(num as usize);
+    for _ in 0..num {
+        let encrypt = Keypair::generate()?;
+        let sign = match key_type {
+            SigningKeyType::Ecdsa => {
+                k256::ecdsa::SigningKey::random(&mut OsRng)
+                    .to_bytes()
+                    .to_vec()
+            }
+            SigningKeyType::Ed25519 => {
+                ed25519_dalek::SigningKey::generate(&mut OsRng)
+                    .to_bytes()
+                    .to_vec()
+            }
+            SigningKeyType::Schnorr => {
+                k256::schnorr::SigningKey::random(&mut OsRng)
+                    .to_bytes()
+                    .to_vec()
+            }
+        };
+
+        let party = PartyKeys {
+            encrypt,
+            sign,
+            key_type,
+        };
+        keys.push(party);
+    }
+
+    if let Some(path) = &path {
+        let mut writer = fs::File::create(path)?;
+        serde_json::to_writer_pretty(&mut writer, &keys)?;
+    } else {
+        serde_json::to_writer_pretty(std::io::stdout(), &keys)?;
+    }
+
+    Ok(())
+}
+
+/// Generate keypair and write to file.
+fn generate_keypair(
+    path: PathBuf,
+    force: bool,
+    public_key: Option<PathBuf>,
+) -> Result<()> {
+    if path.exists() && !force {
+        bail!(
+            "file {} already exists, use --force to overwrite",
+            path.display()
+        );
+    }
+
+    let keypair = Keypair::generate()?;
+    let pem = polysig_protocol::encode_keypair(&keypair);
+
+    let mut file = fs::File::create(&path)?;
+    file.write_all(pem.as_bytes())?;
+    file.flush()?;
+
+    println!("{}", hex::encode(keypair.public_key()));
+
+    if let Some(public_key) = public_key {
+        let public_key_hex = hex::encode(keypair.public_key());
+        fs::write(public_key, public_key_hex.as_bytes())?;
+    }
+
+    Ok(())
+}
+
+#[doc(hidden)]
+pub fn main() -> Result<()> {
+    use tracing_subscriber::{
+        layer::SubscriberExt, util::SubscriberInitExt,
+    };
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::new(
+            std::env::var("RUST_LOG").unwrap_or_else(|_| {
+                "polysig_meeting_server=info".into()
+            }),
+        ))
+        .with(tracing_subscriber::fmt::layer().without_time())
+        .init();
+
+    if let Err(e) = run() {
+        eprintln!("{}", e);
+        std::process::exit(1);
+    }
+
+    Ok(())
+}

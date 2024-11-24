@@ -5,102 +5,98 @@ use crate::{
     Error, Result,
 };
 use pem::Pem;
-use serde::{
-    de::{self, Deserializer, Visitor},
-    ser::Serializer,
-    Deserialize, Serialize,
-};
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
+/// Type of supported signing keys.
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum SigningKeyType {
+    /// ECDSA signing key.
+    Ecdsa,
+    /// Ed25519 signing key.
+    Ed25519,
+    /// Schnorr signing key.
+    Schnorr,
+}
+
+impl fmt::Display for SigningKeyType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Ecdsa => "ecdsa",
+                Self::Ed25519 => "ed25519",
+                Self::Schnorr => "schnorr",
+            }
+        )
+    }
+}
+
+impl std::str::FromStr for SigningKeyType {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        Ok(match s {
+            "ecdsa" => Self::Ecdsa,
+            "ed25519" => Self::Ed25519,
+            "schnorr" => Self::Schnorr,
+            _ => {
+                return Err(Error::UnknownSigningKeyType(
+                    s.to_owned(),
+                ))
+            }
+        })
+    }
+}
+
 /// Key pair used by the noise protocol.
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Keypair {
-    inner: snow::Keypair,
+    #[serde(with = "hex::serde")]
+    private: Vec<u8>,
+    #[serde(with = "hex::serde")]
+    public: Vec<u8>,
 }
 
 impl Keypair {
-    /// Generate a new keypair.
-    pub fn new(params: NoiseParams) -> Result<Self> {
+    /// Generate a new keypair using the default noise pattern.
+    pub fn generate() -> Result<Keypair> {
+        Keypair::new_params(PATTERN.parse()?)
+    }
+
+    /// Create a keypair from private and public keys.
+    pub fn new(private: Vec<u8>, public: Vec<u8>) -> Self {
+        Self { private, public }
+    }
+
+    /// Generate a new keypair from noise parameters.
+    pub fn new_params(params: NoiseParams) -> Result<Self> {
         let builder = snow::Builder::new(params);
+        let keypair = builder.generate_keypair()?;
         Ok(Self {
-            inner: builder.generate_keypair()?,
+            private: keypair.private,
+            public: keypair.public,
         })
     }
 
     /// Public key.
     pub fn public_key(&self) -> &[u8] {
-        &self.inner.public
+        &self.public
     }
 
     /// Private key.
     pub fn private_key(&self) -> &[u8] {
-        &self.inner.private
-    }
-}
-
-impl Clone for Keypair {
-    fn clone(&self) -> Self {
-        Keypair {
-            inner: snow::Keypair {
-                public: self.inner.public.clone(),
-                private: self.inner.private.clone(),
-            },
-        }
-    }
-}
-
-impl Serialize for Keypair {
-    fn serialize<S>(
-        &self,
-        serializer: S,
-    ) -> std::result::Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let encoded = encode_keypair(self);
-        serializer.serialize_str(&encoded)
-    }
-}
-
-impl<'de> Deserialize<'de> for Keypair {
-    fn deserialize<D>(
-        deserializer: D,
-    ) -> std::result::Result<Keypair, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserializer.deserialize_str(KeypairVisitor)
-    }
-}
-
-struct KeypairVisitor;
-
-impl<'de> Visitor<'de> for KeypairVisitor {
-    type Value = Keypair;
-
-    fn expecting(
-        &self,
-        formatter: &mut fmt::Formatter,
-    ) -> fmt::Result {
-        formatter.write_str("PEM encoded keypair")
-    }
-
-    fn visit_str<E>(
-        self,
-        value: &str,
-    ) -> std::result::Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        let decoded = decode_keypair(value.as_bytes())
-            .map_err(de::Error::custom)?;
-        Ok(decoded)
+        &self.private
     }
 }
 
 /// Generate a keypair for the noise protocol using the
 /// standard pattern.
+#[deprecated]
 pub fn generate_keypair() -> Result<Keypair> {
-    Keypair::new(PATTERN.parse()?)
+    Keypair::new_params(PATTERN.parse()?)
 }
 
 /// Encode a keypair into a PEM-encoded string.
@@ -129,10 +125,8 @@ pub fn decode_keypair(keypair: impl AsRef<[u8]>) -> Result<Keypair> {
             }
 
             Ok(Keypair {
-                inner: snow::Keypair {
-                    public: second.into_contents(),
-                    private: third.into_contents(),
-                },
+                public: second.into_contents(),
+                private: third.into_contents(),
             })
         } else {
             Err(Error::BadKeypairPem)

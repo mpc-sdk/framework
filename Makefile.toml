@@ -72,14 +72,19 @@ cargo run -- generate-keypair server.pem
 
 [tasks.gen-keys]
 script = '''
-cargo run -- generate-keypair tests/test.pem --public-key tests/server_public_key.txt
-cargo run -- generate-keypair conformance/signers/webassembly-cggmp/p1.pem
-cargo run -- generate-keypair conformance/signers/webassembly-cggmp/p2.pem
-cargo run -- generate-keypair conformance/signers/webassembly-cggmp/p3.pem
+cargo run --bin polysig-keygen -- keypair -f integration_tests/tests/test.pem --public-key integration_tests/tests/server_public_key.txt
 
-cargo run -- generate-keypair conformance/signers/node-cggmp/p1.pem
-cargo run -- generate-keypair conformance/signers/node-cggmp/p2.pem
-cargo run -- generate-keypair conformance/signers/node-cggmp/p3.pem
+cargo run --bin polysig-keygen -- test-keys -f -n 10 -k ecdsa conformance/ecdsa.json
+cargo run --bin polysig-keygen -- test-keys -f -n 10 -k ed25519 conformance/ed25519.json
+cargo run --bin polysig-keygen -- test-keys -f -n 10 -k schnorr conformance/schnorr.json
+
+cargo run --bin polysig-keygen -- keypair -f conformance/signers/webassembly-cggmp/p1.pem
+cargo run --bin polysig-keygen -- keypair -f conformance/signers/webassembly-cggmp/p2.pem
+cargo run --bin polysig-keygen -- keypair -f conformance/signers/webassembly-cggmp/p3.pem
+
+cargo run --bin polysig-keygen -- keypair -f conformance/signers/node-cggmp/p1.pem
+cargo run --bin polysig-keygen -- keypair -f conformance/signers/node-cggmp/p2.pem
+cargo run --bin polysig-keygen -- keypair -f conformance/signers/node-cggmp/p3.pem
 '''
 dependencies = ["gen-server-key"]
 
