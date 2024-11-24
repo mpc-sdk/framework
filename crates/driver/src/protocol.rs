@@ -1,7 +1,7 @@
 //! Types for the protocol drivers.
 
 use crate::{Error, Result};
-use polysig_protocol::{hex, Keypair, PartyNumber, RoundNumber};
+use polysig_protocol::{Keypair, PartyNumber, RoundNumber};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 /// Keys for a protocol participant.

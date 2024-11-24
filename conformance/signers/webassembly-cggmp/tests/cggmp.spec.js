@@ -65,6 +65,7 @@ test("CGGMP: keygen and sign message", async ({ context, page }) => {
   test.setTimeout(60 * 1000 * 15);
   
   // DKG
+  console.log("CGGMP, begin dkg...");
   let pages = [];
   let selectors = [];
 
@@ -83,7 +84,7 @@ test("CGGMP: keygen and sign message", async ({ context, page }) => {
     await page.bringToFront();
     
     pages.push(page);
-    selectors.push(".key-share");
+    selectors.push(page.waitForSelector(".key-share"));
   }
 
   await Promise.all(selectors);
@@ -93,6 +94,10 @@ test("CGGMP: keygen and sign message", async ({ context, page }) => {
       const keyShare = JSON.parse(await page.textContent(".key-share"));
       keyShares.push(keyShare);
   }
+
+  console.assert(keyShares.length === parameters.parties);
+
+  console.log("CGGMP, dkg complete, begin signing...");
   
   // Sign
   pages = [];
@@ -107,6 +112,7 @@ test("CGGMP: keygen and sign message", async ({ context, page }) => {
   let index = 0;
   for (const keyShare of signers) {
     const partyIndex = indices[index];
+    console.log(partyIndex);
     const pageData = {
       partyIndex,
       indices,
@@ -117,8 +123,6 @@ test("CGGMP: keygen and sign message", async ({ context, page }) => {
       message,
     };
 
-    // console.log(pageData)
-    
     const url = `${URL}/sign.html?data=${encodeURIComponent(JSON.stringify(pageData))}&keys=${encodeURIComponent(JSON.stringify(partyKeys.slice(0, parameters.parties)))}`;
 
     const page = await context.newPage();
@@ -127,11 +131,21 @@ test("CGGMP: keygen and sign message", async ({ context, page }) => {
     await page.bringToFront();
     
     pages.push(page);
-    selectors.push(".signature");
+    selectors.push(page.waitForSelector(".signature"));
 
     index++;
 
   }
   
   await Promise.all(selectors);
+
+  const signatures = [];
+  for (const page of pages) {
+      const signature = JSON.parse(await page.textContent(".signature"));
+      signatures.push(signature);
+  }
+
+  console.assert(signatures.length === parameters.threshold);
+  console.log("CGGMP, signing complete, done.");
+
 });

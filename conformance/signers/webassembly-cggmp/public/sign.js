@@ -36,7 +36,6 @@ const party = {
 };
 
 const protocol = new CggmpProtocol(options, keyShare);
-
 const signature = await protocol.sign(
   party,
   sessionIdSeed,

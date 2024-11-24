@@ -7,7 +7,10 @@
       "build": "./scripts/build.sh",
       "dev": "vite public",
       "relay": "./scripts/relay-server.sh",
-      "test": "playwright test --project=chromium",
+      "test": "playwright test",
+      "test:chromium": "playwright test --project=chromium",
+      "test:webkit": "playwright test --project=webkit",
+      "test:firefox": "playwright test --project=firefox",
       "test:ui": "playwright test --ui",
       "test:headed": "playwright test --headed"
   },
