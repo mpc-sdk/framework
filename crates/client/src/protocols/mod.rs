@@ -30,7 +30,6 @@ pub struct ServerOptions {
     /// URL for the server.
     pub server_url: String,
     /// Server public key.
-    #[serde(with = "hex::serde")]
     pub server_public_key: Vec<u8>,
     /// Noise parameters pattern.
     pub pattern: Option<String>,

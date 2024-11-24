@@ -165,7 +165,6 @@ where
 #[serde(rename_all = "camelCase")]
 pub struct PartyOptions<Verifier> {
     /// Encryption public key for this party.
-    #[serde(with = "hex::serde")]
     public_key: Vec<u8>,
     /// Encryption public keys of all participants including this one.
     participants: Vec<Vec<u8>>,

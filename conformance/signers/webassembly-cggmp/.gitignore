@@ -3,3 +3,4 @@ public/pkg
 /test-results/
 /playwright-report/
 /playwright/.cache/
+tests/ecdsa.json

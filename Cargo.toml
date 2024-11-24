@@ -11,9 +11,6 @@ members = [
   "crates/protocol",
   "crates/relay_server", 
 ]
-exclude = [
-  "conformance/signers/webassembly-cggmp/template"
-]
 resolver = "2"
 
 [workspace.dependencies]

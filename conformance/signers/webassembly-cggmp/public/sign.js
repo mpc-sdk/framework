@@ -1,14 +1,14 @@
-import {
-  parentPort,
-  workerData,
-} from 'node:worker_threads';
-import { createRequire } from 'node:module';
-const require = createRequire(import.meta.url);
-const polysig = require('../build/polysig.node');
-const { partyIndex, server, parameters, sessionIdSeed, keyShare, indices, message } = workerData;
-const partyKeys = require("./ecdsa.json").slice(0, parameters.parties);
+const module = await import("/pkg/polysig_webassembly_bindings.js");
 
-const { CggmpProtocol } = polysig;
+// Initialize the webassembly
+await module.default();
+
+const { CggmpProtocol } = module;
+
+const params = new URLSearchParams(document.location.search);
+const pageData = JSON.parse(params.get('data'));
+const { partyIndex, server, parameters, sessionIdSeed, keyShare, indices, message } = pageData;
+const partyKeys = JSON.parse(params.get('keys'));
 
 const publicKey = partyKeys[partyIndex].encrypt.public;
 
@@ -17,7 +17,7 @@ const participants = partyKeys.map((key) => {
 });
 
 const verifiers = partyKeys.map((key) => {
-  return { bytes: key.sign.public };
+  return key.sign.public;
 });
 
 const signer = partyKeys[partyIndex].sign.private;
@@ -43,4 +43,5 @@ const signature = await protocol.sign(
   message,
 );
 
-await parentPort.postMessage({partyIndex, signature});
+const el = document.getElementById("signature");
+el.innerHTML = `<p class="signature">${JSON.stringify({partyIndex, signature})}</p>`;
