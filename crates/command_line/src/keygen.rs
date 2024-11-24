@@ -92,27 +92,33 @@ fn generate_test_keys(
     let mut keys = Vec::with_capacity(num as usize);
     for _ in 0..num {
         let encrypt = Keypair::generate()?;
-        let sign = match key_type {
+        let (private, public) = match key_type {
             SigningKeyType::Ecdsa => {
-                k256::ecdsa::SigningKey::random(&mut OsRng)
-                    .to_bytes()
-                    .to_vec()
+                let signer =
+                    k256::ecdsa::SigningKey::random(&mut OsRng);
+                let verifier =
+                    signer.verifying_key().to_sec1_bytes().to_vec();
+                (signer.to_bytes().to_vec(), verifier)
             }
             SigningKeyType::Ed25519 => {
-                ed25519_dalek::SigningKey::generate(&mut OsRng)
-                    .to_bytes()
-                    .to_vec()
+                let signer =
+                    ed25519_dalek::SigningKey::generate(&mut OsRng);
+                let verifier =
+                    signer.verifying_key().to_bytes().to_vec();
+                (signer.to_bytes().to_vec(), verifier)
             }
             SigningKeyType::Schnorr => {
-                k256::schnorr::SigningKey::random(&mut OsRng)
-                    .to_bytes()
-                    .to_vec()
+                let signer =
+                    k256::schnorr::SigningKey::random(&mut OsRng);
+                let verifier =
+                    signer.verifying_key().to_bytes().to_vec();
+                (signer.to_bytes().to_vec(), verifier)
             }
         };
 
         let party = PartyKeys {
             encrypt,
-            sign,
+            sign: Keypair::new(private, public),
             key_type,
         };
         keys.push(party);

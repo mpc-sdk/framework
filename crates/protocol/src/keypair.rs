@@ -54,9 +54,7 @@ impl std::str::FromStr for SigningKeyType {
 /// Key pair used by the noise protocol.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Keypair {
-    #[serde(with = "hex::serde")]
     private: Vec<u8>,
-    #[serde(with = "hex::serde")]
     public: Vec<u8>,
 }
 

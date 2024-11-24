@@ -82,11 +82,7 @@ cargo run --bin polysig-keygen -- keypair -f conformance/signers/webassembly-cgg
 cargo run --bin polysig-keygen -- keypair -f conformance/signers/webassembly-cggmp/p2.pem
 cargo run --bin polysig-keygen -- keypair -f conformance/signers/webassembly-cggmp/p3.pem
 
-cargo run --bin polysig-keygen -- keypair -f conformance/signers/node-cggmp/p1.pem
-cargo run --bin polysig-keygen -- keypair -f conformance/signers/node-cggmp/p2.pem
-cargo run --bin polysig-keygen -- keypair -f conformance/signers/node-cggmp/p3.pem
 '''
-dependencies = ["gen-server-key"]
 
 [tasks.test-server]
 script = '''

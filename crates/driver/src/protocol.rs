@@ -13,8 +13,7 @@ pub struct PartyKeys {
     /// Noise transport keypair.
     pub encrypt: Keypair,
     /// Signing key.
-    #[serde(with = "hex::serde")]
-    pub sign: Vec<u8>,
+    pub sign: Keypair,
     /// Type of the signing key.
     #[serde(rename = "type")]
     pub key_type: SigningKeyType,
@@ -170,10 +169,10 @@ where
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PartyOptions<Verifier> {
-    /// Public key of this party.
+    /// Encryption public key for this party.
     #[serde(with = "hex::serde")]
     public_key: Vec<u8>,
-    /// Public keys of all participants including this one.
+    /// Encryption public keys of all participants including this one.
     participants: Vec<Vec<u8>>,
     /// Whether this party is the session initiator.
     ///
