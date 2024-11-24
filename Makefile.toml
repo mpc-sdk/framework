@@ -67,7 +67,7 @@ wasm-pack build --target web --scope polysig --features signers
 
 [tasks.gen-server-key]
 script = '''
-cargo run -- generate-keypair server.pem
+cargo run --bin polysig-keygen -- keypair server.pem
 '''
 
 [tasks.gen-keys]
