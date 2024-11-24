@@ -12,7 +12,6 @@ members = [
   "crates/relay_server", 
 ]
 exclude = [
-  "conformance/signers/node-cggmp/template",
   "conformance/signers/webassembly-cggmp/template"
 ]
 resolver = "2"

@@ -11,7 +11,7 @@ use polysig_driver::{
     },
     synedrion::{SessionId, TestParams, ThresholdKeyShare},
 };
-use polysig_protocol::{generate_keypair, Parameters};
+use polysig_protocol::{Keypair, Parameters};
 use rand::{rngs::OsRng, Rng};
 use std::collections::BTreeSet;
 
@@ -84,7 +84,7 @@ async fn run_dkg(
     let mut keypairs = Vec::new();
 
     for _ in 0..n {
-        let keypair = generate_keypair()?;
+        let keypair = Keypair::generate()?;
         keypairs.push(keypair.clone());
         public_keys.push(keypair.public_key().to_vec());
 
@@ -170,7 +170,7 @@ async fn run_reshare(
     let mut keypairs = Vec::new();
 
     for _ in 0..new_n {
-        let keypair = generate_keypair()?;
+        let keypair = Keypair::generate()?;
         keypairs.push(keypair.clone());
         public_keys.push(keypair.public_key().to_vec());
 
@@ -256,7 +256,7 @@ async fn run_sign(
     let mut keypairs = Vec::new();
 
     for _ in 0..t {
-        let keypair = generate_keypair()?;
+        let keypair = Keypair::generate()?;
         keypairs.push(keypair.clone());
         public_keys.push(keypair.public_key().to_vec());
 

@@ -102,7 +102,7 @@ async fn generate_keypair(
         );
     }
 
-    let keypair = polysig_protocol::generate_keypair()?;
+    let keypair = polysig_protocol::Keypair::generate()?;
     let pem = polysig_protocol::encode_keypair(&keypair);
 
     let mut file = fs::File::create(&path).await?;

@@ -7,7 +7,7 @@ use polysig_client::{
 use polysig_driver::frost::ed25519::{
     KeyShare, Participant, PartyOptions,
 };
-use polysig_protocol::{generate_keypair, Parameters};
+use polysig_protocol::{Keypair, Parameters};
 
 pub(super) async fn run_keygen(
     t: u16,
@@ -32,7 +32,7 @@ pub(super) async fn run_keygen(
     let mut keypairs = Vec::new();
 
     for _ in 0..n {
-        let keypair = generate_keypair()?;
+        let keypair = Keypair::generate()?;
         keypairs.push(keypair.clone());
         public_keys.push(keypair.public_key().to_vec());
 

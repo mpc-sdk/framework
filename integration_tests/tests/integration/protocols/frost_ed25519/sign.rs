@@ -10,7 +10,7 @@ use polysig_driver::{
 };
 
 use ed25519_dalek::{SigningKey, VerifyingKey};
-use polysig_protocol::{generate_keypair, Keypair, Parameters};
+use polysig_protocol::{Keypair, Parameters};
 use std::collections::BTreeMap;
 
 struct SelectedSigners {
@@ -35,7 +35,7 @@ impl SelectedSigners {
     ) -> Result<Self> {
         let mut keypairs = Vec::new();
         for _ in 0..t {
-            let keypair = generate_keypair()?;
+            let keypair = Keypair::generate()?;
             keypairs.push(keypair);
         }
 

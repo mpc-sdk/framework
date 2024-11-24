@@ -12,7 +12,7 @@ use polysig_client::{
     cggmp::{dkg, sign},
     ServerOptions, SessionOptions,
 };
-use polysig_protocol::{generate_keypair, Parameters};
+use polysig_protocol::{Keypair, Parameters};
 use rand::{rngs::OsRng, Rng};
 use std::collections::BTreeSet;
 
@@ -74,7 +74,7 @@ pub(super) async fn run_dkg(
     let mut keypairs = Vec::new();
 
     for _ in 0..n {
-        let keypair = generate_keypair()?;
+        let keypair = Keypair::generate()?;
         keypairs.push(keypair.clone());
         public_keys.push(keypair.public_key().to_vec());
 
@@ -143,7 +143,7 @@ pub(super) async fn sign_t_2(
     let mut keypairs = Vec::new();
 
     for _ in 0..t {
-        let keypair = generate_keypair()?;
+        let keypair = Keypair::generate()?;
         keypairs.push(keypair.clone());
     }
 

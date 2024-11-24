@@ -12,7 +12,7 @@ pub(crate) mod relay_server;
 pub use relay_server::{server_public_key, spawn_server};
 
 use polysig_client::{Client, ClientOptions, EventLoop};
-use polysig_protocol::{generate_keypair, Keypair};
+use polysig_protocol::Keypair;
 
 #[allow(dead_code)]
 pub fn init_tracing() {
@@ -33,7 +33,7 @@ pub async fn new_client<E: From<polysig_client::Error>>(
     server: &str,
     server_public_key: Vec<u8>,
 ) -> Result<(Client, EventLoop, Keypair), E> {
-    let keypair = generate_keypair().map_err(|e| {
+    let keypair = Keypair::generate().map_err(|e| {
         let err = polysig_client::Error::from(e);
         err
     })?;

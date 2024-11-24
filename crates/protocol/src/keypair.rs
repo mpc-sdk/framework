@@ -136,7 +136,7 @@ pub fn decode_keypair(keypair: impl AsRef<[u8]>) -> Result<Keypair> {
 
 #[cfg(test)]
 mod tests {
-    use super::{decode_keypair, encode_keypair, generate_keypair};
+    use super::{decode_keypair, encode_keypair, Keypair};
     use crate::{
         Error, PATTERN, PEM_PATTERN, PEM_PRIVATE, PEM_PUBLIC, TAGLEN,
     };
@@ -145,7 +145,7 @@ mod tests {
 
     #[test]
     fn encode_decode_keypair() -> Result<()> {
-        let keypair = generate_keypair()?;
+        let keypair = Keypair::generate()?;
         let pem = encode_keypair(&keypair);
         let decoded = decode_keypair(&pem)?;
         assert_eq!(keypair.public_key(), decoded.public_key());
