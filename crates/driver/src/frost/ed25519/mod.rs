@@ -1,6 +1,7 @@
 //! Driver for the FROST Ed25519 protocol.
-use ed25519_dalek::{SigningKey, VerifyingKey};
+pub use ed25519_dalek::{SigningKey, VerifyingKey};
 use frost_ed25519::keys::{KeyPackage, PublicKeyPackage};
+use polysig_protocol::pem;
 
 mod dkg;
 mod sign;
@@ -18,3 +19,8 @@ pub type PartyOptions = crate::PartyOptions<VerifyingKey>;
 pub type KeyShare = (KeyPackage, PublicKeyPackage);
 /// Signature for this protocol.
 pub type Signature = frost_ed25519::Signature;
+
+const TAG: &str = "FROST ED25519 KEY SHARE";
+const PEM_VERSION: u16 = 1;
+
+super::core::key_share_pem!();

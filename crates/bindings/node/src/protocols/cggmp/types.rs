@@ -1,7 +1,30 @@
 use napi_derive::napi;
+use polysig_driver::synedrion::{self, ecdsa};
 use polysig_protocol as protocol;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+
+#[cfg(not(debug_assertions))]
+pub(super) type Params = synedrion::ProductionParams;
+#[cfg(debug_assertions)]
+pub(super) type Params = synedrion::TestParams;
+
+pub(super) type ThresholdKeyShare =
+    synedrion::ThresholdKeyShare<Params, ecdsa::VerifyingKey>;
+
+#[napi(object)]
+#[derive(Serialize, Deserialize, Debug)]
+pub struct VerifyingKey {
+    pub bytes: Vec<u8>,
+}
+
+impl TryFrom<VerifyingKey> for ecdsa::VerifyingKey {
+    type Error = polysig_driver::Error;
+
+    fn try_from(value: VerifyingKey) -> Result<Self, Self::Error> {
+        Ok(ecdsa::VerifyingKey::from_sec1_bytes(&value.bytes)?)
+    }
+}
 
 /// Keypair for the noise transport.
 #[napi(object)]
@@ -76,6 +99,61 @@ impl TryFrom<SessionOptions> for polysig_client::SessionOptions {
             server: value.server.into(),
             parameters: value.parameters.into(),
         })
+    }
+}
+
+#[napi(object)]
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PartyOptions {
+    pub public_key: Vec<u8>,
+    pub participants: Vec<Vec<u8>>,
+    pub is_initiator: bool,
+    pub verifiers: Vec<VerifyingKey>,
+}
+
+impl TryFrom<PartyOptions> for polysig_driver::cggmp::PartyOptions {
+    type Error = polysig_driver::Error;
+
+    fn try_from(value: PartyOptions) -> Result<Self, Self::Error> {
+        let mut verifiers = Vec::with_capacity(value.verifiers.len());
+        for verifier in value.verifiers {
+            verifiers.push(verifier.try_into()?);
+        }
+        Ok(polysig_driver::PartyOptions::new(
+            value.public_key,
+            value.participants,
+            value.is_initiator,
+            verifiers,
+        )?)
+    }
+}
+
+#[napi(object)]
+#[derive(Serialize, Deserialize, Debug)]
+pub struct KeyShare {
+    // Encoded as a JSON string as we can't access the inner
+    // state of synedrion::ThresholdKeyShare directly
+    pub inner: String,
+}
+
+impl TryFrom<ThresholdKeyShare> for KeyShare {
+    type Error = polysig_driver::Error;
+
+    fn try_from(
+        value: ThresholdKeyShare,
+    ) -> Result<Self, Self::Error> {
+        Ok(Self {
+            inner: serde_json::to_string(&value)?,
+        })
+    }
+}
+
+impl TryFrom<KeyShare> for ThresholdKeyShare {
+    type Error = polysig_driver::Error;
+
+    fn try_from(value: KeyShare) -> Result<Self, Self::Error> {
+        Ok(serde_json::from_str(&value.inner)?)
     }
 }
 

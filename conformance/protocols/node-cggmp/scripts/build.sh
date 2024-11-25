@@ -9,4 +9,4 @@ cp ../../../conformance/ecdsa.json ./tests || echo "no test keys, run 'cargo mak
 cd ../../../crates/bindings/node
 npm run build-cggmp
 
-cp -f build/cggmp/release/* ../../../conformance/signers/node-cggmp/build/
+cp -f build/cggmp/release/* ../../../conformance/protocols/node-cggmp/build/

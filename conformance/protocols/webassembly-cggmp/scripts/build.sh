@@ -11,4 +11,4 @@ wasm-pack build \
 	--target web \
 	--features cggmp,tracing
 
-cp -rf ./pkg ../../../conformance/signers/webassembly-cggmp/public/
+cp -rf ./pkg ../../../conformance/protocols/webassembly-cggmp/public/

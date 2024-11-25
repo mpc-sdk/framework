@@ -1,5 +1,4 @@
 //! Driver for the CGGMP protocol.
-use serde::{Deserialize, Serialize};
 use synedrion::{
     bip32::DerivationPath,
     ecdsa::{self, SigningKey, VerifyingKey},
@@ -33,30 +32,7 @@ type MessageOut = MessageBundle<ecdsa::Signature>;
 /// Key share.
 pub type KeyShare<P> = ThresholdKeyShare<P, VerifyingKey>;
 
-/// Threshold key share encoded as a PEM.
-///
-/// The actual threshold key share struct internally
-/// uses `BTreeMap` which when passed over the webassembly
-/// bindings will be converted to a Javascript `Map` however
-/// the `Map` type is not natively supported in `JSON.stringify`
-/// and `JSON.parse` without implementing custom replacer and
-/// reviver functions which is cumbersome.
-///
-/// Therefore, to make sharing threshold key shares across the
-/// Javacript/Webassembly bindings more ergonomic we first encode
-/// the key share to JSON and then encode as a PEM.
-///
-/// A version number is included to allow us to recognize changes
-/// in the upstream library `ThresholdKeyShare` struct.
-#[derive(Serialize, Deserialize)]
-pub struct KeySharePem {
-    /// CGGMP protocol version.
-    pub version: u16,
-    /// PEM-encoded key share contents.
-    pub contents: String,
-}
-
-impl<P> TryFrom<&KeyShare<P>> for KeySharePem
+impl<P> TryFrom<&KeyShare<P>> for crate::KeyShare
 where
     P: SchemeParams,
 {
@@ -75,16 +51,22 @@ where
     }
 }
 
-impl<P> TryFrom<&KeySharePem> for KeyShare<P>
+impl<P> TryFrom<&crate::KeyShare> for KeyShare<P>
 where
     P: SchemeParams,
 {
     type Error = polysig_protocol::Error;
 
     fn try_from(
-        value: &KeySharePem,
+        value: &crate::KeyShare,
     ) -> std::result::Result<Self, Self::Error> {
         let key_share = pem::parse(&value.contents)?;
+        if key_share.tag() != TAG {
+            return Err(polysig_protocol::Error::PemTag(
+                TAG.to_string(),
+                key_share.tag().to_string(),
+            ));
+        }
         let key_share: KeyShare<P> =
             serde_json::from_slice(key_share.contents())?;
         Ok(key_share)

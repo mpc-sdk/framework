@@ -1,10 +1,13 @@
 //! Bindings for the CGGMP protocol.
 use polysig_client::SessionOptions;
-use polysig_driver::cggmp::{self, KeySharePem, Participant};
 use polysig_driver::synedrion::{
     self,
     ecdsa::{SigningKey, VerifyingKey},
     SessionId,
+};
+use polysig_driver::{
+    cggmp::{self, Participant},
+    KeyShare,
 };
 use polysig_protocol::hex;
 use serde::{Deserialize, Serialize};
@@ -72,7 +75,7 @@ impl CggmpProtocol {
     ) -> Result<CggmpProtocol, JsError> {
         let options: SessionOptions =
             serde_wasm_bindgen::from_value(options)?;
-        let key_share: KeySharePem =
+        let key_share: KeyShare =
             serde_wasm_bindgen::from_value(key_share)?;
         let key_share: ThresholdKeyShare =
             (&key_share).try_into().map_err(JsError::from)?;
@@ -121,7 +124,7 @@ impl CggmpProtocol {
             )
             .await?;
 
-            let key_share: KeySharePem =
+            let key_share: KeyShare =
                 (&key_share).try_into().map_err(JsError::from)?;
 
             Ok(serde_wasm_bindgen::to_value(&key_share)?)
@@ -193,7 +196,7 @@ impl CggmpProtocol {
         let account_verifying_key: VerifyingKey =
             serde_wasm_bindgen::from_value(account_verifying_key)?;
 
-        let key_share: Option<KeySharePem> =
+        let key_share: Option<KeyShare> =
             serde_wasm_bindgen::from_value(key_share)?;
         let key_share: Option<ThresholdKeyShare> =
             if let Some(key_share) = key_share {

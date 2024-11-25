@@ -4,6 +4,29 @@ use crate::{Error, Result};
 use polysig_protocol::{Keypair, PartyNumber, RoundNumber};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
+/// Generic threshold key share encoded as a PEM.
+///
+/// The actual threshold key share struct internally
+/// uses `BTreeMap` which when passed over the webassembly
+/// bindings will be converted to a Javascript `Map` however
+/// the `Map` type is not natively supported in `JSON.stringify`
+/// and `JSON.parse` without implementing custom replacer and
+/// reviver functions which is cumbersome.
+///
+/// Therefore, to make sharing threshold key shares across the
+/// Javacript/Webassembly bindings more ergonomic we first encode
+/// the key share to JSON and then encode as a PEM.
+///
+/// A version number is included to allow us to recognize changes
+/// in the upstream library `ThresholdKeyShare` struct.
+#[derive(Serialize, Deserialize)]
+pub struct KeyShare {
+    /// Protocol version.
+    pub version: u16,
+    /// PEM-encoded key share contents.
+    pub contents: String,
+}
+
 /// Keys for a protocol participant.
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

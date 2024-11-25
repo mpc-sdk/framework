@@ -10,9 +10,12 @@ use polysig_driver::synedrion::{
 use polysig_protocol::{hex, PATTERN};
 use std::collections::BTreeSet;
 
-use super::types::{
-    KeyShare, Params, PartyOptions, RecoverableSignature,
-    SessionOptions, ThresholdKeyShare, VerifyingKey,
+use super::types::{RecoverableSignature, SessionOptions};
+
+mod types;
+
+use types::{
+    KeyShare, Params, PartyOptions, ThresholdKeyShare, VerifyingKey,
 };
 
 /// CGGMP protocol.
