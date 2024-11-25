@@ -1,4 +1,5 @@
 use napi_derive::napi;
+use polysig_driver;
 use polysig_protocol as protocol;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -21,6 +22,31 @@ impl TryFrom<Keypair> for protocol::Keypair {
             value.public,
             value.r#type.parse()?,
         ))
+    }
+}
+
+#[napi(object)]
+#[derive(Serialize, Deserialize, Debug)]
+pub struct KeyShare {
+    pub version: u16,
+    pub contents: String,
+}
+
+impl From<polysig_driver::KeyShare> for KeyShare {
+    fn from(value: polysig_driver::KeyShare) -> Self {
+        Self {
+            version: value.version,
+            contents: value.contents,
+        }
+    }
+}
+
+impl From<KeyShare> for polysig_driver::KeyShare {
+    fn from(value: KeyShare) -> Self {
+        Self {
+            version: value.version,
+            contents: value.contents,
+        }
     }
 }
 

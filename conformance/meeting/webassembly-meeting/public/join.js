@@ -24,7 +24,6 @@ const userData = {
   associatedData: null,
 };
 
-
 const room = new MeetingRoom(serverUrl);
 const participants = await room.join(
   meetingId, userId, userData);

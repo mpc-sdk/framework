@@ -10,13 +10,11 @@ use polysig_driver::synedrion::{
 use polysig_protocol::{hex, PATTERN};
 use std::collections::BTreeSet;
 
-use super::types::{RecoverableSignature, SessionOptions};
+use super::types::{KeyShare, RecoverableSignature, SessionOptions};
 
 mod types;
 
-use types::{
-    KeyShare, Params, PartyOptions, ThresholdKeyShare, VerifyingKey,
-};
+use types::{Params, PartyOptions, ThresholdKeyShare, VerifyingKey};
 
 /// CGGMP protocol.
 #[napi]

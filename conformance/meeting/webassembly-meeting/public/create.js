@@ -12,9 +12,8 @@ const userIds = ids.map((id) => {
   return userId;
 });
 
-const room = new MeetingRoom(serverUrl);
-
 try {
+  const room = new MeetingRoom(serverUrl);
   const meetingId = await room.create(userIds, userIds[0]);
   const el = document.getElementById("meeting-id");
   el.innerHTML = `
