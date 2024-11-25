@@ -78,3 +78,9 @@ features = [
   "ProgressEvent",
   "WebSocket",
 ]
+
+[profile.release]
+codegen-units = 1
+lto = true
+strip = true
+opt-level = "z"
