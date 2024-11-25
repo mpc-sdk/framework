@@ -1,4 +1,4 @@
-//! FROST Ed25519 protocol.
+//! FROST Secp256k1 Taproot protocol.
 use anyhow::Error;
 use napi::bindgen_prelude::Result;
 use napi_derive::napi;
@@ -8,7 +8,7 @@ use crate::protocols::types::{KeyShare, SessionOptions};
 
 use polysig_driver::{
     self as driver,
-    frost::ed25519::{
+    frost::secp256k1_tr::{
         self as frost, Participant,
         PartyOptions as ProtocolPartyOptions,
         SigningKey as ProtocolSigningKey,
@@ -16,7 +16,7 @@ use polysig_driver::{
     },
 };
 
-use polysig_client::frost::ed25519::{dkg, sign};
+use polysig_client::frost::secp256k1_tr::{dkg, sign};
 
 /// Threshold key share for FROST Ed25519.
 pub type ThresholdKeyShare = frost::KeyShare;
@@ -36,9 +36,10 @@ impl TryFrom<SigningKey> for frost::SigningKey {
     fn try_from(
         value: SigningKey,
     ) -> std::result::Result<Self, Self::Error> {
-        Ok(value.bytes.as_slice().try_into().map_err(Error::new)?)
+        Ok(ProtocolSigningKey::from_bytes(value.bytes.as_slice())
+            .map_err(Error::new)?)
     }
 }
 
 frost_types!();
-frost_impl!(FrostEd25519Protocol);
+frost_impl!(FrostSecp256k1TrProtocol);

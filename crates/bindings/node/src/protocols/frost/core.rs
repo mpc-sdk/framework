@@ -27,7 +27,7 @@ macro_rules! frost_impl {
             pub async fn dkg(
                 options: SessionOptions,
                 party: PartyOptions,
-                signer: Vec<u8>,
+                signer: SigningKey,
             ) -> Result<KeyShare> {
                 let options: polysig_client::SessionOptions =
                     options.try_into().map_err(Error::new)?;
@@ -35,10 +35,7 @@ macro_rules! frost_impl {
                 let party: ProtocolPartyOptions =
                     party.try_into().map_err(Error::new)?;
 
-                let signer: SigningKey = signer
-                    .as_slice()
-                    .try_into()
-                    .map_err(Error::new)?;
+                let signer: ProtocolSigningKey = signer.try_into()?;
                 let verifier = signer.verifying_key().clone();
 
                 let participant =
@@ -58,17 +55,14 @@ macro_rules! frost_impl {
             pub async fn sign(
                 &self,
                 party: PartyOptions,
-                signer: Vec<u8>,
+                signer: SigningKey,
                 identifiers: Vec<Identifier>,
                 message: String,
             ) -> Result<Signature> {
                 let options = self.options.clone();
                 let party: ProtocolPartyOptions =
                     party.try_into().map_err(Error::new)?;
-                let signer: SigningKey = signer
-                    .as_slice()
-                    .try_into()
-                    .map_err(Error::new)?;
+                let signer: ProtocolSigningKey = signer.try_into()?;
                 let verifier = signer.verifying_key().clone();
                 let participant =
                     Participant::new(signer, verifier, party)
@@ -97,6 +91,29 @@ macro_rules! frost_impl {
 
 macro_rules! frost_types {
     () => {
+        #[doc(hidden)]
+        #[napi(object)]
+        #[derive(Serialize, Deserialize, Debug)]
+        pub struct VerifyingKey {
+            pub public_key: Vec<u8>,
+        }
+
+        impl TryFrom<VerifyingKey> for ProtocolVerifyingKey {
+            type Error = napi::Error;
+
+            fn try_from(
+                value: VerifyingKey,
+            ) -> std::result::Result<Self, Self::Error> {
+                let bytes: [u8; 32] = value
+                    .public_key
+                    .as_slice()
+                    .try_into()
+                    .map_err(Error::new)?;
+                Ok(ProtocolVerifyingKey::from_bytes(&bytes)
+                    .map_err(Error::new)?)
+            }
+        }
+
         impl TryFrom<ThresholdKeyShare> for KeyShare {
             type Error = polysig_protocol::Error;
 
