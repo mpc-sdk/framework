@@ -1,4 +1,4 @@
-use super::dkg::run_keygen;
+use super::dkg::run_dkg;
 use super::make_signing_message;
 use anyhow::Result;
 use polysig_client::{
@@ -13,6 +13,11 @@ use ed25519_dalek::{SigningKey, VerifyingKey};
 use polysig_protocol::{Keypair, Parameters};
 use std::collections::BTreeMap;
 
+use crate::protocols::frost_core::sign::frost_dkg_sign;
+
+frost_dkg_sign!();
+
+/*
 struct SelectedSigners {
     /// Keypairs for the noise transport.
     pub keypairs: Vec<Keypair>,
@@ -214,3 +219,4 @@ async fn check_sign(
 
     Ok(())
 }
+*/

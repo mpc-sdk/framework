@@ -1,5 +1,7 @@
 #[cfg(feature = "cggmp")]
 mod cggmp;
+#[cfg(feature = "frost")]
+mod frost_core;
 #[cfg(feature = "frost-ed25519")]
 mod frost_ed25519;
 mod meeting_point;

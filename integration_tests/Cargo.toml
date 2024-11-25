@@ -13,7 +13,8 @@ cggmp = ["polysig-driver/cggmp"]
 ecdsa = ["polysig-driver/ecdsa"]
 eddsa = ["polysig-driver/eddsa"]
 schnorr = ["polysig-driver/schnorr"]
-frost-ed25519 = ["polysig-driver/frost-ed25519"]
+frost-ed25519 = ["frost", "polysig-driver/frost-ed25519"]
+frost = []
 
 [dev-dependencies]
 ed25519-dalek.workspace = true
