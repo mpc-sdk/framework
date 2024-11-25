@@ -1,11 +1,9 @@
 //! FROST Secp256k1 Taproot protocol.
+use crate::protocols::types::{KeyShare, SessionOptions};
 use anyhow::Error;
 use napi::bindgen_prelude::Result;
 use napi_derive::napi;
-use serde::{Deserialize, Serialize};
-
-use crate::protocols::types::{KeyShare, SessionOptions};
-
+use polysig_client::frost::secp256k1_tr::{dkg, sign};
 use polysig_driver::{
     self as driver,
     frost::secp256k1_tr::{
@@ -15,8 +13,7 @@ use polysig_driver::{
         VerifyingKey as ProtocolVerifyingKey,
     },
 };
-
-use polysig_client::frost::secp256k1_tr::{dkg, sign};
+use serde::{Deserialize, Serialize};
 
 /// Threshold key share for FROST Secp256k1 Taproot.
 pub type ThresholdKeyShare = frost::KeyShare;

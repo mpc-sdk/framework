@@ -1,11 +1,9 @@
 //! FROST Ed25519 protocol.
+use crate::protocols::types::{KeyShare, SessionOptions};
 use anyhow::Error;
 use napi::bindgen_prelude::Result;
 use napi_derive::napi;
-use serde::{Deserialize, Serialize};
-
-use crate::protocols::types::{KeyShare, SessionOptions};
-
+use polysig_client::frost::ed25519::{dkg, sign};
 use polysig_driver::{
     self as driver,
     frost::ed25519::{
@@ -15,8 +13,7 @@ use polysig_driver::{
         VerifyingKey as ProtocolVerifyingKey,
     },
 };
-
-use polysig_client::frost::ed25519::{dkg, sign};
+use serde::{Deserialize, Serialize};
 
 /// Threshold key share for FROST Ed25519.
 pub type ThresholdKeyShare = frost::KeyShare;
