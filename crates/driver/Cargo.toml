@@ -16,9 +16,9 @@ cggmp = ["k256", "synedrion", "bip32"]
 ecdsa = ["k256/ecdsa"]
 eddsa = ["ed25519", "ed25519-dalek"]
 frost-ed25519 = ["frost", "dep:frost-ed25519", "ed25519-dalek"]
-frost-secp256k1-tr = ["frost", "dep:frost-secp256k1-tr", "ed25519-dalek"]
+frost-secp256k1-tr = ["frost", "dep:frost-secp256k1-tr", "schnorr"]
 frost = ["frost-core"]
-schnorr = ["ed25519", "k256/schnorr"]
+schnorr = ["k256/schnorr"]
 
 [dependencies]
 polysig-protocol.workspace = true
