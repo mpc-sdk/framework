@@ -47,7 +47,7 @@ struct TestVectors {
 }
 
 #[test]
-fn integration_ecdsa_sign_message() -> Result<()> {
+fn ecdsa_sign_message() -> Result<()> {
     let vectors: TestVectors = serde_json::from_str(TEST_VECTORS)?;
     let spec = vectors.signed_message;
 
@@ -72,7 +72,7 @@ fn integration_ecdsa_sign_message() -> Result<()> {
 }
 
 #[test]
-fn integration_ecdsa_sign_verify_recover() -> Result<()> {
+fn ecdsa_sign_verify_recover() -> Result<()> {
     use sha3::{Digest, Keccak256};
 
     let signing_key = EcdsaSigner::random();

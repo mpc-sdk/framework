@@ -32,7 +32,7 @@ const TEST_VECTORS: &[u8] =
     include_bytes!("./test_vectors/schnorr-bip340.csv");
 
 #[test]
-fn integration_schnorr_sign() -> Result<()> {
+fn schnorr_sign() -> Result<()> {
     let mut rdr = csv::Reader::from_reader(TEST_VECTORS);
     let mut all_tests = Vec::new();
     let mut completed: Vec<u16> = Vec::new();

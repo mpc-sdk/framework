@@ -24,7 +24,7 @@ const TEST_VECTORS: &[u8] =
     include_bytes!("./test_vectors/eddsa.json");
 
 #[test]
-fn integration_eddsa_sign() -> Result<()> {
+fn eddsa_sign() -> Result<()> {
     let vectors: Vec<EddsaTestVector> =
         serde_json::from_slice(TEST_VECTORS)?;
 
