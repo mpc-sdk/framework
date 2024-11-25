@@ -5,10 +5,8 @@ use polysig_client::{
 };
 use polysig_driver::{
     frost::secp256k1_tr::{
-        self as frost, Participant,
-        PartyOptions as ProtocolPartyOptions,
-        SigningKey as ProtocolSigningKey,
-        VerifyingKey as ProtocolVerifyingKey,
+        self as frost, Identifier, Participant, PartyOptions,
+        SigningKey, VerifyingKey,
     },
     KeyShare,
 };
@@ -19,6 +17,8 @@ use wasm_bindgen_futures::future_to_promise;
 /// Threshold key share for FROST Secp256k1 Taproot.
 pub type ThresholdKeyShare = frost::KeyShare;
 
-use super::core::frost_impl;
+fn into_signing_key(value: Vec<u8>) -> Result<SigningKey, JsError> {
+    Ok(SigningKey::from_bytes(&value)?)
+}
 
-frost_impl!(FrostSecp256K1TrProtocol);
+super::core::frost_impl!(FrostSecp256K1TrProtocol);

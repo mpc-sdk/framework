@@ -5,10 +5,8 @@ use polysig_client::{
 };
 use polysig_driver::{
     frost::ed25519::{
-        self as frost, Participant,
-        PartyOptions as ProtocolPartyOptions,
-        SigningKey as ProtocolSigningKey,
-        VerifyingKey as ProtocolVerifyingKey,
+        self as frost, Identifier, Participant, PartyOptions,
+        SigningKey, VerifyingKey,
     },
     KeyShare,
 };
@@ -19,6 +17,10 @@ use wasm_bindgen_futures::future_to_promise;
 /// Threshold key share for FROST Ed25519.
 pub type ThresholdKeyShare = frost::KeyShare;
 
-use super::core::frost_impl;
+fn into_signing_key(value: Vec<u8>) -> Result<SigningKey, JsError> {
+    let bytes: [u8; 32] =
+        value.as_slice().try_into().map_err(JsError::from)?;
+    Ok(SigningKey::from_bytes(&bytes))
+}
 
-frost_impl!(FrostEd25519Protocol);
+super::core::frost_impl!(FrostEd25519Protocol);

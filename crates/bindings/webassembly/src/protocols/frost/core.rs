@@ -24,41 +24,56 @@ macro_rules! frost_impl {
                 Ok(Self { options, key_share })
             }
 
-            /*
-                /// Distributed key generation.
-                pub async fn dkg(
-                    options: SessionOptions,
-                    party: PartyOptions,
-                    signer: SigningKey,
-                    identifiers: Vec<Identifier>,
-                ) -> Result<KeyShare> {
-                    let options: polysig_client::SessionOptions =
-                        options.try_into().map_err(Error::new)?;
+            /// Distributed key generation.
+            pub async fn dkg(
+                options: JsValue,
+                party: JsValue,
+                signer: Vec<u8>,
+                identifiers: Vec<u16>,
+            ) -> Result<JsValue, JsError> {
+                let options: SessionOptions =
+                    serde_wasm_bindgen::from_value(options)?;
 
-                    let party: ProtocolPartyOptions =
-                        party.try_into().map_err(Error::new)?;
+                let party: PartyOptions =
+                    serde_wasm_bindgen::from_value(party)?;
 
-                    let signer: ProtocolSigningKey = signer.try_into()?;
-                    let verifier = signer.verifying_key().clone();
+                let signer: SigningKey = into_signing_key(signer)?;
+                let verifier = signer.verifying_key().clone();
 
-                    let participant =
-                        Participant::new(signer, verifier, party)
-                            .map_err(Error::new)?;
+                let participant =
+                    Participant::new(signer, verifier, party)
+                        .map_err(JsError::from)?;
 
-                    let mut ids = Vec::with_capacity(identifiers.len());
-                    for id in identifiers {
-                        ids.push(id.try_into()?);
-                    }
-
-                    let key_share = dkg(options, participant, ids)
-                        .await
-                        .map_err(Error::new)?;
-
-                    let key_share: KeyShare =
-                        key_share.try_into().map_err(Error::new)?;
-                    Ok(key_share)
+                let mut ids: Vec<Identifier> =
+                    Vec::with_capacity(identifiers.len());
+                for id in identifiers {
+                    ids.push(id.try_into()?);
                 }
 
+                let fut = async move {
+                    let key_share =
+                        dkg(options, participant, ids).await?;
+
+                    let key_share: KeyShare = (&key_share)
+                        .try_into()
+                        .map_err(JsError::from)?;
+
+                    Ok(serde_wasm_bindgen::to_value(&key_share)?)
+                };
+                Ok(future_to_promise(fut).into())
+
+                /*
+                let key_share = dkg(options, participant, ids)
+                    .await
+                    .map_err(Error::new)?;
+
+                let key_share: KeyShare =
+                    key_share.try_into().map_err(Error::new)?;
+                Ok(key_share)
+                */
+            }
+
+            /*
                 /// Sign a message.
                 pub async fn sign(
                     &self,
