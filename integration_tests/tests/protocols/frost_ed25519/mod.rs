@@ -1,7 +1,5 @@
 use crate::test_utils::{server_public_key, spawn_server};
 use anyhow::Result;
-use ed25519_dalek::{SigningKey, VerifyingKey};
-use rand::rngs::OsRng;
 
 mod dkg;
 mod sign;
