@@ -150,7 +150,7 @@ fn generate_keypair(
     }
 
     let keypair = Keypair::generate()?;
-    let pem = polysig_protocol::encode_keypair(&keypair);
+    let pem = keypair.encode_pem();
 
     let mut file = fs::File::create(&path)?;
     file.write_all(pem.as_bytes())?;

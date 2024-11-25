@@ -140,49 +140,9 @@ impl Keypair {
     }
 }
 
-/// Encode a keypair into a PEM-encoded string.
-#[deprecated]
-pub fn encode_keypair(keypair: &Keypair) -> String {
-    let pattern_pem = Pem::new(PEM_PATTERN, PATTERN.as_bytes());
-    let public_pem =
-        Pem::new(PEM_PUBLIC, keypair.public_key().to_vec());
-    let private_pem =
-        Pem::new(PEM_PRIVATE, keypair.private_key().to_vec());
-    pem::encode_many(&[pattern_pem, public_pem, private_pem])
-}
-
-/// Decode from a PEM-encoded string into a keypair.
-#[deprecated]
-pub fn decode_keypair(keypair: impl AsRef<[u8]>) -> Result<Keypair> {
-    let mut pems = pem::parse_many(keypair)?;
-    if pems.len() == 3 {
-        let (first, second, third) =
-            (pems.remove(0), pems.remove(0), pems.remove(0));
-        if (PEM_PATTERN, PEM_PUBLIC, PEM_PRIVATE)
-            == (first.tag(), second.tag(), third.tag())
-        {
-            if first.into_contents() != PATTERN.as_bytes() {
-                return Err(Error::PatternMismatch(
-                    PATTERN.to_string(),
-                ));
-            }
-
-            Ok(Keypair {
-                public: second.into_contents(),
-                private: third.into_contents(),
-                key_type: KeyType::Noise,
-            })
-        } else {
-            Err(Error::BadKeypairPem)
-        }
-    } else {
-        Err(Error::BadKeypairPem)
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{decode_keypair, encode_keypair, Keypair};
+    use super::Keypair;
     use crate::{
         Error, PATTERN, PEM_PATTERN, PEM_PRIVATE, PEM_PUBLIC, TAGLEN,
     };
@@ -192,8 +152,8 @@ mod tests {
     #[test]
     fn encode_decode_keypair() -> Result<()> {
         let keypair = Keypair::generate()?;
-        let pem = encode_keypair(&keypair);
-        let decoded = decode_keypair(&pem)?;
+        let pem = keypair.encode_pem();
+        let decoded = Keypair::decode_pem(&pem)?;
         assert_eq!(keypair.public_key(), decoded.public_key());
         assert_eq!(keypair.private_key(), decoded.private_key());
         Ok(())
@@ -203,7 +163,7 @@ mod tests {
     fn decode_keypair_wrong_length() -> Result<()> {
         let public_pem = Pem::new("INVALID TAG", vec![0; 32]);
         let pem = pem::encode_many(&[public_pem]);
-        let result = decode_keypair(&pem);
+        let result = Keypair::decode_pem(&pem);
         assert!(matches!(result, Err(Error::BadKeypairPem)));
         Ok(())
     }
@@ -215,7 +175,7 @@ mod tests {
         let private_pem = Pem::new(PEM_PRIVATE, vec![0; 32]);
         let pem =
             pem::encode_many(&[pattern_pem, private_pem, public_pem]);
-        let result = decode_keypair(&pem);
+        let result = Keypair::decode_pem(&pem);
         assert!(matches!(result, Err(Error::BadKeypairPem)));
         Ok(())
     }
@@ -227,7 +187,7 @@ mod tests {
         let private_pem = Pem::new(PEM_PRIVATE, vec![0; 32]);
         let pem =
             pem::encode_many(&[pattern_pem, public_pem, private_pem]);
-        let result = decode_keypair(&pem);
+        let result = Keypair::decode_pem(&pem);
         assert!(matches!(result, Err(Error::PatternMismatch(_))));
         Ok(())
     }

@@ -4,7 +4,7 @@ use axum_server::Handle;
 use std::{net::SocketAddr, thread};
 use tokio::{fs, sync::oneshot};
 
-use polysig_protocol::decode_keypair;
+use polysig_protocol::Keypair;
 
 use polysig_relay_server::{RelayServer, ServerConfig};
 
@@ -13,7 +13,7 @@ const ADDR: &str = "127.0.0.1:0";
 /// Get the public key for the test server.
 pub async fn server_public_key() -> Result<Vec<u8>> {
     let contents = fs::read_to_string("tests/test.pem").await?;
-    let keypair = decode_keypair(&contents)?;
+    let keypair = Keypair::decode_pem(&contents)?;
     Ok(keypair.public_key().to_vec())
 }
 

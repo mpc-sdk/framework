@@ -211,7 +211,7 @@ impl CggmpProtocol {
         )
         .map_err(Error::new)?;
         let public_key = hex::encode(keypair.public_key());
-        let pem = polysig_protocol::encode_keypair(&keypair);
+        let pem = keypair.encode_pem();
         Ok(env.to_js_value(&(pem, public_key)).map_err(Error::new)?)
     }
 }
