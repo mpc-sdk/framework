@@ -81,7 +81,7 @@ cargo run --bin polysig-keygen -- test-keys -f -n 10 -k schnorr conformance/schn
 
 [tasks.test-server]
 script = '''
-cargo run -- start -b 127.0.0.1:8008 integration_tests/tests/config.toml
+cargo run -- -b 127.0.0.1:8008 integration_tests/tests/config.toml
 '''
 
 [tasks.genhtml]
