@@ -80,6 +80,7 @@ macro_rules! frost_dkg_impl {
         pub async fn dkg(
             options: SessionOptions,
             participant: Participant,
+            identifiers: Vec<Identifier>,
         ) -> crate::Result<KeyShare> {
             let params = options.parameters;
 
@@ -115,12 +116,14 @@ macro_rules! frost_dkg_impl {
             let (transport, session) =
                 wait_for_session(&mut stream, client_session).await?;
 
+            /*
             let mut identifiers: Vec<Identifier> =
                 Vec::with_capacity(params.parties.into());
             for index in 1..=params.parties {
                 identifiers
                     .push(index.try_into().map_err(Error::from)?);
             }
+            */
 
             let key_gen = dkg::new_driver(
                 transport,

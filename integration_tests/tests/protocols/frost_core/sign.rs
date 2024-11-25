@@ -66,28 +66,57 @@ macro_rules! frost_dkg_sign {
             server: &str,
             server_public_key: Vec<u8>,
         ) -> Result<()> {
-            run_dkg_sign(2, 3, server, server_public_key, &[0, 2])
-                .await
+            let n = 3;
+            let t = 2;
+            let identifiers: Vec<Identifier> =
+                (1..=n).map(|i| i.try_into().unwrap()).collect();
+
+            run_dkg_sign(
+                t,
+                n,
+                server,
+                server_public_key,
+                &[0, 2],
+                identifiers,
+            )
+            .await
         }
 
         pub async fn run_dkg_sign_3_5(
             server: &str,
             server_public_key: Vec<u8>,
         ) -> Result<()> {
-            run_dkg_sign(3, 5, server, server_public_key, &[0, 1, 4])
-                .await
+            let n = 5;
+            let t = 3;
+            let identifiers: Vec<Identifier> =
+                (1..=n).map(|i| i.try_into().unwrap()).collect();
+
+            run_dkg_sign(
+                t,
+                n,
+                server,
+                server_public_key,
+                &[0, 1, 4],
+                identifiers,
+            )
+            .await
         }
 
         pub async fn run_dkg_sign_5_9(
             server: &str,
             server_public_key: Vec<u8>,
         ) -> Result<()> {
+            let n = 9;
+            let t = 5;
+            let identifiers: Vec<Identifier> =
+                (1..=n).map(|i| i.try_into().unwrap()).collect();
             run_dkg_sign(
-                5,
-                9,
+                t,
+                n,
                 server,
                 server_public_key,
                 &[0, 1, 4, 6, 8],
+                identifiers,
             )
             .await
         }
@@ -98,9 +127,16 @@ macro_rules! frost_dkg_sign {
             server: &str,
             server_public_key: Vec<u8>,
             indices: &[usize],
+            identifiers: Vec<Identifier>,
         ) -> Result<()> {
-            let (server, key_shares, signers) =
-                run_dkg(t, n, server, server_public_key).await?;
+            let (server, key_shares, signers) = run_dkg(
+                t,
+                n,
+                server,
+                server_public_key,
+                identifiers.clone(),
+            )
+            .await?;
 
             // println!("dkg completed {}", key_shares.len());
 

@@ -4,7 +4,7 @@ use polysig_client::{
     frost::ed25519::dkg, ServerOptions, SessionOptions,
 };
 use polysig_driver::frost::ed25519::{
-    KeyShare, Participant, PartyOptions,
+    Identifier, KeyShare, Participant, PartyOptions,
 };
 use polysig_protocol::{Keypair, Parameters};
 

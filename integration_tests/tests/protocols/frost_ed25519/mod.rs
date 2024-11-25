@@ -1,6 +1,7 @@
 use crate::test_utils::{server_public_key, spawn_server};
 use anyhow::Result;
 use ed25519_dalek::{SigningKey, VerifyingKey};
+use polysig_driver::frost_ed25519::Identifier;
 use rand::rngs::OsRng;
 
 mod dkg;
@@ -33,9 +34,13 @@ async fn frost_ed25519_dkg_2_3() -> Result<()> {
     let t = 2;
     let n = 3;
 
+    let identifiers: Vec<Identifier> =
+        (1..=n).map(|i| i.try_into().unwrap()).collect();
+
     let server_public_key = server_public_key().await?;
     let (_, key_shares, _) =
-        dkg::run_dkg(t, n, &server, server_public_key).await?;
+        dkg::run_dkg(t, n, &server, server_public_key, identifiers)
+            .await?;
 
     assert_eq!(n as usize, key_shares.len());
 

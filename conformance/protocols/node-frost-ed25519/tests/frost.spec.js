@@ -27,6 +27,10 @@ console.log("FROST Ed25519, begin dkg...");
 
 let tasks = [];
 
+const identifiers = Array.apply(null, Array(parameters.parties)).map((_, i) => {
+  return {id: i + 1};
+});
+
 for (let i = 0;i < parameters.parties;i++) {
   tasks.push(new Promise((resolve, reject) => {
     const worker = new Worker(dkgScript, {
@@ -34,6 +38,7 @@ for (let i = 0;i < parameters.parties;i++) {
         partyIndex: i,
         server,
         parameters,
+        identifiers,
       }
     });
 
@@ -61,11 +66,6 @@ const signers = [
   keyShares[0].keyShare,
   keyShares[2].keyShare,
 ];
-const identifiers = indices.map((index) => {
-  const id = new Uint8Array(32);
-  id[0] = index + 1;
-  return {id: Array.from(id)};
-});
 
 signers.forEach((keyShare, index) => {
   const partyIndex = indices[index];
@@ -76,7 +76,7 @@ signers.forEach((keyShare, index) => {
         partyIndex,
         indices,
         server,
-        identifiers,
+        identifiers: indices.map((i) => identifiers[i]),
         parameters,
         keyShare,
         message,

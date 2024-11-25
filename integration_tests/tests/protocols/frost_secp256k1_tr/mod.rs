@@ -1,6 +1,6 @@
 use crate::test_utils::{server_public_key, spawn_server};
 use anyhow::Result;
-
+use polysig_driver::frost_secp256k1_tr::Identifier;
 use polysig_driver::k256::schnorr::{SigningKey, VerifyingKey};
 use rand::rngs::OsRng;
 
@@ -34,9 +34,13 @@ async fn frost_secp256k1_tr_dkg_2_3() -> Result<()> {
     let t = 2;
     let n = 3;
 
+    let identifiers: Vec<Identifier> =
+        (1..=n).map(|i| i.try_into().unwrap()).collect();
+
     let server_public_key = server_public_key().await?;
     let (_, key_shares, _) =
-        dkg::run_dkg(t, n, &server, server_public_key).await?;
+        dkg::run_dkg(t, n, &server, server_public_key, identifiers)
+            .await?;
 
     assert_eq!(n as usize, key_shares.len());
 

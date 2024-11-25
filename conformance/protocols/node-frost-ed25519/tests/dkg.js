@@ -5,7 +5,7 @@ import {
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const polysig = require('../build/polysig.node');
-const { partyIndex, server, parameters } = workerData;
+const { partyIndex, server, parameters, identifiers } = workerData;
 const partyKeys = require("./ed25519.json").slice(0, parameters.parties);
 
 const { FrostEd25519Protocol: FrostProtocol } = polysig;
@@ -39,6 +39,7 @@ const keyShare = await FrostProtocol.dkg(
   options,
   party,
   signer,
+  identifiers,
 );
 
 await parentPort.postMessage({partyIndex, keyShare});

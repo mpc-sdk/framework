@@ -10,7 +10,7 @@ use crate::{
         dkg::frost_dkg_impl, sign::frost_sign_impl,
     },
     wait_for_close, wait_for_driver, wait_for_session,
-    wait_for_session_finish, Error, NetworkTransport, SessionHandler,
+    wait_for_session_finish, NetworkTransport, SessionHandler,
     SessionInitiator, SessionOptions, SessionParticipant, Transport,
 };
 

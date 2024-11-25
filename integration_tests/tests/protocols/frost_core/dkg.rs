@@ -5,6 +5,7 @@ macro_rules! frost_dkg {
             n: u16,
             server: &str,
             server_public_key: Vec<u8>,
+            identifiers: Vec<Identifier>,
         ) -> Result<(ServerOptions, Vec<KeyShare>, Vec<SigningKey>)> {
             let params = Parameters {
                 parties: n,
@@ -55,10 +56,12 @@ macro_rules! frost_dkg {
                 )?;
 
                 let verifier = signer.verifying_key().clone();
+                let ids = identifiers.clone();
                 tasks.push(tokio::task::spawn(async move {
                     let key_share = dkg(
                         opts,
                         Participant::new(signer, verifier, party)?,
+                        ids,
                     )
                     .await?;
                     Ok::<_, anyhow::Error>(key_share)

@@ -28,6 +28,7 @@ macro_rules! frost_impl {
                 options: SessionOptions,
                 party: PartyOptions,
                 signer: SigningKey,
+                identifiers: Vec<Identifier>,
             ) -> Result<KeyShare> {
                 let options: polysig_client::SessionOptions =
                     options.try_into().map_err(Error::new)?;
@@ -41,7 +42,13 @@ macro_rules! frost_impl {
                 let participant =
                     Participant::new(signer, verifier, party)
                         .map_err(Error::new)?;
-                let key_share = dkg(options, participant)
+
+                let mut ids = Vec::with_capacity(identifiers.len());
+                for id in identifiers {
+                    ids.push(id.try_into()?);
+                }
+
+                let key_share = dkg(options, participant, ids)
                     .await
                     .map_err(Error::new)?;
 
@@ -176,7 +183,7 @@ macro_rules! frost_types {
         #[derive(Serialize, Deserialize, Debug)]
         #[serde(rename_all = "camelCase")]
         pub struct Identifier {
-            pub id: Vec<u8>,
+            pub id: u16,
         }
 
         impl TryFrom<Identifier> for frost::Identifier {
@@ -185,17 +192,7 @@ macro_rules! frost_types {
             fn try_from(
                 value: Identifier,
             ) -> std::result::Result<Self, Self::Error> {
-                let identifier =
-                    frost::Identifier::deserialize(&value.id)
-                        .map_err(Error::new)?;
-                Ok(identifier)
-            }
-        }
-
-        impl From<frost::Identifier> for Identifier {
-            fn from(value: frost::Identifier) -> Self {
-                let id = value.serialize();
-                Self { id }
+                Ok(value.id.try_into().map_err(Error::new)?)
             }
         }
 
