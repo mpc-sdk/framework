@@ -47,7 +47,7 @@ schnorr = ["polysig-driver/schnorr"]
 crate-type = ["cdylib"]
 
 [dependencies]
-polysig-client.workspace = true
+polysig-client = { workspace = true, optional = true }
 polysig-driver.workspace = true
 polysig-protocol.workspace = true
 anyhow.workspace = true
