@@ -17,8 +17,12 @@ pub type PartyOptions = crate::PartyOptions<VerifyingKey>;
 
 /// Key share for this protocol.
 pub type KeyShare = (KeyPackage, PublicKeyPackage);
+
 /// Signature for this protocol.
 pub type Signature = frost_ed25519::Signature;
+
+/// Identifier for this protocol.
+pub type Identifier = frost_ed25519::Identifier;
 
 const TAG: &str = "FROST ED25519 KEY SHARE";
 const PEM_VERSION: u16 = 1;

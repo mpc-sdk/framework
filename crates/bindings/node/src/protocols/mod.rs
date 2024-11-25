@@ -1,8 +1,8 @@
 #[cfg(feature = "cggmp")]
 pub mod cggmp;
 
-// #[cfg(feature = "frost")]
-// pub mod frost;
+#[cfg(feature = "frost")]
+pub mod frost;
 
 pub mod meeting;
 

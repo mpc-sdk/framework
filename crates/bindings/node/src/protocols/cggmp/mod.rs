@@ -1,6 +1,6 @@
 //! Bindings for the CGGMP protocol.
 use anyhow::Error;
-use napi::bindgen_prelude::*;
+use napi::bindgen_prelude::{Env, JsError, Result};
 use napi_derive::napi;
 use polysig_driver::cggmp::Participant;
 use polysig_driver::synedrion::{

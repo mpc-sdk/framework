@@ -19,6 +19,8 @@ pub type PartyOptions = crate::PartyOptions<VerifyingKey>;
 pub type KeyShare = (KeyPackage, PublicKeyPackage);
 /// Signature for this protocol.
 pub type Signature = frost_secp256k1_tr::Signature;
+/// Identifier for this protocol.
+pub type Identifier = frost_secp256k1_tr::Identifier;
 
 const TAG: &str = "FROST SECP256K1-TR KEY SHARE";
 const PEM_VERSION: u16 = 1;

@@ -27,13 +27,12 @@ macro_rules! frost_impl {
             pub async fn dkg(
                 options: SessionOptions,
                 party: PartyOptions,
-                session_id_seed: Vec<u8>,
                 signer: Vec<u8>,
             ) -> Result<KeyShare> {
                 let options: polysig_client::SessionOptions =
                     options.try_into().map_err(Error::new)?;
 
-                let party: polysig_driver::cggmp::PartyOptions =
+                let party: ProtocolPartyOptions =
                     party.try_into().map_err(Error::new)?;
 
                 let signer: SigningKey = signer
@@ -52,6 +51,45 @@ macro_rules! frost_impl {
                 let key_share: KeyShare =
                     key_share.try_into().map_err(Error::new)?;
                 Ok(key_share)
+            }
+
+            /// Sign a message.
+            #[napi]
+            pub async fn sign(
+                &self,
+                party: PartyOptions,
+                signer: Vec<u8>,
+                identifiers: Vec<Identifier>,
+                message: String,
+            ) -> Result<Signature> {
+                let options = self.options.clone();
+                let party: ProtocolPartyOptions =
+                    party.try_into().map_err(Error::new)?;
+                let signer: SigningKey = signer
+                    .as_slice()
+                    .try_into()
+                    .map_err(Error::new)?;
+                let verifier = signer.verifying_key().clone();
+                let participant =
+                    Participant::new(signer, verifier, party)
+                        .map_err(Error::new)?;
+
+                let mut ids = Vec::with_capacity(identifiers.len());
+                for id in identifiers {
+                    ids.push(id.try_into()?);
+                }
+
+                let signature = sign(
+                    options,
+                    participant,
+                    ids,
+                    self.key_share.clone(),
+                    message.as_bytes().to_vec(),
+                )
+                .await
+                .map_err(Error::new)?;
+
+                Ok(signature.try_into()?)
             }
         }
     };

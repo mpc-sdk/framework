@@ -26,7 +26,7 @@ impl TryFrom<Keypair> for protocol::Keypair {
 }
 
 #[napi(object)]
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug)]
 pub struct KeyShare {
     pub version: u16,
     pub contents: String,
@@ -51,7 +51,7 @@ impl From<KeyShare> for polysig_driver::KeyShare {
 }
 
 #[napi(object)]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct Parameters {
     pub parties: u16,
     pub threshold: u16,
@@ -86,7 +86,7 @@ impl From<ServerOptions> for polysig_client::ServerOptions {
 }
 
 #[napi(object)]
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug)]
 pub struct SessionOptions {
     pub keypair: Keypair,
     pub server: ServerOptions,

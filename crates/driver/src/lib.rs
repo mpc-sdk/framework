@@ -36,6 +36,9 @@ pub use frost_secp256k1_tr;
 ))]
 pub use k256;
 
+#[cfg(any(feature = "eddsa", feature = "frost-ed25519"))]
+pub use ed25519_dalek;
+
 pub use error::Error;
 
 /// Result type for the driver library.
