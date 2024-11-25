@@ -5,7 +5,7 @@ members = [
   "crates/client",
   "crates/command_line",
   "crates/driver",
-  "integration_tests",
+  "crates/integration_tests",
   "crates/meeting_server",
   "crates/polysig",
   "crates/protocol",

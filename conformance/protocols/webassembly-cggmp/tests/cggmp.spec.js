@@ -17,7 +17,7 @@ function fromHexString(hex) {
 const dkgSessionIdSeed = "ee507039fb7b14bf8190f300c66732110b401a68ba8e0d3fa464809972d33489";
 const signSessionIdSeed = "289e497ac7c2640adda5bf9bf0e9a05833f1807d1c4dce3f73e3483513bfa25e";
 const serverKey = fs.readFileSync(
-  "../../../integration_tests/tests/server_public_key.txt", "utf8");
+  "../../../crates/integration_tests/tests/server_public_key.txt", "utf8");
 const message = "a3e6e406aeb475f43aa762bb752a8f9d57b7fa327a2a53c7ae00b13f8d116b38";
 
 const server = {

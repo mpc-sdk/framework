@@ -12,7 +12,7 @@ function fromHexString(hex) {
 }
 
 const serverKey = fs.readFileSync(
-  "../../../integration_tests/tests/server_public_key.txt", "utf8");
+  "../../../crates/integration_tests/tests/server_public_key.txt", "utf8");
 
 const server = {
   serverUrl: "ws://127.0.0.1:8008",
