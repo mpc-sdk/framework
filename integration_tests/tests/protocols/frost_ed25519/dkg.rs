@@ -1,4 +1,3 @@
-use super::make_signers;
 use anyhow::Result;
 use ed25519_dalek::SigningKey;
 use polysig_client::{
@@ -9,6 +8,6 @@ use polysig_driver::frost::ed25519::{
 };
 use polysig_protocol::{Keypair, Parameters};
 
-use crate::protocols::frost_core::dkg::frost_dkg;
+use crate::protocols::frost_core::{dkg::frost_dkg, make_signers};
 
 frost_dkg!();
