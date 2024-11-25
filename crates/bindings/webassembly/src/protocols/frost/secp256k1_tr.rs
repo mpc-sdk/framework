@@ -6,11 +6,10 @@ use polysig_client::{
 use polysig_driver::{
     frost::secp256k1_tr::{
         self as frost, Identifier, Participant, PartyOptions,
-        SigningKey, VerifyingKey,
+        SigningKey,
     },
     KeyShare,
 };
-use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::future_to_promise;
 
