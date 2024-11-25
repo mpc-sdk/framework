@@ -17,7 +17,7 @@ ecdsa = ["k256/ecdsa"]
 eddsa = ["ed25519", "ed25519-dalek"]
 frost-ed25519 = ["frost", "dep:frost-ed25519", "ed25519-dalek"]
 frost-secp256k1-tr = ["frost", "dep:frost-secp256k1-tr", "schnorr"]
-frost = ["frost-core"]
+frost = []
 schnorr = ["k256/schnorr"]
 
 [dependencies]
@@ -27,7 +27,6 @@ serde.workspace = true
 serde_json.workspace = true
 ed25519 = { workspace = true, optional = true }
 ed25519-dalek = { workspace = true, optional = true }
-frost-core = { workspace = true, optional = true }
 frost-ed25519 = { workspace = true, optional = true }
 frost-secp256k1-tr = { workspace = true, optional = true }
 synedrion = { workspace = true, optional = true }

@@ -2190,7 +2190,6 @@ dependencies = [
  "bip32",
  "ed25519",
  "ed25519-dalek",
- "frost-core 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "frost-ed25519",
  "frost-secp256k1-tr",
  "futures",
