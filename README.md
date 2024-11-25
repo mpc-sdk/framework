@@ -10,7 +10,7 @@ The library includes bindings for Webassembly to be used in the browser and for 
 
 ## Features
 
-* `full` Enable all protocols and signers (default).
+* `full` Enable all protocols and signers.
 * `protocols` Enable all protocols.
 * `signers` Enable all signers.
 

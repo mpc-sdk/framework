@@ -107,38 +107,6 @@ impl TryFrom<SessionOptions> for polysig_client::SessionOptions {
 
 #[napi(object)]
 #[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct RecoverableSignature {
-    pub bytes: Vec<u8>,
-    pub recovery_id: u8,
-}
-
-impl From<RecoverableSignature>
-    for polysig_driver::recoverable_signature::RecoverableSignature
-{
-    fn from(value: RecoverableSignature) -> Self {
-        Self {
-            bytes: value.bytes,
-            recovery_id: value.recovery_id,
-        }
-    }
-}
-
-impl From<polysig_driver::recoverable_signature::RecoverableSignature>
-    for RecoverableSignature
-{
-    fn from(
-        value: polysig_driver::recoverable_signature::RecoverableSignature,
-    ) -> Self {
-        Self {
-            bytes: value.bytes,
-            recovery_id: value.recovery_id,
-        }
-    }
-}
-
-#[napi(object)]
-#[derive(Serialize, Deserialize, Debug)]
 pub struct UserId {
     /// User identifier.
     pub id: Vec<u8>,

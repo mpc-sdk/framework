@@ -19,8 +19,8 @@ frost = []
 
 [dev-dependencies]
 ed25519-dalek.workspace = true
-polysig-client.workspace = true
-polysig-driver.workspace = true
+polysig-client = { workspace = true, features = ["full"] }
+polysig-driver = { workspace = true, features = ["full"] }
 polysig-protocol.workspace = true
 polysig-relay-server.workspace = true
 polysig-meeting-server.workspace = true

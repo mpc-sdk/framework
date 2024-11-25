@@ -18,7 +18,7 @@ use polysig_driver::{
 
 use polysig_client::frost::secp256k1_tr::{dkg, sign};
 
-/// Threshold key share for FROST Ed25519.
+/// Threshold key share for FROST Secp256k1 Taproot.
 pub type ThresholdKeyShare = frost::KeyShare;
 
 use super::core::{frost_impl, frost_types};
@@ -42,4 +42,4 @@ impl TryFrom<SigningKey> for frost::SigningKey {
 }
 
 frost_types!();
-frost_impl!(FrostSecp256k1TrProtocol);
+frost_impl!(FrostSecp256K1TrProtocol);

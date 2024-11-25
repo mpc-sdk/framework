@@ -8,7 +8,6 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/polysig/polysig"
 
 [features]
-default = ["full"]
 full = ["signers", "protocols"]
 signers = ["ecdsa", "eddsa", "schnorr"]
 protocols = ["cggmp", "frost-ed25519", "frost-secp256k1-tr"]
