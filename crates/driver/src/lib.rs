@@ -20,13 +20,21 @@ mod protocol;
 pub use protocol::*;
 
 #[cfg(feature = "cggmp")]
-pub use synedrion::{self, bip32, k256};
+pub use synedrion::{self, bip32};
 
 #[cfg(feature = "frost-ed25519")]
 pub use frost_ed25519;
 
 #[cfg(feature = "frost-secp256k1-tr")]
 pub use frost_secp256k1_tr;
+
+#[cfg(any(
+    feature = "cggmp",
+    feature = "ecdsa",
+    feature = "schnorr",
+    feature = "frost-secp256k1-tr"
+))]
+pub use k256;
 
 pub use error::Error;
 

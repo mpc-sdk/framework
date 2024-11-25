@@ -1,10 +1,10 @@
 use anyhow::Result;
-use ed25519_dalek::SigningKey;
 use polysig_client::{
-    frost::ed25519::dkg, ServerOptions, SessionOptions,
+    frost::secp256k1_tr::dkg, ServerOptions, SessionOptions,
 };
-use polysig_driver::frost::ed25519::{
-    KeyShare, Participant, PartyOptions,
+use polysig_driver::{
+    frost::secp256k1_tr::{KeyShare, Participant, PartyOptions},
+    k256::schnorr::SigningKey,
 };
 use polysig_protocol::{Keypair, Parameters};
 

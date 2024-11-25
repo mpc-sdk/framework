@@ -1,6 +1,7 @@
 use crate::test_utils::{server_public_key, spawn_server};
 use anyhow::Result;
-use ed25519_dalek::{SigningKey, VerifyingKey};
+
+use polysig_driver::k256::schnorr::{SigningKey, VerifyingKey};
 use rand::rngs::OsRng;
 
 mod dkg;
@@ -10,7 +11,7 @@ pub fn make_signers(
     num_parties: usize,
 ) -> (Vec<SigningKey>, Vec<VerifyingKey>) {
     let signers = (0..num_parties)
-        .map(|_| SigningKey::generate(&mut OsRng))
+        .map(|_| SigningKey::random(&mut OsRng))
         .collect::<Vec<_>>();
     let verifiers = signers
         .iter()
@@ -21,7 +22,7 @@ pub fn make_signers(
 
 /// FROST distributed key generation.
 #[tokio::test]
-async fn frost_ed25519_dkg_2_3() -> Result<()> {
+async fn frost_secp256k1_tr_dkg_2_3() -> Result<()> {
     // crate::test_utils::init_tracing();
     //
 
@@ -44,7 +45,7 @@ async fn frost_ed25519_dkg_2_3() -> Result<()> {
 
 /// FROST DKG followed by signing (2-of-3).
 #[tokio::test]
-async fn frost_ed25519_dkg_sign_2_3() -> Result<()> {
+async fn frost_secp256k1_tr_dkg_sign_2_3() -> Result<()> {
     // crate::test_utils::init_tracing();
 
     let (rx, _handle) = spawn_server()?;
@@ -59,7 +60,7 @@ async fn frost_ed25519_dkg_sign_2_3() -> Result<()> {
 
 /// FROST DKG followed by signing (3-of-5).
 #[tokio::test]
-async fn frost_ed25519_dkg_sign_3_5() -> Result<()> {
+async fn frost_secp256k1_tr_dkg_sign_3_5() -> Result<()> {
     // crate::test_utils::init_tracing();
 
     let (rx, _handle) = spawn_server()?;
@@ -74,7 +75,7 @@ async fn frost_ed25519_dkg_sign_3_5() -> Result<()> {
 
 /// FROST DKG followed by signing (5-of-9).
 #[tokio::test]
-async fn frost_ed25519_dkg_sign_5_9() -> Result<()> {
+async fn frost_secp256k1_tr_dkg_sign_5_9() -> Result<()> {
     // crate::test_utils::init_tracing();
 
     let (rx, _handle) = spawn_server()?;
