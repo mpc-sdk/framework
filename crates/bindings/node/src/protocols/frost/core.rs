@@ -176,7 +176,7 @@ macro_rules! frost_types {
         #[derive(Serialize, Deserialize, Debug)]
         #[serde(rename_all = "camelCase")]
         pub struct Identifier {
-            pub identifier_bytes: Vec<u8>,
+            pub id: Vec<u8>,
         }
 
         impl TryFrom<Identifier> for frost::Identifier {
@@ -185,18 +185,17 @@ macro_rules! frost_types {
             fn try_from(
                 value: Identifier,
             ) -> std::result::Result<Self, Self::Error> {
-                let identifier = frost::Identifier::deserialize(
-                    &value.identifier_bytes,
-                )
-                .map_err(Error::new)?;
+                let identifier =
+                    frost::Identifier::deserialize(&value.id)
+                        .map_err(Error::new)?;
                 Ok(identifier)
             }
         }
 
         impl From<frost::Identifier> for Identifier {
             fn from(value: frost::Identifier) -> Self {
-                let identifier_bytes = value.serialize();
-                Self { identifier_bytes }
+                let id = value.serialize();
+                Self { id }
             }
         }
 
