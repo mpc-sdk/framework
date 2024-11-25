@@ -16,15 +16,16 @@ pub(super) type ThresholdKeyShare =
 
 #[napi(object)]
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct VerifyingKey {
-    pub bytes: Vec<u8>,
+    pub sec1_bytes: Vec<u8>,
 }
 
 impl TryFrom<VerifyingKey> for ecdsa::VerifyingKey {
     type Error = polysig_driver::Error;
 
     fn try_from(value: VerifyingKey) -> Result<Self, Self::Error> {
-        Ok(ecdsa::VerifyingKey::from_sec1_bytes(&value.bytes)?)
+        Ok(ecdsa::VerifyingKey::from_sec1_bytes(&value.sec1_bytes)?)
     }
 }
 

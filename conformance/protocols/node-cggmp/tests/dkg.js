@@ -17,7 +17,7 @@ const participants = partyKeys.map((key) => {
 });
 
 const verifiers = partyKeys.map((key) => {
-  return { bytes: key.sign.public };
+  return { sec1Bytes: key.sign.public };
 });
 
 const signer = partyKeys[partyIndex].sign.private;

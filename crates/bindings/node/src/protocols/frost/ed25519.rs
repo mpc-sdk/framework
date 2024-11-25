@@ -48,8 +48,9 @@ impl TryFrom<KeyShare> for ThresholdKeyShare {
 #[doc(hidden)]
 #[napi(object)]
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct Signature {
-    pub bytes: Vec<u8>,
+    pub signature_bytes: Vec<u8>,
 }
 
 impl TryFrom<Signature> for ed25519::Signature {
@@ -75,8 +76,9 @@ impl TryFrom<ed25519::Signature> for Signature {
 #[doc(hidden)]
 #[napi(object)]
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct Identifier {
-    pub bytes: Vec<u8>,
+    pub identifier_bytes: Vec<u8>,
 }
 
 impl TryFrom<Identifier> for ed25519::Identifier {
