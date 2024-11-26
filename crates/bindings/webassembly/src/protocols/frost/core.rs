@@ -35,6 +35,7 @@ macro_rules! frost_impl {
                     serde_wasm_bindgen::from_value(options)?;
                 let party: PartyOptions =
                     serde_wasm_bindgen::from_value(party)?;
+
                 let signer: SigningKey = into_signing_key(signer)?;
                 let verifier = signer.verifying_key().clone();
 

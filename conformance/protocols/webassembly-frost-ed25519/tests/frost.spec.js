@@ -4,33 +4,19 @@ import { test, expect } from '@playwright/test';
 import {
   server,
   parameters,
-  cggmp,
+  frost,
   URL,
   proxyConsoleError,
 } from '../../../helpers/protocols.mjs';
 
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
-const partyKeys = require('./ecdsa.json');
-const { message, dkgSessionIdSeed, signSessionIdSeed } = cggmp;
+const partyKeys = require('./ed25519.json');
+const { message, identifiers } = frost;
 
-test("CGGMP: dkg and sign message", async ({ context, page }) => {
-  // The default timeout is 90 seconds which fails on Firefox
-  // (Chromium and Webkit are ok) so we increase the timeout here.
-  //
-  // SEE: https://playwright.dev/docs/test-timeouts#test-timeout
-  //
-  // Firefox can be up to 5x slower, here is an example
-  // from a successful test run:
-  //
-  // Slow test file: [firefox] › cggmp.spec.js (10.6m)
-  // Slow test file: [webkit] › cggmp.spec.js (2.3m)
-  // Slow test file: [chromium] › cggmp.spec.js (1.2m)
-  //
-  test.setTimeout(60 * 1000 * 15);
-  
+test("FROST: dkg and sign message", async ({ context, page }) => {
   // DKG
-  console.log("CGGMP, begin dkg...");
+  console.log("FROST Ed25519, begin dkg...");
   let pages = [];
   let selectors = [];
 
@@ -39,7 +25,7 @@ test("CGGMP: dkg and sign message", async ({ context, page }) => {
       partyIndex: i,
       server,
       parameters,
-      sessionIdSeed: dkgSessionIdSeed,
+      identifiers,
     };
     const url = `${URL}/dkg.html?data=${encodeURIComponent(JSON.stringify(pageData))}&keys=${encodeURIComponent(JSON.stringify(partyKeys.slice(0, parameters.parties)))}`;
 
@@ -62,7 +48,7 @@ test("CGGMP: dkg and sign message", async ({ context, page }) => {
 
   console.assert(keyShares.length === parameters.parties);
 
-  console.log("CGGMP, dkg complete, begin signing...");
+  console.log("FROST Ed25519, dkg complete, begin signing...");
   
   // Sign
   pages = [];
@@ -77,12 +63,13 @@ test("CGGMP: dkg and sign message", async ({ context, page }) => {
   let index = 0;
   for (const keyShare of signers) {
     const partyIndex = indices[index];
+    console.log(partyIndex);
     const pageData = {
       partyIndex,
       indices,
       server,
       parameters,
-      sessionIdSeed: signSessionIdSeed,
+      identifiers: indices.map((i) => identifiers[i]),
       keyShare,
       message,
     };
@@ -110,6 +97,5 @@ test("CGGMP: dkg and sign message", async ({ context, page }) => {
   }
 
   console.assert(signatures.length === parameters.threshold);
-  console.log("CGGMP, signing complete, done.");
-
+  console.log("FROST Ed25519, signing complete, done.");
 });
