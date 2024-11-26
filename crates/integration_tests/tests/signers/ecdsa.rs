@@ -7,7 +7,7 @@ use serde::Deserialize;
 use std::borrow::Cow;
 
 /// Test vectors are generated using `ethers`,
-/// see scripts/ecdsa-test-vectors.
+/// see conformance/helpers/ecdsa-test-vectors.
 const TEST_VECTORS: &str = r#"
 {
   "signedMessage": {
