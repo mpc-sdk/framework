@@ -33,8 +33,12 @@ macro_rules! frost_impl {
             ) -> Result<JsValue, JsError> {
                 let options: SessionOptions =
                     serde_wasm_bindgen::from_value(options)?;
+
+                tracing::info!("decoding the party: {:#?}", party);
                 let party: PartyOptions =
                     serde_wasm_bindgen::from_value(party)?;
+
+                tracing::info!("party decoding completed!!!!");
 
                 let signer: SigningKey = into_signing_key(signer)?;
                 let verifier = signer.verifying_key().clone();

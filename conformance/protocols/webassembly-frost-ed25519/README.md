@@ -7,6 +7,8 @@
 * wasm-pack >= 0.13.0
 * wasm-opt >= 116
 
+You must have already run `cargo make gen-keys` at the root of the repository to create test keys.
+
 ## Setup
 
 Install dependencies and browsers:

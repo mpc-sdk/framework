@@ -45,6 +45,10 @@ enum Command {
         #[clap(short, long)]
         num: u8,
 
+        /// Encode the verifier as serde JSON.
+        #[clap(short, long)]
+        verifier_serde: bool,
+
         /// Type of key to generate.
         #[clap(short, long)]
         key_type: KeyType,
@@ -68,7 +72,14 @@ fn run() -> Result<()> {
             force,
             key_type,
             file,
-        } => generate_test_keys(file, force, num, key_type)?,
+            verifier_serde,
+        } => generate_test_keys(
+            file,
+            force,
+            num,
+            key_type,
+            verifier_serde,
+        )?,
     }
     Ok(())
 }
@@ -79,6 +90,7 @@ fn generate_test_keys(
     force: bool,
     num: u8,
     key_type: KeyType,
+    verifier_serde: bool,
 ) -> Result<()> {
     if let Some(path) = &path {
         if path.exists() && !force {
@@ -96,22 +108,31 @@ fn generate_test_keys(
             KeyType::Ecdsa => {
                 let signer =
                     k256::ecdsa::SigningKey::random(&mut OsRng);
-                let verifier =
-                    signer.verifying_key().to_sec1_bytes().to_vec();
+                let verifier = if verifier_serde {
+                    serde_json::to_vec(signer.verifying_key())?
+                } else {
+                    signer.verifying_key().to_sec1_bytes().to_vec()
+                };
                 (signer.to_bytes().to_vec(), verifier)
             }
             KeyType::Ed25519 => {
                 let signer =
                     ed25519_dalek::SigningKey::generate(&mut OsRng);
-                let verifier =
-                    signer.verifying_key().to_bytes().to_vec();
+                let verifier = if verifier_serde {
+                    serde_json::to_vec(&signer.verifying_key())?
+                } else {
+                    signer.verifying_key().to_bytes().to_vec()
+                };
                 (signer.to_bytes().to_vec(), verifier)
             }
             KeyType::Schnorr => {
                 let signer =
                     k256::schnorr::SigningKey::random(&mut OsRng);
-                let verifier =
-                    signer.verifying_key().to_bytes().to_vec();
+                let verifier = if verifier_serde {
+                    serde_json::to_vec(signer.verifying_key())?
+                } else {
+                    signer.verifying_key().to_bytes().to_vec()
+                };
                 (signer.to_bytes().to_vec(), verifier)
             }
             KeyType::Noise => {

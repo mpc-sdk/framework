@@ -77,6 +77,7 @@ cargo run --bin polysig-keygen -- keypair -f crates/integration_tests/tests/test
 cargo run --bin polysig-keygen -- test-keys -f -n 10 -k ecdsa conformance/ecdsa.json
 cargo run --bin polysig-keygen -- test-keys -f -n 10 -k ed25519 conformance/ed25519.json
 cargo run --bin polysig-keygen -- test-keys -f -n 10 -k schnorr conformance/schnorr.json
+cargo run --bin polysig-keygen -- test-keys -f -n 10 -k schnorr --verifier-serde conformance/schnorr-serde.json
 '''
 
 [tasks.genhtml]
