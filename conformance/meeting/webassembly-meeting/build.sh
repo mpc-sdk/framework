@@ -9,6 +9,6 @@ cd ../../../crates/bindings/webassembly
 # being active
 wasm-pack build \
 	--target web \
-	--features cggmp,tracing
+	--features frost-ed25519,tracing
 
 cp -rf ./pkg ../../../conformance/meeting/webassembly-meeting/public/

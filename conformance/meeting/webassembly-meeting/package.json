@@ -4,10 +4,9 @@
   "version": "1.0.0",
   "description": "Example and test spec for meeting rooms using the webassembly bindings",
   "scripts": {
-      "build": "npm run build:wasm",
-      "build:wasm": "./scripts/build.sh",
+      "build": "./build.sh",
+      "meeting": "../../meeting.sh",
       "dev": "vite public",
-      "meeting": "./scripts/meeting-server.sh",
       "test": "playwright test",
       "test:ui": "playwright test --ui",
       "test:headed": "playwright test --headed"

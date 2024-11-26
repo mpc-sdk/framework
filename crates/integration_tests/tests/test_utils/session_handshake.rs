@@ -16,11 +16,12 @@ pub async fn run(
     let mut completed: Vec<SessionState> = Vec::new();
 
     // Create new clients
-    let (client_i, event_loop_i, _) = new_client::<anyhow::Error>(
-        server,
-        server_public_key.clone(),
-    )
-    .await?;
+    let (client_i, event_loop_i, initiator_key) =
+        new_client::<anyhow::Error>(
+            server,
+            server_public_key.clone(),
+        )
+        .await?;
     let (client_p, event_loop_p, participant_key) =
         new_client::<anyhow::Error>(
             server,
@@ -31,8 +32,10 @@ pub async fn run(
     let mut client_i_transport: Transport = client_i.into();
     let mut client_p_transport: Transport = client_p.into();
 
-    let session_participants =
-        vec![participant_key.public_key().to_vec()];
+    let session_participants = vec![
+        initiator_key.public_key().to_vec(),
+        participant_key.public_key().to_vec(),
+    ];
 
     // Each client handshakes with the server
     client_i_transport.connect().await?;

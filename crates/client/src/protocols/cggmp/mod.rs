@@ -78,13 +78,9 @@ pub async fn dkg<P: SchemeParams + 'static>(
 
     // Wait for the session to become active
     let client_session = if participant.party().is_initiator() {
-        let mut other_participants =
-            participant.party().participants().to_vec();
-        other_participants
-            .retain(|p| p != participant.party().public_key());
         SessionHandler::Initiator(SessionInitiator::new(
             transport,
-            other_participants,
+            participant.party().participants().to_vec(),
         ))
     } else {
         SessionHandler::Participant(SessionParticipant::new(
@@ -293,13 +289,9 @@ pub async fn reshare<P: SchemeParams>(
 
     // Wait for the session to become active
     let client_session = if participant.party().is_initiator() {
-        let mut other_participants =
-            participant.party().participants().to_vec();
-        other_participants
-            .retain(|p| p != participant.party().public_key());
         SessionHandler::Initiator(SessionInitiator::new(
             transport,
-            other_participants,
+            participant.party().participants().to_vec(),
         ))
     } else {
         SessionHandler::Participant(SessionParticipant::new(
@@ -433,13 +425,9 @@ pub async fn sign<P: SchemeParams + 'static>(
 
     // Wait for the session to become active
     let client_session = if participant.party().is_initiator() {
-        let mut other_participants =
-            participant.party().participants().to_vec();
-        other_participants
-            .retain(|p| p != participant.party().public_key());
         SessionHandler::Initiator(SessionInitiator::new(
             transport,
-            other_participants,
+            participant.party().participants().to_vec(),
         ))
     } else {
         SessionHandler::Participant(SessionParticipant::new(

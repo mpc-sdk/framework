@@ -4,8 +4,8 @@
   "version": "1.0.0",
   "description": "Example and test spec for CGGMP signing using the node bindings",
   "scripts": {
-      "build": "./scripts/build.sh",
-      "relay": "./scripts/relay-server.sh",
+      "build": "./build.sh",
+      "relay": "../../relay.sh",
       "test": "node tests/cggmp.spec.js"
   },
   "type": "module",

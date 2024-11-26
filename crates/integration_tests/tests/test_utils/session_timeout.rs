@@ -10,7 +10,7 @@ pub async fn run(
     server_public_key: Vec<u8>,
 ) -> Result<()> {
     // Create new clients
-    let (mut initiator, event_loop_i, _initiator_key) =
+    let (mut initiator, event_loop_i, initiator_key) =
         new_client::<anyhow::Error>(
             server,
             server_public_key.clone(),
@@ -23,8 +23,10 @@ pub async fn run(
         )
         .await?;
 
-    let session_participants =
-        vec![participant_key.public_key().to_vec()];
+    let session_participants = vec![
+        initiator_key.public_key().to_vec(),
+        participant_key.public_key().to_vec(),
+    ];
 
     initiator.connect().await?;
     participant.connect().await?;
