@@ -33,7 +33,7 @@ The library includes bindings for Webassembly to be used in the browser and for 
 * [x] CGGMP
 * [x] ECDSA
 * [x] EdDSA
-* [ ] FROST
+* [x] FROST
 * [x] Schnorr
 
 ### Node
@@ -41,7 +41,7 @@ The library includes bindings for Webassembly to be used in the browser and for 
 * [x] CGGMP
 * [x] ECDSA
 * [x] EdDSA
-* [ ] FROST
+* [x] FROST
 * [x] Schnorr
 
 ## Meeting Rooms
@@ -60,7 +60,15 @@ All participants must then join the meeting room using their assigned slot (usua
 
 Once all participants have joined the room the server will send a broadcast notification including all the participant identifiers and public keys.
 
-Now the participants are ready to begin executing a protocol session.
+Now the participants are ready to begin create and join a session context.
+
+## Session Context
+
+After exchanging public keys via a meeting room it's required to create a session context on the relay server for protocol execution. If you are using the high-level functions in [polysig-client](https://docs.rs/polysig-client) then sessions are automatically created and destroyed.
+
+A session context groups participants in a protocol so that we can ensure only participants with access to the session identifier are communicating and also so that peers can negotiate their noise protocol encrypted channels. We distinguish between an ***initiator*** that starts a session and a ***participant*** who registers their connection in a session. The initiator is responsible for closing a session once the protocol completes; if a session is not closed, perhaps due to a network error the server will eventually delete the session once it has expired.
+
+The session initiator creates a session by sending all the ***noise transport public keys*** (including their own) to the server and then each participant submits their ***noise transport public key*** to the server to register as a participant in the session. Once all participants have registered their public keys then the server will send a `SessionReady` event, once the `SessionReady` event has been received each party attempts to create the encrypted peer to peer channel. Once all the peers are connected on secure channels a `SessionActive` event is emitted and then the protocol can begin execution.
 
 ## Documentation
 
@@ -71,56 +79,7 @@ Now the participants are ready to begin executing a protocol session.
 * [relay-server][] Websocket relay server library
 * [cli][] Command line interface for the server
 
-## Server Installation
-
-```
-cargo install polysig-server
-```
-
-## Development
-
-### Getting Started
-
-You will need the [rust][] toolchain and a few other tools:
-
-```
-cargo install cargo-hack
-cargo install cargo-make
-cargo install cargo-nextest
-cargo install wasm-pack
-```
-
-Minimum supported rust version (MSRV) is 1.68.1.
-
-Run the `gen-keys` task to setup keypairs for the server and test specs:
-
-```
-cargo make gen-keys
-```
-
-### Server
-
-Start a server:
-
-```
-cargo run -- config.toml
-```
-
-### Documentation
-
-```
-cargo make doc
-```
-
-### Tests
-
-To run the tests using the native client:
-
-```
-cargo make test
-```
-
-For webassembly and node binding tests see the README files in the conformance directory.
+See [BUILD](/BUILD.md) for information on installing, building and testing the source.
 
 ## License
 
