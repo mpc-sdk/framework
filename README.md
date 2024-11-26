@@ -8,41 +8,16 @@ Protocols communicate via an end-to-end encrypted relay server using the [noise 
 
 The library includes bindings for Webassembly to be used in the browser and for Nodejs; for multisig protocols the client implementation uses [web-sys][] for webassembly and [tokio-tungstenite][] for other platforms.
 
-## Features
+| Signer or Protocol | Curve     | Feature              | Library                | WASM | Node |
+|:-------------------|:----------|:---------------------|:-----------------------|:-----|:-----|
+| ECDSA              | Secp256k1 | `ecdsa`              | [k256][]               | Yes  | Yes  |
+| EdDSA              | Ed25519   | `eddsa`              | [ed25519-dalek][]      | Yes  | Yes  |
+| Schnorr            | Secp256k1 | `schnorr`            | [k256][]               | Yes  | Yes  |
+| CGGMP              | Secp256k1 | `cggmp`              | [synedrion][]          | Yes  | Yes  |
+| FROST              | Ed25519   | `frost-ed25519`      | [frost-ed25519][]      | Yes  | Yes  |
+| FROST Taproot      | Secp256k1 | `frost-secp256k1-tr` | [frost-secp256k1-tr][] | Yes  | Yes  |
 
-* `full` Enable all protocols and signers.
-* `protocols` Enable all protocols.
-* `signers` Enable all signers.
-
-### Protocols
-
-* `cggmp`: Enable the [CGGMP21][] protocol using [synedrion][].
-* `frost-ed25519`: Enable the [FROST][] Ed25519 protocol using  [frost-ed25519](https://docs.rs/frost-ed25519/).
-* `frost-secp256k1-tr`: Enable the [FROST][] Secp256k1 Taproot protocol using  [frost-secp256k1-tr](https://docs.rs/frost-secp256k1-tr/).
-
-### Signers
-
-* `ecdsa`: Signer compatible with Ethereum using [k256](https://docs.rs/k256/latest/k256/).
-* `eddsa`: Signer compatible with Solana using [ed25519](https://docs.rs/ed25519/latest/ed25519/) and [ed25519-dalek](https://docs.rs/ed25519-dalek/latest/ed25519_dalek/).
-* `schnorr`: Signer compatible with Bitcoin Taproot (BIP-340) using [k256](https://docs.rs/k256/latest/k256/).
-
-## Bindings
-
-### Webassembly
-
-* [x] CGGMP
-* [x] ECDSA
-* [x] EdDSA
-* [x] FROST
-* [x] Schnorr
-
-### Node
-
-* [x] CGGMP
-* [x] ECDSA
-* [x] EdDSA
-* [x] FROST
-* [x] Schnorr
+Other feature flags are `full` to enable all features or all `protocols` and `signers`.
 
 ## Meeting Rooms
 
@@ -99,3 +74,7 @@ The server code is licensed under AGPL-3.0 and the client code is licensed as ei
 [meeting-server]: https://docs.rs/polysig-meeting-server
 [cli]: https://docs.rs/polysig-server
 [synedrion]: https://docs.rs/synedrion/
+[k256]: https://docs.rs/k256/latest/k256/
+[ed25519-dalek]: https://docs.rs/ed25519-dalek/latest/ed25519_dalek/
+[frost-ed25519]: https://docs.rs/frost-ed25519/
+[frost-secp256k1-tr]: https://docs.rs/frost-secp256k1-tr/
