@@ -42,5 +42,5 @@ const keyShare = await CggmpProtocol.dkg(
   signer,
 );
 
-const el = document.getElementById("key-share");
+const el = document.querySelector("body");
 el.innerHTML = `<p class="key-share">${JSON.stringify({partyIndex, keyShare})}</p>`;

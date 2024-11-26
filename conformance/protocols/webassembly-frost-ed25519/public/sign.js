@@ -43,5 +43,5 @@ const signature = await protocol.sign(
   message,
 );
 
-const el = document.getElementById("signature");
+const el = document.querySelector("body");
 el.innerHTML = `<p class="signature">${JSON.stringify({partyIndex, signature})}</p>`;
