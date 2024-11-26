@@ -8,40 +8,16 @@ Protocols communicate via an end-to-end encrypted relay server using the [noise 
 
 The library includes bindings for Webassembly to be used in the browser and for Nodejs; for multisig protocols the client implementation uses [web-sys][] for webassembly and [tokio-tungstenite][] for other platforms.
 
-## Features
+| Signer or Protocol | Curve     | Feature              | Library                | WASM | Node |
+|:-------------------|:----------|:---------------------|:-----------------------|:-----|:-----|
+| ECDSA              | Secp256k1 | `ecdsa`              | [k256][]               | Yes  | Yes  |
+| EdDSA              | Ed25519   | `eddsa`              | [ed25519-dalek][]      | Yes  | Yes  |
+| Schnorr            | Secp256k1 | `schnorr`            | [k256][]               | Yes  | Yes  |
+| CGGMP              | Secp256k1 | `cggmp`              | [synedrion][]          | Yes  | Yes  |
+| FROST              | Ed25519   | `frost-ed25519`      | [frost-ed25519][]      | Yes  | Yes  |
+| FROST Taproot      | Secp256k1 | `frost-secp256k1-tr` | [frost-secp256k1-tr][] | Yes  | Yes  |
 
-* `full` Enable all protocols and signers (default).
-* `protocols` Enable all protocols.
-* `signers` Enable all signers.
-
-### Protocols
-
-* `cggmp`: Enable the [CGGMP21][] protocol using [synedrion][].
-* `frost-ed25519`: Enable the [FROST][] Ed25519 protocol using  [frost-ed25519](https://docs.rs/frost-ed25519/).
-
-### Signers
-
-* `ecdsa`: Signer compatible with Ethereum using [k256](https://docs.rs/k256/latest/k256/).
-* `eddsa`: Signer compatible with Solana using [ed25519](https://docs.rs/ed25519/latest/ed25519/) and [ed25519-dalek](https://docs.rs/ed25519-dalek/latest/ed25519_dalek/).
-* `schnorr`: Signer compatible with Bitcoin Taproot (BIP-340) using [k256](https://docs.rs/k256/latest/k256/).
-
-## Bindings
-
-### Webassembly
-
-* [x] CGGMP
-* [x] ECDSA
-* [x] EdDSA
-* [ ] FROST
-* [x] Schnorr
-
-### Node
-
-* [x] CGGMP
-* [x] ECDSA
-* [x] EdDSA
-* [ ] FROST
-* [x] Schnorr
+Other feature flags are `full` to enable all features or all `protocols` and `signers`.
 
 ## Meeting Rooms
 
@@ -59,7 +35,15 @@ All participants must then join the meeting room using their assigned slot (usua
 
 Once all participants have joined the room the server will send a broadcast notification including all the participant identifiers and public keys.
 
-Now the participants are ready to begin executing a protocol session.
+Now the participants are ready to begin create and join a session context.
+
+## Session Context
+
+After exchanging public keys via a meeting room it's required to create a session context on the relay server for protocol execution. If you are using the high-level functions in [polysig-client](https://docs.rs/polysig-client) then sessions are automatically created and destroyed.
+
+A session context groups participants in a protocol so that we can ensure only participants with access to the session identifier are communicating and also so that peers can negotiate their noise protocol encrypted channels. We distinguish between an ***initiator*** that starts a session and a ***participant*** who registers their connection in a session. The initiator is responsible for closing a session once the protocol completes; if a session is not closed, perhaps due to a network error the server will eventually delete the session once it has expired.
+
+The session initiator creates a session by sending all the ***noise transport public keys*** (including their own) to the server and then each participant submits their ***noise transport public key*** to the server to register as a participant in the session. Once all participants have registered their public keys then the server will send a `SessionReady` event, once the `SessionReady` event has been received each party attempts to create the encrypted peer to peer channel. Once all the peers are connected on secure channels a `SessionActive` event is emitted and then the protocol can begin execution.
 
 ## Documentation
 
@@ -70,56 +54,7 @@ Now the participants are ready to begin executing a protocol session.
 * [relay-server][] Websocket relay server library
 * [cli][] Command line interface for the server
 
-## Server Installation
-
-```
-cargo install polysig-server
-```
-
-## Development
-
-### Getting Started
-
-You will need the [rust][] toolchain and a few other tools:
-
-```
-cargo install cargo-hack
-cargo install cargo-make
-cargo install cargo-nextest
-cargo install wasm-pack
-```
-
-Minimum supported rust version (MSRV) is 1.68.1.
-
-Run the `gen-keys` task to setup keypairs for the server and test specs:
-
-```
-cargo make gen-keys
-```
-
-### Server
-
-Start a server:
-
-```
-cargo run -- start config.toml
-```
-
-### Documentation
-
-```
-cargo make doc
-```
-
-### Tests
-
-To run the tests using the native client:
-
-```
-cargo make test
-```
-
-For webassembly and node binding tests see the README files in the conformance directory.
+See [BUILD](/BUILD.md) for information on installing, building and testing the source.
 
 ## License
 
@@ -139,3 +74,7 @@ The server code is licensed under AGPL-3.0 and the client code is licensed as ei
 [meeting-server]: https://docs.rs/polysig-meeting-server
 [cli]: https://docs.rs/polysig-server
 [synedrion]: https://docs.rs/synedrion/
+[k256]: https://docs.rs/k256/latest/k256/
+[ed25519-dalek]: https://docs.rs/ed25519-dalek/latest/ed25519_dalek/
+[frost-ed25519]: https://docs.rs/frost-ed25519/
+[frost-secp256k1-tr]: https://docs.rs/frost-secp256k1-tr/
