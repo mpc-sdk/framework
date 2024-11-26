@@ -414,10 +414,21 @@ async fn service(
 ) -> Result<Option<ServerMessage>> {
     match message {
         ServerMessage::NewSession(request) => {
+            /*
             let mut all_participants =
                 vec![public_key.as_ref().to_vec()];
             all_participants
                 .append(&mut request.participant_keys.clone());
+            */
+
+            let all_participants = request.participant_keys.clone();
+            if all_participants
+                .iter()
+                .find(|k| k.as_slice() == public_key.as_ref())
+                .is_none()
+            {
+                return Err(Error::SessionOwnerNotParticipant);
+            }
 
             let (session_id, wait_interval) = {
                 let mut writer = state.write().await;

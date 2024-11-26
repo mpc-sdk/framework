@@ -98,14 +98,9 @@ macro_rules! frost_dkg_impl {
             // Wait for the session to become active
             let client_session = if participant.party().is_initiator()
             {
-                let mut other_participants =
-                    participant.party().participants().to_vec();
-                other_participants.retain(|p| {
-                    p != participant.party().public_key()
-                });
                 SessionHandler::Initiator(SessionInitiator::new(
                     transport,
-                    other_participants,
+                    participant.party().participants().to_vec(),
                 ))
             } else {
                 SessionHandler::Participant(SessionParticipant::new(
@@ -115,15 +110,6 @@ macro_rules! frost_dkg_impl {
 
             let (transport, session) =
                 wait_for_session(&mut stream, client_session).await?;
-
-            /*
-            let mut identifiers: Vec<Identifier> =
-                Vec::with_capacity(params.parties.into());
-            for index in 1..=params.parties {
-                identifiers
-                    .push(index.try_into().map_err(Error::from)?);
-            }
-            */
 
             let key_gen = dkg::new_driver(
                 transport,

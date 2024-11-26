@@ -40,6 +40,11 @@ pub enum Error {
     #[error("not handshake protocol state")]
     NotHandshakeState,
 
+    /// Error generated when a session owner is not in the list
+    /// of participants.
+    #[error("session owner is not participant")]
+    SessionOwnerNotParticipant,
+
     /// Error generated when a meeting could not be found.
     #[error(r#"meeting "{0}" not found"#)]
     MeetingNotFound(MeetingId),

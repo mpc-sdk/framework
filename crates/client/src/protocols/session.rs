@@ -57,7 +57,7 @@ impl From<SessionHandler> for Transport {
 /// Initiate a session.
 pub struct SessionInitiator {
     transport: Transport,
-    session_participants: Vec<Vec<u8>>,
+    all_participants: Vec<Vec<u8>>,
     session_state: Mutex<Option<SessionState>>,
     requested_session: bool,
 }
@@ -66,11 +66,11 @@ impl SessionInitiator {
     /// Create a new session handshake.
     pub fn new(
         transport: Transport,
-        session_participants: Vec<Vec<u8>>,
+        all_participants: Vec<Vec<u8>>,
     ) -> Self {
         Self {
             transport,
-            session_participants,
+            all_participants,
             session_state: Mutex::new(None),
             requested_session: false,
         }
@@ -82,7 +82,7 @@ impl SessionInitiator {
             && self.transport.is_connected().await
         {
             self.transport
-                .new_session(self.session_participants.clone())
+                .new_session(self.all_participants.clone())
                 .await?;
 
             self.requested_session = true;

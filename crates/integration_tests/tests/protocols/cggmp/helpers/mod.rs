@@ -47,7 +47,10 @@ pub fn make_signers(
 }
 
 type SessionStream = Pin<
-    Box<dyn Stream<Item = Result<Event, polysig_client::Error>> + Send>,
+    Box<
+        dyn Stream<Item = Result<Event, polysig_client::Error>>
+            + Send,
+    >,
 >;
 
 /// Drive streams to prepare sessions.
@@ -131,7 +134,7 @@ pub async fn make_client_sessions(
     // Public keys of the participants
     let session_participants = keypairs
         .iter()
-        .skip(1)
+        // .skip(1)
         .map(|k| k.public_key().to_vec())
         .collect::<Vec<_>>();
 
