@@ -4,9 +4,9 @@
   "version": "1.0.0",
   "description": "Example and test spec for FROST Secp256k1 Taproot signing using the webassembly bindings",
   "scripts": {
-      "build": "./scripts/build.sh",
+      "build": "./build.sh",
       "dev": "vite public",
-      "relay": "./scripts/relay-server.sh",
+      "relay": "../../relay.sh",
       "test": "playwright test",
       "test:chromium": "playwright test --project=chromium",
       "test:webkit": "playwright test --project=webkit",
